@@ -3,9 +3,6 @@ name: Hostinger Private Upload Test
 # One-time harmless SSH/SFTP transport test. Does NOT deploy application files.
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths: ['.github/workflows/hostinger-upload-test.yml']
 
 permissions:
   contents: read
