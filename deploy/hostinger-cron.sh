@@ -8,11 +8,16 @@ app="$1/canadamb-app"
 php_bin="$2"
 [[ -d "$app" && -x "$php_bin" && "$php_bin" == /* ]] || exit 2
 
+# A deployment pauses the scheduler before backing up or migrating. Check
+# before and after locking to close the race with an in-progress cron invocation.
+[[ ! -e "$app/update.pause" ]] || exit 0
+
 exec 9>"$app/release.lock"
 if ! flock -n 9; then
     # An active deployment or scheduler run owns the slot.
     exit 0
 fi
+[[ ! -e "$app/update.pause" ]] || exit 0
 release=$(readlink -e "$app/current")
 [[ "$release" == "$app/releases/"* && -f "$release/artisan" ]] || exit 2
 cd "$release"
