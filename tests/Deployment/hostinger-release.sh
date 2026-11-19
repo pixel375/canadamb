@@ -138,4 +138,41 @@ if [[ $CANADAMB_DEPLOYMENT_MODE == production-initial ]]; then
     domains=$(MYSQL_PWD="$CI_MARIADB_ROOT_PASSWORD" docker exec -e MYSQL_PWD "$CI_MARIADB_CONTAINER" mariadb -N -u root canadamb_ci_restore -e 'SELECT host FROM domains WHERE host IN ("canadamb.ca", "brandonmb.ca") ORDER BY host')
     test "$domains" = $'brandonmb.ca\ncanadamb.ca'
     echo 'Restored the installed database to a disposable schema and verified both domains.'
+
+    # Simulate the NEXT release on an installation which already contains data.
+    # This is a local-only empty commit with identical source, not a production push.
+    php -r '
+      require $argv[1]."/vendor/autoload.php";
+      $app = require $argv[1]."/bootstrap/app.php";
+      $app->make(Illuminate\\Contracts\\Console\\Kernel::class)->bootstrap();
+      Illuminate\\Support\\Facades\\DB::table("users")->insert([
+        "name" => "Prelaunch User",
+        "email" => "ci-update@example.invalid",
+        "password" => password_hash("test-only", PASSWORD_BCRYPT),
+        "created_at" => now(),
+        "updated_at" => now(),
+      ]);
+    ' "$release"
+    test "$(MYSQL_PWD=release-probe-test-only docker exec -e MYSQL_PWD "$CI_MARIADB_CONTAINER" mariadb -N -u "$partner_user" "$database" -e 'SELECT count(*) FROM users WHERE email="ci-update@example.invalid"')" = 1
+    git -C "$app/source" config user.email 'ci@example.invalid'
+    git -C "$app/source" config user.name 'Release rehearsal'
+    git -C "$app/source" commit --allow-empty -m 'simulated next release' --quiet
+    next=$(git -C "$app/source" rev-parse HEAD)
+    install -d "$site/.builds/$next"
+    cp -a "$repo/public/build/." "$site/.builds/$next/"
+    printf '%s\\n' "$next" > "$site/.builds/$next/source-commit"
+    old_inode=$(stat -c '%i' "$site/public_html")
+    old_key_hash=$(sha256sum "$app/shared/storage/oauth-private.key" | cut -d' ' -f1)
+    export CANADAMB_PRODUCTION_DB="$database"
+    unset CANADAMB_STAGING_DB
+    bash "$repo/deploy/hostinger-upgrade.sh" "$site" "$next" "$site/.builds/$next" false
+    test "$(readlink -f "$app/current")" = "$app/releases/$next"
+    test "$(stat -c '%i' "$site/public_html")" = "$old_inode"
+    test "$(sha256sum "$app/shared/storage/oauth-private.key" | cut -d' ' -f1)" = "$old_key_hash"
+    test ! -f "$app/update.pause"
+    test ! -f "$app/releases/$next/storage/framework/down"
+    test -s "$app/shared/backups/$next/$database.sql"
+    tar -tzf "$app/shared/backups/$next/storage.tar.gz" >/dev/null
+    test "$(MYSQL_PWD=release-probe-test-only docker exec -e MYSQL_PWD "$CI_MARIADB_CONTAINER" mariadb -N -u "$partner_user" "$database" -e 'SELECT count(*) FROM users WHERE email="ci-update@example.invalid"')" = 1
+    echo 'Production-update rehearsal preserved user data, private keys and the public_html inode.'
 fi
