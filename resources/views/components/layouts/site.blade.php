@@ -79,6 +79,9 @@
                 <a @if(request()->is('/')) aria-current="page" @endif href="/">Home</a>
                 @if($networkSettings['modules']['news'] ?? false)<a @if(request()->is('news', 'news/*')) aria-current="page" @endif href="/news">News</a>@endif
                 @if($networkSettings['modules']['businesses'] ?? false)<a @if(request()->is('businesses*', 'business-updates')) aria-current="page" @endif href="/businesses">Businesses</a>@endif
+                @if($networkSettings['modules']['community'] ?? false)<a @if(request()->is('community', 'community/*')) aria-current="page" @endif href="/community">Community</a>@endif
+                @if($networkSettings['modules']['events'] ?? false)<a @if(request()->is('events', 'events/*')) aria-current="page" @endif href="/events">Events</a>@endif
+                @if($networkSettings['modules']['jobs'] ?? false)<a @if(request()->is('jobs', 'jobs/*')) aria-current="page" @endif href="/jobs">Jobs</a>@endif
                 @if($marketEnabled)<a @if(request()->is('marketplace', 'marketplace/*')) aria-current="page" @endif href="/marketplace">Marketplace</a>@endif
                 @if($site->isNetwork())<a @if(request()->is('communities')) aria-current="page" @endif href="/communities">Communities</a>@endif
             </nav>

@@ -86,6 +86,41 @@
             </section>
         @endif
 
+        @if($recentDiscussions->isNotEmpty() || $upcomingEvents->isNotEmpty() || $latestJobs->isNotEmpty())
+            <div class="community-activity">
+                @if($recentDiscussions->isNotEmpty())
+                    <section class="homepage-section" aria-labelledby="discussion-title">
+                        <div class="section-heading"><h2 id="discussion-title">Recent discussions</h2>@unless($preview ?? false)<a class="text-link" href="/community">All discussions <x-icon name="arrow" size="16"/></a>@endunless</div>
+                        <div class="panel">
+                            @foreach($recentDiscussions as $thread)
+                                <article class="item-row"><div><h3>@if($preview ?? false){{ $thread->title }}@else<a href="/community/{{ $thread->id }}">{{ $thread->title }}</a>@endif</h3><p>{{ $thread->location?->name ?? 'Manitoba' }} · {{ $thread->replies_count }} {{ \Illuminate\Support\Str::plural('reply', $thread->replies_count) }}</p></div></article>
+                            @endforeach
+                        </div>
+                    </section>
+                @endif
+                @if($upcomingEvents->isNotEmpty())
+                    <section class="homepage-section" aria-labelledby="events-title">
+                        <div class="section-heading"><h2 id="events-title">Upcoming events</h2>@unless($preview ?? false)<a class="text-link" href="/events">All events <x-icon name="arrow" size="16"/></a>@endunless</div>
+                        <div class="panel">
+                            @foreach($upcomingEvents as $event)
+                                <article class="item-row"><div><h3>@if($preview ?? false){{ $event->title }}@else<a href="/events/{{ $event->id }}">{{ $event->title }}</a>@endif</h3><p>{{ $event->localStart()->format('M j · g:i a T') }} · {{ $event->location->name }}</p></div></article>
+                            @endforeach
+                        </div>
+                    </section>
+                @endif
+                @if($latestJobs->isNotEmpty())
+                    <section class="homepage-section" aria-labelledby="jobs-title">
+                        <div class="section-heading"><h2 id="jobs-title">Latest jobs</h2>@unless($preview ?? false)<a class="text-link" href="/jobs">All jobs <x-icon name="arrow" size="16"/></a>@endunless</div>
+                        <div class="panel">
+                            @foreach($latestJobs as $job)
+                                <article class="item-row"><div><h3>@if($preview ?? false){{ $job->title }}@else<a href="/jobs/{{ $job->id }}">{{ $job->title }}</a>@endif</h3><p>{{ $job->branch->business->name }} · {{ $job->branch->location->name }}</p></div></article>
+                            @endforeach
+                        </div>
+                    </section>
+                @endif
+            </div>
+        @endif
+
         @unless($preview ?? false)
         <section class="network-strip" aria-label="Manitoba community network">
             <span class="location-icon"><x-icon name="building"/></span>

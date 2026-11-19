@@ -22,6 +22,10 @@
             <label>Public phone<input type="tel" name="phone" maxlength="32" value="{{ old('phone', $business->phone) }}"></label>
             <div><button class="button button-primary">{{ $business->exists ? 'Save profile' : 'Submit for review' }}</button></div>
         </form>
+        @if($business->status === 'active' && app(\App\Support\JobBoard::class)->enabled($site)
+            && $business->members()->whereKey(auth()->id())->wherePivotIn('role', ['owner', 'manager'])->exists())
+            <div class="panel"><a href="/account/businesses/{{ $business->id }}/jobs" class="button button-outline">Manage job postings</a></div>
+        @endif
         @if($business->status === 'active' && $branches->isNotEmpty())
             <form class="panel form-stack" method="post" action="/account/businesses/{{ $business->id }}/updates">@csrf
                 <h2>Publish a business update</h2>

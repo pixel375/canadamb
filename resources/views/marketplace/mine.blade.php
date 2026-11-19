@@ -3,6 +3,11 @@
         <div class="page-intro"><div><h1>My listings</h1><p>Manage your Marketplace posts.</p></div><div class="inline-actions">
             <a class="button button-outline" href="/account/saved">Saved listings</a>
             <a class="button button-outline" href="/account/messages">Messages</a>
+            @php($site = request()->attributes->get('site'))
+            @if(app(\App\Support\Community::class)->enabled($site, 'community'))<a class="button button-outline" href="/account/community-notifications">Discussion notifications</a>@endif
+            @if(app(\App\Support\Community::class)->enabled($site, 'events'))<a class="button button-outline" href="/account/events">My events</a>@endif
+            @if(app(\App\Support\JobBoard::class)->enabled($site))<a class="button button-outline" href="/account/saved-jobs">Saved jobs</a>@endif
+            @if(config('network.property_drafts'))<a class="button button-outline" href="/account/properties">Private property drafts</a>@endif
             <a class="button button-outline" href="/account/businesses">My businesses</a>
             @can('manage-network')<a class="button button-outline" href="{{ \App\Support\NetworkUrl::to(\App\Support\NetworkUrl::main(), '/admin') }}">Network admin</a>@endcan
             @can('manage-news')<a class="button button-outline" href="{{ \App\Support\NetworkUrl::to(\App\Support\NetworkUrl::main(), '/admin/news') }}">News editorial</a>@endcan

@@ -1,0 +1,33 @@
+<x-layouts.site :title="$item->title" :canonical="$canonical">
+    <div class="container page-shell narrow">
+        <a class="text-link mb-4" href="/community">Community forums</a>
+        <article class="panel">
+            <p class="section-label">{{ \App\Support\Community::FORUMS[$item->category] }} · {{ $item->location?->name ?? 'Manitoba' }}</p>
+            <h1>{{ $item->title }}</h1>
+            <p>{{ $item->author?->name ?? 'Former member' }} · {{ $item->created_at->format('M j, Y') }}</p>
+            <p class="prose-text">{{ $item->body }}</p>
+            @auth
+                <form action="/community/{{ $item->id }}/follow" method="post">@csrf @if($following) @method('DELETE') @endif
+                    <button class="button button-outline">{{ $following ? 'Stop following' : 'Follow discussion' }}</button>
+                </form>
+            @endauth
+        </article>
+        <section class="panel">
+            <h2>Replies</h2>
+            @forelse($replies as $reply)
+                <article class="item-row"><div><h3>{{ $reply->author?->name ?? 'Former member' }}</h3><p>{{ $reply->created_at->format('M j, Y') }}</p><p class="prose-text">{{ $reply->body }}</p></div></article>
+            @empty<p>No published replies yet.</p>@endforelse
+            {{ $replies->links() }}
+        </section>
+        @if($item->locked)
+            <p class="notice">This discussion is locked.</p>
+        @elseif(auth()->check())
+            <form method="post" action="/community/{{ $item->id }}/replies" class="panel form-stack">@csrf
+                <label>Reply<textarea name="body" required minlength="5" maxlength="3000" rows="4">{{ old('body') }}</textarea></label>
+                <div><button class="button button-primary">Submit reply</button></div>
+            </form>
+        @else
+            <p class="mt-3"><a href="/login" class="text-link">Sign in to reply or follow</a></p>
+        @endif
+    </div>
+</x-layouts.site>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"><channel><title>City updates</title>
+    <item><title>City publishes meeting schedule</title><link>https://news.example.test/meeting#details</link><pubDate>Mon, 20 Apr 2026 19:00:00 GMT</pubDate><description>Full publisher description</description></item>
+    <item><title>Duplicate item</title><link>https://news.example.test/meeting</link></item>
+    <item><title>Link to a different publisher</title><link>https://outside.example.test/item</link></item>
+</channel></rss>

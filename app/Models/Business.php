@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -18,5 +19,10 @@ class Business extends Model
     public function members(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'business_memberships')->withPivot('role')->withTimestamps();
+    }
+
+    public function scopeManagedBy(Builder $query, int $user, array $roles = ['owner', 'manager', 'editor']): Builder
+    {
+        return $query->whereHas('members', fn (Builder $members) => $members->whereKey($user)->whereIn('business_memberships.role', $roles));
     }
 }

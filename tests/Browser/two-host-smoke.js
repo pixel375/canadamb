@@ -16,6 +16,13 @@ async page => {
     check(await page.getByRole('link', { name: 'Communities', exact: true }).count() === 0, 'Provincial menu leaked into Brandon navigation');
     check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Mobile homepage overflows');
     check(await page.locator('.site-accent').evaluate(el => getComputedStyle(el).backgroundColor) === 'rgb(34, 160, 107)', 'Brandon accent did not render');
+    const navigation = page.getByRole('navigation', { name: 'Main navigation' });
+    check(await navigation.getByRole('link', { name: 'Community', exact: true }).isVisible(), 'Community navigation is missing');
+    check(await navigation.getByRole('link', { name: 'Jobs', exact: true }).isVisible(), 'Jobs navigation is missing');
+    await page.goto(brandon + '/events?month=2027-03');
+    check(await page.getByRole('region', { name: 'Monthly event calendar' }).isVisible(), 'Brandon event calendar did not render');
+    check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Mobile calendar overflows');
+    await page.goto(brandon);
 
     await page.getByLabel('Appearance').selectOption('dark');
     await page.reload();

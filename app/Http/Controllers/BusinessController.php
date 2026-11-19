@@ -181,8 +181,7 @@ class BusinessController extends Controller
 
     private function managed(Request $request, int $id): Business
     {
-        return Business::whereKey($id)->whereHas('members', fn ($query) => $query->whereKey($request->user()->id)
-            ->whereIn('business_memberships.role', ['owner', 'manager', 'editor']))->firstOrFail();
+        return Business::managedBy($request->user()->id)->findOrFail($id);
     }
 
     private function profileRules(): array

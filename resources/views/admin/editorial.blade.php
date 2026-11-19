@@ -3,10 +3,19 @@
     <section class="panel">
         <h2>Sources</h2>
         @foreach($sources as $source)
-            <div class="item-row"><div><h3>{{ $source->name }}</h3><p>{{ $source->url }} · {{ $source->reuse }}</p></div>
+            <div class="item-row"><div><h3>{{ $source->name }}</h3><p>{{ $source->url }} · {{ $source->reuse }}</p>
+                @if($source->feed_url)<p>Feed configured · {{ $source->poll_failures }} consecutive poll failures</p>@endif
+            </div>
                 @can('manage-network')<form method="post" action="/admin/news/source/{{ $source->id }}">@csrf
                     <button class="button button-outline" name="enabled" value="{{ $source->enabled ? 0 : 1 }}">{{ $source->enabled ? 'Disable' : 'Enable' }}</button>
-                </form>@endcan
+                </form>
+                <details><summary>Configure feed</summary>
+                    <form class="form-stack mt-2" method="post" action="/admin/news/source/{{ $source->id }}/feed">@csrf
+                        <label>RSS or Atom URL<input name="feed_url" type="url" maxlength="1024" value="{{ $source->feed_url }}"></label>
+                        <p class="field-note">Leave blank to remove the feed.</p>
+                        <button class="button button-outline">Save feed</button>
+                    </form>
+                </details>@endcan
             </div>
         @endforeach
         @can('manage-network')<details class="mt-3"><summary>Add source</summary>
@@ -22,11 +31,17 @@
     </section>
 
     @if($sources->contains(fn ($source) => $source->enabled && $source->reuse === 'summary-permitted'))
-        <details class="panel"><summary>Write a draft</summary>
+        <details class="panel" @if($candidate) open @endif><summary>Write a draft</summary>
             <form class="form-stack mt-3" method="post" action="/admin/news/draft">@csrf
+                @if($candidate)
+                <input type="hidden" name="candidate_id" value="{{ $candidate->id }}">
+                <div><p>{{ $candidate->source_name }}</p><a class="text-link" href="{{ $candidate->source_url }}" rel="noreferrer">{{ $candidate->title }}</a></div>
+                <label>Source date<input name="source_date" type="date" required value="{{ old('source_date', $candidate->source_date) }}"></label>
+                @else
                 <label>Source<select name="source_id" required>@foreach($sources as $source)@if($source->enabled && $source->reuse === 'summary-permitted')<option value="{{ $source->id }}">{{ $source->name }}</option>@endif @endforeach</select></label>
                 <div class="form-grid"><label>Source record ID<input name="external_key" maxlength="100" required></label><label>Source date<input name="source_date" type="date" required></label></div>
                 <label>Original source link<input name="source_url" type="url" maxlength="1024" required></label>
+                @endif
                 <label>Location<select name="location_id"><option value="">Use source coverage</option>@foreach($places as $place)<option value="{{ $place->id }}">{{ $place->name }}</option>@endforeach</select></label>
                 <label>Category<select name="category" required>@foreach(\App\Support\News::CATEGORIES as $id => $label)<option value="{{ $id }}">{{ $label }}</option>@endforeach</select></label>
                 <label>Headline<input name="title" maxlength="140" required></label>
@@ -35,6 +50,27 @@
                 <div><button class="button button-primary">Save editorial draft</button></div>
             </form>
         </details>
+    @endif
+
+    @if($feedCandidates->isNotEmpty() || $feedChecks->isNotEmpty())
+        <section class="panel">
+            <h2>Feed candidates</h2>
+            @forelse($feedCandidates as $item)
+                <div class="item-row"><div><h3>{{ $item->title }}</h3><p>{{ $item->source_name }}@if($item->source_date) · {{ $item->source_date }}@endif</p></div>
+                    <a class="button button-outline" href="/admin/news?candidate={{ $item->id }}">Review candidate</a>
+                </div>
+            @empty<p>No feed candidates are waiting for review.</p>@endforelse
+            {{ $feedCandidates->links() }}
+            @if($feedChecks->isNotEmpty())
+                <details class="mt-3"><summary>Recent feed health checks</summary>
+                    @foreach($feedChecks as $check)
+                        <div class="item-row"><div><h3>{{ $check->name }}</h3><p>{{ $check->detail ?? ($check->new_candidates.' new candidates') }}</p></div>
+                            <span>{{ ucfirst($check->status) }} · {{ $check->created_at }}</span>
+                        </div>
+                    @endforeach
+                </details>
+            @endif
+        </section>
     @endif
 
     <section class="panel">

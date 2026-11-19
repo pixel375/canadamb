@@ -69,6 +69,16 @@ p { color: var(--muted); }
 .navigation nav a { display: grid; align-items: center; border-bottom: 2px solid transparent; font-size: .88rem; color: var(--muted); font-weight: 700; }
 .navigation nav a:hover, .navigation nav a[aria-current] { color: var(--link); }
 .navigation nav a[aria-current] { border-color: var(--primary); }
+.navigation nav a { flex-shrink: 0; }
+.community-activity { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 350px), 1fr)); gap: 0 22px; }
+.calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.calendar-label, .calendar-day { text-align: center; font-variant-numeric: tabular-nums; }
+.calendar-label { color: var(--muted); font-size: .75rem; padding-block: .35rem; }
+.calendar-day { padding-block: .45rem; border: 1px solid var(--border); border-radius: 5px; }
+.calendar-active { color: var(--link); font-weight: 700; text-decoration: underline; }
+.calendar-active[aria-current] { background: var(--primary); color: var(--button-text); }
+.filter-bar label, .form-grid label { min-width: 0; }
+.filter-bar input, .filter-bar select, .form-grid input, .form-grid select { width: 100%; min-width: 0; }
 .scope-link { color: var(--link); font-size: .82rem; }
 .site-accent { height: var(--accent-size); border-radius: var(--accent-radius); background: var(--site-accent); box-shadow: var(--accent-shadow); }
 .home-main { padding-block: 28px 48px; }

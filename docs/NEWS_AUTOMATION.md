@@ -19,4 +19,10 @@ POST /api/v1/news/ingest on the central domain. Use an Authorization Bearer head
 
 New drafts return 201. Exact resubmissions return 200 with the existing record ID and current status. Reused identifiers or source URLs with conflicting data return 409. Invalid content or coverage returns 422.
 
-Server-side feed polling, automated extraction and an AI provider adapter remain open. The endpoint can support an external authenticated sender. A ChatGPT Scheduled workflow has not been configured or verified.
+## Scheduled feed discovery
+
+Network administrators configure an optional RSS 2.0 or Atom feed on the approved HTTPS source hostname. Set CANADAMB_NEWS_POLLING=true, rebuild the Laravel config cache, and run `php artisan news:poll` to check due sources. The scheduler checks for due sources every five minutes.
+
+One invocation attempts up to three sources. Successful sources become due again after an hour. Failures back off for 15, 30, 60, and then 120 minutes. Recent source health and candidate counts are visible in the editorial dashboard. Polling reads at most 1 MiB and examines at most 100 entries per feed. The HTTP transfer takes at most five seconds per source or the remaining 15-second batch budget. DNS lookup itself uses the host resolver and can exceed that budget on a slow resolver, so check resolver behavior during hosting validation. The HTTP connection pins checked public IPv4 addresses, verifies TLS, and follows no redirects. IPv6-only sources require a future transport update.
+
+Candidates keep deduplicated links and headline metadata. Publisher article text is discarded, and editors provide the draft summary and publication review. Feed polling is disabled by default. Scheduled AI summarization and any ChatGPT Scheduled integration remain open.

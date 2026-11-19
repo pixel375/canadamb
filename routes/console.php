@@ -1,10 +1,12 @@
 <?php
 
+use App\Models\JobPosting;
 use App\Models\Listing;
 use App\Models\Site;
 use App\Models\User;
 use App\Support\Audit;
 use App\Support\Identity;
+use App\Support\JobBoard;
 use App\Support\Marketplace;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -52,7 +54,17 @@ Artisan::command('marketplace:expire', function (Marketplace $marketplace) {
 })->purpose('Expire published listings and preserve status history');
 
 Schedule::command('marketplace:expire')->hourly()->withoutOverlapping(5);
+Artisan::command('job-postings:expire', function (JobBoard $board) {
+    $due = JobPosting::whereIn('status', ['pending', 'approved'])->where('closing_on', '<', $board->closingToday());
+    $ids = (clone $due)->oldest('id')->limit(200)->pluck('id');
+    $count = $due->whereIn('id', $ids)->update(['status' => 'expired']);
+    $this->info("Expired $count job posting(s).");
+})->purpose('Expire a batch of job postings after their Manitoba closing date');
+Schedule::command('job-postings:expire')->hourly()->withoutOverlapping(5);
 Schedule::command('passport:purge --hours=24')->daily()->withoutOverlapping(10);
+if (config('network.news_polling')) {
+    Schedule::command('news:poll')->everyFiveMinutes()->withoutOverlapping(2);
+}
 if (config('network.cron_queue_drain')) {
     Schedule::command('queue:work database --stop-when-empty --max-jobs=25 --max-time=45 --timeout=30 --tries=3')
         ->everyMinute()->withoutOverlapping(3);

@@ -14,15 +14,16 @@ final class NetworkSettings
     public const MODULES = ['news' => 'News', 'businesses' => 'Businesses', 'marketplace' => 'Marketplace',
         'real-estate' => 'Real Estate', 'jobs' => 'Jobs', 'community' => 'Community', 'events' => 'Events'];
 
-    public const OPERATIONAL_MODULES = ['news' => 'News', 'marketplace' => 'Marketplace', 'businesses' => 'Business directory'];
+    public const OPERATIONAL_MODULES = ['news' => 'News', 'marketplace' => 'Marketplace', 'businesses' => 'Business directory',
+        'community' => 'Community forums', 'events' => 'Events', 'jobs' => 'Jobs'];
 
     public static function defaults(): array
     {
         return [
             'preset' => 'blue',
             'palette' => Themes::preset('blue'),
-            'modules' => ['news' => true, 'marketplace' => true, 'businesses' => true],
-            'permitted_module_overrides' => ['news', 'marketplace', 'businesses'],
+            'modules' => array_fill_keys(array_keys(self::OPERATIONAL_MODULES), true),
+            'permitted_module_overrides' => array_keys(self::OPERATIONAL_MODULES),
         ];
     }
 

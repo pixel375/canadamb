@@ -12,33 +12,33 @@ use Throwable;
 
 class ListingPhotos
 {
-    public function store(array $files): array
+    public function store(array $files, string $directory = 'listings', ?string $disk = null): array
     {
         $paths = [];
         try {
             foreach ($files as $index => $file) {
                 $id = Str::uuid()->toString();
                 $paths[] = [
-                    'image_path' => "listings/$id.webp",
-                    'thumbnail_path' => "listings/$id-preview.webp",
+                    'image_path' => "$directory/$id.webp",
+                    'thumbnail_path' => "$directory/$id-preview.webp",
                     'position' => $index,
                 ];
                 $image = $this->decode($file);
-                $this->write($image, $paths[$index]['image_path'], 1600);
-                $this->write($image, $paths[$index]['thumbnail_path'], 480);
+                $this->write($image, $paths[$index]['image_path'], 1600, $disk);
+                $this->write($image, $paths[$index]['thumbnail_path'], 480, $disk);
             }
         } catch (Throwable $exception) {
-            $this->delete($paths);
+            $this->delete($paths, $disk);
             throw $exception;
         }
 
         return $paths;
     }
 
-    public function delete(array $paths): void
+    public function delete(array $paths, ?string $disk = null): void
     {
         foreach ($paths as $photo) {
-            Storage::disk(config('network.media_disk'))->delete([$photo['image_path'], $photo['thumbnail_path']]);
+            Storage::disk($disk ?? config('network.media_disk'))->delete([$photo['image_path'], $photo['thumbnail_path']]);
         }
     }
 
@@ -62,7 +62,7 @@ class ListingPhotos
         return $image;
     }
 
-    private function write(GdImage $image, string $path, int $limit): void
+    private function write(GdImage $image, string $path, int $limit, ?string $disk): void
     {
         $width = imagesx($image);
         $height = imagesy($image);
@@ -76,7 +76,7 @@ class ListingPhotos
                 throw new RuntimeException('Could not encode the listing photo.');
             }
             rewind($stream);
-            if (! Storage::disk(config('network.media_disk'))->put($path, $stream)) {
+            if (! Storage::disk($disk ?? config('network.media_disk'))->put($path, $stream)) {
                 throw new RuntimeException('Could not store the listing photo.');
             }
         } finally {
