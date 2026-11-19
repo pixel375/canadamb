@@ -29,7 +29,7 @@ case "$mode" in
         [[ $database =~ ^[a-zA-Z0-9_]+_staging$ && -z ${CANADAMB_PRODUCTION_DB:-} ]] || usage
         database_option=staging-database
         ;;
-    production-initial)
+    production-initial|production-update)
         database="${CANADAMB_PRODUCTION_DB:-}"
         [[ $database =~ ^[a-zA-Z0-9_]{1,64}$ && -z ${CANADAMB_STAGING_DB:-} ]] || usage
         database_option=production-database
@@ -114,6 +114,18 @@ validate_files() {
 case "$action" in
     prepare)
         [[ $# -eq 4 && -f "$4/manifest.json" && -d "$4/assets" && -f "$4/source-commit" ]] || usage
+        if [[ $mode == production-update ]]; then
+            old=$(readlink -e "$private_dir/current" || true)
+            [[ "$old" == "$private_dir/releases/"* && -s "$old/artisan" && "$old" != "$release" ]] || {
+                echo "Production updates require an existing, different active release." >&2
+                exit 1
+            }
+        elif [[ $mode == production-initial ]]; then
+            [[ ! -e "$private_dir/current" && ! -L "$private_dir/current" ]] || {
+                echo "Initial production activation is forbidden after a release already exists." >&2
+                exit 1
+            }
+        fi
         assets=$(cd "$4" && pwd -P)
         [[ ! -L "$assets/manifest.json" && ! -L "$assets/source-commit" ]] || exit 1
         [[ $(cat "$assets/source-commit") == "$commit" ]] || { echo "The build artifact does not match the requested release."; exit 1; }
@@ -156,6 +168,13 @@ case "$action" in
     preflight)
         [[ $# -eq 3 && -f "$release/.prepared" ]] || usage
         old=$(readlink -f "$private_dir/current" || true)
+        if [[ $mode == production-update ]]; then
+            [[ "$old" == "$private_dir/releases/"* && -s "$old/artisan" &&
+               "$old" != "$release" && -f "$old/storage/framework/down" ]] || {
+                echo "Existing production release must be in maintenance before update preflight." >&2
+                exit 1
+            }
+        fi
         if [[ -f "$old/artisan" && ! -f "$old/storage/framework/down" ]]; then
             echo "Pause writes and cron before backing up and preflighting the existing release."; exit 1
         fi
@@ -169,7 +188,7 @@ case "$action" in
         [[ "${CANADAMB_ACTIVATION_CONFIRMED:-}" == "$commit" ]] || {
             echo "Set CANADAMB_ACTIVATION_CONFIRMED to the reviewed commit."; exit 1;
         }
-        if [[ "$mode" == production-initial && ${CANADAMB_PRODUCTION_CONFIRMED:-} != "$database" ]]; then
+        if [[ "$mode" == production-initial || "$mode" == production-update ]] && [[ ${CANADAMB_PRODUCTION_CONFIRMED:-} != "$database" ]]; then
             echo "Set CANADAMB_PRODUCTION_CONFIRMED to the exact production database after approving activation."; exit 1
         fi
         validate_files "$web" web
@@ -180,6 +199,14 @@ case "$action" in
         [[ $(cat "$release/.preflight") == "$receipt" ]] || { echo "Database state or backups changed. Repeat preflight."; exit 1; }
         old=$(readlink -f "$private_dir/current" || true)
         [[ "$old" != "$release" ]] || { echo "That release is already current."; exit 1; }
+        if [[ $mode == production-update ]]; then
+            [[ "${CANADAMB_APPROVED_CURRENT_SHA:-}" =~ ^[0-9a-f]{40}$ &&
+               "$old" == "$private_dir/releases/$CANADAMB_APPROVED_CURRENT_SHA" &&
+               -f "$old/storage/framework/down" ]] || {
+                echo "Running release changed or is not in maintenance. Refuse update." >&2
+                exit 1
+            }
+        fi
         if [[ -f "$old/artisan" && ! -f "$old/storage/framework/down" ]]; then
             echo "Writes resumed after preflight. Take a new backup and repeat preflight."; exit 1
         fi
