@@ -8,6 +8,12 @@ app="$1/canadamb-app"
 php_bin="$2"
 [[ -d "$app" && -x "$php_bin" && "$php_bin" == /* ]] || exit 2
 
+# hPanel custom cron does not need shell redirection in its command field.
+# Store scheduler output in private persistent storage for inspection.
+logdir="$app/shared/storage/logs"
+[[ -d "$logdir" && ! -L "$logdir" ]] || exit 2
+exec >> "$logdir/scheduler.log" 2>&1
+
 # A deployment pauses the scheduler before backing up or migrating. Check
 # before and after locking to close the race with an in-progress cron invocation.
 [[ ! -e "$app/update.pause" ]] || exit 0
