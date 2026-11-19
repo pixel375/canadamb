@@ -52,7 +52,13 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm audit
-      - run: bash -n deploy/hostinger-release.sh && bash -n deploy/hostinger-cron.sh && bash -n deploy/smoke.sh
+      - run: bash -n deploy/hostinger-release.sh && bash -n deploy/hostinger-upgrade.sh && bash -n deploy/hostinger-cron.sh && bash -n deploy/smoke.sh && php -l deploy/hostinger-backup.php
+      - name: Ensure MariaDB dump client is installed for the update rehearsal
+        run: |
+          if ! command -v mariadb-dump >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq mariadb-client
+          fi
       - run: php artisan network:deployment-check
         env:
           APP_ENV: testing
