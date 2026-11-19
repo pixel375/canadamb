@@ -9,7 +9,7 @@
 - **No production update has been executed using this new workflow.** It must pass the disposable upgrade rehearsal and have its first live update specifically approved. The runner cannot perform approved-IP browser/SSO smoke; record this manual acceptance afterward.
 - Connection and upload tests are manual-only after their initial integration runs. Ordinary pushes trigger **CI only**, never deployment.
 
-**Implementation branch:** `deploy/hostinger-upgrade.sh`, backup helper, existing release script `production-update` mode, cron pause marker, and CI upgrade rehearsal are under test. If a CI check fails, update the scripts before attempting the first live deployment; do not bypass it.
+**Implementation branch:** `deploy/hostinger-upgrade.sh`, backup helper, existing release script `production-update` mode and cron pause marker passed the disposable green [CI upgrade rehearsal (44622393391)](https://github.com/pixel375/canadamb/actions/runs/44622393391). It performed a simulated second deployment after inserting user data, backed up ~79 KB of MariaDB data, ran preflight and confirmed the test user, OAuth private key and `public_html` inode were preserved. **This proves the disposable test path, not a completed live second release.**
 
 ### User path once first live update is approved
 1. Open **Actions → Deploy CanadaMB Prelaunch → Run workflow**, select `main`, paste the **full green implementation commit SHA** into `commit_sha`. Leave `allow_reviewed_database_changes` unchecked for routine UI and code updates that have no migration/seeder changes.
