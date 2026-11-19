@@ -1,5 +1,25 @@
 # Hostinger Git auto-deployment — options and safe approach (2026-11-19)
 
+## Automated workflow status — connected, no production update yet (2026-11-19)
+
+**Implemented on GitHub `main`:**
+- [Hostinger SSH Connection Test](https://github.com/pixel375/canadamb/actions/workflows/hostinger-ssh-test.yml) — executed successfully (run [44619746774](https://github.com/pixel375/canadamb/actions/runs/44619746774)): verified private/public file split, existing `b5f16a6` release, PHP 8.3.36 and required extensions with no changes to files or DB.
+- [Hostinger Private Upload Test](https://github.com/pixel375/canadamb/actions/workflows/hostinger-upload-test.yml) — executed successfully (run [44622010185](https://github.com/pixel375/canadamb/actions/runs/44622010185)): uploaded a harmless scratch file under private `.builds`, checked its checksum and deleted it.
+- [Deploy CanadaMB Prelaunch](https://github.com/pixel375/canadamb/actions/workflows/hostinger-deploy.yml) — **manual workflow only**. It accepts a full implementation SHA and optional reviewed DB change flag. A separate no-secret build job requires green exact-SHA CI, builds a matching Vite artifact, and passes only public build output to the approval-bound deployment job. The deployment job uses verified SSH host keys, uploads private asset intake, loads upgrade helpers from checked Git objects, prepares a versioned release, enters maintenance, backs up MariaDB/media, runs preflight, activates, checks the DB, reopens restricted prelaunch and checks both domains from an **unapproved** runner.
+- **No production update has been executed using this new workflow.** It must pass the disposable upgrade rehearsal and have its first live update specifically approved. The runner cannot perform approved-IP browser/SSO smoke; record this manual acceptance afterward.
+- Connection and upload tests are manual-only after their initial integration runs. Ordinary pushes trigger **CI only**, never deployment.
+
+**Implementation branch:** `deploy/hostinger-upgrade.sh`, backup helper, existing release script `production-update` mode, cron pause marker, and CI upgrade rehearsal are under test. If a CI check fails, update the scripts before attempting the first live deployment; do not bypass it.
+
+### User path once first live update is approved
+1. Open **Actions → Deploy CanadaMB Prelaunch → Run workflow**, select `main`, paste the **full green implementation commit SHA** into `commit_sha`. Leave `allow_reviewed_database_changes` unchecked for routine UI and code updates that have no migration/seeder changes.
+2. Review the green exact-SHA CI evidence, then approve the `hostinger-prelaunch` Environment if GitHub requests it.
+3. Watch the Actions run. Failure after schema migration must be treated as a manual recovery event; check private logs and backup, do not rerun blind. Unapproved runners should receive 403 on both public homepages.
+4. From approved tester IPs, test both domains, sign-in/SSO, admin, listings, CSS/images and any changed flows. Do not disable prelaunch to make runners pass.
+5. Later enable push-to-deploy **only** after controlled releases, backup restore rehearsal, queue/cron integration and branch/environment protection are verified.
+
+**First-run blocker**: Hostinger's real database dump still needs an isolated restore rehearsal, cron deployment pause behavior must be verified against the actual hPanel cron job (which may still point at an old script), and the private updater needs a successful CI production-update simulation. No deployment should be attempted while these are unresolved.
+
 ## Owner goal
 Avoid repeated long manual SSH/SFTP commands on every change while preserving Laravel's secure private/public split, production database, persistent `.env`, media, Passport keys and existing two-domain application.
 

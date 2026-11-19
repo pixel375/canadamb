@@ -1,6 +1,8 @@
 # GitHub Actions → Hostinger SSH: one-time setup (connection stage)
 
-**Status:** A read-only `Hostinger SSH Connection Test` workflow exists on the repository's **default branch `main`** (GitHub manual workflow dispatch requires the file there). This is a connection **test only**, not an automatic deployment. The production sites remain on `b5f16a6c08eefcd804deb1970f52490220af67f5` behind the allowlist. Never paste SSH private keys, passwords, known-hosts values or `.env` into a public GitHub commit or chat.
+**Status 2026-11-19:** Both the SSH connection test and the private SFTP upload test succeeded. GitHub now has a MANUAL-only [Deploy CanadaMB Prelaunch](https://github.com/pixel375/canadamb/actions/workflows/hostinger-deploy.yml) workflow, but it has **not** deployed the live website. Environment keys and variables are already configured and working. New deployment requires explicit approval and passing prelaunch update rehearsal.
+
+**Historical connection setup:** A read-only `Hostinger SSH Connection Test` workflow exists on the repository's **default branch `main`** (GitHub manual workflow dispatch requires the file there). This is a connection **test only**, not an automatic deployment. The production sites remain on `b5f16a6c08eefcd804deb1970f52490220af67f5` behind the allowlist. Never paste SSH private keys, passwords, known-hosts values or `.env` into a public GitHub commit or chat.
 
 ## Configure in GitHub (one time)
 

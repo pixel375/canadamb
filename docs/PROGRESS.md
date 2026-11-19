@@ -1,5 +1,12 @@
 # Progress
 
+## 2026-11-19 — verified GitHub Actions SSH and SFTP, preparing gated updater
+
+GitHub Actions from public default `main` successfully authenticated to Hostinger using environment secrets (run 44619746774) and independently uploaded/verified/removed a scratch file under the private `.builds` directory (run 44622010185). Both test workflows have returned to manual-only. The production database and the two active websites were not modified.
+
+A separate manual [Deploy CanadaMB Prelaunch](https://github.com/pixel375/canadamb/actions/workflows/hostinger-deploy.yml) now exists on default `main`, with exact SHA/green CI gating and a secret-free build phase. The implementation branch has a guarded `production-update` release mode, a DB backup helper and an upgrade orchestrator; **a production update has NOT been performed**. Disposable CI upgrade tests and first release acceptance remain required. See [deployment automation](DEPLOYMENT_AUTOMATION.md).
+
+
 ## 2026-11-19 — GitHub Actions read-only SSH probe available
 
 Created `.github/workflows/hostinger-ssh-test.yml` **on default branch `main`**. This manually triggered workflow will check the actual Hostinger private/public layout and report the active release SHA using a dedicated SSH environment secret and pinned known-hosts entry. It does not deploy anything or query production DB contents. The operator must configure `hostinger-prelaunch` secrets/variables and run the connection test before any production update automation is introduced. See [setup](ACTIONS_SSH_SETUP.md). Live sites are unchanged.

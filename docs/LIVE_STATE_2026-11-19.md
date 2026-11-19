@@ -19,6 +19,10 @@ This is an operational checkpoint, not a claim that the product is ready for a p
 - Initial Hostinger cutover succeeded by **keeping the existing `public_html` directory inode** and moving only the old `.git`/README contents to a private quarantine. Renaming/replacing the entire web-root directory caused both domains to return 404 and was rolled back.
 - A Hostinger shell error `/dev/fd/62: No such file or directory` exposed Bash process substitution in the original release script. Two manually patched script files unexpectedly became zero bytes; the Git-tracked source working-copy script also became zero bytes. The exact cause of truncation is **unknown**, not proven to be Hostinger. An in-memory script loaded from the reviewed Git object with `/dev/fd` patterns removed successfully completed preflight and initial activation. Do not rely on the old mutable working-copy script for future releases.
 
+## Automation progress (later same day)
+
+Actions SSH connection run `44619746774` and private SFTP upload run `44622010185` both passed. A new manual-only Deploy CanadaMB Prelaunch workflow exists on default `main`; deployment update scripts are staged on the implementation branch. **They are not activated on Hostinger.** The live release remains `b5f16a6c08eefcd804deb1970f52490220af67f5` with IP restriction. Further tasks: populated-database upgrade rehearsal, real restore, cron check, and first reviewed rollout.
+
 ## Pending operational acceptance
 1. Add and verify Hostinger bounded cron (including queue jobs, logs, failure alerts); not reported complete.
 2. Rehearse restoration of an actual live database backup in an isolated environment; protect ongoing database and private media backups.

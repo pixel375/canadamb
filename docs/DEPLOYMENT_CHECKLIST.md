@@ -2,6 +2,17 @@
 
 Record the reviewed SHA, operator, timestamp, result and evidence for each step. Use controlled test accounts and track test record IDs. Approval to activate restricted prelaunch and approval to open the site to everyone are separate steps.
 
+## Subsequent deployments — not yet approved
+
+- [x] GitHub Actions SSH authentication and private upload verified without changing site or database.
+- [x] Manual-only update workflow created on default GitHub branch; no push-to-deploy or Hostinger Git mirror enabled.
+- [ ] Upgrade rehearsal passes on a populated disposable MariaDB with sample user data and same public_html inode.
+- [ ] Download and restore a current production database dump into isolated MariaDB; verify recovered records and uploaded media.
+- [ ] Confirm hPanel cron command points at a pause-aware scheduler and update gate cannot race scheduler jobs.
+- [ ] Require an exact green implementation SHA and review migration/seeder differences; migration input OFF by default.
+- [ ] Explicitly approve first live update; confirm backups and release receipt; manually test allowlisted provincial/city pages and SSO.
+- [ ] Only after repeated green updates consider more automation.
+
 ## Before activation
 
 - [x] Verify the SSH host key, PHP CLI 8.3.36 and Sodium, Composer 2.9.8 and platform requirements.

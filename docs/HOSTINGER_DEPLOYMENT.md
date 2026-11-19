@@ -8,6 +8,10 @@ CanadaMB and BrandonMB share one Laravel release, one account system, and the ex
 
 The Hostinger account was checked through SSH and an authenticated HTTPS probe that was removed after use. Both hostnames presented the correct Host header and served the same physical document root and probe file. CLI and web PHP are 8.3.36. Web PHP loaded Sodium and the required extensions, supported GD WebP, and had error display off. Composer 2.9.8 passed the production lockfile platform check. The prepared private database credentials select their configured schema on MariaDB 11.8.9, with no existing tables or views and grants limited to that schema. The original `.env` had no application key. These checks preceded installation.
 
+## Update automation (not yet used on production)
+
+See [GitHub Actions automation](DEPLOYMENT_AUTOMATION.md). Both SSH and private SFTP transport tests have passed from GitHub. The default branch hosts a **manual-only** Deploy CanadaMB Prelaunch workflow. The implementation branch now contains a separate production-update mode and a guarded upgrade helper that creates backups, fingerprints migration state and retains the original public_html directory. **Do not run the historical `production-initial` commands below again; they are preserved for incident reference only.** Complete a real backup restore rehearsal and validate actual hPanel cron pause behavior before approving a first update.
+
 ## 1. Prepare the private release over SSH
 
 Keep hPanel Git auto-deployment and full-page caching disabled. Keep Brandon configured as a parked domain and confirm both certificates remain valid. Use the Bash, PHP and Composer binaries verified over SSH. Download the `vite-<full SHA>` artifact from the successful GitHub Actions run for the reviewed commit. From a workstation, `gh run download RUN_ID --name "vite-$SHA" --dir "vite-$SHA"` downloads the matching artifact. Upload `assets/`, `manifest.json` and `source-commit` to `$SITE_HOME/.builds/$SHA` using SFTP.
