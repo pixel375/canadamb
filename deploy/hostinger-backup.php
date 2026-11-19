@@ -51,9 +51,9 @@ try {
         throw new RuntimeException('Database connection is incomplete.');
     }
 
-    $binary = trim((string) shell_exec('command -v mariadb-dump 2>/dev/null'));
-    if ($binary === '' || ! is_executable($binary)) {
-        throw new RuntimeException('mariadb-dump is not available.');
+    $binary = '/usr/bin/mariadb-dump';
+    if (! is_executable($binary)) {
+        throw new RuntimeException('mariadb-dump is not available at the verified Hostinger path.');
     }
 
     $command = [
