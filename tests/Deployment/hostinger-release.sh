@@ -160,7 +160,7 @@ if [[ $CANADAMB_DEPLOYMENT_MODE == production-initial ]]; then
     next=$(git -C "$app/source" rev-parse HEAD)
     install -d "$site/.builds/$next"
     cp -a "$repo/public/build/." "$site/.builds/$next/"
-    printf '%s\\n' "$next" > "$site/.builds/$next/source-commit"
+    printf '%s\n' "$next" > "$site/.builds/$next/source-commit"
     old_inode=$(stat -c '%i' "$site/public_html")
     old_key_hash=$(sha256sum "$app/shared/storage/oauth-private.key" | cut -d' ' -f1)
     export CANADAMB_PRODUCTION_DB="$database"
