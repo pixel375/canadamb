@@ -1,5 +1,16 @@
 # Progress
 
+## 2026-11-19 — live prelaunch confirmed; owner UX feedback; deployment reliability fix
+
+**Owner verified** the real CanadaMB and BrandonMB sites are running successfully on Hostinger Business with the same PHP application and database and IP-restricted prelaunch; initial acceptance 7/7 passed. Test Marketplace listings were created. The deployed site is pinned to `b5f16a6c08eefcd804deb1970f52490220af67f5`, **not** the newer repository commit. No automatic deployment, cron verification, outbound SMTP, live billing or public access was enabled by this pass.
+
+The owner reported incomplete Marketplace media, card click targets, cross-domain redirection, category links, seller contact, recommendations and overall visual polish. Code inspection of card, detail template, photo pipeline and controller confirmed several root causes. Captured in [MARKETPLACE_FEEDBACK.md](MARKETPLACE_FEEDBACK.md), with priorities in [PHASED_ROADMAP.md](PHASED_ROADMAP.md).
+
+The GitHub release script now avoids Hostinger-incompatible Bash process substitution and `/dev/stderr`; CI regression assertions protect this change. The exact cause of the previously zero-byte **working-copy** scripts remains unknown. The original live cutover had to preserve the existing `public_html` directory inode, not replace it. A safe Git auto-deployment proposal is documented in [DEPLOYMENT_AUTOMATION.md](DEPLOYMENT_AUTOMATION.md); it is **not enabled**.
+
+See [LIVE_STATE_2026-11-19.md](LIVE_STATE_2026-11-19.md) for evidence and operational gaps.
+
+
 ## 2026-11-19 production-first prelaunch
 
 The initial Hostinger release now uses the existing production MariaDB schema in `production-initial` mode. The script confirms the exact schema and grants, requires backup hashes and a read-only migration fingerprint, and requires the approved SHA and production database name at activation. Future isolated staging remains supported. This change adds no migrations or product modules.

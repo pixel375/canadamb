@@ -77,8 +77,18 @@ expect_rejection() {
     fi
 }
 
+# Regression guard: deployed scripts must not depend on /dev/fd process substitution.
+if grep -Fq 'exec > >(' "$repo/deploy/hostinger-release.sh" ||
+   grep -Fq 'tee /dev/stderr' "$repo/deploy/hostinger-release.sh"; then
+    echo 'The Hostinger release script uses an unsupported /dev/fd-dependent pattern.' >&2
+    exit 1
+fi
+release_script_checksum=$(sha256sum "$repo/deploy/hostinger-release.sh" | awk '{print $1}')
 deploy prepare "$repo/public/build"
+test -s "$repo/deploy/hostinger-release.sh"
 expect_rejection deploy preflight
+test -s "$release/.preflight"
+test "$(sha256sum "$repo/deploy/hostinger-release.sh" | awk '{print $1}')" = "$release_script_checksum"
 MYSQL_PWD=release-probe-test-only docker exec -e MYSQL_PWD "$CI_MARIADB_CONTAINER" mariadb-dump -u "$partner_user" "$database" > "$backup/$database.sql"
 tar -czf "$backup/storage.tar.gz" -C "$app/shared" storage
 deploy preflight
@@ -99,6 +109,8 @@ expect_rejection deploy activate
 test ! -e "$app/current"
 rmdir "$site/public_html/.git"
 deploy activate
+test -s "$repo/deploy/hostinger-release.sh"
+test "$(sha256sum "$repo/deploy/hostinger-release.sh" | awk '{print $1}')" = "$release_script_checksum"
 test "$(readlink -f "$app/current")" = "$release"
 test -f "$release/storage/framework/down"
 test -f "$site/public_html/index.php"

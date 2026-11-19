@@ -47,7 +47,10 @@ exec 9>"$private_dir/release.lock"
 flock -n 9 || { echo "Another release operation is active." >&2; exit 1; }
 log="$shared/storage/logs/release-$commit.log"
 trap 'echo "Release step failed (line $LINENO). Inspect $log and the deployment runbook." >&2' ERR
-exec > >(tee -a "$log") 2>&1
+# Hostinger shared hosting does not reliably expose /dev/fd process substitution.
+# Redirect directly to the private release log; never route a release through tee.
+echo "CanadaMB $mode $action $commit; private log: $log"
+exec >> "$log" 2>&1
 echo "$(date -Is) $mode $action $commit"
 
 [[ -f "$shared/.env" && ! -L "$shared/.env" ]] || { echo "Set up the persistent private .env in canadamb-app/shared first."; exit 1; }
@@ -75,7 +78,9 @@ backup_checksums() {
 preflight_receipt() {
     local checksums state
     checksums=$(backup_checksums) || return 1
-    state=$(check_deployment --migration-state | tee /dev/stderr) || return 1
+    state=$(check_deployment --migration-state) || return 1
+    # Keep the diagnostic visible in the private log without /dev/stderr.
+    printf '%s\n' "$state" >&2
     printf '%s\n' "$mode" "$database" "$checksums" "$state"
 }
 
