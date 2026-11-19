@@ -1,5 +1,10 @@
 # Progress
 
+## 2026-11-19 — populated-database upgrade rehearsal passed
+
+GitHub Actions [run 44622393391](https://github.com/pixel375/canadamb/actions/runs/44622393391) passed 35 PHP tests / 409 assertions on both database engines, compiled Vite, and completed a disposable second-release rehearsal. It created an extra user record before updating, produced private MariaDB and storage backups, recorded migration preflight, preserved the user, OAuth keys and *existing* public_html directory inode. A separate doc-updated run [44622640759](https://github.com/pixel375/canadamb/actions/runs/44622640759) also passed. This is **not** an active production deployment; live sites remain `b5f16a6`.
+
+
 ## 2026-11-19 — verified GitHub Actions SSH and SFTP, preparing gated updater
 
 GitHub Actions from public default `main` successfully authenticated to Hostinger using environment secrets (run 44619746774) and independently uploaded/verified/removed a scratch file under the private `.builds` directory (run 44622010185). Both test workflows have returned to manual-only. The production database and the two active websites were not modified.
