@@ -1,5 +1,10 @@
 # Progress
 
+## 2026-11-19 — GitHub Actions read-only SSH probe available
+
+Created `.github/workflows/hostinger-ssh-test.yml` **on default branch `main`**. This manually triggered workflow will check the actual Hostinger private/public layout and report the active release SHA using a dedicated SSH environment secret and pinned known-hosts entry. It does not deploy anything or query production DB contents. The operator must configure `hostinger-prelaunch` secrets/variables and run the connection test before any production update automation is introduced. See [setup](ACTIONS_SSH_SETUP.md). Live sites are unchanged.
+
+
 ## 2026-11-19 — live prelaunch confirmed; owner UX feedback; deployment reliability fix
 
 **Owner verified** the real CanadaMB and BrandonMB sites are running successfully on Hostinger Business with the same PHP application and database and IP-restricted prelaunch; initial acceptance 7/7 passed. Test Marketplace listings were created. The deployed site is pinned to `b5f16a6c08eefcd804deb1970f52490220af67f5`, **not** the newer repository commit. No automatic deployment, cron verification, outbound SMTP, live billing or public access was enabled by this pass.

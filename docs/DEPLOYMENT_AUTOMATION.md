@@ -3,6 +3,8 @@
 ## Owner goal
 Avoid repeated long manual SSH/SFTP commands on every change while preserving Laravel's secure private/public split, production database, persistent `.env`, media, Passport keys and existing two-domain application.
 
+> **Connection-stage implementation:** A read-only manual SSH test now exists on default `main`. See [one-time setup](ACTIONS_SSH_SETUP.md). This is not the update deployment workflow; there is still no automatic Hostinger rollout.
+
 ## Current status
 - **Hostinger Business Web Hosting** is sufficient for this architecture; the two sites use the same existing `public_html`. Git auto-deploy remains **OFF**. No pipeline or Hostinger configuration is changed by this document.
 - The live app was installed from a pinned implementation SHA outside the document root, with only vetted assets and a front controller in `public_html`.
