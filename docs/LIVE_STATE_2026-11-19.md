@@ -6,7 +6,7 @@ This is an operational checkpoint, not a claim that the product is ready for a p
 
 - Both sites run the **same production release `44448bd0de1b736a51909f6ec87f692a41d57950`**, confirmed by independent GitHub Actions postdeploy audit. `CANADAMB_PRELAUNCH=true` remains on, with external visitors denied HTTP 403.
 - First secure GitHub Actions release from the previous `b5f16a6` version, DB/media backup and real off-host SQL restore rehearsal succeeded. Public root directory inode is unchanged.
-- GitHub deployment is currently **manual only**, not on every push. The verified cron wrapper is installed privately but hPanel schedule has not been confirmed.
+- GitHub deployment is currently **manual only**, not on every push. The private cron wrapper is installed and **hPanel scheduled execution was confirmed** from the live persistent scheduler log.
 - The Marketplace visual and functionality issues remain queued for the upcoming product pass.
 
 ## Initial hosting and deployment snapshot (historical)
@@ -30,6 +30,10 @@ This is an operational checkpoint, not a claim that the product is ready for a p
 
 Actions SSH connection run `44619746774` and private SFTP upload run `44622010185` both passed. A new manual-only Deploy CanadaMB Prelaunch workflow exists on default `main`; deployment update scripts are staged on the implementation branch. **They are not activated on Hostinger.** The live release remains `b5f16a6c08eefcd804deb1970f52490220af67f5` with IP restriction. Further tasks: populated-database upgrade rehearsal, real restore, cron check, and first reviewed rollout.
 
+## hPanel cron verification — completed later on 2026-11-19
+
+Owner configured the one shared Hostinger hPanel custom cron command. Independent [Hostinger cron diagnostic run 44635981084](https://github.com/pixel375/canadamb/actions/runs/44635981084) checked the actual `canadamb-app/shared/storage/logs/scheduler.log` at **2026-11-19 23:14:54 UTC**: log existed (2,079 bytes / 28 lines), last write was **23:14:05 UTC**, only **49 seconds** earlier; **7 scheduler run/completion indications** and **0 detected error lines**. The correct pause-aware private wrapper was present, executable mode `700`, active SHA `44448bd0de1b736a51909f6ec87f692a41d57950`, and no deployment pause marker. This confirms real hPanel cron invocation although the `crontab` CLI is unavailable and hPanel itself does not display the private log. Next check: run a controlled queue-job and review failed jobs; do not enable news polling or external email automatically.
+
 ## First controlled production update — completed 2026-11-19
 
 - GitHub CI for target `44448bd0de1b736a51909f6ec87f692a41d57950` passed, with no migration or seeder differences from the original `b5f16a6` installation.
@@ -42,7 +46,7 @@ Actions SSH connection run `44619746774` and private SFTP upload run `4462201018
 - Original empty working-copy release script remains known to be zero bytes on Hostinger. New deployment uses immutable Git objects and checksum matching; do not execute the zero-byte file directly.
 
 ## Remaining operational acceptance
-1. **Owner hPanel action:** Add the single private cron command and confirm scheduler log entries/queue processing; no `crontab` command is available through this account's SSH shell.
+1. **Completed:** Owner added hPanel cron; independent GitHub Actions SSH diagnostic verified real recurring writes to the private scheduler log (last recorded 2026-11-19 23:14:05 UTC; checked 49 seconds later). Scheduler output included run/completion messages with zero detected error lines. `crontab` is unavailable from SSH, but actual scheduler execution is confirmed. Continue monitoring and perform a controlled queue-job test before public launch.
 2. **Completed:** Actual production DB restore rehearsal on isolated MariaDB (53 tables, user and listings intact), first updated release, backup checksums, original web-root inode, and both domains' IP gate.
 3. **Future automation:** Manual one-click deployment is functioning. Enabling automated release on every green Git commit remains a separate security/branch-protection decision; never deploy Git source to `public_html`.
 4. **Owner browser verification:** Recheck approved-IP login/SSO, admin and listing interactions on the new release; external runner cannot test approved-IP user flows.

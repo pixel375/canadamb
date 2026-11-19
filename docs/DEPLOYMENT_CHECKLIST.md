@@ -8,7 +8,7 @@ Record the reviewed SHA, operator, timestamp, result and evidence for each step.
 - [x] Manual-only update workflow created on default GitHub branch; no push-to-deploy or Hostinger Git mirror enabled.
 - [x] Upgrade rehearsal passed on a populated disposable MariaDB with sample user data, preserved OAuth keys and same public_html inode (run 44622393391).
 - [x] Downloaded and restored actual production SQL into isolated MariaDB (53 tables, 1 user, 3 listings, 2 domains; run 44630938711). Uploaded media snapshot archive also created/verified in release; separately rehearse file-level media restoration if needed.
-- [ ] Private pause-aware scheduler installed and verified by postdeploy audit; owner still needs to add custom every-minute hPanel Cron Job and inspect its output/logs.
+- [x] Owner added the Hostinger every-minute hPanel cron job and [Hostinger cron diagnostic run 44635981084](https://github.com/pixel375/canadamb/actions/runs/44635981084) confirmed private scheduler log updates (49 seconds old at inspection), run/completion messages and no detected error lines.
 - [ ] Require an exact green implementation SHA and review migration/seeder differences; migration input OFF by default.
 - [x] Owner gave YOLO approval; first live update and independent postdeploy infrastructure audit passed (runs 44631266297, 44631660770).\n- [ ] Manual allowlisted provincial/city browser, admin, listings and SSO smoke for new SHA.
 - [ ] Only after repeated green updates consider more automation.

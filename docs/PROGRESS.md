@@ -1,5 +1,10 @@
 # Progress
 
+## 2026-11-19 — Hostinger hPanel cron running and verified
+
+Owner created the every-minute custom hPanel cron job after installing the private wrapper. [Hostinger cron diagnostic run 44635981084](https://github.com/pixel375/canadamb/actions/runs/44635981084) confirmed actual scheduler output with a last write 49 seconds before inspection, an operational pause-aware script and **zero detected errors**. The site remains on the first successful GitHub Actions production update `44448bd0de1b736a51909f6ec87f692a41d57950` and prelaunch gate remains enabled. Separate controlled queue and browser/SSO tests are still pending.
+
+
 ## 2026-11-19 — live GitHub Actions deployment completed
 
 Actual production backup restore passed (53 tables, 1 user, 3 listings, two domains); first guarded production update moved `b5f16a6` to `44448bd` via GitHub Actions run 44631266297. Independent postdeploy audit run 44631660770 passed, preserving original public_html inode, database, media, OAuth keys and IP gate. A private cron wrapper has been installed; **owner must schedule it in hPanel and confirm execution**. No public launch, no product/UX overhaul, and no automatic deployment on push. See [live state](LIVE_STATE_2026-11-19.md).

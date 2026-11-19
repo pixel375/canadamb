@@ -18,7 +18,7 @@
 4. From approved tester IPs, test both domains, sign-in/SSO, admin, listings, CSS/images and any changed flows. Do not disable prelaunch to make runners pass.
 5. Later enable push-to-deploy **only** after controlled releases, backup restore rehearsal, queue/cron integration and branch/environment protection are verified.
 
-**First-run blocker**: Hostinger's real database dump still needs an isolated restore rehearsal, cron deployment pause behavior must be verified against the actual hPanel cron job (which may still point at an old script), and the private updater needs a successful CI production-update simulation. No deployment should be attempted while these are unresolved.
+**Historical blockers resolved:** The production SQL backup restored in an isolated MariaDB; the first live update succeeded; hPanel scheduled cron invocation was independently verified by [Hostinger cron diagnostic run 44635981084](https://github.com/pixel375/canadamb/actions/runs/44635981084). Routine deploys remain manual-only; verify controlled queue behavior and browser/SSO acceptance before public launch.
 
 ## First controlled production update — completed 2026-11-19
 
@@ -35,6 +35,10 @@
 Avoid repeated long manual SSH/SFTP commands on every change while preserving Laravel's secure private/public split, production database, persistent `.env`, media, Passport keys and existing two-domain application.
 
 > **Connection-stage implementation:** A read-only manual SSH test now exists on default `main`. See [one-time setup](ACTIONS_SSH_SETUP.md). This is not the update deployment workflow; there is still no automatic Hostinger rollout.
+
+## Cron verification (November 19)
+
+[Hostinger cron diagnostic run 44635981084](https://github.com/pixel375/canadamb/actions/runs/44635981084) confirmed the hPanel job is actually running: at 23:14:54 UTC the private `scheduler.log` had 28 lines and was last written 49 seconds earlier, including 7 scheduler run/completion indications with no detected error lines. The private wrapper checks `update.pause` to cooperate with future deployments; an operator still needs to test a controlled queue job. No need to expect task output in hPanel, since the wrapper logs to `canadamb-app/shared/storage/logs/scheduler.log`.
 
 ## Current status
 - **Hostinger Business Web Hosting** is sufficient for this architecture; the two sites use the same existing `public_html`. Git auto-deploy remains **OFF**. No pipeline or Hostinger configuration is changed by this document.
