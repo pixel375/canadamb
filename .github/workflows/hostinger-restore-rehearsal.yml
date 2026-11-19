@@ -20,7 +20,7 @@ jobs:
       SSH_USER: ${{ vars.HOSTINGER_USER }}
       SSH_PRIVATE_KEY: ${{ secrets.HOSTINGER_SSH_PRIVATE_KEY }}
       SSH_KNOWN_HOSTS: ${{ secrets.HOSTINGER_KNOWN_HOSTS }}
-      TARGET_SHA: dda3db7e517528c8260a507715f6cb6e7811eeec
+      TARGET_SHA: 44448bd0de1b736a51909f6ec87f692a41d57950
     steps:
       - name: Back up actual database privately and restore only into a disposable isolated runner database
         shell: bash
