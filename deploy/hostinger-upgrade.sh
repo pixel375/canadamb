@@ -92,7 +92,7 @@ cleanup() {
     status=$?
     if (( status != 0 )); then
         echo "CanadaMB update FAILED at stage $state. Inspect private release logs." >&2
-        if [[ "$state" == paused && $(readlink -f "$app/current" || true) == "$old" ]]; then
+        if [[ ( "$state" == pausing || "$state" == paused ) && $(readlink -f "$app/current" || true) == "$old" ]]; then
             # Safe recovery: migration/activation has NOT started.
             "$php" "$old/artisan" up >/dev/null 2>&1 || true
             rm -f "$paused_marker"
@@ -110,6 +110,7 @@ trap cleanup EXIT
     echo "Maintenance pause marker already exists. Investigate prior update." >&2; exit 1;
 }
 : > "$paused_marker"
+state=pausing
 exec 7>"$app/release.lock"
 flock -w 90 7 || { echo "Scheduler did not finish within the timeout." >&2; exit 1; }
 flock -u 7
