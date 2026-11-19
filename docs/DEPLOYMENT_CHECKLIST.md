@@ -6,7 +6,7 @@ Record the reviewed SHA, operator, timestamp, result and evidence for each step.
 
 - [x] GitHub Actions SSH authentication and private upload verified without changing site or database.
 - [x] Manual-only update workflow created on default GitHub branch; no push-to-deploy or Hostinger Git mirror enabled.
-- [ ] Upgrade rehearsal passes on a populated disposable MariaDB with sample user data and same public_html inode.
+- [x] Upgrade rehearsal passed on a populated disposable MariaDB with sample user data, preserved OAuth keys and same public_html inode (run 44622393391).
 - [ ] Download and restore a current production database dump into isolated MariaDB; verify recovered records and uploaded media.
 - [ ] Confirm hPanel cron command points at a pause-aware scheduler and update gate cannot race scheduler jobs.
 - [ ] Require an exact green implementation SHA and review migration/seeder differences; migration input OFF by default.
