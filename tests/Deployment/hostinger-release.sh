@@ -87,11 +87,11 @@ release_script_checksum=$(sha256sum "$repo/deploy/hostinger-release.sh" | awk '{
 deploy prepare "$repo/public/build"
 test -s "$repo/deploy/hostinger-release.sh"
 expect_rejection deploy preflight
-test -s "$release/.preflight"
-test "$(sha256sum "$repo/deploy/hostinger-release.sh" | awk '{print $1}')" = "$release_script_checksum"
 MYSQL_PWD=release-probe-test-only docker exec -e MYSQL_PWD "$CI_MARIADB_CONTAINER" mariadb-dump -u "$partner_user" "$database" > "$backup/$database.sql"
 tar -czf "$backup/storage.tar.gz" -C "$app/shared" storage
 deploy preflight
+test -s "$release/.preflight"
+test "$(sha256sum "$repo/deploy/hostinger-release.sh" | awk '{print $1}')" = "$release_script_checksum"
 tables=$(MYSQL_PWD=release-probe-test-only docker exec -e MYSQL_PWD "$CI_MARIADB_CONTAINER" mariadb -N -u "$partner_user" "$database" -e 'SHOW FULL TABLES')
 test -z "$tables"
 echo 'Preflight left the empty database untouched.'
