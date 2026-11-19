@@ -3,10 +3,6 @@ name: Hostinger SSH Connection Test
 # This file deliberately lives on the default branch. It has NO deploy/write path.
 on:
   workflow_dispatch:
-  # One-time read-only integration probe on this file change; remove after observing result.
-  push:
-    branches: [main]
-    paths: ['.github/workflows/hostinger-ssh-test.yml']
 
 permissions:
   contents: read
