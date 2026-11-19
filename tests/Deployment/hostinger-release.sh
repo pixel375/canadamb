@@ -164,6 +164,8 @@ if [[ $CANADAMB_DEPLOYMENT_MODE == production-initial ]]; then
     old_inode=$(stat -c '%i' "$site/public_html")
     old_key_hash=$(sha256sum "$app/shared/storage/oauth-private.key" | cut -d' ' -f1)
     export CANADAMB_PRODUCTION_DB="$database"
+    export CANADAMB_PHP_BIN="$(command -v php)"
+    export CANADAMB_COMPOSER_BIN="$(command -v composer)"
     unset CANADAMB_STAGING_DB
     bash "$repo/deploy/hostinger-upgrade.sh" "$site" "$next" "$site/.builds/$next" false
     test "$(readlink -f "$app/current")" = "$app/releases/$next"
