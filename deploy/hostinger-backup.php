@@ -92,7 +92,7 @@ try {
     if ($code !== 0 || ! is_file($destination) || filesize($destination) < 256) {
         throw new RuntimeException('Database backup failed or was empty.');
     }
-    echo "MariaDB backup completed; bytes: ".filesize($destination)."\n";
+    echo 'MariaDB backup completed; bytes: '.filesize($destination)."\n";
 } catch (Throwable $error) {
     if (is_file($destination)) {
         @unlink($destination);
