@@ -54,6 +54,8 @@ jobs:
       - run: npm audit
       - run: bash -n deploy/hostinger-release.sh && bash -n deploy/hostinger-cron.sh && bash -n deploy/smoke.sh
       - run: php artisan network:deployment-check
+        env:
+          APP_ENV: testing
       - run: git rev-parse HEAD > public/build/source-commit
       - name: Rehearse the Hostinger release on MariaDB
         run: bash tests/Deployment/hostinger-release.sh

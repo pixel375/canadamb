@@ -47,6 +47,7 @@ The preservation checkpoint is [`e38b910bbead5c804c6d3c262d06ae828dfb8d5c`](http
 ## Evidence from this pass
 
 - The PHP suite passed 33 tests and 384 assertions on each of SQLite and disposable MariaDB 11.4.14. The guarded deployment check also accepted a real schema-scoped staging user and rejected privileged test cases.
+- The two-host HTTP and Chrome flows passed against a separate disposable MariaDB database with encrypted database sessions. Chrome completed the SSO round trip, local and rural listing workflows, moderation, mobile calendar, and network logout. HTTP writes with a missing token and with a forged cross-site token both returned 419. Local traffic used HTTP and localhost domains.
 - Pint, Vite, strict Composer validation, Composer advisory scanning and npm audit passed locally. The Linux workflow runs the application suite against both databases and rehearses the release and bounded queue using a disposable MariaDB service.
-- Existing HTTPS responses had valid certificates. CanadaMB's root returned 403 and Brandon's root returned 200. The tested `.git` and `.env` requests returned 403, and the tested log request returned 404 on each domain. These are observations of the pre-staging sites.
+- Existing HTTPS responses had valid certificates. CanadaMB's root returned 403 and Brandon's root returned 200. SSH found two separate `public_html` directories. The tested `.git` and `.env` requests returned 403, and the tested log request returned 404 on each domain. These are observations of the pre-staging sites.
 - Hostinger deployment and application smoke are pending. The [acceptance checklist](DEPLOYMENT_CHECKLIST.md) records the outstanding browser, TLS alias, SMTP, job and rollback checks.

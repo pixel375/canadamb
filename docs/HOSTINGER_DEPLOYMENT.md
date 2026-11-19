@@ -10,11 +10,12 @@ The staging design uses one account, one PHP application and one MariaDB databas
 
 ## Prepare a commit and a staging database
 
-In hPanel, keep Git auto-deployment disabled. Use SSH to fetch the private checkout outside the fixed web root. Configure `brandonmb.ca` as a parked domain of `canadamb.ca`, with DNS and valid HTTPS for each apex. Preserve the original request host, disable any cross-domain redirect or full-page cache, and leave other domains inactive. Verify both certificates and the alias before traffic cutover. [Hostinger document root](https://www.hostinger.com/support/1583494-what-is-the-path-to-your-website-s-root-home-directory-and-how-to-change-it-in-hostinger/) · [Parked domains](https://www.hostinger.com/support/1583424-what-are-the-differences-between-subdomain-parked-domain-and-add-on-domain/)
+In hPanel, keep Git auto-deployment disabled. Use SSH to fetch the private checkout outside the fixed web root. Each domain currently has a separate `public_html` directory in the SSH account. Before cutover, confirm the actual hPanel routing, preserve the existing Brandon directory, and configure `brandonmb.ca` as a parked domain of `canadamb.ca`. Verify DNS and valid HTTPS for each apex. Preserve the original request host, disable any cross-domain redirect or full-page cache, and leave other domains inactive. [Hostinger document root](https://www.hostinger.com/support/1583494-what-is-the-path-to-your-website-s-root-home-directory-and-how-to-change-it-in-hostinger/) · [Parked domains](https://www.hostinger.com/support/1583424-what-are-the-differences-between-subdomain-parked-domain-and-add-on-domain/)
 
 From a verified SSH session, run the following in Bash. Supply the audited commit SHA, and use the staging database name assigned by hPanel. Create a staging-only user with schema-level grants limited to the literal staging database. The script rejects global, wildcard, other-schema and grant-option privileges. The database name must end in `_staging`. Use the existing database only if its intended staging role and isolation have been verified. Preserve the existing production configuration under `private/`.
 
 ```bash
+set -euo pipefail
 umask 077
 SITE_HOME="$HOME/domains/canadamb.ca"
 APP="$SITE_HOME/canadamb-app"

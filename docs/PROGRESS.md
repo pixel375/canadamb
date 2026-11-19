@@ -8,7 +8,7 @@ The release script now uses the private `canadamb-app` layout. A staging-only Ma
 
 Read-only SSH and public HTTPS checks confirmed the Hostinger CLI, WebP, scheduling tools, existing public Git checkout, both certificates, and blocked responses for the tested Git and environment paths. Sodium is present but disabled by default on the CLI. The web runtime, exact parked alias routing, isolated staging database, restore rehearsal, and live application checks remain pending. No Hostinger application release or migration was run.
 
-Local PHP suite results, dependency checks, and Linux CI evidence are tracked in the [source audit](CODE_AUDIT.md) and [acceptance checklist](DEPLOYMENT_CHECKLIST.md). The next task is the Hostinger staging checklist, beginning with Sodium and the isolated staging database. Advertising and billing remain deferred.
+Local PHP suites passed on SQLite and disposable MariaDB, with 33 tests and 384 assertions each. The MariaDB-backed two-host HTTP and Chrome smoke flows passed. Both negative CSRF requests returned 419. See the [source audit](CODE_AUDIT.md) and [acceptance checklist](DEPLOYMENT_CHECKLIST.md) for evidence and pending checks. The next task is the Hostinger staging checklist, beginning with Sodium, a verified parked alias, and an isolated staging database. Advertising and billing remain deferred.
 
 ## 2026-11-19 continuation
 
