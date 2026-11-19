@@ -2,7 +2,14 @@
 
 This is an operational checkpoint, not a claim that the product is ready for a public launch. Distinguish the owner's verified live results from code/CI evidence.
 
-## Current hosting and release
+## Current live release (as of 2026-11-19 22:45 UTC)
+
+- Both sites run the **same production release `44448bd0de1b736a51909f6ec87f692a41d57950`**, confirmed by independent GitHub Actions postdeploy audit. `CANADAMB_PRELAUNCH=true` remains on, with external visitors denied HTTP 403.
+- First secure GitHub Actions release from the previous `b5f16a6` version, DB/media backup and real off-host SQL restore rehearsal succeeded. Public root directory inode is unchanged.
+- GitHub deployment is currently **manual only**, not on every push. The verified cron wrapper is installed privately but hPanel schedule has not been confirmed.
+- The Marketplace visual and functionality issues remain queued for the upcoming product pass.
+
+## Initial hosting and deployment snapshot (historical)
 - **Host:** Hostinger Business Web Hosting (shared hosting), PHP 8.3.36, MariaDB, Composer 2.9.8; Sodium works in CLI and web PHP.
 - **Real domains:** `https://canadamb.ca` (provincial network) and `https://brandonmb.ca` (Brandon portal); Brandon is a Hostinger parked alias pointing to the *same physical* CanadaMB `public_html`.
 - **Single installation:** Laravel 13, one application and production database; private application resides in `domains/canadamb.ca/canadamb-app/`, persistent environment in `canadamb-app/shared/.env`, **only** public entrypoint and allowlisted assets in `public_html`.
@@ -19,7 +26,7 @@ This is an operational checkpoint, not a claim that the product is ready for a p
 - Initial Hostinger cutover succeeded by **keeping the existing `public_html` directory inode** and moving only the old `.git`/README contents to a private quarantine. Renaming/replacing the entire web-root directory caused both domains to return 404 and was rolled back.
 - A Hostinger shell error `/dev/fd/62: No such file or directory` exposed Bash process substitution in the original release script. Two manually patched script files unexpectedly became zero bytes; the Git-tracked source working-copy script also became zero bytes. The exact cause of truncation is **unknown**, not proven to be Hostinger. An in-memory script loaded from the reviewed Git object with `/dev/fd` patterns removed successfully completed preflight and initial activation. Do not rely on the old mutable working-copy script for future releases.
 
-## Automation progress (later same day)
+## Automation progress (historical, before first release)
 
 Actions SSH connection run `44619746774` and private SFTP upload run `44622010185` both passed. A new manual-only Deploy CanadaMB Prelaunch workflow exists on default `main`; deployment update scripts are staged on the implementation branch. **They are not activated on Hostinger.** The live release remains `b5f16a6c08eefcd804deb1970f52490220af67f5` with IP restriction. Further tasks: populated-database upgrade rehearsal, real restore, cron check, and first reviewed rollout.
 
@@ -34,11 +41,11 @@ Actions SSH connection run `44619746774` and private SFTP upload run `4462201018
 - First live deploy was triggered through a **one-time GitHub workflow push**, then the deploy workflow was restored to **manual-only**. Future full auto-deployment on every green push is **not enabled yet**; secure workflow/branch changes, failure handling and first cron acceptance remain for a later gate.
 - Original empty working-copy release script remains known to be zero bytes on Hostinger. New deployment uses immutable Git objects and checksum matching; do not execute the zero-byte file directly.
 
-## Pending operational acceptance
-1. Add and verify Hostinger bounded cron (including queue jobs, logs, failure alerts); not reported complete.
-2. Rehearse restoration of an actual live database backup in an isolated environment; protect ongoing database and private media backups.
-3. Permanently use the corrected deployment script from a verified **new** commit. Verify Git checkout integrity and no truncation before/after release operations; never re-run `production-initial` first-cutover steps on the already running site.
-4. Add safe one-click/controlled deployment pipeline after successful fresh-release rehearsal; do not enable Hostinger Git auto-deploy pointed at `public_html`.
+## Remaining operational acceptance
+1. **Owner hPanel action:** Add the single private cron command and confirm scheduler log entries/queue processing; no `crontab` command is available through this account's SSH shell.
+2. **Completed:** Actual production DB restore rehearsal on isolated MariaDB (53 tables, user and listings intact), first updated release, backup checksums, original web-root inode, and both domains' IP gate.
+3. **Future automation:** Manual one-click deployment is functioning. Enabling automated release on every green Git commit remains a separate security/branch-protection decision; never deploy Git source to `public_html`.
+4. **Owner browser verification:** Recheck approved-IP login/SSO, admin and listing interactions on the new release; external runner cannot test approved-IP user flows.
 5. Verify SMTP when public registration opens; real news transport, abuse handling, business claims, jobs/events, multi-image experience, and extensive feature flows.
 6. Do not open public access until security, privacy, moderation, availability, data, payments and launch requirements are signed off.
 
