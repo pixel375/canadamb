@@ -48,7 +48,7 @@ jobs:
           }
           [[ -f "$web/index.php" && -f "$web/.htaccess" &&
              ! -e "$web/.git" && ! -e "$web/.env" ]] || exit 1
-          [[ -s "$web/build/assets/"* ]] || exit 1
+          [[ -d "$web/build/assets" ]] && find "$web/build/assets" -maxdepth 1 -type f -name "*.css" -print -quit | grep -q . || exit 1
           [[ ! -e "$app/update.pause" && ! -e "$actual/storage/framework/down" ]] || exit 1
           [[ -s "$app/hostinger-cron.sh" ]] || exit 1
           grep -Fq 'update.pause' "$app/hostinger-cron.sh"
