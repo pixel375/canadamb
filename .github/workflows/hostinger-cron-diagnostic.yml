@@ -1,0 +1,95 @@
+name: Inspect Hostinger cron status (read only)
+
+on:
+  # One-time diagnostic immediately after the owner added a job in hPanel.
+  push:
+    branches: [main]
+    paths: ['.github/workflows/hostinger-cron-diagnostic.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    environment: hostinger-prelaunch
+    env:
+      SSH_HOST: ${{ vars.HOSTINGER_HOST }}
+      SSH_PORT: ${{ vars.HOSTINGER_PORT }}
+      SSH_USER: ${{ vars.HOSTINGER_USER }}
+      SSH_PRIVATE_KEY: ${{ secrets.HOSTINGER_SSH_PRIVATE_KEY }}
+      SSH_KNOWN_HOSTS: ${{ secrets.HOSTINGER_KNOWN_HOSTS }}
+    steps:
+      - name: Inspect scheduler activity and errors without reading private application data
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          [[ "$SSH_HOST" =~ ^[A-Za-z0-9.-]+$ && "$SSH_USER" =~ ^[A-Za-z0-9_-]+$ &&
+             "$SSH_PORT" =~ ^[0-9]{1,5}$ && -n "$SSH_PRIVATE_KEY" && -n "$SSH_KNOWN_HOSTS" ]] || exit 1
+          umask 077
+          dir=$(mktemp -d)
+          trap 'rm -rf -- "$dir"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$dir/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$dir/hosts"
+          chmod 600 "$dir/key" "$dir/hosts"
+          ssh-keygen -y -P '' -f "$dir/key" >/dev/null
+          ssh -T -o BatchMode=yes -o ConnectTimeout=20 -o StrictHostKeyChecking=yes \
+            -o "UserKnownHostsFile=$dir/hosts" -o IdentitiesOnly=yes \
+            -i "$dir/key" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" bash -se <<'REMOTE'
+          set -Eeuo pipefail
+          site="$HOME/domains/canadamb.ca"
+          app="$site/canadamb-app"
+          wrapper="$app/hostinger-cron.sh"
+          log="$app/shared/storage/logs/scheduler.log"
+          echo "UTC now: $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+          echo "Private installed script: $([[ -s "$wrapper" ]] && echo PRESENT || echo MISSING)"
+          if [[ -s "$wrapper" ]]; then
+            bash -n "$wrapper"
+            [[ $(stat -c '%a' "$wrapper") == 700 ]] && echo "Wrapper permissions: 700" || echo "Wrapper mode: $(stat -c '%a' "$wrapper")"
+            if grep -Fq 'update.pause' "$wrapper" && grep -Fq 'scheduler.log' "$wrapper"; then
+              echo "Wrapper validation: correct pause-aware version"
+            else
+              echo "Wrapper validation: missing pause/log support"
+            fi
+          fi
+          current=$(readlink -e "$app/current")
+          echo "Current release SHA: ${current##*/}"
+          if [[ -f "$app/update.pause" ]]; then
+            echo "Deployment pause marker: PRESENT (cron safely paused)"
+          else
+            echo "Deployment pause marker: absent"
+          fi
+          if [[ -f "$log" && ! -L "$log" ]]; then
+            now=$(date +%s)
+            modified=$(stat -c '%Y' "$log")
+            age=$((now-modified))
+            bytes=$(stat -c '%s' "$log")
+            echo "Scheduler log: present; bytes=$bytes; seconds_since_last_write=$age"
+            echo "Scheduler log last write UTC: $(date -u -d "@$modified" '+%Y-%m-%dT%H:%M:%SZ')"
+            if (( age >= 0 && age <= 180 )); then
+              echo "Recent cron activity: YES, log written within 3 minutes"
+            else
+              echo "Recent cron activity: NO, no scheduler log write in the last 3 minutes"
+            fi
+            echo "Scheduler log (sanitized summary counts):"
+            awk 'BEGIN {ready=0;ran=0;errors=0;total=0}
+              {total++;
+               if ($0 ~ /No scheduled commands are ready|No scheduled commands are ready to run/) ready++;
+               if ($0 ~ /Running |DONE/) ran++;
+               if ($0 ~ /ERROR|Error|Exception|Failed|failed|FATAL|Fatal/) errors++}
+              END {printf "total_lines=%d; empty_schedule_messages=%d; run_or_done_messages=%d; possible_error_lines=%d\n", total,ready,ran,errors}' "$log"
+            echo "Last scheduler output categories (no raw log contents):"
+            tail -n 12 "$log" | awk '{if ($0 ~ /No scheduled commands/) print "no commands due"; else if ($0 ~ /Running |DONE/) print "scheduled command invocation"; else if ($0 ~ /ERROR|Error|Exception|Failed|failed|FATAL|Fatal/) print "possible error"; else if (length($0)==0) print "blank line"; else print "other output"}'
+          else
+            echo "Scheduler log: NOT FOUND"
+            echo "No evidence yet that hPanel has executed the installed cron wrapper."
+          fi
+          if command -v crontab >/dev/null 2>&1; then
+            echo "User crontab command: available"
+          else
+            echo "User crontab command: unavailable; cannot read hPanel job configuration via SSH"
+          fi
+          echo "Read-only cron diagnostic complete"
+          REMOTE
