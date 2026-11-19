@@ -153,7 +153,12 @@ class PublicController extends Controller
     {
         $site = $request->attributes->get('site');
 
-        return response("User-agent: *\nDisallow: /admin\nDisallow: /account\nDisallow: /auth\nSitemap: ".NetworkUrl::to($site, '/sitemap.xml')."\n")
+        $directives = "User-agent: *\nDisallow: /admin\nDisallow: /account\nDisallow: /auth\n";
+        if (! config('network.staging')) {
+            $directives .= 'Sitemap: '.NetworkUrl::to($site, '/sitemap.xml')."\n";
+        }
+
+        return response($directives)
             ->header('Content-Type', 'text/plain; charset=UTF-8');
     }
 }

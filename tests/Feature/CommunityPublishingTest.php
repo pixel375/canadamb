@@ -55,22 +55,23 @@ class CommunityPublishingTest extends TestCase
 
     public function test_events_validate_manitoba_local_time_and_scope_before_publication(): void
     {
-        $this->travelTo('2027-03-01 12:00:00');
+        // Keep the gap test on Manitoba's last spring clock change.
+        $this->travelTo('2026-03-01 12:00:00');
         $input = [
             'title' => 'Spring seed exchange', 'body' => 'Bring seeds to trade with your neighbours.',
-            'starts_at' => '2027-03-14T02:30', 'ends_at' => '2027-03-14T04:30',
+            'starts_at' => '2026-03-08T02:30', 'ends_at' => '2026-03-08T04:30',
             'category' => 'community', 'venue' => 'Community hall', 'organizer' => 'Garden club',
         ];
         $organizer = User::factory()->create();
         $admin = User::factory()->create(['role' => 'network_admin']);
         $this->actingAs($organizer)->post('https://brandonmb.ca/events', $input)->assertSessionHasErrors('starts_at');
-        $input['starts_at'] = '2027-03-14T03:30';
+        $input['starts_at'] = '2026-03-08T03:30';
         $this->post('https://brandonmb.ca/events', $input)->assertSessionHasNoErrors()->assertRedirect();
         $event = CommunityEvent::sole();
-        $this->assertSame('2027-03-14 08:30:00', $event->getRawOriginal('starts_at'));
+        $this->assertSame('2026-03-08 08:30:00', $event->getRawOriginal('starts_at'));
         $this->get('https://brandonmb.ca/events')->assertDontSee($input['title']);
         $this->actingAs($admin)->post("https://canadamb.ca/admin/community/events/$event->id", ['action' => 'approve'])->assertRedirect();
-        $this->get('https://brandonmb.ca/events?month=2027-03')->assertOk()->assertSee($input['title']);
+        $this->get('https://brandonmb.ca/events?month=2026-03')->assertOk()->assertSee($input['title']);
         $this->get('https://canadamb.ca/events')->assertSee($input['title']);
         $this->get('https://canadamb.ca/')->assertSee($input['title']);
         $this->get("https://canadamb.ca/events/$event->id")->assertRedirect("https://brandonmb.ca/events/$event->id");

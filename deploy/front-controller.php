@@ -4,7 +4,7 @@ use Illuminate\Http\Request;
 
 define('LARAVEL_START', microtime(true));
 
-$release = realpath(__DIR__.'/../canadamb/current');
+$release = realpath(__DIR__.'/../canadamb-app/current');
 
 if ($release === false || ! is_file($release.'/vendor/autoload.php')) {
     http_response_code(503);

@@ -1,5 +1,15 @@
 # Progress
 
+## 2026-11-19 Hostinger staging preparation
+
+Preserved the three implementation commits on [implementation/network-foundation](https://github.com/pixel375/canadamb/tree/implementation/network-foundation) at `e38b910bbead5c804c6d3c262d06ae828dfb8d5c` before auditing. Gitleaks found no secrets in those commits. The first GitHub CI run exposed a Passport state-validation ordering issue and an obsolete 2027 timezone assumption in the event test. Both are addressed in the staging checkpoint.
+
+The release script now uses the private `canadamb-app` layout. A staging-only MariaDB credential, verified backups, and a reviewed migration preflight are required. The guarded scheduler command serializes runs against deployment and sets a hard runtime cap. Staging pages opt out of indexing and shared caching. No new schema migration is included in this pass.
+
+Read-only SSH and public HTTPS checks confirmed the Hostinger CLI, WebP, scheduling tools, existing public Git checkout, both certificates, and blocked responses for the tested Git and environment paths. Sodium is present but disabled by default on the CLI. The web runtime, exact parked alias routing, isolated staging database, restore rehearsal, and live application checks remain pending. No Hostinger application release or migration was run.
+
+Local PHP suite results, dependency checks, and Linux CI evidence are tracked in the [source audit](CODE_AUDIT.md) and [acceptance checklist](DEPLOYMENT_CHECKLIST.md). The next task is the Hostinger staging checklist, beginning with Sodium and the isolated staging database. Advertising and billing remain deferred.
+
 ## 2026-11-19 continuation
 
 | Milestone | State |
@@ -13,7 +23,7 @@ Existing installations must publish their desired forum, event, and job visibili
 
 Local checks passed 31 PHP tests with 363 assertions on both SQLite and MariaDB 11.4.14. The Vite build, Pint, Laravel route and view caches, two-host HTTP smoke, and Chrome smoke passed. The Chrome check included the Brandon calendar at 390 CSS pixels, plus the shared sign-in and geographic Marketplace flow.
 
-Next implementation milestone is advertising inventory and campaign approval, then test-mode subscription and payment integration. Hostinger private staging, scheduled AI summaries, public property compliance, and launch review remain open.
+At this checkpoint the remaining milestones included Hostinger staging, advertising, subscriptions, scheduled AI summaries, property compliance and launch review.
 
 ## 2026-11-19 foundation
 

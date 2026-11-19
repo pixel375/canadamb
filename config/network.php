@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'staging' => env('CANADAMB_STAGING', false),
     'development_hosts' => env('CANADAMB_DEVELOPMENT_HOSTS', false),
     'sso_enabled' => env('CANADAMB_SSO_ENABLED', true),
     'news_ingest_token' => env('CANADAMB_NEWS_INGEST_TOKEN'),

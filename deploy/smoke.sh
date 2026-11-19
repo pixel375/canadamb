@@ -26,7 +26,7 @@ for portal in "$main" "$local_portal"; do
     fetch "$portal/sitemap.xml" > "$temp/response"
     grep -Fq "$portal/" "$temp/response"
     for resource in '/.env' '/.git/config' '/vendor/autoload.php' '/storage/logs/laravel.log' '/app/Models/User.php' '/composer.json'; do
-        code=$(curl --silent --show-error --max-time 15 --output "$temp/response" --write-out '%{http_code}' "$portal$resource")
+        code=$(curl --head --silent --show-error --max-time 15 --output /dev/null --write-out '%{http_code}' "$portal$resource")
         [[ "$code" == 403 || "$code" == 404 ]] || { echo "$portal$resource returned $code"; exit 1; }
     done
     fetch -D "$temp/headers" "$portal/" > "$temp/response"
@@ -36,6 +36,11 @@ for portal in "$main" "$local_portal"; do
         fetch -o "$temp/asset" "$portal$asset"
     done
     grep -Eiq '^set-cookie:.*-session=.*[Hh]ttponly' "$temp/headers"
+    grep -Ei '^set-cookie:.*-session=' "$temp/headers" | grep -Eiq ';[[:space:]]*samesite=lax'
+    if [[ ${CANADAMB_SMOKE_STAGING:-0} == 1 ]]; then
+        grep -Eiq '^x-robots-tag:[[:space:]]*noindex' "$temp/headers"
+        grep -Eiq '^cache-control:.*no-store' "$temp/headers"
+    fi
     if grep -Ei '^set-cookie:.*-session=' "$temp/headers" | grep -Eiq ';[[:space:]]*domain='; then
         echo "Unexpected cookie domain on $portal"
         exit 1

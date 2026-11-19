@@ -52,9 +52,14 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm audit
-      - run: bash -n deploy/hostinger-release.sh && bash -n deploy/smoke.sh
+      - run: bash -n deploy/hostinger-release.sh && bash -n deploy/hostinger-cron.sh && bash -n deploy/smoke.sh
       - run: php artisan network:deployment-check
       - run: git rev-parse HEAD > public/build/source-commit
+      - name: Rehearse the Hostinger release on MariaDB
+        run: bash tests/Deployment/hostinger-release.sh
+        env:
+          CI_MARIADB_CONTAINER: ${{ job.services.mariadb.id }}
+          CI_MARIADB_ROOT_PASSWORD: service-test-only
       - uses: actions/upload-artifact@v4
         with:
           name: vite-${{ github.sha }}

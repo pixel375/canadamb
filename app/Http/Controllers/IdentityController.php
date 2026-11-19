@@ -45,7 +45,7 @@ class IdentityController extends Controller
         ])))->header('Cache-Control', 'no-store')->header('Referrer-Policy', 'no-referrer');
     }
 
-    public function callback(Request $request, AccessTokenController $tokens, ResourceServer $server)
+    public function callback(Request $request)
     {
         $site = $request->attributes->get('site');
         abort_if($site->isNetwork() || ! config('network.sso_enabled') || ! $site->domain->oauth_client_id, 404);
@@ -62,11 +62,11 @@ class IdentityController extends Controller
         ]);
 
         // The provider and its client are in the same application. Use Passport's server directly.
-        $result = $tokens->issueToken($factory->createRequest($exchange), $factory->createResponse(new Response));
+        $result = app(AccessTokenController::class)->issueToken($factory->createRequest($exchange), $factory->createResponse(new Response));
         abort_unless($result->isSuccessful(), 403, 'The sign-in request expired. Start again.');
         $token = json_decode($result->getContent(), true, flags: JSON_THROW_ON_ERROR);
         try {
-            $validated = $server->validateAuthenticatedRequest($factory->createRequest(Request::create($issuer, server: [
+            $validated = app(ResourceServer::class)->validateAuthenticatedRequest($factory->createRequest(Request::create($issuer, server: [
                 'HTTP_AUTHORIZATION' => 'Bearer '.$token['access_token'],
             ])));
         } catch (OAuthServerException) {

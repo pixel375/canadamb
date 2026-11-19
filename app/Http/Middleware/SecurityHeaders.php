@@ -18,7 +18,7 @@ class SecurityHeaders
         if (! app()->isLocal() && $request->isSecure()) {
             $response->headers->set('Strict-Transport-Security', 'max-age=31536000');
         }
-        if ($request->is('admin', 'admin/*', 'auth/*', 'oauth/*', 'account/*', 'login', 'register', 'forgot-password', 'reset-password/*', 'email/*') || $request->user()) {
+        if (config('network.staging') || $request->is('admin', 'admin/*', 'auth/*', 'oauth/*', 'account/*', 'login', 'register', 'forgot-password', 'reset-password/*', 'email/*') || $request->user()) {
             $response->headers->set('Cache-Control', 'private, no-store');
             $response->headers->set('X-Robots-Tag', 'noindex, nofollow');
         }
