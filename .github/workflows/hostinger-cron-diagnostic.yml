@@ -1,10 +1,6 @@
 name: Inspect Hostinger cron status (read only)
 
 on:
-  # One-time diagnostic immediately after the owner added a job in hPanel.
-  push:
-    branches: [main]
-    paths: ['.github/workflows/hostinger-cron-diagnostic.yml']
   workflow_dispatch:
 
 permissions:
