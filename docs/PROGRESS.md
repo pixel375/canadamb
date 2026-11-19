@@ -1,5 +1,10 @@
 # Progress
 
+## 2026-11-19 — live GitHub Actions deployment completed
+
+Actual production backup restore passed (53 tables, 1 user, 3 listings, two domains); first guarded production update moved `b5f16a6` to `44448bd` via GitHub Actions run 44631266297. Independent postdeploy audit run 44631660770 passed, preserving original public_html inode, database, media, OAuth keys and IP gate. A private cron wrapper has been installed; **owner must schedule it in hPanel and confirm execution**. No public launch, no product/UX overhaul, and no automatic deployment on push. See [live state](LIVE_STATE_2026-11-19.md).
+
+
 ## 2026-11-19 — populated-database upgrade rehearsal passed
 
 GitHub Actions [run 44622393391](https://github.com/pixel375/canadamb/actions/runs/44622393391) passed 35 PHP tests / 409 assertions on both database engines, compiled Vite, and completed a disposable second-release rehearsal. It created an extra user record before updating, produced private MariaDB and storage backups, recorded migration preflight, preserved the user, OAuth keys and *existing* public_html directory inode. A separate doc-updated run [44622640759](https://github.com/pixel375/canadamb/actions/runs/44622640759) also passed. This is **not** an active production deployment; live sites remain `b5f16a6`.

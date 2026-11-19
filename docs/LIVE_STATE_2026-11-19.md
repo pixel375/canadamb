@@ -23,6 +23,17 @@ This is an operational checkpoint, not a claim that the product is ready for a p
 
 Actions SSH connection run `44619746774` and private SFTP upload run `44622010185` both passed. A new manual-only Deploy CanadaMB Prelaunch workflow exists on default `main`; deployment update scripts are staged on the implementation branch. **They are not activated on Hostinger.** The live release remains `b5f16a6c08eefcd804deb1970f52490220af67f5` with IP restriction. Further tasks: populated-database upgrade rehearsal, real restore, cron check, and first reviewed rollout.
 
+## First controlled production update — completed 2026-11-19
+
+- GitHub CI for target `44448bd0de1b736a51909f6ec87f692a41d57950` passed, with no migration or seeder differences from the original `b5f16a6` installation.
+- GitHub Actions [run 44630938711](https://github.com/pixel375/canadamb/actions/runs/44630938711) backed up and **restored a copy of the actual production MariaDB dump into disposable MariaDB**, recovering **53 tables, 1 user, 3 Marketplace listings, and both network domains**. The runner database and dump were discarded; private backup remains on Hostinger.
+- [Deploy CanadaMB Prelaunch run 44631266297](https://github.com/pixel375/canadamb/actions/runs/44631266297) succeeded. Active release moved from `b5f16a6c08eefcd804deb1970f52490220af67f5` to `44448bd0de1b736a51909f6ec87f692a41d57950`. Actual production backups, media archive, and preflight passed; production migration/activation succeeded, private keys and assets persisted.
+- Independent [postdeploy audit run 44631660770](https://github.com/pixel375/canadamb/actions/runs/44631660770) verified the active SHA, MariaDB state, release backups/checksums, no maintenance/pause marker, persistent OAuth keys, private cron wrapper, and original `public_html` directory inode **446174247**. Non-allowlisted runners received HTTP **403** on both `canadamb.ca` and `brandonmb.ca`.
+- This was **infrastructure-only**; Marketplace UX backlog has NOT been implemented. The application remains in **IP-restricted prelaunch**, and **approved-IP user browser/SSO acceptance for this new SHA is not independently completed**.
+- New verified private scheduler wrapper at `/home/u713153343/domains/canadamb.ca/canadamb-app/hostinger-cron.sh`; cron **scheduling through hPanel must be performed by the owner** (the account has no `crontab` CLI). Custom command: `/usr/bin/bash /home/u713153343/domains/canadamb.ca/canadamb-app/hostinger-cron.sh /home/u713153343/domains/canadamb.ca /usr/bin/php`. Configure every minute and verify private `shared/storage/logs/scheduler.log` and expected queue processing. **Do not claim hPanel job is active until verified**.
+- First live deploy was triggered through a **one-time GitHub workflow push**, then the deploy workflow was restored to **manual-only**. Future full auto-deployment on every green push is **not enabled yet**; secure workflow/branch changes, failure handling and first cron acceptance remain for a later gate.
+- Original empty working-copy release script remains known to be zero bytes on Hostinger. New deployment uses immutable Git objects and checksum matching; do not execute the zero-byte file directly.
+
 ## Pending operational acceptance
 1. Add and verify Hostinger bounded cron (including queue jobs, logs, failure alerts); not reported complete.
 2. Rehearse restoration of an actual live database backup in an isolated environment; protect ongoing database and private media backups.
