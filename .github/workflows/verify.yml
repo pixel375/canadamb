@@ -1,0 +1,62 @@
+name: Verify CanadaMB
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MARIADB_DATABASE: canadamb_qa
+          MARIADB_USER: canadamb_qa
+          MARIADB_PASSWORD: canadamb_qa
+          MARIADB_ROOT_PASSWORD: service-test-only
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s --health-timeout=5s --health-retries=15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: curl, dom, fileinfo, gd, mbstring, openssl, pdo_mysql, pdo_sqlite, sodium, zip
+          tools: composer:v2
+          coverage: none
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+      - run: composer install --prefer-dist --no-interaction --no-progress
+      - run: composer validate --strict
+      - run: composer audit --locked
+      - run: vendor/bin/pint --test
+      - run: vendor/bin/phpunit
+      - run: vendor/bin/phpunit
+        env:
+          DB_CONNECTION: mariadb
+          DB_HOST: '127.0.0.1'
+          DB_PORT: 3306
+          DB_DATABASE: canadamb_qa
+          DB_USERNAME: canadamb_qa
+          DB_PASSWORD: canadamb_qa
+      - run: npm ci
+      - run: npm run build
+      - run: npm audit
+      - run: bash -n deploy/hostinger-release.sh && bash -n deploy/smoke.sh
+      - run: php artisan network:deployment-check
+      - run: git rev-parse HEAD > public/build/source-commit
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vite-${{ github.sha }}
+          path: public/build
+          if-no-files-found: error

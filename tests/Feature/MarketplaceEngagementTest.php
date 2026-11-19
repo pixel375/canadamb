@@ -1,0 +1,70 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Conversation;
+use App\Models\Listing;
+use App\Models\Location;
+use App\Models\User;
+use App\Support\Marketplace;
+use Database\Seeders\DatabaseSeeder;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+use Tests\TestCase;
+
+class MarketplaceEngagementTest extends TestCase
+{
+    use RefreshDatabase;
+
+    protected $seeder = DatabaseSeeder::class;
+
+    public function test_listing_photo_access_follows_listing_visibility_and_does_not_leak_a_rural_photo(): void
+    {
+        Storage::fake('local');
+        $seller = User::factory()->create();
+        $rural = Location::where('slug', 'elkhorn')->sole();
+        $this->actingAs($seller)->post('https://canadamb.ca/marketplace', [
+            'title' => 'Rural patio set', 'description' => 'Comes with chairs.', 'category' => 'furniture',
+            'condition' => 'good', 'price' => '25', 'location_id' => $rural->id,
+            'photos' => [UploadedFile::fake()->image('private.jpg', 750, 450)],
+        ])->assertRedirect()->assertSessionHasNoErrors();
+        $item = Listing::sole();
+        $photo = $item->media()->sole();
+        Storage::disk('local')->assertExists([$photo->image_path, $photo->thumbnail_path]);
+        $path = "/marketplace/$item->id/photo/$photo->id";
+        $this->actingAs(User::factory()->create())->get('https://canadamb.ca'.$path)->assertNotFound();
+        $this->actingAs(User::factory()->create(['role' => 'network_admin']))
+            ->post("https://canadamb.ca/admin/moderation/$item->id", ['status' => 'active'])->assertRedirect();
+        $this->actingAs(User::factory()->create())->get('https://canadamb.ca'.$path)->assertOk()->assertHeader('Content-Type', 'image/webp');
+        $this->get('https://brandonmb.ca'.$path)->assertNotFound();
+    }
+
+    public function test_members_can_save_and_report_a_listing_and_only_participants_can_read_messages(): void
+    {
+        $seller = User::factory()->create();
+        $buyer = User::factory()->create();
+        $stranger = User::factory()->create();
+        $item = Listing::create([
+            'user_id' => $seller->id, 'location_id' => Location::where('slug', 'brandon')->sole()->id,
+            'title' => 'Patio set', 'description' => 'Comes with chairs.', 'category' => 'furniture',
+            'condition' => 'good', 'price_cents' => 2500, 'status' => 'pending',
+        ]);
+        app(Marketplace::class)->changeStatus($item, 'active', null);
+        $base = "https://brandonmb.ca/marketplace/$item->id";
+        $this->actingAs($buyer)->post("$base/save")->assertRedirect();
+        $this->get('https://canadamb.ca/account/saved')->assertSee('Patio set');
+        $this->post("$base/report", ['reason' => 'The images seem to belong to another seller.'])->assertRedirect();
+        $this->assertDatabaseHas('listing_reports', ['listing_id' => $item->id, 'reporter_id' => $buyer->id]);
+        $this->post("$base/message", ['body' => 'Are the chairs included?'])->assertRedirect();
+        $thread = Conversation::sole();
+        $url = "https://brandonmb.ca/account/messages/$thread->id";
+        $this->actingAs($stranger)->get($url)->assertNotFound();
+        $this->actingAs($seller)->get($url)->assertOk()->assertSee('Are the chairs included?');
+        $this->post($url, ['body' => 'Yes, all four are included.'])->assertRedirect();
+        $this->actingAs($buyer)->get($url)->assertSee('Yes, all four are included.');
+        $this->post("$url/block")->assertRedirect();
+        $this->actingAs($seller)->post($url, ['body' => 'Can you still see this message?'])->assertForbidden();
+        $this->assertDatabaseCount('messages', 2);
+    }
+}
