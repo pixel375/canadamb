@@ -144,8 +144,8 @@ if [[ $CANADAMB_DEPLOYMENT_MODE == production-initial ]]; then
     php -r '
       require $argv[1]."/vendor/autoload.php";
       $app = require $argv[1]."/bootstrap/app.php";
-      $app->make(Illuminate\\Contracts\\Console\\Kernel::class)->bootstrap();
-      Illuminate\\Support\\Facades\\DB::table("users")->insert([
+      $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+      Illuminate\Support\Facades\DB::table("users")->insert([
         "name" => "Prelaunch User",
         "email" => "ci-update@example.invalid",
         "password" => password_hash("test-only", PASSWORD_BCRYPT),
