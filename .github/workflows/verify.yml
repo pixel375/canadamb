@@ -58,7 +58,9 @@ jobs:
           APP_ENV: testing
       - run: git rev-parse HEAD > public/build/source-commit
       - name: Rehearse the Hostinger release on MariaDB
-        run: bash tests/Deployment/hostinger-release.sh
+        run: |
+          bash tests/Deployment/hostinger-release.sh staging
+          bash tests/Deployment/hostinger-release.sh production-initial
         env:
           CI_MARIADB_CONTAINER: ${{ job.services.mariadb.id }}
           CI_MARIADB_ROOT_PASSWORD: service-test-only

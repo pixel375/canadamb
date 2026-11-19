@@ -1,122 +1,155 @@
-# CanadaMB staging on Hostinger Business Web Hosting
+# CanadaMB production-first prelaunch on Hostinger
 
-## Account requirements
+CanadaMB and BrandonMB share one Laravel release, one account system, and the existing production MariaDB database. PHP runs as `APP_ENV=production` with debugging off. `CANADAMB_PRELAUNCH=true` restricts dynamic routes to exact tester IPs, disables registration and live mail delivery, disallows indexing, and keeps feed polling off. The tester can sign in on CanadaMB and follow the same browser OAuth flow on BrandonMB. General availability is a separate decision.
 
-Read-only SSH verified Linux, PHP CLI 8.3.36, Composer 2.9.8, PHP WebP, PDO MySQL, cURL, `pcntl`, `proc_open`, MariaDB client 11.8.9, Bash, Git, `flock` and `timeout`. The CLI has `display_errors=Off` and no `open_basedir` restriction. Its `America/Winnipeg` data uses UTC−05:00 year-round in 2027. The remote database server version, PHP web runtime, scheduler quota, and parked alias routing still require acceptance. [Laravel deployment requirements](https://laravel.com/docs/13.x/deployment) · [IANA timezone release](https://www.iana.org/time-zones/releases/2026e)
+The Hostinger account was checked through SSH and an authenticated HTTPS probe that was removed after use. Both hostnames presented the correct Host header and served the same physical document root and probe file. CLI and web PHP are 8.3.36. Web PHP loaded Sodium and the required extensions, supported GD WebP, and had error display off. Composer 2.9.8 passed the production lockfile platform check. The prepared private database credentials select their configured schema on MariaDB 11.8.9, with no existing tables or views and grants limited to that schema. The original `.env` had no application key. These checks preceded installation.
 
-Enable Sodium for PHP 8.3 in hPanel under PHP Configuration → PHP Extensions and verify `php --ri sodium` over SSH. The module was installed and `php -d extension=sodium --ri sodium` can load it for one CLI process. The normal PHP binary used by Composer subprocesses, cron and the web SAPI must all load it. If selecting it in hPanel updates only the web runtime, have Hostinger apply it to SSH/cron too. Verify PHP compatibility with `composer check-platform-reqs --no-dev` in the prepared release. [Hostinger PHP extension setup](https://www.hostinger.com/support/4667515-how-to-manage-php-extensions-and-options-in-hostinger/)
+## 1. Prepare the private release over SSH
 
-The staging design uses one account, one PHP application and one MariaDB database for both domains. Node builds assets in GitHub Actions. The deployed system uses bounded cron runs and the MariaDB queue. A VPS is unnecessary for this design. Root access, Redis, a queue supervisor, WebSocket services and a Node server are outside the runtime requirements.
-
-## Prepare a commit and a staging database
-
-In hPanel, keep Git auto-deployment disabled. Use SSH to fetch the private checkout outside the fixed web root. Each domain currently has a separate `public_html` directory in the SSH account. Before cutover, confirm the actual hPanel routing, preserve the existing Brandon directory, and configure `brandonmb.ca` as a parked domain of `canadamb.ca`. Verify DNS and valid HTTPS for each apex. Preserve the original request host, disable any cross-domain redirect or full-page cache, and leave other domains inactive. [Hostinger document root](https://www.hostinger.com/support/1583494-what-is-the-path-to-your-website-s-root-home-directory-and-how-to-change-it-in-hostinger/) · [Parked domains](https://www.hostinger.com/support/1583424-what-are-the-differences-between-subdomain-parked-domain-and-add-on-domain/)
-
-From a verified SSH session, run the following in Bash. Supply the audited commit SHA, and use the staging database name assigned by hPanel. Create a staging-only user with schema-level grants limited to the literal staging database. The script rejects global, wildcard, other-schema and grant-option privileges. The database name must end in `_staging`. Use the existing database only if its intended staging role and isolation have been verified. Preserve the existing production configuration under `private/`.
+Keep hPanel Git auto-deployment and full-page caching disabled. Keep Brandon configured as a parked domain and confirm both certificates remain valid. Use the Bash, PHP and Composer binaries verified over SSH. Download the `vite-<full SHA>` artifact from the successful GitHub Actions run for the reviewed commit. From a workstation, `gh run download RUN_ID --name "vite-$SHA" --dir "vite-$SHA"` downloads the matching artifact. Upload `assets/`, `manifest.json` and `source-commit` to `$SITE_HOME/.builds/$SHA` using SFTP.
 
 ```bash
 set -euo pipefail
 umask 077
 SITE_HOME="$HOME/domains/canadamb.ca"
 APP="$SITE_HOME/canadamb-app"
-SHA=REPLACE_WITH_VERIFIED_FULL_COMMIT_SHA
-export CANADAMB_STAGING_DB=REPLACE_WITH_HPANEL_DB_NAME_ENDING_IN_staging
-export CANADAMB_PHP_BIN=/usr/bin/php
-export CANADAMB_COMPOSER_BIN=/usr/local/bin/composer
+WEB="$SITE_HOME/public_html"
+read -rp 'Reviewed full GitHub commit SHA: ' SHA
+[[ $SHA =~ ^[0-9a-f]{40}$ ]]
+read -rp 'Exact existing production MariaDB database name from hPanel: ' CANADAMB_PRODUCTION_DB
+[[ $CANADAMB_PRODUCTION_DB =~ ^[A-Za-z0-9_]{1,64}$ ]]
+export CANADAMB_DEPLOYMENT_MODE=production-initial CANADAMB_PRODUCTION_DB
+unset CANADAMB_STAGING_DB CANADAMB_ACTIVATION_CONFIRMED CANADAMB_PRODUCTION_CONFIRMED
+export CANADAMB_PHP_BIN=/usr/bin/php CANADAMB_COMPOSER_BIN=/usr/local/bin/composer
 install -d -m 700 "$APP" "$APP/shared" "$SITE_HOME/.builds/$SHA"
-if [ ! -d "$APP/source/.git" ]; then
+if [[ ! -d "$APP/source/.git" ]]; then
   git clone --branch implementation/network-foundation --single-branch \
     https://github.com/pixel375/canadamb.git "$APP/source"
 fi
 git -C "$APP/source" fetch origin implementation/network-foundation
 git -C "$APP/source" merge-base --is-ancestor "$SHA" origin/implementation/network-foundation
-if [ ! -e "$APP/shared/.env" ]; then
-  git -C "$APP/source" show "$SHA:.env.production.example" > "$APP/shared/.env"
+git -C "$APP/source" switch --detach "$SHA"
+if [[ ! -e "$APP/shared/.env" && ! -L "$APP/shared/.env" ]]; then
+  (set -o noclobber; cat "$SITE_HOME/private/.env" > "$APP/shared/.env")
 fi
+test -f "$APP/shared/.env" && test ! -L "$APP/shared/.env"
 chmod 600 "$APP/shared/.env"
 ```
 
-Edit only `$APP/shared/.env`. Set `CANADAMB_STAGING=true`, `APP_ENV=production`, `APP_DEBUG=false`, and `APP_URL=https://canadamb.ca`. Set the staging database credentials and a unique 32-byte base64 application key. Generate the key once with `php -r 'echo "base64:", base64_encode(random_bytes(32)), PHP_EOL;'` in the private SSH session and keep it across releases. Use database-backed session/cache/queue, encrypted host-only Secure and HttpOnly sessions with SameSite=Lax, and verify SMTP with controlled recipients. Keep feed scheduling and unverified ingestion off. Leave only verified reverse proxy IPs in the proxy settings if needed. The application's trusted hostnames come from its domain table. The shared local disk stores private uploads and serves eligible media through Laravel. Keep storage and Passport keys private across releases.
+Edit `$APP/shared/.env` with a private editor. Preserve the database credentials and any existing valid key. This account had an empty key at audit time. In that case, generate a key once using `php -r 'echo "base64:", base64_encode(random_bytes(32)), PHP_EOL;'` in the SSH session and enter it in the private file. Keep the original `private/.env` intact. Apply these settings, replacing the example IP with the exact public IPv4 or IPv6 address of each approved tester. Use only real tester addresses. The gate uses the web server's `REMOTE_ADDR` and ignores browser-supplied forwarding headers. If a proxy obscures tester addresses, fix the routing first. An empty list denies all testers.
 
-Download `vite-<SHA>` from the successful GitHub Actions run for that SHA and extract its `manifest.json`, `source-commit`, and `assets/` into `$SITE_HOME/.builds/$SHA`. The resulting deploy command verifies the artifact revision, runs production Composer install from the lockfile, creates caches, and checks the named database and grants.
+```dotenv
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://canadamb.ca
+APP_MAINTENANCE_DRIVER=file
+DB_CONNECTION=mariadb
+SESSION_DRIVER=database
+SESSION_ENCRYPT=true
+SESSION_SECURE_COOKIE=true
+SESSION_HTTP_ONLY=true
+SESSION_SAME_SITE=lax
+CACHE_STORE=database
+QUEUE_CONNECTION=database
+LOG_CHANNEL=stack
+LOG_STACK=daily
+CANADAMB_STAGING=false
+CANADAMB_PRELAUNCH=true
+CANADAMB_PRELAUNCH_IPS=192.0.2.10
+CANADAMB_SSO_ENABLED=true
+CANADAMB_NEWS_POLLING=false
+CANADAMB_CRON_QUEUE_DRAIN=true
+CANADAMB_NEWS_INGEST_TOKEN=
+CANADAMB_TRUSTED_PROXIES=
+```
+
+Keep session cookies host-only. The existing application automatically selects the non-delivering `array` mailer while prelaunch is enabled. Use only controlled test identities and content. Public real estate publishing remains unavailable and payments remain unconfigured.
 
 ```bash
 DEPLOY="$APP/source/deploy/hostinger-release.sh"
-git -C "$APP/source" switch --detach "$SHA"
 bash "$DEPLOY" prepare "$SITE_HOME" "$SHA" "$SITE_HOME/.builds/$SHA"
+git -C "$APP/source" ls-tree -r --name-only "$SHA" -- database/migrations
 ```
 
-## Back up, preflight, and activate
+Preparation installs locked dependencies, checks the platform and exact database credentials and grants, and builds Laravel caches privately. It does not apply migrations. Confirm the exact release rehearsal passed on disposable MariaDB in GitHub Actions. Review the migration files above. For later releases, compare `git diff PREVIOUS_SHA "$SHA" -- database/migrations`, including schema and data effects.
 
-Rehearse loading the backup and applying the migrations on disposable MariaDB before activating this SHA. Review the pending migrations. MariaDB DDL may commit partway through a failed migration. On an existing app release, pause hPanel cron and run `php "$APP/current/artisan" down --retry=60` before taking the backup. Confirm any in-progress writes have drained. The initial bootstrap has no existing Laravel release to pause.
+## 2. Back up and run read-only preflight
 
-Prepare `private/staging-db-client.cnf` with `chmod 600`, containing a `[client]` stanza with the **same staging-only account** and host used by the staging `.env`. Verify the database selection and server version before producing the private backup. The exact staging database name is supplied independently to both the backup and release script.
+For later releases, pause the hPanel cron and run `php "$APP/current/artisan" down --retry=60` before backing up. Allow in-flight requests to finish. This initial installation has no current Laravel release to pause. Enter the host and login from the private configuration and supply the password at the prompt. Backups will include the current shared media, private keys and logs if present. The empty database still needs a dump. Verify the SQL backup can be restored using an isolated local MariaDB or the disposable CI rehearsal. Keep the restore off the production database.
 
 ```bash
+read -rp 'Database host from the private configuration: ' DB_HOSTNAME
+read -rp 'Database login from the private configuration: ' DB_LOGIN
 BACKUP="$APP/shared/backups/$SHA"
-CLIENT="$SITE_HOME/private/staging-db-client.cnf"
 install -d -m 700 "$BACKUP"
-mariadb --defaults-extra-file="$CLIENT" "$CANADAMB_STAGING_DB" \
-  --execute='SELECT DATABASE(), VERSION()'
-mariadb-dump --defaults-extra-file="$CLIENT" --single-transaction --skip-lock-tables \
-  "$CANADAMB_STAGING_DB" > "$BACKUP/$CANADAMB_STAGING_DB.sql"
+mariadb --host "$DB_HOSTNAME" --user "$DB_LOGIN" --password \
+  "$CANADAMB_PRODUCTION_DB" --execute='SELECT DATABASE(), VERSION()'
+mariadb-dump --host "$DB_HOSTNAME" --user "$DB_LOGIN" --password \
+  --single-transaction --skip-lock-tables "$CANADAMB_PRODUCTION_DB" > "$BACKUP/$CANADAMB_PRODUCTION_DB.sql"
 tar -czf "$BACKUP/storage.tar.gz" -C "$APP/shared" storage
+tar -tzf "$BACKUP/storage.tar.gz" >/dev/null
 bash "$DEPLOY" preflight "$SITE_HOME" "$SHA"
 ```
 
-`migrate --pretend` can create Laravel's migration bookkeeping on an empty database. The script verifies the isolated database and backups before this step. Review the output before approving activation. Logs and saved backup checksums stay under the private application tree.
+The preflight reads MariaDB metadata and Laravel migration history and records hashes for the schema inventory, history and backups. It performs no database writes, even when the migrations table is absent. It rejects a nonempty database without Laravel migration history. If the database has changed or a backup is replaced, take a fresh backup and repeat the review. Keep the dump and original `.env` private. Confirm an authorized cutover before continuing.
 
-For first activation, inventory the current hosting files and preserve the existing checkout as a private backup. Verify that the website and alias both use this `public_html`, that `public_html` is a real directory, and that hPanel permits its replacement. Prepare an empty sibling directory or one containing only verified certificate challenge files. Use the same filesystem for both moves and keep a brief maintenance fallback available. These first-cutover commands move the entire old checkout and never republish it. Skip them on subsequent releases with an already managed public root.
+## 3. Activate only after explicit approval
+
+The first cutover requires a private quarantine of the existing web root. Inventory it before moving anything. The audit found a clean Git checkout containing `.git` and `README.md`. Verify this is still accurate and preserve any later contents. Move the root as a whole on the same filesystem where hPanel permits it. If hPanel requires the same directory inode, move reviewed contents including dotfiles to quarantine and keep the existing top-level directory. Preserve any verified ACME challenge tokens in the clean root. Keep the old checkout outside the public tree during recovery.
 
 ```bash
-WEB="$SITE_HOME/public_html"
-NEXT_WEB="$SITE_HOME/.builds/public-$SHA"
+git -C "$WEB" status --short
+find "$WEB" -mindepth 1 -maxdepth 1 -printf '%f\n'
+NEXT_WEB=$(mktemp -d "$SITE_HOME/.builds/public-$SHA.XXXXXXXX")
 QUARANTINE=$(mktemp -d "$SITE_HOME/private/legacy-web.XXXXXXXX")
-install -d -m 755 "$NEXT_WEB"
-test -d "$WEB" && test ! -L "$WEB" && test ! -L "$NEXT_WEB"
-# Manually transfer any verified .well-known/acme-challenge token files to NEXT_WEB.
+chmod 755 "$NEXT_WEB"
+test -d "$WEB" && test ! -L "$WEB"
+# Copy only any verified .well-known/acme-challenge token files to NEXT_WEB.
 mv -T -- "$WEB" "$QUARANTINE/public_html" && mv -T -- "$NEXT_WEB" "$WEB"
-CANADAMB_ACTIVATION_CONFIRMED="$SHA" bash "$DEPLOY" activate "$SITE_HOME" "$SHA"
+
+CANADAMB_ACTIVATION_CONFIRMED="$SHA" CANADAMB_PRODUCTION_CONFIRMED="$CANADAMB_PRODUCTION_DB" \
+  bash "$DEPLOY" activate "$SITE_HOME" "$SHA"
 ```
 
-If hPanel requires keeping the original directory inode, inventory and move its contents, including dotfiles, to the private quarantine under an agreed maintenance window. Publish the same clean allowlist into the managed directory. If the new root move fails, restore service with a clean maintenance placeholder while resolving the directory problem. Keep the original checkout in quarantine.
-
-Activation applies the approved staging migrations and the idempotent seed, creates private Passport keys only when needed, and provisions exact site callbacks. It then activates the SHA in maintenance mode. Confirm PHP web configuration, both certificates, and the public allowlist before bringing the staged release up. There is no extra site access gate for this staging phase. The application sends `noindex` and `no-store` on staging pages. Create any test administrator with the interactive command and use staging data only.
+The script rejects unexpected public files and mismatched backups, database state or confirmations before migrating. It applies reviewed migrations, seeds the initial network through idempotent operations, and keeps the private OAuth key pair across later releases. It installs the allowlisted assets and entrypoint and switches the private release symlink. The release stays in maintenance mode for final checks.
 
 ```bash
 php "$APP/current/artisan" network:deployment-check --hostinger \
-  --staging-database="$CANADAMB_STAGING_DB" --database
-php "$APP/current/artisan" network:admin REPLACE_WITH_STAGING_ADMIN_EMAIL
+  --production-database="$CANADAMB_PRODUCTION_DB" --database
+read -rp 'Controlled administrator email: ' TEST_ADMIN
+php "$APP/current/artisan" network:admin "$TEST_ADMIN"
 php "$APP/current/artisan" up
-CANADAMB_SMOKE_STAGING=1 bash "$APP/current/deploy/smoke.sh"
-php "$APP/current/artisan" schedule:list
 ```
 
-## Cron and recovery
+From an allowlisted workstation, run `CANADAMB_SMOKE_PRELAUNCH=1 bash deploy/smoke.sh`. From a different network verify that both portals return a prelaunch 403, that `robots.txt` disallows crawling, and that forwarded headers do not grant access. Run the [two-domain acceptance checklist](DEPLOYMENT_CHECKLIST.md), including real browser OAuth, admin publishing and cleanup of tracked test records. Keep CDN full-page caching disabled during prelaunch.
 
-In hPanel, create a Custom cron at `* * * * *` if the actual account accepts it. Verify at least two executions and inspect their output. Ensure a slower plan interval still invokes the minute-based queue drain and confirm how it affects other schedules. Leave live news polling disabled. Run a controlled editorial-ingestion fixture and queue test with a private outcome. [Hostinger cron setup](https://www.hostinger.com/support/1583465-how-to-set-up-a-cron-job-at-hostinger/)
+## 4. Bounded cron, updates, and recovery
+
+In hPanel, create a Custom cron every minute. Run the following command to print the exact entry for this SSH account, then paste the output into hPanel. Observe at least two invocations, a controlled test job, and the private scheduler logs. The wrapper uses a deployment lock and a 60-second maximum runtime. Keep the database queue retry interval above 60 seconds. [Hostinger cron setup](https://www.hostinger.com/support/1583465-how-to-set-up-a-cron-job-at-hostinger/)
 
 ```bash
 printf '/usr/bin/bash %s/source/deploy/hostinger-cron.sh %s /usr/bin/php >> %s/shared/storage/logs/scheduler.log 2>&1\n' "$APP" "$SITE_HOME" "$APP"
 ```
 
-The wrapper shares a lock with deployment and limits the entire run to 60 seconds including forced termination. The queue drains at most 25 jobs, stops when empty, and limits jobs to 30 seconds with CLI `pcntl`. Keep `DB_QUEUE_RETRY_AFTER` above 60 seconds. Monitor `queue:failed`, hPanel errors, and log rotation. Keep media and database backups outside `public_html`.
+For each GitHub update during prelaunch, repeat prepare, backup, preflight, approval, and activation with the new exact SHA and its exact Vite artifact. Skip the initial web-root move and administrator creation. Keep the private `.env`, `APP_KEY`, shared storage and Passport keys. Database sessions, queues, records and network settings remain in the same schema. Review migration compatibility and keep the previous releases and hashed public assets. Resume cron after both domain checks pass.
 
-On migration, cache, or cutover failure, pause cron and retain the release log. Leave the current app in maintenance until the database is compatible with the intended release. A code-only rollback is safe only after schema compatibility is reviewed. To restore a compatible previous SHA, hold the release lock from a Bash terminal, then switch the private symlink and bring that release up.
+On failure, pause cron, retain the deploy log and keep the application in maintenance. For a schema-compatible rollback to a reviewed SHA, use a subshell so a failure releases the lock. Recheck a partial MariaDB migration before reopening traffic. An incompatible rollback needs a reviewed forward fix or restoration from the tested backup. Keep copies of failure evidence before any restore and require explicit production approval.
 
 ```bash
-ROLLBACK_SHA=REPLACE_WITH_COMPATIBLE_RELEASE_SHA
-[[ $ROLLBACK_SHA =~ ^[0-9a-f]{40}$ ]] || exit 1
-PREVIOUS="$APP/releases/$ROLLBACK_SHA"
-test -f "$PREVIOUS/artisan" && test -f "$PREVIOUS/.prepared"
-exec 9>"$APP/release.lock"
-flock -n 9
-php "$APP/current/artisan" down --retry=60
-ln -s "$PREVIOUS" "$APP/.rollback-$ROLLBACK_SHA"
-mv -Tf "$APP/.rollback-$ROLLBACK_SHA" "$APP/current"
-php "$APP/current/artisan" up
-flock -u 9
-CANADAMB_SMOKE_STAGING=1 bash "$APP/current/deploy/smoke.sh"
+(
+  read -rp 'Prior compatible release SHA: ' ROLLBACK_SHA
+  [[ $ROLLBACK_SHA =~ ^[0-9a-f]{40}$ ]]
+  PREVIOUS="$APP/releases/$ROLLBACK_SHA"
+  test -f "$PREVIOUS/artisan" && test -f "$PREVIOUS/.prepared"
+  exec 9>"$APP/release.lock"
+  flock -n 9
+  php "$APP/current/artisan" down --retry=60
+  ln -s "$PREVIOUS" "$APP/.rollback-$ROLLBACK_SHA"
+  mv -Tf "$APP/.rollback-$ROLLBACK_SHA" "$APP/current"
+  php "$APP/current/artisan" up
+)
 ```
 
-Restore incompatible or partial changes into a verified staging-only destination using the rehearsed backup procedure or apply a reviewed forward fix. Preserve failed database and storage evidence before restoring. Keep the safe public root, the current deployment logs, and the checkpoints for both domains together. Resume cron after both smoke and application acceptance succeed.
+When general availability is approved, review and remove controlled test records and accounts, configure and verify intended outbound mail, and set `CANADAMB_PRELAUNCH=false` in the existing private environment. Pause cron, cache configuration with `php "$APP/current/artisan" config:cache`, and verify both domains and registration again. This switch keeps the same database, files, application key and authentication system. The release command named `production-initial` requires prelaunch to remain enabled, so use a reviewed post-launch release procedure once the gate is permanently open.
+
+The separate staging mode remains available for future isolated hosting using `CANADAMB_DEPLOYMENT_MODE=staging`, `CANADAMB_STAGING_DB` ending in `_staging`, and `CANADAMB_STAGING=true`. [Hostinger document root](https://www.hostinger.com/support/1583494-what-is-the-path-to-your-website-s-root-home-directory-and-how-to-change-it-in-hostinger/) · [Parked domains](https://www.hostinger.com/support/1583424-what-are-the-differences-between-subdomain-parked-domain-and-add-on-domain/)

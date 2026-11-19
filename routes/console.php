@@ -62,7 +62,7 @@ Artisan::command('job-postings:expire', function (JobBoard $board) {
 })->purpose('Expire a batch of job postings after their Manitoba closing date');
 Schedule::command('job-postings:expire')->hourly()->withoutOverlapping(5);
 Schedule::command('passport:purge --hours=24')->daily()->withoutOverlapping(10);
-if (config('network.news_polling')) {
+if (config('network.news_polling') && ! config('network.prelaunch')) {
     Schedule::command('news:poll')->everyFiveMinutes()->withoutOverlapping(2);
 }
 if (config('network.cron_queue_drain')) {

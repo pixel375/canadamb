@@ -16,13 +16,33 @@ class DeploymentCheck extends Command
     protected $signature = 'network:deployment-check
         {--hostinger : Require the Hostinger production configuration}
         {--staging-database= : Check the independently selected MariaDB staging schema and grants}
+        {--production-database= : Check the confirmed exact production schema and grants for prelaunch}
+        {--migration-state : Print a read-only fingerprint of managed tables and migration history}
         {--database : Check the installed database state after migration}';
 
     protected $description = 'Validate deployment prerequisites without printing environment secrets';
 
     public function handle(): int
     {
-        if ($this->option('staging-database') !== null && ! $this->checkStagingDatabase($this->option('staging-database'))) {
+        $staging = $this->option('staging-database');
+        $production = $this->option('production-database');
+        if (($staging !== null && $production !== null) || ($this->option('migration-state') && $staging === null && $production === null)) {
+            $this->error('Select one deployment database when checking migration state.');
+
+            return self::FAILURE;
+        }
+        if ($staging !== null && (! config('network.staging') || ! preg_match('/^[a-z0-9_]+_staging$/iD', $staging))) {
+            $this->error('Staging requires a staging-marked environment and an explicitly named MariaDB staging database.');
+
+            return self::FAILURE;
+        }
+        if ($production !== null && (! config('network.prelaunch') || config('network.staging') || ! preg_match('/^[a-z0-9_]{1,64}$/iD', $production))) {
+            $this->error('Production-initial requires a prelaunch environment and the exact MariaDB production database name.');
+
+            return self::FAILURE;
+        }
+        $target = $staging ?? $production;
+        if ($target !== null && (config('database.default') !== 'mariadb' || ! $this->checkDatabaseTarget($target))) {
             return self::FAILURE;
         }
 
@@ -45,7 +65,7 @@ class DeploymentCheck extends Command
                 $key = base64_decode(substr($key, 7), true);
             }
             if (! app()->isProduction() || config('app.debug') || ! is_string($key) || ! Encrypter::supported($key, config('app.cipher'))
-                || parse_url(config('app.url'), PHP_URL_SCHEME) !== 'https') {
+                || parse_url(config('app.url'), PHP_URL_SCHEME) !== 'https' || config('app.maintenance.driver') !== 'file') {
                 $issues[] = 'Hostinger releases require APP_ENV=production, a valid application key, HTTPS APP_URL and disabled debug output.';
             }
             if (config('session.driver') !== 'database' || ! config('session.secure') || ! config('session.http_only')
@@ -54,8 +74,8 @@ class DeploymentCheck extends Command
                 || config('queue.default') !== 'database' || config('database.default') !== 'mariadb') {
                 $issues[] = 'Business Web Hosting requires MariaDB, database sessions/cache/queues and secure host-only browser cookies.';
             }
-            if (! extension_loaded('pdo_mysql') || ! extension_loaded('curl')) {
-                $issues[] = 'Enable the PDO MySQL and cURL PHP extensions.';
+            if (! extension_loaded('pdo_mysql') || ! extension_loaded('curl') || ! extension_loaded('sodium')) {
+                $issues[] = 'Enable the PDO MySQL, cURL and Sodium PHP extensions.';
             }
             if (! config('network.cron_queue_drain')) {
                 $issues[] = 'Enable bounded cron queue processing for Business Web Hosting.';
@@ -65,6 +85,17 @@ class DeploymentCheck extends Command
             }
             if (config('network.staging') && (! config('network.sso_enabled') || config('network.news_polling'))) {
                 $issues[] = 'Staging requires shared sign-in and disabled live feed scheduling.';
+            }
+        }
+
+        if ($production !== null) {
+            $ips = config('network.prelaunch_ips', []);
+            if ($ips === [] || array_filter($ips, fn ($ip) => filter_var($ip, FILTER_VALIDATE_IP) === false)) {
+                $issues[] = 'Set one or more exact prelaunch tester IP addresses.';
+            }
+            if (! app()->isProduction() || config('app.url') !== 'https://canadamb.ca' || ! config('network.sso_enabled')
+                || config('network.news_polling') || config('mail.default') !== 'array') {
+                $issues[] = 'Prelaunch requires the production origin, shared sign-in, disabled news polling and the non-delivering array mailer.';
             }
         }
 
@@ -79,7 +110,7 @@ class DeploymentCheck extends Command
                 || ! Site::where('code', 'brandon')->where('status', 'active')
                     ->whereHas('domain', fn ($domain) => $domain->where('host', 'brandonmb.ca'))
                     ->whereHas('location', fn ($location) => $location->where('slug', 'brandon'))->exists())) {
-                $issues[] = 'The CanadaMB and BrandonMB staging domains must be active with their intended location scopes.';
+                $issues[] = 'The CanadaMB and BrandonMB domains must be active with their intended location scopes.';
             }
             if (config('network.sso_enabled')) {
                 foreach (Site::with('domain')->whereNotNull('location_id')->where('status', 'active')->get() as $site) {
@@ -98,23 +129,20 @@ class DeploymentCheck extends Command
         if ($issues !== []) {
             return self::FAILURE;
         }
+        if ($this->option('migration-state') && ! $this->writeMigrationState()) {
+            return self::FAILURE;
+        }
 
         $this->info('CanadaMB deployment checks passed.');
 
         return self::SUCCESS;
     }
 
-    private function checkStagingDatabase(string $expected): bool
+    private function checkDatabaseTarget(string $expected): bool
     {
-        if (! config('network.staging') || config('database.default') !== 'mariadb' || ! preg_match('/^[a-z0-9_]+_staging$/iD', $expected)) {
-            $this->error('Staging requires a staging-marked environment and an explicitly named MariaDB staging database.');
-
-            return false;
-        }
-
         try {
             if (DB::selectOne('SELECT DATABASE() AS name')?->name !== $expected) {
-                $this->error('The database connection does not select the confirmed staging database.');
+                $this->error('The database connection does not select the confirmed deployment database.');
 
                 return false;
             }
@@ -127,22 +155,44 @@ class DeploymentCheck extends Command
                     continue;
                 }
                 if (! preg_match($localGrant, $grant) || str_contains(strtoupper($grant), 'WITH GRANT OPTION')) {
-                    $this->error('Use a database user with grants restricted to the selected staging database.');
+                    $this->error('Use a database user with grants restricted to the selected deployment database.');
 
                     return false;
                 }
                 $hasLocalGrant = true;
             }
         } catch (Throwable) {
-            $this->error('Could not verify the staging database connection and grants.');
+            $this->error('Could not verify the deployment database connection and grants.');
 
             return false;
         }
 
         if (! $hasLocalGrant) {
-            $this->error('No database-level grants were found for the selected staging database.');
+            $this->error('No database-level grants were found for the selected deployment database.');
         }
 
         return $hasLocalGrant;
+    }
+
+    private function writeMigrationState(): bool
+    {
+        try {
+            $table = config('database.migrations.table');
+            $tables = array_map(fn ($row) => array_values((array) $row)[0], DB::select('SHOW FULL TABLES'));
+            sort($tables, SORT_STRING);
+            if ($tables !== [] && ! in_array($table, $tables, true)) {
+                $this->error('The deployment database contains an unmanaged schema. Review it without running migrations.');
+
+                return false;
+            }
+            $history = $tables === [] ? [] : DB::table($table)->orderBy('id')->get(['migration', 'batch'])->all();
+            $this->line('Migration state: '.hash('sha256', json_encode([$tables, $history], JSON_THROW_ON_ERROR)));
+
+            return true;
+        } catch (Throwable) {
+            $this->error('Could not read the deployment migration state.');
+
+            return false;
+        }
     }
 }

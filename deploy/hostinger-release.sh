@@ -4,7 +4,8 @@ set -Eeuo pipefail
 umask 027
 
 usage() {
-    echo "Usage: CANADAMB_STAGING_DB=name_staging bash deploy/hostinger-release.sh prepare|preflight|activate SITE_HOME COMMIT [VITE_BUILD]" >&2
+    echo "Usage: CANADAMB_DEPLOYMENT_MODE=production-initial CANADAMB_PRODUCTION_DB=exact_name bash deploy/hostinger-release.sh prepare|preflight|activate SITE_HOME COMMIT [VITE_BUILD]" >&2
+    echo "For staging use CANADAMB_DEPLOYMENT_MODE=staging and CANADAMB_STAGING_DB=name_staging." >&2
     exit 2
 }
 
@@ -21,8 +22,20 @@ shared="$private_dir/shared"
 source_dir="$private_dir/source"
 php_bin="${CANADAMB_PHP_BIN:-php}"
 composer_bin="${CANADAMB_COMPOSER_BIN:-composer}"
-staging_database="${CANADAMB_STAGING_DB:-}"
-[[ $staging_database =~ ^[a-zA-Z0-9_]+_staging$ ]] || usage
+mode="${CANADAMB_DEPLOYMENT_MODE:-staging}"
+case "$mode" in
+    staging)
+        database="${CANADAMB_STAGING_DB:-}"
+        [[ $database =~ ^[a-zA-Z0-9_]+_staging$ && -z ${CANADAMB_PRODUCTION_DB:-} ]] || usage
+        database_option=staging-database
+        ;;
+    production-initial)
+        database="${CANADAMB_PRODUCTION_DB:-}"
+        [[ $database =~ ^[a-zA-Z0-9_]{1,64}$ && -z ${CANADAMB_STAGING_DB:-} ]] || usage
+        database_option=production-database
+        ;;
+    *) usage ;;
+esac
 backups="$shared/backups/$commit"
 
 [[ -d "$web" && ! -L "$web" && ! -L "$private_dir" ]] || { echo "Expected separate public_html and private canadamb-app directories." >&2; exit 1; }
@@ -35,28 +48,35 @@ flock -n 9 || { echo "Another release operation is active." >&2; exit 1; }
 log="$shared/storage/logs/release-$commit.log"
 trap 'echo "Release step failed (line $LINENO). Inspect $log and the deployment runbook." >&2' ERR
 exec > >(tee -a "$log") 2>&1
-echo "$(date -Is) $action $commit"
+echo "$(date -Is) $mode $action $commit"
 
-[[ -f "$shared/.env" && ! -L "$shared/.env" ]] || { echo "Set up a separate, regular staging .env in canadamb-app/shared first."; exit 1; }
+[[ -f "$shared/.env" && ! -L "$shared/.env" ]] || { echo "Set up the persistent private .env in canadamb-app/shared first."; exit 1; }
 
 artisan() {
     "$php_bin" "$1/artisan" "${@:2}"
 }
 
 check_deployment() {
-    artisan "$release" network:deployment-check --hostinger --staging-database="$staging_database" "$@"
+    artisan "$release" network:deployment-check --hostinger "--$database_option=$database" "$@"
 }
 
 backup_checksums() {
     [[ ! -L "$shared/backups" && ! -L "$backups" ]] || return 1
     local file
-    for file in "$staging_database.sql" storage.tar.gz; do
+    for file in "$database.sql" storage.tar.gz; do
         [[ -s "$backups/$file" && -f "$backups/$file" && ! -L "$backups/$file" ]] || {
             echo "A private, verified database and storage backup is required for this commit." >&2
             return 1
         }
     done
-    (cd "$backups" && sha256sum "$staging_database.sql" storage.tar.gz)
+    (cd "$backups" && sha256sum "$database.sql" storage.tar.gz)
+}
+
+preflight_receipt() {
+    local checksums state
+    checksums=$(backup_checksums) || return 1
+    state=$(check_deployment --migration-state | tee /dev/stderr) || return 1
+    printf '%s\n' "$mode" "$database" "$checksums" "$state"
 }
 
 validate_files() {
@@ -132,31 +152,31 @@ case "$action" in
         [[ $# -eq 3 && -f "$release/.prepared" ]] || usage
         old=$(readlink -f "$private_dir/current" || true)
         if [[ -f "$old/artisan" && ! -f "$old/storage/framework/down" ]]; then
-            echo "Pause writes and cron before backing up and preflighting the existing staging release."; exit 1
+            echo "Pause writes and cron before backing up and preflighting the existing release."; exit 1
         fi
-        checksums=$(backup_checksums)
         artisan "$release" config:cache
-        check_deployment
-        artisan "$release" migrate --pretend --force
-        printf '%s\n' "$checksums" > "$release/.preflight"
-        echo "Preflight complete. Review the SQL before authorizing staging activation."
+        receipt=$(preflight_receipt)
+        printf '%s\n' "$receipt" > "$release/.preflight"
+        echo "Read-only database preflight complete. Review migrations and the restore rehearsal before authorizing activation."
         ;;
     activate)
         [[ $# -eq 3 && -f "$release/.prepared" && -f "$release/.preflight" ]] || usage
         [[ "${CANADAMB_ACTIVATION_CONFIRMED:-}" == "$commit" ]] || {
-            echo "Set CANADAMB_ACTIVATION_CONFIRMED to the reviewed staging commit."; exit 1;
+            echo "Set CANADAMB_ACTIVATION_CONFIRMED to the reviewed commit."; exit 1;
         }
-        checksums=$(backup_checksums)
-        [[ $(cat "$release/.preflight") == "$checksums" ]] || { echo "Backups changed. Repeat preflight."; exit 1; }
+        if [[ "$mode" == production-initial && ${CANADAMB_PRODUCTION_CONFIRMED:-} != "$database" ]]; then
+            echo "Set CANADAMB_PRODUCTION_CONFIRMED to the exact production database after approving activation."; exit 1
+        fi
         validate_files "$web" web
         validate_files "$release/public/build/assets" assets
         validate_files "$release/public/images" photos
         artisan "$release" config:cache
-        check_deployment
+        receipt=$(preflight_receipt)
+        [[ $(cat "$release/.preflight") == "$receipt" ]] || { echo "Database state or backups changed. Repeat preflight."; exit 1; }
         old=$(readlink -f "$private_dir/current" || true)
         [[ "$old" != "$release" ]] || { echo "That release is already current."; exit 1; }
         if [[ -f "$old/artisan" && ! -f "$old/storage/framework/down" ]]; then
-            echo "Staging writes resumed after preflight. Take a new backup and repeat preflight."; exit 1
+            echo "Writes resumed after preflight. Take a new backup and repeat preflight."; exit 1
         fi
         if [[ -e "$web/.htaccess" ]] && ! cmp -s "$web/.htaccess" "$release/deploy/hostinger.htaccess" &&
             { [[ -z "$old" ]] || ! cmp -s "$web/.htaccess" "$old/deploy/hostinger.htaccess"; }; then
@@ -188,7 +208,7 @@ case "$action" in
         mv -f "$release/index.php.pending" "$web/index.php"
         ln -s "$release" "$private_dir/.current-$commit"
         mv -Tf "$private_dir/.current-$commit" "$private_dir/current"
-        echo "Activated $commit in maintenance mode. Run artisan up to begin staging acceptance after confirming the document root and TLS."
+        echo "Activated $commit in maintenance mode. Confirm the document root and TLS before bringing the release up for authorized testers."
         ;;
     *) usage ;;
 esac

@@ -1,5 +1,13 @@
 # Progress
 
+## 2026-11-19 production-first prelaunch
+
+The initial Hostinger release now uses the existing production MariaDB schema in `production-initial` mode. The script confirms the exact schema and grants, requires backup hashes and a read-only migration fingerprint, and requires the approved SHA and production database name at activation. Future isolated staging remains supported. This change adds no migrations or product modules.
+
+Prelaunch is independent of `APP_ENV`. It requires exact tester IPs, denies public registration, blocks indexing and shared caching, disables news polling and uses non-delivering mail. Controlled testers retain the central sign-in and Brandon callback. The Hostinger HTTPS probe proved both domains share the same physical root and receive the correct original Host header. PHP web and CLI prerequisites and the existing empty MariaDB schema were verified. No production migrations or cutover were run.
+
+Next use the [production runbook](HOSTINGER_DEPLOYMENT.md) and [prelaunch acceptance checklist](DEPLOYMENT_CHECKLIST.md). Complete the private config and backups, confirm the allowlisted operator networks, and obtain explicit approval before moving the current web root or activating Laravel.
+
 ## 2026-11-19 Hostinger staging preparation
 
 Preserved the three implementation commits on [implementation/network-foundation](https://github.com/pixel375/canadamb/tree/implementation/network-foundation) at `e38b910bbead5c804c6d3c262d06ae828dfb8d5c` before auditing. Gitleaks found no secrets in those commits. The first GitHub CI run exposed a Passport state-validation ordering issue and an obsolete 2027 timezone assumption in the event test. Both are addressed in the staging checkpoint.

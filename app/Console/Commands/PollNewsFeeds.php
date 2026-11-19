@@ -13,7 +13,7 @@ class PollNewsFeeds extends Command
 
     public function handle(FeedPoller $poller): int
     {
-        if (! config('network.news_polling')) {
+        if (config('network.prelaunch') || ! config('network.news_polling')) {
             $this->info('News feed polling is disabled.');
 
             return self::SUCCESS;

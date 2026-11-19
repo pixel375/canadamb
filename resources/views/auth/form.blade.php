@@ -21,7 +21,7 @@
             <div><button class="button button-primary">{{ match($mode) { 'forgot' => 'Send reset link', 'verify' => 'Resend verification link', default => $title } }}</button></div>
         </form>
         @if($mode === 'login')
-            <div class="inline-actions"><a class="text-link" href="/register">Create an account</a><a class="text-link" href="/forgot-password">Forgot password?</a></div>
+            <div class="inline-actions">@unless(config('network.prelaunch'))<a class="text-link" href="/register">Create an account</a>@endunless<a class="text-link" href="/forgot-password">Forgot password?</a></div>
         @elseif($mode !== 'verify')<a class="text-link" href="/login">Back to sign in</a>
         @else<form action="/account/logout" method="post">@csrf<button class="button button-outline">Sign out</button></form>@endif
     </div>

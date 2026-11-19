@@ -37,9 +37,15 @@ for portal in "$main" "$local_portal"; do
     done
     grep -Eiq '^set-cookie:.*-session=.*[Hh]ttponly' "$temp/headers"
     grep -Ei '^set-cookie:.*-session=' "$temp/headers" | grep -Eiq ';[[:space:]]*samesite=lax'
-    if [[ ${CANADAMB_SMOKE_STAGING:-0} == 1 ]]; then
+    if [[ ${CANADAMB_SMOKE_STAGING:-0} == 1 || ${CANADAMB_SMOKE_PRELAUNCH:-0} == 1 ]]; then
         grep -Eiq '^x-robots-tag:[[:space:]]*noindex' "$temp/headers"
         grep -Eiq '^cache-control:.*no-store' "$temp/headers"
+    fi
+    if [[ ${CANADAMB_SMOKE_PRELAUNCH:-0} == 1 ]]; then
+        fetch "$portal/robots.txt" > "$temp/asset"
+        grep -Fxq 'Disallow: /' "$temp/asset"
+        code=$(curl --silent --show-error --max-time 15 --output /dev/null --write-out '%{http_code}' "$portal/register")
+        [[ "$code" == 404 ]] || { echo "Registration is reachable on $portal ($code)"; exit 1; }
     fi
     if grep -Ei '^set-cookie:.*-session=' "$temp/headers" | grep -Eiq ';[[:space:]]*domain='; then
         echo "Unexpected cookie domain on $portal"

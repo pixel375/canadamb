@@ -1,24 +1,23 @@
-# Hostinger staging acceptance
+# Hostinger production prelaunch acceptance
 
-Record the Git SHA, operator, timestamp, observed result and supporting CI or local log for each applicable check. Use controlled accounts and disposable listings. Keep SMTP, payment, property publication, and news automation separate from launch approval.
+Record the reviewed SHA, operator, timestamp, result and evidence for each step. Use controlled test accounts and track test record IDs. Approval to activate restricted prelaunch and approval to open the site to everyone are separate steps.
 
 ## Before activation
 
-- [x] Preserve `e38b910bbead5c804c6d3c262d06ae828dfb8d5c` remotely on the implementation branch. `main` remains unchanged.
-- [x] Verify Hostinger SSH host key and read-only runtime, local web-root layout, and both apex certificates.
-- [ ] Enable Sodium and verify it from Composer, SSH, cron and web PHP. Check web errors are private and that PHP can read the sibling release. Remove any temporary diagnostic immediately.
-- [ ] Confirm the Brandon hPanel parked alias preserves its hostname and serves the same physical document root as CanadaMB. Verify HTTPS and cache rules for both.
-- [ ] Confirm a staging-only MariaDB database and credential scope. Test backup restore, keep the production `.env` untouched, and rehearse the exact commit migrations.
-- [ ] Quarantine the existing checkout outside `public_html`. Verify the clean root includes only the entrypoint, managed rules, approved assets and any valid ACME challenge files.
-- [ ] Verify the exact successful CI artifact, production Composer platform checks, preflight logs and recovery plan. Confirm initial staging cutover readiness.
+- [x] Verify the SSH host key, PHP CLI 8.3.36 and Sodium, Composer 2.9.8 and platform requirements.
+- [x] Verify HTTPS, the same physical document root and PHP probe file, and preserved Host headers on both domains. Confirm web PHP 8.3.36 loads Sodium and other required extensions, supports WebP and has display errors disabled. The temporary probe was removed.
+- [x] Verify the existing production MariaDB 11.8.9 connection, no tables/views, and database scope limited to that exact schema. Inventory the clean Git checkout under `public_html`.
+- [ ] Select the reviewed implementation-branch SHA and its green CI artifact. Review migration SQL and schema effects using the disposable Linux/MariaDB run.
+- [ ] Copy the private `.env` once into the release shared directory, preserve original values, add a stable application key if absent, and set exact tester IPs. Keep Git auto-deployment and full-page caching disabled.
+- [ ] Prepare privately, take production DB and storage backups, rehearse restore in an isolated database, and complete read-only migration preflight. Record explicit production activation approval for the exact SHA and DB.
+- [ ] Quarantine the old checkout outside `public_html`. Activate the reviewed release with the public allowlist, confirm private environment, logs, uploads and keys, then bring up the release for approved testers.
 
-## Exact-domain application checks
+## Both real HTTPS domains after activation
 
-- [ ] Run `CANADAMB_SMOKE_STAGING=1 bash deploy/smoke.sh`. Confirm both show the correct public identity, accents, assets, canonical paths, cookies, and staging headers. The CanadaMB communities directory appears only on the provincial portal.
-- [ ] Match the private current SHA to both responses via a trace from the same release. Confirm one staging DB with a controlled global theme publish and restore. Both portals adopt the theme and retain their different accents.
-- [ ] Publish and remove a disposable Brandon item. Confirm both feeds show the same record, its detail canonical is Brandon, and removal reaches both feeds. A disposable rural listing appears only provincially. An authenticated conflicting Brandon web and API submission is rejected.
-- [ ] Register a controlled account, verify its email, sign in from Brandon through CanadaMB, and verify the callback and central-only admin. Observe separate host-only encrypted Secure/HttpOnly SameSite=Lax cookies. Test password reset and sign-out everywhere. Confirm expired or forged state fails.
-- [ ] Submit a valid form, then repeat with a missing token, invalid token, and an off-origin request. Confirm the rejected attempts leave no record. Verify redirects, forms, canonical URLs and sitemaps preserve the intended domain.
-- [ ] Verify `.env`, `.git`, logs, source, dependencies and private uploads remain inaccessible on both origins. Check generic error output using a controlled staging request and compare with private server logs. Ensure CDN caching cannot reuse a response across hosts or sessions.
-- [ ] Observe hPanel cron across two ticks. Process a controlled test job, verify private output and inspect failed jobs. Ingest an attributed controlled news fixture twice and confirm deduplication and editorial hold. Keep live feed scheduling off.
-- [ ] Rehearse a compatible code rollback and an isolated database restore. Re-run smoke checks on both domains and record recovery results.
+- [ ] On an allowlisted network, run `CANADAMB_SMOKE_PRELAUNCH=1 bash deploy/smoke.sh`. Verify the provincial CanadaMB directory and the Brandon-only portal, valid TLS, correct host-specific canonical URLs and assets, and independent rainbow and green accents.
+- [ ] From a different network, verify both sites deny prelaunch pages and write requests, including requests with forged forwarding headers. Verify `robots.txt` disallows crawling and successful pages use noindex and no-store. Registration stays unavailable for testers too.
+- [ ] Sign in from Brandon through CanadaMB with a controlled administrator and verify the HTTPS return callback. Verify central admin routing, sign-out everywhere, distinct host-only Secure/HttpOnly SameSite=Lax cookies, and a rejected invalid OAuth state. Test valid, missing and invalid CSRF evidence.
+- [ ] Publish a temporary global theme change and verify both portals receive it without changing their accent colors. Restore the prior settings. Create a controlled Brandon listing and verify the same record appears in both feeds with the Brandon canonical URL. Verify city scope rejects a conflicting location and track any test records for removal.
+- [ ] Verify `.env`, `.git`, private storage and framework source remain inaccessible from both domains, and application failures return generic errors while private logs record details.
+- [ ] Observe the custom cron and process a controlled test job. Verify private output and inspect failed jobs. Keep live feed discovery disabled and check that application mail is isolated. Payments and public real estate publication remain unavailable.
+- [ ] Before public launch, remove test data, agree on mail delivery, and explicitly approve disabling prelaunch. Recheck both portals and the resulting registration behavior.

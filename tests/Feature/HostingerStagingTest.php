@@ -43,7 +43,7 @@ class HostingerStagingTest extends TestCase
         DB::shouldReceive('select')->once()->with('SHOW GRANTS')->andReturn([(object) ['grants' => 'GRANT ALL PRIVILEGES ON *.* TO `runtime`@`localhost`']]);
 
         $this->artisan('network:deployment-check', ['--staging-database' => 'canadamb_staging'])
-            ->expectsOutput('Use a database user with grants restricted to the selected staging database.')
+            ->expectsOutput('Use a database user with grants restricted to the selected deployment database.')
             ->assertFailed();
 
         config(['database.default' => $originalDriver]);

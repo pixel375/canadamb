@@ -2,6 +2,8 @@
 
 return [
     'staging' => env('CANADAMB_STAGING', false),
+    'prelaunch' => env('CANADAMB_PRELAUNCH', false),
+    'prelaunch_ips' => array_values(array_filter(array_map('trim', explode(',', (string) env('CANADAMB_PRELAUNCH_IPS', ''))))),
     'development_hosts' => env('CANADAMB_DEVELOPMENT_HOSTS', false),
     'sso_enabled' => env('CANADAMB_SSO_ENABLED', true),
     'news_ingest_token' => env('CANADAMB_NEWS_INGEST_TOKEN'),
