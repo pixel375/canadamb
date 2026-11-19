@@ -5,7 +5,7 @@ set -Eeuo pipefail
 main="${CANADAMB_SMOKE_MAIN:-https://canadamb.ca}"
 local_portal="${CANADAMB_SMOKE_LOCAL:-https://brandonmb.ca}"
 temp=$(mktemp -d)
-trap 'rm -f "$temp/main" "$temp/local" "$temp/headers" "$temp/response"; rmdir "$temp"' EXIT
+trap 'rm -f "$temp/main" "$temp/local" "$temp/headers" "$temp/response" "$temp/asset"; rmdir "$temp"' EXIT
 
 fetch() {
     curl --fail --silent --show-error --max-time 15 "$@"
@@ -33,7 +33,7 @@ for portal in "$main" "$local_portal"; do
     for extension in css js; do
         asset=$(grep -oE "/build/assets/[A-Za-z0-9_.-]+\.$extension" "$temp/response" | sed -n '1p')
         [[ -n "$asset" ]] || { echo "A built $extension asset is missing from $portal"; exit 1; }
-        fetch "$portal$asset" >/dev/null
+        fetch -o "$temp/asset" "$portal$asset"
     done
     grep -Eiq '^set-cookie:.*-session=.*[Hh]ttponly' "$temp/headers"
     if grep -Ei '^set-cookie:.*-session=' "$temp/headers" | grep -Eiq ';[[:space:]]*domain='; then
@@ -44,8 +44,8 @@ for portal in "$main" "$local_portal"; do
         grep -Ei '^set-cookie:.*-session=' "$temp/headers" | grep -Eiq ';[[:space:]]*secure'
     fi
 done
-fetch "$main/images/manitoba.webp" >/dev/null
-fetch "$local_portal/images/brandon.webp" >/dev/null
+fetch -o "$temp/asset" "$main/images/manitoba.webp"
+fetch -o "$temp/asset" "$local_portal/images/brandon.webp"
 
 fetch -D "$temp/headers" "$local_portal/auth/start" >/dev/null
 grep -Fiq "location: $main/oauth/authorize?" "$temp/headers"
