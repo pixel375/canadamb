@@ -1,0 +1,69 @@
+name: Hostinger PHP backup prerequisites diagnostic
+
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/hostinger-backup-diagnostic.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    environment: hostinger-prelaunch
+    env:
+      SSH_HOST: ${{ vars.HOSTINGER_HOST }}
+      SSH_PORT: ${{ vars.HOSTINGER_PORT }}
+      SSH_USER: ${{ vars.HOSTINGER_USER }}
+      SSH_PRIVATE_KEY: ${{ secrets.HOSTINGER_SSH_PRIVATE_KEY }}
+      SSH_KNOWN_HOSTS: ${{ secrets.HOSTINGER_KNOWN_HOSTS }}
+    steps:
+      - name: Inspect PHP CLI and MariaDB dump capabilities without secrets
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          [[ "$SSH_HOST" =~ ^[A-Za-z0-9.-]+$ && "$SSH_USER" =~ ^[A-Za-z0-9_-]+$ &&
+             "$SSH_PORT" =~ ^[0-9]{1,5}$ && -n "$SSH_PRIVATE_KEY" && -n "$SSH_KNOWN_HOSTS" ]] || exit 1
+          umask 077
+          dir=$(mktemp -d)
+          trap 'rm -rf -- "$dir"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$dir/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$dir/known_hosts"
+          chmod 600 "$dir/key" "$dir/known_hosts"
+          ssh-keygen -y -P '' -f "$dir/key" >/dev/null
+          ssh -T -o BatchMode=yes -o ConnectTimeout=20 -o StrictHostKeyChecking=yes \
+            -o "UserKnownHostsFile=$dir/known_hosts" -o IdentitiesOnly=yes \
+            -i "$dir/key" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" 'bash -se' <<'REMOTE'
+          set -Eeuo pipefail
+          site="$HOME/domains/canadamb.ca"
+          app="$site/canadamb-app"
+          old=$(readlink -e "$app/current")
+          [[ "$old" == "$app/releases/"* && -s "$old/artisan" && ! -e "$app/update.pause" ]] || exit 1
+          /usr/bin/php -r '
+            $fns = ["shell_exec", "proc_open", "fopen", "is_executable", "stream_get_contents"];
+            foreach ($fns as $fn) echo "$fn=".((function_exists($fn) && is_callable($fn)) ? "enabled" : "disabled")."\n";
+            echo "PHP_SAPI=".PHP_SAPI."\n";
+            echo "PHP_VERSION=".PHP_VERSION."\n";
+            echo "shell_exec_path=".(function_exists("shell_exec") ? (trim((string) @shell_exec("command -v mariadb-dump")) === "" ? "unresolved" : "resolved") : "not available")."\n";
+          '
+          for file in /usr/bin/mariadb-dump /usr/local/bin/mariadb-dump /usr/bin/mysqldump; do
+            [[ -x "$file" ]] && echo "dump_binary=$file" || true
+          done
+          command -v mariadb-dump >/dev/null && echo 'mariadb-dump located by interactive bash PATH'
+          /usr/bin/php -r '
+             require $argv[1]."/vendor/autoload.php";
+             $app = require $argv[1]."/bootstrap/app.php";
+             $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+             $db = config("database.default");
+             $cfg = config("database.connections.mariadb", []);
+             echo "default_connection=".($db==="mariadb" ? "mariadb" : "other")."\n";
+             echo "database_name_match=".((($cfg["database"]??"") === "u713153343_canadamb") ? "yes" : "no")."\n";
+             echo "connection_port_is_digits=".(ctype_digit((string)($cfg["port"]??"3306"))?"yes":"no")."\n";
+             echo "database_username_present=".(($cfg["username"]??"")!==""?"yes":"no")."\n";
+             echo "database_host_present=".(($cfg["host"]??"")!==""?"yes":"no")."\n";
+             echo "DATABASE_CLI_DIAGNOSTIC_OK\n";
+          ' "$old"
+          REMOTE
