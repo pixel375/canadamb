@@ -2,12 +2,12 @@
 
 This is an operational checkpoint, not a claim that the product is ready for a public launch. Distinguish the owner's verified live results from code/CI evidence.
 
-## Current live release (as of 2026-11-19 22:45 UTC)
+## Current live release (after the Marketplace usability deployment)
 
-- Both sites run the **same production release `44448bd0de1b736a51909f6ec87f692a41d57950`**, confirmed by independent GitHub Actions postdeploy audit. `CANADAMB_PRELAUNCH=true` remains on, with external visitors denied HTTP 403.
+- Both sites run the **same production release `0b2359f5eb4587f9fd5dfad1b36402df2b7d5349`**, confirmed by independent GitHub Actions postdeploy audit. `CANADAMB_PRELAUNCH=true` remains on, with external visitors denied HTTP 403.
 - First secure GitHub Actions release from the previous `b5f16a6` version, DB/media backup and real off-host SQL restore rehearsal succeeded. Public root directory inode is unchanged.
 - GitHub deployment is currently **manual only**, not on every push. The private cron wrapper is installed and **hPanel scheduled execution was confirmed** from the live persistent scheduler log.
-- The Marketplace visual and functionality issues remain queued for the upcoming product pass.
+- The first targeted Marketplace UX functionality pass is live in prelaunch; phone/desktop approved-IP browser acceptance remains to be performed, while the full visual redesign is still deferred.
 
 ## Initial hosting and deployment snapshot (historical)
 - **Host:** Hostinger Business Web Hosting (shared hosting), PHP 8.3.36, MariaDB, Composer 2.9.8; Sodium works in CLI and web PHP.
@@ -29,6 +29,15 @@ This is an operational checkpoint, not a claim that the product is ready for a p
 ## Automation progress (historical, before first release)
 
 Actions SSH connection run `44619746774` and private SFTP upload run `44622010185` both passed. A new manual-only Deploy CanadaMB Prelaunch workflow exists on default `main`; deployment update scripts are staged on the implementation branch. **They are not activated on Hostinger.** The live release remains `b5f16a6c08eefcd804deb1970f52490220af67f5` with IP restriction. Further tasks: populated-database upgrade rehearsal, real restore, cron check, and first reviewed rollout.
+
+## Marketplace interaction release — completed after queue integration
+
+- [Exact-SHA CI](https://github.com/pixel375/canadamb/actions/runs/44643244451) passed with PHP tests on SQLite/MariaDB, WebP media upload/replacement tests, Pint, Vite build, Composer/npm audits and disposable Hostinger release rehearsal.
+- [Second guarded live release](https://github.com/pixel375/canadamb/actions/runs/44643501263) moved the current app from `44448bd0de1b736a51909f6ec87f692a41d57950` to **`0b2359f5eb4587f9fd5dfad1b36402df2b7d5349`**. A new private production SQL dump (~104 KB), storage archive and verified read-only migration preflight were created. There were **no migration or seeder changes**; database, user account, three original Marketplace test listings and persistent OAuth material were preserved.
+- [Independent postdeploy check](https://github.com/pixel375/canadamb/actions/runs/44643771924) passed: SHA, backups and checksums, MariaDB deployment config, original `public_html` directory inode, no maintenance/pause marker, private cron script and both domains' external HTTP 403 prelaunch restriction.
+- This release fixes linked card images, object-fit containment, larger listing photos, native-dialog in-page lightbox, current-domain browsing with city canonical URL, category links, seller/contact and owner-management panel, and scope-filtered related/recent cards.
+- **Not yet end-to-end tested on real phones or allowlisted browsers:** image viewer swipes/focus, actual uploaded orientation, 1/2/5-image workflows, two-domain login and mobile layout. The user should verify the visible UX before the next refinement. The full professional redesign remains a separate phase.
+- GitHub automatic deployment on every push is still OFF. Existing Actions deploy/test workflows were returned to manual-only.
 
 ## Live scheduled queue verification — 2026-11-19
 

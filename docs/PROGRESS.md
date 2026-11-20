@@ -1,5 +1,10 @@
 # Progress
 
+## 2026-11-19 — first Marketplace UX functional pass deployed to live prelaunch
+
+[CI `0b2359f`](https://github.com/pixel375/canadamb/actions/runs/44643244451), [live deploy](https://github.com/pixel375/canadamb/actions/runs/44643501263) and [independent postdeploy audit](https://github.com/pixel375/canadamb/actions/runs/44643771924) all succeeded. CanadaMB and BrandonMB now share current active SHA `0b2359f5eb4587f9fd5dfad1b36402df2b7d5349`, with database/media backups, original web-root inode, OAuth keys and external IP restrictions verified. Changes cover clickable cards, non-cropped larger photo viewer and native lightbox, browsing on the current portal with city canonical links, category filters, seller and related listings. Backend PHP tests include multiple photo upload/replacement and city-scope canonical logic. **Manual browser acceptance and full professional redesign remain unfinished**; no unapproved public access, live mail, news polling or deploy-on-push.
+
+
 ## 2026-11-19 — cron queue canary passed; Marketplace interaction fixes staged
 
 A harmless private queue canary was enqueued through live Laravel and consumed by **the real hPanel minute scheduler**, without manually starting a worker. [Run 44642175328](https://github.com/pixel375/canadamb/actions/runs/44642175328) reported automatic processing and **no failed jobs**. The test marker was removed. This completes the scheduled database queue integration check while prelaunch remains IP-gated.

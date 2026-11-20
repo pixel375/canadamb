@@ -10,7 +10,7 @@ The earlier rows document owner-reported defects at the live UX checkpoint. A **
 - province-side browsing of visible Brandon listings no longer redirects out of the current domain; the `<link rel=canonical>` still points to Brandon for one indexed listing URL; Brandon's location visibility remains restricted;
 - category labels filter the current portal, seller actions distinguish guests, buyers and owners, and desktop/mobile related/recent cards use the same geographic visibility scope.
 
-**Verification:** PHP view and portal canonical assertions were added; media tests cover a portrait/landscape two-photo upload, larger display source, and replacement/deletion on edit. Code must pass CI and be deployed separately. **Pending:** actual phone/desktop browser, keyboard, real photo orientation, max-five/failure-path uploads, and SSO tests on approved IPs. UX-01 major visual overhaul remains later.
+**Verification:** PHP view and portal canonical assertions passed; media tests cover a portrait/landscape two-photo upload, larger display source, and replacement/deletion on edit. Passed [CI](https://github.com/pixel375/canadamb/actions/runs/44643244451) and is live on both domains at `0b2359f5eb4587f9fd5dfad1b36402df2b7d5349` ([release](https://github.com/pixel375/canadamb/actions/runs/44643501263); [audit](https://github.com/pixel375/canadamb/actions/runs/44643771924)). **Pending:** actual phone/desktop browser, keyboard, real photo orientation, max-five/failure-path uploads, and SSO tests on approved IPs. UX-01 major visual overhaul remains later.
 
 ## Verified defects and feature requests
 

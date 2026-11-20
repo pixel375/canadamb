@@ -2,7 +2,16 @@
 
 Record the reviewed SHA, operator, timestamp, result and evidence for each step. Use controlled test accounts and track test record IDs. Approval to activate restricted prelaunch and approval to open the site to everyone are separate steps.
 
-## Subsequent deployments — not yet approved
+## Marketplace first functional UX release
+
+- [x] Green CI for active SHA `0b2359f5eb4587f9fd5dfad1b36402df2b7d5349` with double database-engine tests, Vite and full Hostinger release rehearsal.
+- [x] Guarded live deployment and independent audit passed ([deploy](https://github.com/pixel375/canadamb/actions/runs/44643501263), [audit](https://github.com/pixel375/canadamb/actions/runs/44643771924)); production SQL/media backup, OAuth keys, original public root inode, hPanel cron and IP gate preserved.
+- [x] Backend test covers two-photo original/thumb size, browser template endpoints, replacement uploads/deletion, and provincial browsing with a city canonical.
+- [ ] On an allowlisted computer and phone, verify image cards, detail gallery lightbox Escape/arrow/swipe/focus, long/tall/wide item photos, sign-in and message seller, owner edit/mark sold, same-domain browsing, category filters and related listing scope.
+- [ ] Verify five-image maximum, invalid uploads, edit behavior with no replacement, and image orientation on real devices; remove/keep known test listings deliberately.
+- [ ] Full UX redesign remains unstarted; do not open public registration or crawlers without separate authorization.
+
+## Subsequent deployments — first updates verified
 
 - [x] GitHub Actions SSH authentication and private upload verified without changing site or database.
 - [x] Manual-only update workflow created on default GitHub branch; no push-to-deploy or Hostinger Git mirror enabled.
