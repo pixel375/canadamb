@@ -72,4 +72,69 @@ Alpine.data('accentEditor', (type, colors, size, direction, radius, shadow) => (
     },
 }));
 
+
+/**
+ * Photo viewer progressively enhances full-image links. Without JavaScript or
+ * native <dialog> support, every photo opens as a normal accessible image URL.
+ */
+for (const gallery of document.querySelectorAll('[data-listing-gallery]')) {
+    const links = Array.from(gallery.querySelectorAll('[data-gallery-item]'));
+    const dialog = gallery.querySelector('[data-gallery-dialog]');
+    if (!dialog || typeof dialog.showModal !== 'function' || links.length === 0) continue;
+
+    const preview = dialog.querySelector('[data-gallery-preview]');
+    const counter = dialog.querySelector('[data-gallery-counter]');
+    const previous = dialog.querySelector('[data-gallery-prev]');
+    const next = dialog.querySelector('[data-gallery-next]');
+    const close = dialog.querySelector('[data-gallery-close]');
+    let active = 0;
+    let opener = null;
+    let touchStart = null;
+
+    const display = index => {
+        active = (index + links.length) % links.length;
+        preview.src = links[active].href;
+        preview.alt = links[active].querySelector('img')?.alt ?? 'Listing photo';
+        counter.textContent = (active + 1) + ' of ' + links.length;
+        previous.hidden = next.hidden = links.length < 2;
+    };
+
+    links.forEach((link, index) => link.addEventListener('click', event => {
+        if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+        event.preventDefault();
+        opener = link;
+        display(index);
+        dialog.showModal();
+        document.documentElement.classList.add('listing-lightbox-open');
+        close.focus();
+    }));
+
+    previous.addEventListener('click', () => display(active - 1));
+    next.addEventListener('click', () => display(active + 1));
+    close.addEventListener('click', () => dialog.close());
+    dialog.addEventListener('close', () => {
+        document.documentElement.classList.remove('listing-lightbox-open');
+        opener?.focus();
+    });
+    dialog.addEventListener('click', event => {
+        if (event.target === dialog) dialog.close();
+    });
+    dialog.addEventListener('keydown', event => {
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+            event.preventDefault();
+            if (links.length > 1) display(active + (event.key === 'ArrowRight' ? 1 : -1));
+        }
+        // Native dialog already handles Escape and traps focus.
+    });
+    preview.addEventListener('touchstart', event => {
+        touchStart = event.touches.length === 1 ? event.touches[0].clientX : null;
+    }, { passive: true });
+    preview.addEventListener('touchend', event => {
+        if (touchStart === null || !event.changedTouches.length) return;
+        const change = event.changedTouches[0].clientX - touchStart;
+        touchStart = null;
+        if (Math.abs(change) >= 50 && links.length > 1) display(active + (change < 0 ? 1 : -1));
+    }, { passive: true });
+}
+
 Alpine.start();

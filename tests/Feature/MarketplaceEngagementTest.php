@@ -37,6 +37,16 @@ class MarketplaceEngagementTest extends TestCase
         $this->actingAs(User::factory()->create(['role' => 'network_admin']))
             ->post("https://canadamb.ca/admin/moderation/$item->id", ['status' => 'active'])->assertRedirect();
         $this->actingAs(User::factory()->create())->get('https://canadamb.ca'.$path)->assertOk()->assertHeader('Content-Type', 'image/webp');
+        $this->get("https://canadamb.ca/marketplace/$item->id")
+            ->assertOk()
+            ->assertSee('data-listing-gallery', false)
+            ->assertSee('data-gallery-dialog', false)
+            ->assertSee('src="'.$path.'"', false)
+            ->assertSee('href="'.$path.'"', false);
+        $this->get('https://canadamb.ca/marketplace')
+            ->assertOk()
+            ->assertSee('aria-label="View Rural patio set"', false)
+            ->assertSee('href="/marketplace/'.$item->id.'"', false);
         $this->get('https://brandonmb.ca'.$path)->assertNotFound();
     }
 

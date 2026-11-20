@@ -52,14 +52,19 @@ class MarketplaceController extends Controller
     {
         $site = $request->attributes->get('site');
         abort_unless($this->marketplace->enabled($site), 404);
-        $item = $this->marketplace->visible($site)->with('seller:id,name')->whereKey($listing)->firstOrFail();
+        $item = $this->marketplace->visible($site)->with('seller:id,name,created_at')->whereKey($listing)->firstOrFail();
         $owner = $this->marketplace->canonicalSite($item);
         $canonical = NetworkUrl::to($owner, '/marketplace/'.$item->id);
-        if ($owner->id !== $site->id) {
-            return redirect()->away($canonical, 301, ['Cache-Control' => 'no-store']);
-        }
 
-        return view('marketplace.show', ['item' => $item, 'canonical' => $canonical]);
+        // Browsing stays on the visitor's portal; search engines use the single
+        // canonical community URL. City portals still enforce their own scope.
+        $related = $this->marketplace->visible($site)->whereKeyNot($item->id)
+            ->where('category', $item->category)->latest('published_at')->limit(2)->get();
+        $recent = $this->marketplace->visible($site)->whereKeyNot($item->id)
+            ->whereNotIn('id', $related->pluck('id'))
+            ->latest('published_at')->limit(2)->get();
+
+        return view('marketplace.show', compact('item', 'canonical', 'related', 'recent'));
     }
 
     public function create(Request $request)

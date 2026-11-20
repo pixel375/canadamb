@@ -32,7 +32,13 @@ class MarketplaceTest extends TestCase
         $this->get(self::CITY.'/marketplace?q=Oak&category=furniture')->assertOk()->assertSee('Oak table');
         $this->get(self::MAIN.'/marketplace')->assertOk()->assertSee('Oak table');
         $this->get(self::CITY."/marketplace/$item->id")->assertOk()->assertSee('Oak table');
-        $this->get(self::MAIN."/marketplace/$item->id")->assertStatus(301)->assertRedirect(self::CITY."/marketplace/$item->id");
+        $this->get(self::MAIN."/marketplace/$item->id")
+            ->assertOk()->assertSee('Oak table')
+            ->assertSee('<link rel="canonical" href="'.self::CITY."/marketplace/$item->id".'">', false)
+            ->assertSee('href="/marketplace?category=furniture"', false)
+            ->assertSee('Member since');
+        $this->get(self::CITY."/marketplace/$item->id")
+            ->assertOk()->assertSee('<link rel="canonical" href="'.self::CITY."/marketplace/$item->id".'">', false);
         $this->get(self::CITY.'/sitemap.xml')->assertSee(self::CITY."/marketplace/$item->id");
         $this->get(self::MAIN.'/sitemap.xml')->assertDontSee("/marketplace/$item->id");
 
