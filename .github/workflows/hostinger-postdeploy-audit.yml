@@ -1,9 +1,5 @@
 name: CanadaMB postdeploy production verification (read only)
 on:
-  # One-time independent audit after live Marketplace update.
-  push:
-    branches: [main]
-    paths: ['.github/workflows/hostinger-postdeploy-audit.yml']
   workflow_dispatch:
 permissions:
   contents: read
