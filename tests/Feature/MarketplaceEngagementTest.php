@@ -50,6 +50,67 @@ class MarketplaceEngagementTest extends TestCase
         $this->get('https://brandonmb.ca'.$path)->assertNotFound();
     }
 
+    public function test_multiple_photos_keep_full_resolution_and_can_be_replaced_on_edit(): void
+    {
+        Storage::fake('local');
+        $seller = User::factory()->create();
+        $admin = User::factory()->create(['role' => 'network_admin']);
+        $brandon = Location::where('slug', 'brandon')->sole();
+
+        $this->actingAs($seller)->post('https://brandonmb.ca/marketplace', [
+            'title' => 'Two photos of a desk',
+            'description' => 'A desk with two original pictures.',
+            'category' => 'furniture',
+            'condition' => 'good',
+            'price' => '80',
+            'photos' => [
+                UploadedFile::fake()->image('portrait.jpg', 800, 1200),
+                UploadedFile::fake()->image('landscape.jpg', 1200, 800),
+            ],
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $item = Listing::sole();
+        $this->assertSame($brandon->id, $item->location_id);
+        $images = $item->media()->get();
+        $this->assertCount(2, $images);
+        $this->assertSame([0, 1], $images->pluck('position')->all());
+        foreach ($images as $photo) {
+            Storage::disk('local')->assertExists([$photo->image_path, $photo->thumbnail_path]);
+        }
+
+        // Both full-size originals and small thumbnails are generated. The
+        // portrait's full image must not be reduced to the 480px thumbnail.
+        $full = getimagesizefromstring(Storage::disk('local')->get($images[0]->image_path));
+        $thumbnail = getimagesizefromstring(Storage::disk('local')->get($images[0]->thumbnail_path));
+        $this->assertSame([800, 1200], array_slice($full, 0, 2));
+        $this->assertSame([320, 480], array_slice($thumbnail, 0, 2));
+
+        $this->actingAs($admin)->post("https://canadamb.ca/admin/moderation/$item->id", ['status' => 'active'])->assertRedirect();
+        $this->get("https://brandonmb.ca/marketplace/$item->id")
+            ->assertOk()
+            ->assertSee("src=\"/marketplace/$item->id/photo/{$images[0]->id}\"", false)
+            ->assertSee("src=\"/marketplace/$item->id/thumbnail/{$images[1]->id}\"", false)
+            ->assertSee('View photo 2 of 2 larger', false);
+
+        $this->actingAs($seller)->put("https://brandonmb.ca/account/listings/$item->id", [
+            'title' => 'Desk with updated photo',
+            'description' => 'Updated photo shows the entire desk.',
+            'category' => 'furniture',
+            'condition' => 'good',
+            'price' => '80',
+            'photos' => [UploadedFile::fake()->image('replacement.jpg', 900, 600)],
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $item->refresh();
+        $replacement = $item->media()->sole();
+        $this->assertNotEquals($images[0]->id, $replacement->id);
+        Storage::disk('local')->assertExists([$replacement->image_path, $replacement->thumbnail_path]);
+        foreach ($images as $old) {
+            Storage::disk('local')->assertMissing([$old->image_path, $old->thumbnail_path]);
+        }
+        $this->assertSame('pending', $item->status);
+    }
+
     public function test_members_can_save_and_report_a_listing_and_only_participants_can_read_messages(): void
     {
         $seller = User::factory()->create();
