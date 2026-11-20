@@ -2,6 +2,16 @@
 
 Source: the owner's hands-on testing of several disposable listings on `canadamb.ca` and `brandonmb.ca`, plus the provided saved HTML/CSS snapshots of the provincial home and a Brandon listing. **Record now; implement in a separate pass after deployment/reliability essentials.** Do not represent proposed work as implemented.
 
+## Implementation pass after scheduler verification (2026-11-19)
+
+The earlier rows document owner-reported defects at the live UX checkpoint. A **first code pass** on `implementation/network-foundation` now addresses MKT-01/02/03/04/05/07/08/09:
+- listing-card image is a named keyboard-accessible link; cards show complete photos via `contain` rather than cropping;
+- listing details serve the full-size stored WebP as the main image, with a native `dialog` lightbox, Escape/arrow keyboard controls, optional touch swipe, focus return, image-count display and normal image-link fallback;
+- province-side browsing of visible Brandon listings no longer redirects out of the current domain; the `<link rel=canonical>` still points to Brandon for one indexed listing URL; Brandon's location visibility remains restricted;
+- category labels filter the current portal, seller actions distinguish guests, buyers and owners, and desktop/mobile related/recent cards use the same geographic visibility scope.
+
+**Verification:** PHP view and portal canonical assertions were added; media tests cover a portrait/landscape two-photo upload, larger display source, and replacement/deletion on edit. Code must pass CI and be deployed separately. **Pending:** actual phone/desktop browser, keyboard, real photo orientation, max-five/failure-path uploads, and SSO tests on approved IPs. UX-01 major visual overhaul remains later.
+
 ## Verified defects and feature requests
 
 | ID | Priority | Area / observed problem | Evidence in code or saved page | Proposed acceptance criteria |

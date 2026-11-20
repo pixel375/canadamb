@@ -30,6 +30,10 @@ This is an operational checkpoint, not a claim that the product is ready for a p
 
 Actions SSH connection run `44619746774` and private SFTP upload run `44622010185` both passed. A new manual-only Deploy CanadaMB Prelaunch workflow exists on default `main`; deployment update scripts are staged on the implementation branch. **They are not activated on Hostinger.** The live release remains `b5f16a6c08eefcd804deb1970f52490220af67f5` with IP restriction. Further tasks: populated-database upgrade rehearsal, real restore, cron check, and first reviewed rollout.
 
+## Live scheduled queue verification — 2026-11-19
+
+[GitHub Actions run 44642175328](https://github.com/pixel375/canadamb/actions/runs/44642175328) created a benign queued Laravel closure on the live database while respecting `CANADAMB_PRELAUNCH=true`. The **actual hPanel cron process** executed `queue:work database --stop-when-empty` and wrote the expected private marker around 20 seconds after enqueue; the marker was deleted, and `queue:failed` reported **No failed jobs found**. No test user or Marketplace records were changed. This closes the cron/queue end-to-end operations gate. Real outgoing mail/news remain disabled.
+
 ## hPanel cron verification — completed later on 2026-11-19
 
 Owner configured the one shared Hostinger hPanel custom cron command. Independent [Hostinger cron diagnostic run 44635981084](https://github.com/pixel375/canadamb/actions/runs/44635981084) checked the actual `canadamb-app/shared/storage/logs/scheduler.log` at **2026-11-19 23:14:54 UTC**: log existed (2,079 bytes / 28 lines), last write was **23:14:05 UTC**, only **49 seconds** earlier; **7 scheduler run/completion indications** and **0 detected error lines**. The correct pause-aware private wrapper was present, executable mode `700`, active SHA `44448bd0de1b736a51909f6ec87f692a41d57950`, and no deployment pause marker. This confirms real hPanel cron invocation although the `crontab` CLI is unavailable and hPanel itself does not display the private log. Next check: run a controlled queue-job and review failed jobs; do not enable news polling or external email automatically.

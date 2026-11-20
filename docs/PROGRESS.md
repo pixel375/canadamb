@@ -1,5 +1,12 @@
 # Progress
 
+## 2026-11-19 — cron queue canary passed; Marketplace interaction fixes staged
+
+A harmless private queue canary was enqueued through live Laravel and consumed by **the real hPanel minute scheduler**, without manually starting a worker. [Run 44642175328](https://github.com/pixel375/canadamb/actions/runs/44642175328) reported automatic processing and **no failed jobs**. The test marker was removed. This completes the scheduled database queue integration check while prelaunch remains IP-gated.
+
+Marketplace follow-on code now links card images; displays uncropped `contain` media with the larger WebP on listing details; adds a keyboard/arrow/swipe-capable native-dialog photo viewer with direct-image fallback; leaves provincial browsing on `canadamb.ca` while preserving a single canonical city URL; links categories; and adds a seller/contact management card plus scope-filtered related/recent listings. PHPUnit tests now cover image access and two-photo upload/replacement. **Do not treat features as live until a separate green-CI-backed Hostinger release and IP-allowlisted browser acceptance.** No major redesign, schema change, news polling or public registration.
+
+
 ## 2026-11-19 — Hostinger hPanel cron running and verified
 
 Owner created the every-minute custom hPanel cron job after installing the private wrapper. [Hostinger cron diagnostic run 44635981084](https://github.com/pixel375/canadamb/actions/runs/44635981084) confirmed actual scheduler output with a last write 49 seconds before inspection, an operational pause-aware script and **zero detected errors**. The site remains on the first successful GitHub Actions production update `44448bd0de1b736a51909f6ec87f692a41d57950` and prelaunch gate remains enabled. Separate controlled queue and browser/SSO tests are still pending.
