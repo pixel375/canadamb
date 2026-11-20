@@ -1,10 +1,6 @@
 name: CanadaMB live scheduler queue smoke
 
 on:
-  # One-time controlled private queue canary; remove push trigger after confirmation.
-  push:
-    branches: [main]
-    paths: ['.github/workflows/hostinger-queue-smoke.yml']
   workflow_dispatch:
 
 permissions:
