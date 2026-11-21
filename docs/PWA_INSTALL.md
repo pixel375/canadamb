@@ -1,5 +1,17 @@
 # CanadaMB optional installable web app (PWA) — prelaunch
 
+## Current release — 2026-11-21, PWA metadata reachability fix
+
+Active live SHA: `7c86e4cef9986c54e8a72b3ee0fffc3f63a58d32`. The original visitor-approved-IP gate was also blocking the app manifest and icons for **Google's external WebAPK minting service**. We introduced an exact allowlist exception for **GET/HEAD only** on `/app.webmanifest` and `/pwa/icon/{180,192,512}.png`, with a short public cache lifetime and `noindex`. All HTML pages, Marketplace, admin, messages, API and `/sw.js` remain **403 to unapproved IPs**. The public metadata carries only site branding, description and app icons, not accounts, sessions or listings.
+
+- [CI](https://github.com/pixel375/canadamb/actions/runs/44871680397)
+- [Deployment](https://github.com/pixel375/canadamb/actions/runs/44871824468)
+- [External metadata/privacy audit](https://github.com/pixel375/canadamb/actions/runs/44871914153)
+- [Independent postdeploy audit](https://github.com/pixel375/canadamb/actions/runs/44871963432)
+
+After this deploy, a completely unapproved GitHub runner retrieved and validated **both portals' manifests and 192/512px icons (HTTP 200)** and simultaneously confirmed private URLs still returned **HTTP 403**. The private Hostinger backups, original web-root inode and active SHA passed an independent audit. This fixes an independently verified **server-side eligibility obstacle**, but does **not guarantee Google Chrome will mint a WebAPK**; Brave and some browsers intentionally install shortcuts only. Test on current **Google Chrome for Android** from an approved IP and remove previous shortcut first. A WebAPK will appear under Android Settings → Apps and launch without the browser address bar. If Chrome still only creates a shortcut, capture the actual Chrome install dialog for further diagnosis; do not relax the website prelaunch access gate.
+
+
 ## Mobile QA refinement after original rollout
 
 New live SHA: `7702f240537b3e39e7102854f6ed2e17b0b07277`.
@@ -24,8 +36,8 @@ Live application SHA: 90c36b5c9b56530fa15ebbe2633e23cd8b9916b0
 - Mobile footer Install App is shown only when browser install support is detected. Android Chromium uses beforeinstallprompt after user tap.
 - iOS Safari displays Add to Home Screen instructions instead of a fake native prompt.
 - A globally published administrator setting controls whether installation is enabled on both domains.
-- A service worker is intentionally NOT registered. No offline caching exists for messages, accounts, OAuth, or private pages.
-- Existing Hostinger prelaunch IP restrictions also cover the PWA routes.
+- A minimal, network-only service worker is registered for installability, with **no Cache API or offline storage** of messages, accounts, OAuth, or private pages.
+- During prelaunch, the publicly safe manifest and icons are accessible outside the IP list for Android WebAPK packaging; the service worker, homepage and all application content still require the approved IP.
 
 ## Manual acceptance remaining
 
