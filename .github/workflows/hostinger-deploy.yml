@@ -3,10 +3,6 @@ name: Deploy CanadaMB Prelaunch
 # Deliberately MANUAL. This workflow is trusted from the default branch.
 # It does not run for pull requests, tags, or ordinary pushes.
 on:
-  # One-time green-CI PWA metadata access fix; revert this push trigger immediately after run.
-  push:
-    branches: [main]
-    paths: ['.github/workflows/hostinger-deploy.yml']
   workflow_dispatch:
     inputs:
       commit_sha:
@@ -33,7 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      DEPLOY_SHA: ${{ inputs.commit_sha || '7c86e4cef9986c54e8a72b3ee0fffc3f63a58d32' }}
+      DEPLOY_SHA: ${{ inputs.commit_sha }}
       GH_TOKEN: ${{ github.token }}
     steps:
       - name: Reject incorrect SHA or repository
@@ -47,7 +43,7 @@ jobs:
       - name: Checkout exact requested commit
         uses: actions/checkout@v5
         with:
-          ref: ${{ inputs.commit_sha || '7c86e4cef9986c54e8a72b3ee0fffc3f63a58d32' }}
+          ref: ${{ inputs.commit_sha }}
           fetch-depth: 0
           persist-credentials: false
       - name: Ensure target is an implementation branch ancestor
@@ -91,7 +87,7 @@ jobs:
           sha256sum /tmp/canadamb-build.tgz
       - uses: actions/upload-artifact@v4
         with:
-          name: prelaunch-build-${{ inputs.commit_sha || '7c86e4cef9986c54e8a72b3ee0fffc3f63a58d32' }}
+          name: prelaunch-build-${{ inputs.commit_sha }}
           path: /tmp/canadamb-build.tgz
           if-no-files-found: error
           retention-days: 2
@@ -103,8 +99,8 @@ jobs:
     timeout-minutes: 30
     environment: hostinger-prelaunch
     env:
-      DEPLOY_SHA: ${{ inputs.commit_sha || '7c86e4cef9986c54e8a72b3ee0fffc3f63a58d32' }}
-      ALLOW_DATABASE_CHANGES: ${{ inputs.allow_reviewed_database_changes || 'false' }}
+      DEPLOY_SHA: ${{ inputs.commit_sha }}
+      ALLOW_DATABASE_CHANGES: ${{ inputs.allow_reviewed_database_changes }}
       SSH_HOST: ${{ vars.HOSTINGER_HOST }}
       SSH_PORT: ${{ vars.HOSTINGER_PORT }}
       SSH_USER: ${{ vars.HOSTINGER_USER }}
@@ -113,7 +109,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: prelaunch-build-${{ inputs.commit_sha || '7c86e4cef9986c54e8a72b3ee0fffc3f63a58d32' }}
+          name: prelaunch-build-${{ inputs.commit_sha }}
           path: /tmp/canadamb-download
       - name: Verify connection configuration and artifact before transfer
         shell: bash
