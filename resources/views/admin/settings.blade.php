@@ -15,6 +15,13 @@
             <label class="checkbox"><input type="checkbox" name="pwa_install_enabled" value="1" @checked($settings['pwa_install_enabled'] ?? true)> Allow mobile visitors to install this website as an app</label>
             <p class="field-note">Shows an install link in the mobile footer only when the browser supports it. Each city has its own branded app; no private pages are stored for offline use.</p>
         </fieldset>
+        <fieldset class="form-stack pb-3">
+            <legend class="font-bold">Prelaunch registration</legend>
+            <input type="hidden" name="prelaunch_test_registration_enabled" value="0">
+            <label class="checkbox"><input type="checkbox" name="prelaunch_test_registration_enabled" value="1" @checked($settings['prelaunch_test_registration_enabled'] ?? false)> Allow prelaunch test registration</label>
+            <p class="field-note">Once published, this permits registration on CanadaMB from approved tester IP addresses during prelaunch.</p>
+            @if(config('network.prelaunch'))<a href="/admin/test-accounts">Review pending test accounts</a>@endif
+        </fieldset>
         <div><button class="button button-primary">Save draft</button></div>
     </form>
     @if($state->draft_id)

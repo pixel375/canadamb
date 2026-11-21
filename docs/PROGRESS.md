@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-21 — Pass 01 registration and authentication
+
+Implemented default-off, published prelaunch tester registration, targeted and audited tester verification, non-enumerating mail-enabled password recovery, and session-bound Passport sign-in across CanadaMB and BrandonMB. No migrations, seeders or operational secrets changed. Deployment and real-device acceptance are recorded separately in the PR and the release checklist. [Issue #11](https://github.com/pixel375/canadamb/issues/11) · [Browser acceptance](AUTHENTICATION.md#pass-01-prelaunch-acceptance)
+
 ## 2026-11-21 — independently verified public PWA manifest and icon access
 
 A further real-device report showed Android still added browser shortcuts. Investigated the WebAPK minting requirements and confirmed prelaunch middleware returned 403 for manifest/icons from non-approved networks. Live source `7c86e4cef9986c54e8a72b3ee0fffc3f63a58d32` now makes **only safe public PWA metadata** readable externally. [CI](https://github.com/pixel375/canadamb/actions/runs/44871680397), [deployment](https://github.com/pixel375/canadamb/actions/runs/44871824468), [real external asset/403 audit](https://github.com/pixel375/canadamb/actions/runs/44871914153), and [independent deployment audit](https://github.com/pixel375/canadamb/actions/runs/44871963432) all passed. Approved-IP protection remains on homepage and all application content; network-only service worker remains protected and no private cache is created. **A real Chrome Android WebAPK still needs user validation; Brave may only provide shortcuts.** Details: [PWA acceptance notes](PWA_INSTALL.md).

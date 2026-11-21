@@ -232,7 +232,7 @@ th { color: var(--muted); font-size: .77rem; }
     .brand strong { font-size: 1.18rem; }
     .brand small { font-size: .59rem; }
     .header-actions { gap: 7px; }
-    .theme-control svg, .sign-in span, .header-post { display: none; }
+    .theme-control svg, .sign-in span, .header-post, .header-register { display: none; }
     .navigation { min-height: 43px; }
     .navigation nav { gap: 15px; }
     .navigation nav a { font-size: .78rem; }

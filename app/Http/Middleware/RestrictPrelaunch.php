@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\NetworkSettings;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\IpUtils;
@@ -38,7 +39,7 @@ class RestrictPrelaunch
         if (! IpUtils::checkIp($peer, config('network.prelaunch_ips', []))) {
             return response('CanadaMB is in prelaunch testing.', 403, $headers + ['Content-Type' => 'text/plain; charset=UTF-8']);
         }
-        if ($request->is('register')) {
+        if ($request->is('register') && ! app(NetworkSettings::class)->registrationAllowed()) {
             return response('', 404, $headers);
         }
 

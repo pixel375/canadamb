@@ -1,5 +1,11 @@
 # Hostinger production prelaunch acceptance
 
+## Pass 01 authentication release checks
+
+- [ ] Confirm the exact merged SHA passed Verify CanadaMB, guarded Hostinger deployment with database changes disabled, and both independent postdeploy audits.
+- [ ] Confirm the published tester-registration switch is off and remains off after release. The approved connection receives 404 for central registration, and unapproved connections receive 403 for both hosts' application and auth routes.
+- [ ] Complete the [approved-network desktop and phone authentication walkthrough](AUTHENTICATION.md#pass-01-prelaunch-acceptance). Use a separate administrator profile, then turn the registration switch off again and publish. Keep verification and password reset email disabled in prelaunch.
+
 Record the reviewed SHA, operator, timestamp, result and evidence for each step. Use controlled test accounts and track test record IDs. Approval to activate restricted prelaunch and approval to open the site to everyone are separate steps.
 
 ## Marketplace first functional UX release

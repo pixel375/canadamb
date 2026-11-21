@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\JobReviewController;
 use App\Http\Controllers\Admin\NetworkController;
 use App\Http\Controllers\Admin\PropertyReviewController;
 use App\Http\Controllers\Admin\SettingsController;
+use App\Http\Controllers\Admin\TestAccountController;
 use App\Http\Controllers\Admin\ThemeController;
 use App\Http\Controllers\BusinessController;
 use App\Http\Controllers\CommunityEventController;
@@ -52,7 +53,7 @@ Route::get('/events/{event}', [CommunityEventController::class, 'show'])->whereN
 Route::get('/jobs', [JobController::class, 'index']);
 Route::get('/jobs/{job}', [JobController::class, 'show'])->whereNumber('job');
 
-Route::get('/auth/start', [IdentityController::class, 'start'])->middleware('throttle:20,1');
+Route::get('/auth/start', [IdentityController::class, 'start'])->middleware('throttle:20,1')->block(8, 8);
 Route::get('/auth/callback', [IdentityController::class, 'callback'])->middleware('throttle:20,1')->block(8, 8);
 Route::post('/account/logout', [IdentityController::class, 'logout'])->middleware('auth')->name('network.logout');
 
@@ -143,6 +144,8 @@ Route::prefix('admin')->middleware(['auth', 'verified', 'can:manage-network'])->
     Route::post('/moderation/{listing}', [NetworkController::class, 'moderate'])->whereNumber('listing');
     Route::post('/moderation/reports/{report}', [NetworkController::class, 'resolveReport'])->whereNumber('report');
     Route::middleware('can:manage-theme')->group(function () {
+        Route::get('/test-accounts', [TestAccountController::class, 'index']);
+        Route::post('/test-accounts/{account}/verify', [TestAccountController::class, 'verify'])->whereNumber('account');
         Route::get('/settings', [SettingsController::class, 'edit']);
         Route::post('/settings', [SettingsController::class, 'save']);
         Route::post('/settings/publish', [SettingsController::class, 'publish']);

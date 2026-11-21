@@ -4,8 +4,13 @@ namespace App\Providers;
 
 use App\Actions\Fortify\CreateUser;
 use App\Actions\Fortify\ResetPassword;
+use App\Http\Responses\LoginResponse as CentralLoginResponse;
+use App\Http\Responses\PasswordResetFailed;
+use App\Http\Responses\PasswordResetRequested;
+use App\Http\Responses\RegistrationResponse;
 use App\Models\CommunityOAuthClient;
 use App\Models\User;
+use App\Support\Identity;
 use App\Support\NetworkSettings;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Notifications\ResetPassword as ResetNotification;
@@ -21,6 +26,11 @@ use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
+use Laravel\Fortify\Contracts\FailedPasswordResetLinkRequestResponse;
+use Laravel\Fortify\Contracts\FailedPasswordResetResponse;
+use Laravel\Fortify\Contracts\LoginResponse;
+use Laravel\Fortify\Contracts\RegisterResponse;
+use Laravel\Fortify\Contracts\SuccessfulPasswordResetLinkRequestResponse;
 use Laravel\Fortify\Fortify;
 use Laravel\Passport\Passport;
 
@@ -64,11 +74,25 @@ class AppServiceProvider extends ServiceProvider
         Fortify::resetUserPasswordsUsing(ResetPassword::class);
         Fortify::loginView(fn (Request $request) => $request->attributes->get('site')->isNetwork()
             ? view('auth.form', ['mode' => 'login']) : redirect('/auth/start'));
-        Fortify::registerView(fn () => view('auth.form', ['mode' => 'register']));
+        $this->app->bind(RegisterResponse::class, RegistrationResponse::class);
+        $this->app->bind(LoginResponse::class, CentralLoginResponse::class);
+        $this->app->bind(FailedPasswordResetLinkRequestResponse::class, PasswordResetRequested::class);
+        $this->app->bind(FailedPasswordResetResponse::class, PasswordResetFailed::class);
+        $this->app->bind(SuccessfulPasswordResetLinkRequestResponse::class, PasswordResetRequested::class);
+        Fortify::registerView(fn (Request $request) => view('auth.form', [
+            'mode' => 'register',
+            'registrationCommunity' => Identity::registrationCommunity($request->query->all()['community'] ?? old('community'))?->id,
+        ]));
         Fortify::requestPasswordResetLinkView(fn () => view('auth.form', ['mode' => 'forgot']));
         Fortify::resetPasswordView(fn (Request $request) => view('auth.form', ['mode' => 'reset', 'token' => $request->route('token')]));
         Fortify::verifyEmailView(fn () => view('auth.form', ['mode' => 'verify']));
-        RateLimiter::for('login', fn (Request $request) => Limit::perMinute(5)->by(Str::lower($request->string('email')->value()).'|'.$request->ip()));
+        RateLimiter::for('login', function (Request $request) {
+            $email = $request->input('email');
+
+            return Limit::perMinute(5)->by((is_string($email) ? Str::lower($email) : '').'|'.$request->ip());
+        });
+        RateLimiter::for('identity-requests', fn (Request $request) => Limit::perMinute($request->is('login') ? 20 : 6)
+            ->by($request->route()->getName().'|'.$request->ip()));
         RateLimiter::for('api-network', fn (Request $request) => Limit::perMinute(60)->by($request->user()?->id ?? $request->ip()));
         Passport::tokensCan(['community-sign-in' => 'Sign in to an active CanadaMB community portal']);
         Passport::tokensExpireIn(now()->addMinutes(5));
