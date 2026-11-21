@@ -22,13 +22,19 @@ class MobileNavigationTest extends TestCase
                 ->assertSee('class="mobile-tab-bar"', false)
                 ->assertSee('href="/account/messages"', false)
                 ->assertSee('href="/account/community-notifications"', false)
-                ->assertSee('href="/account/profile"', false)
-                ->assertSee('href="/account/settings"', false)
+                ->assertSee('aria-label="Sign in"', false)
+                ->assertDontSee('href="/account/settings"', false)
                 ->assertSee('Businesses', false)
                 ->assertSee('Discussions', false)
                 ->assertSee('href="/about"', false)
                 ->assertSee('href="/contact"', false);
         }
+
+        $this->actingAs(User::factory()->create())
+            ->get('https://canadamb.ca/')
+            ->assertOk()
+            ->assertSee('href="/account/profile"', false)
+            ->assertSee('href="/account/settings"', false);
     }
 
     public function test_search_filters_are_collapsed_initially_and_reopened_when_query_is_present(): void
