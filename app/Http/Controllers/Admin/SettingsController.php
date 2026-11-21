@@ -21,7 +21,7 @@ class SettingsController extends Controller
 
     public function save(Request $request, NetworkSettings $settings)
     {
-        $rules = ['pwa_install_enabled' => 'nullable|boolean'];
+        $rules = ['pwa_install_enabled' => 'nullable|boolean', 'prelaunch_test_registration_enabled' => 'sometimes|boolean'];
         foreach (NetworkSettings::OPERATIONAL_MODULES as $key => $label) {
             $rules['modules.'.$key] = 'nullable|boolean';
             $rules['overrides.'.$key] = 'nullable|boolean';
@@ -32,6 +32,9 @@ class SettingsController extends Controller
                 $current['modules'][$key] = (bool) ($data['modules'][$key] ?? false);
             }
             $current['pwa_install_enabled'] = (bool) ($data['pwa_install_enabled'] ?? false);
+            if (isset($data['prelaunch_test_registration_enabled'])) {
+                $current['prelaunch_test_registration_enabled'] = (bool) $data['prelaunch_test_registration_enabled'];
+            }
             $current['permitted_module_overrides'] = array_keys(array_filter($data['overrides'] ?? []));
 
             return $current;

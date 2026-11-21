@@ -49,6 +49,7 @@
 @php($isPreview = $preview ?? false)
 @php($marketEnabled = $networkSettings['modules']['marketplace'] ?? false)
 @php($localLabel = $site->location?->name ?? 'Manitoba')
+@php($registerLink = !config('network.prelaunch') || ($networkSettings['prelaunch_test_registration_enabled'] ?? false) === true ? ($site->isNetwork() ? '/register' : \App\Support\NetworkUrl::to(\App\Support\NetworkUrl::main(), '/register?community='.$site->id)) : null)
 @if($isPreview)<aside class="preview-notice">Preview of {{ $site->name }} <a href="/admin/communities/{{ $site->id }}">Return to community settings</a></aside>@endif
 <header class="site-header">
     <div class="container masthead">
@@ -83,6 +84,7 @@
                     <a class="sign-in" href="/account/profile" aria-label="My profile"><x-icon name="person" size="18"/> <span>My account</span></a>
                 @else
                     <a class="sign-in" href="{{ $site->isNetwork() ? '/login' : '/auth/start' }}" aria-label="Sign in"><x-icon name="person" size="18"/> <span>Sign in</span></a>
+                    @if($registerLink)<a class="text-link header-register" href="{{ $registerLink }}">Create account</a>@endif
                 @endauth
                 @if($marketEnabled)<a class="button button-primary header-post" href="/marketplace/new"><x-icon name="plus" size="16"/> Post a listing</a>@endif
             @endunless
@@ -166,6 +168,7 @@
             @can('manage-network')<a href="{{ \App\Support\NetworkUrl::to(\App\Support\NetworkUrl::main(), '/admin') }}"><x-icon name="shield" size="20"/> Administration</a>@endcan
         @else
             <a href="{{ $site->isNetwork() ? '/login' : '/auth/start' }}"><x-icon name="person" size="20"/> Sign in</a>
+            @if($registerLink)<a href="{{ $registerLink }}"><x-icon name="plus" size="20"/> Create account</a>@endif
         @endauth
         <hr>
         <a href="/about">About us</a>

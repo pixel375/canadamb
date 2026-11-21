@@ -15,10 +15,13 @@ class SecurityHeaders
         $response->headers->set('X-Frame-Options', 'DENY');
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin', false);
         $response->headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+        if ($request->is('auth/*', 'oauth/*', 'login', 'register', 'reset-password', 'reset-password/*', 'email/*')) {
+            $response->headers->set('Referrer-Policy', 'no-referrer');
+        }
         if (! app()->isLocal() && $request->isSecure()) {
             $response->headers->set('Strict-Transport-Security', 'max-age=31536000');
         }
-        if (config('network.staging') || $request->is('admin', 'admin/*', 'auth/*', 'oauth/*', 'account/*', 'login', 'register', 'forgot-password', 'reset-password/*', 'email/*') || $request->user()) {
+        if (config('network.staging') || $request->is('admin', 'admin/*', 'auth/*', 'oauth/*', 'account/*', 'login', 'logout', 'register', 'forgot-password', 'reset-password', 'reset-password/*', 'email/*') || $request->user()) {
             $response->headers->set('Cache-Control', 'private, no-store');
             $response->headers->set('X-Robots-Tag', 'noindex, nofollow');
         }

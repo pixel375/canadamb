@@ -19,6 +19,13 @@ class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
 
+    public function sendEmailVerificationNotification(): void
+    {
+        if (! config('network.prelaunch')) {
+            parent::sendEmailVerificationNotification();
+        }
+    }
+
     protected function casts(): array
     {
         return [

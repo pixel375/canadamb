@@ -30,7 +30,7 @@ async page => {
     await page.getByLabel('Appearance').selectOption('system');
 
     await page.goto(brandon + '/marketplace/new');
-    await page.waitForURL(mainland + '/login');
+    await page.waitForURL(url => url.origin === mainland && url.pathname === '/login' && /^[a-zA-Z0-9]{40}$/.test(url.searchParams.get('continuation') || ''));
     await page.getByLabel('Email').fill('browser-qa@example.test');
     await page.getByLabel('Password').fill('password');
     await page.getByRole('button', { name: 'Sign in' }).click();

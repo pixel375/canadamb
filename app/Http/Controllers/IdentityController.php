@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Laravel\Passport\Exceptions\OAuthServerException as PassportException;
 use Laravel\Passport\Http\Controllers\AccessTokenController;
 use League\OAuth2\Server\Exception\OAuthServerException;
 use League\OAuth2\Server\ResourceServer;
@@ -23,19 +24,25 @@ class IdentityController extends Controller
         if ($site->isNetwork()) {
             return redirect('/login');
         }
-        abort_unless(config('network.sso_enabled') && $site->domain->oauth_client_id, 503, 'Community sign-in is unavailable.');
+        $client = Identity::communityClient($site);
+        if (! $client) {
+            return $this->signInError(503);
+        }
+        $path = NetworkUrl::pathOn($site, $request->session()->pull('url.intended'));
+        if (! $path || Str::is(['auth', 'auth/*', 'login', 'register'], ltrim(parse_url($path, PHP_URL_PATH), '/'))) {
+            $path = '/account/listings';
+        }
         if ($request->user()) {
-            return redirect('/account/listings');
+            return redirect()->away(NetworkUrl::to($site, $path));
         }
         $verifier = Str::random(64);
         $state = Str::random(64);
-        $intended = $request->session()->pull('url.intended');
-        $path = is_string($intended) && str_starts_with($intended, NetworkUrl::to($site))
-            ? '/'.substr($intended, strlen(NetworkUrl::to($site))) : '/account/listings';
-        $request->session()->put('community_oauth', ['state' => $state, 'verifier' => $verifier, 'at' => now()->timestamp, 'path' => $path]);
+        $flows = array_filter($request->session()->get('community_oauth', []), fn ($flow) => is_array($flow) && ($flow['at'] ?? 0) >= now()->subMinutes(10)->timestamp);
+        $flows[$state] = ['verifier' => $verifier, 'at' => now()->timestamp, 'path' => $path, 'client' => $client->id];
+        $request->session()->put('community_oauth', array_slice($flows, -5, null, true));
 
         return redirect()->away(NetworkUrl::to(NetworkUrl::main(), '/oauth/authorize?'.http_build_query([
-            'client_id' => $site->domain->oauth_client_id,
+            'client_id' => $client->id,
             'redirect_uri' => NetworkUrl::to($site, '/auth/callback'),
             'response_type' => 'code',
             'scope' => 'community-sign-in',
@@ -48,29 +55,49 @@ class IdentityController extends Controller
     public function callback(Request $request)
     {
         $site = $request->attributes->get('site');
-        abort_if($site->isNetwork() || ! config('network.sso_enabled') || ! $site->domain->oauth_client_id, 404);
-        $data = $request->validate(['code' => 'required|string|max:8192', 'state' => 'required|string|size:64']);
-        $flow = $request->session()->pull('community_oauth');
-        abort_unless($flow && $flow['at'] >= now()->subMinutes(10)->timestamp && hash_equals($flow['state'], $data['state']), 403);
+        abort_if($site->isNetwork(), 404);
+        $client = Identity::communityClient($site);
+        if (! $client) {
+            return $this->signInError(503);
+        }
+        $query = $request->query->all();
+        $state = $query['state'] ?? null;
+        if (! is_string($state) || ! preg_match('/^[a-zA-Z0-9]{64}$/D', $state)) {
+            return $this->signInError();
+        }
+        $flow = $request->session()->pull('community_oauth.'.$state);
+        if (! $flow || $flow['at'] < now()->subMinutes(10)->timestamp || $flow['client'] !== $client->id) {
+            return $this->signInError();
+        }
+        $code = $query['code'] ?? null;
+        if (isset($query['error']) || ! is_string($code) || $code === '' || strlen($code) > 8192) {
+            return $this->signInError();
+        }
 
         $factory = new PsrHttpFactory;
         $issuer = NetworkUrl::to(NetworkUrl::main(), '/oauth/token');
         $exchange = Request::create($issuer, 'POST', [
             'grant_type' => 'authorization_code', 'client_id' => $site->domain->oauth_client_id,
-            'redirect_uri' => NetworkUrl::to($site, '/auth/callback'), 'code' => $data['code'],
+            'redirect_uri' => NetworkUrl::to($site, '/auth/callback'), 'code' => $code,
             'code_verifier' => $flow['verifier'],
         ]);
 
         // The provider and its client are in the same application. Use Passport's server directly.
-        $result = app(AccessTokenController::class)->issueToken($factory->createRequest($exchange), $factory->createResponse(new Response));
-        abort_unless($result->isSuccessful(), 403, 'The sign-in request expired. Start again.');
+        try {
+            $result = app(AccessTokenController::class)->issueToken($factory->createRequest($exchange), $factory->createResponse(new Response));
+        } catch (PassportException) {
+            return $this->signInError();
+        }
+        if (! $result->isSuccessful()) {
+            return $this->signInError();
+        }
         $token = json_decode($result->getContent(), true, flags: JSON_THROW_ON_ERROR);
         try {
             $validated = app(ResourceServer::class)->validateAuthenticatedRequest($factory->createRequest(Request::create($issuer, server: [
                 'HTTP_AUTHORIZATION' => 'Bearer '.$token['access_token'],
             ])));
         } catch (OAuthServerException) {
-            abort(403);
+            return $this->signInError();
         }
 
         $id = $validated->getAttribute('oauth_access_token_id');
@@ -87,6 +114,12 @@ class IdentityController extends Controller
         $request->session()->regenerate();
 
         return redirect()->away(NetworkUrl::to($site, $flow['path']))->header('Cache-Control', 'no-store')->header('Referrer-Policy', 'no-referrer');
+    }
+
+    private function signInError(int $status = 403): Response
+    {
+        return response()->view('auth.community-error', ['unavailable' => $status === 503], $status)
+            ->header('Referrer-Policy', 'no-referrer');
     }
 
     public function logout(Request $request)

@@ -42,6 +42,11 @@ final class NetworkSettings
         return $this->revision($this->state()->published_id);
     }
 
+    public function registrationAllowed(): bool
+    {
+        return ! config('network.prelaunch') || ($this->published()['prelaunch_test_registration_enabled'] ?? false) === true;
+    }
+
     public function forSite(Site $site): array
     {
         $settings = $this->published();
