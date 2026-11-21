@@ -1,5 +1,12 @@
 # Progress
 
+## 2026-11-20 — mobile shell and PWA deployed to IP-restricted prelaunch
+
+Source SHA 90c36b5c9b56530fa15ebbe2633e23cd8b9916b0 passed Verify CanadaMB CI (run 44849693577), the guarded Hostinger release (run 44849860885) and the independent read-only production audit (run 44850000025). Both domains remain behind the approved-IP access gate; database, OAuth keys, backups and original public_html inode were preserved. The release had no schema migrations. GitHub deployment remains manual-only.
+
+Delivered: mobile four-tab navigation, responsive hamburger drawer and desktop grouped navigation; user-facing Discussions labels with legacy routes preserved; collapsed search forms and input overflow fixes; public member profile (name/member since/visible listings) and authenticated display name settings; About and Contact pages; and an optional PWA mobile footer Install App control. Each portal gets its own manifest/PNG icons and the global admin setting can enable/disable install support. There is no service worker or private offline caching. Real device install/navigation QA remains pending, along with registration/testing workflow, business/job messaging, centralized moderation, discussions/events migration, homepage redesign and legal policies. See [PWA notes](PWA_INSTALL.md) and issues #1–#8.
+
+
 ## 2026-11-19 — first Marketplace UX functional pass deployed to live prelaunch
 
 [CI `0b2359f`](https://github.com/pixel375/canadamb/actions/runs/44643244451), [live deploy](https://github.com/pixel375/canadamb/actions/runs/44643501263) and [independent postdeploy audit](https://github.com/pixel375/canadamb/actions/runs/44643771924) all succeeded. CanadaMB and BrandonMB now share current active SHA `0b2359f5eb4587f9fd5dfad1b36402df2b7d5349`, with database/media backups, original web-root inode, OAuth keys and external IP restrictions verified. Changes cover clickable cards, non-cropped larger photo viewer and native lightbox, browsing on the current portal with city canonical links, category filters, seller and related listings. Backend PHP tests include multiple photo upload/replacement and city-scope canonical logic. **Manual browser acceptance and full professional redesign remain unfinished**; no unapproved public access, live mail, news polling or deploy-on-push.
