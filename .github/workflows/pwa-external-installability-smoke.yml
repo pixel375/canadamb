@@ -1,6 +1,10 @@
 name: CanadaMB public PWA metadata vs private prelaunch audit
 
 on:
+  # One-time external PWA metadata and prelaunch privacy verification after PWA release.
+  push:
+    branches: [main]
+    paths: ['.github/workflows/pwa-external-installability-smoke.yml']
   workflow_dispatch:
 
 permissions:
@@ -35,6 +39,10 @@ jobs:
           assert data['display']=='standalone'
           assert data['scope']=='/'
           assert data['start_url']=='/'
+          assert data['theme_color']=='#121C2A', data['theme_color']
+          assert data['background_color']=='#0E1622', data['background_color']
+          assert any(e['src']=='/pwa/icon/192.png?v=2' for e in data['icons'])
+          assert any(e['src']=='/pwa/icon/512.png?v=2' for e in data['icons'])
           assert all(any(e['sizes']==size and e['type']=='image/png' for e in data['icons']) for size in ['192x192','512x512'])
           print('Valid host-specific manifest for', data['name'])
           PY
