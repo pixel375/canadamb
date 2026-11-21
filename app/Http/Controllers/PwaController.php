@@ -37,6 +37,38 @@ class PwaController extends Controller
             ->header('X-Content-Type-Options', 'nosniff');
     }
 
+    /**
+     * A pass-through worker permits install promotion in Chromium without
+     * storing any private responses or providing unauthenticated offline data.
+     */
+    public function serviceWorker(Request $request, NetworkSettings $settings): Response
+    {
+        $this->enabledSite($request, $settings);
+
+        $javascript = <<<'JS'
+self.addEventListener('install', () => {
+    self.skipWaiting();
+});
+self.addEventListener('activate', event => {
+    event.waitUntil(self.clients.claim());
+});
+self.addEventListener('fetch', event => {
+    // No Cache API, IndexedDB, precaching or offline pages. Requests remain
+    // bound to the server's existing prelaunch and session authorization.
+    if (event.request.method !== 'GET' ||
+        new URL(event.request.url).origin !== self.location.origin) return;
+    event.respondWith(fetch(event.request));
+});
+JS;
+
+        return response($javascript, 200, [
+            'Content-Type' => 'application/javascript; charset=utf-8',
+            'Cache-Control' => 'no-store, private',
+            'X-Content-Type-Options' => 'nosniff',
+            'Service-Worker-Allowed' => '/',
+        ]);
+    }
+
     public function icon(Request $request, NetworkSettings $settings, int $size): Response
     {
         abort_unless(in_array($size, [180, 192, 512], true), 404);
