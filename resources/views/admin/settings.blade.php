@@ -10,6 +10,11 @@
                 <label class="checkbox"><input type="checkbox" name="overrides[{{ $key }}]" value="1" @checked(in_array($key, $settings['permitted_module_overrides'], true))> Allow local portals to hide this module</label>
             </fieldset>
         @endforeach
+        <fieldset class="form-stack pb-3">
+            <legend class="font-bold">Optional web app installation</legend>
+            <label class="checkbox"><input type="checkbox" name="pwa_install_enabled" value="1" @checked($settings['pwa_install_enabled'] ?? true)> Allow mobile visitors to install this website as an app</label>
+            <p class="field-note">Shows an install link in the mobile footer only when the browser supports it. Each city has its own branded app; no private pages are stored for offline use.</p>
+        </fieldset>
         <div><button class="button button-primary">Save draft</button></div>
     </form>
     @if($state->draft_id)

@@ -21,6 +21,7 @@ final class NetworkSettings
     {
         return [
             'preset' => 'blue',
+            'pwa_install_enabled' => true,
             'palette' => Themes::preset('blue'),
             'modules' => array_fill_keys(array_keys(self::OPERATIONAL_MODULES), true),
             'permitted_module_overrides' => array_keys(self::OPERATIONAL_MODULES),
