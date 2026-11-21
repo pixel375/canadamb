@@ -26,6 +26,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', [PublicController::class, 'home'])->name('home');
 Route::get('/app.webmanifest', [PwaController::class, 'manifest'])->name('pwa.manifest');
+Route::get('/sw.js', [PwaController::class, 'serviceWorker'])->name('pwa.worker');
 Route::get('/pwa/icon/{size}.png', [PwaController::class, 'icon'])->whereIn('size', ['180', '192', '512'])->name('pwa.icon');
 Route::view('/photo-credits', 'photo-credits');
 Route::view('/about', 'pages.about');
