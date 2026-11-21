@@ -312,3 +312,13 @@ textarea { max-width: 100%; overflow-wrap: break-word; }
     .mobile-tab-bar a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-width: 0; padding: 5px 1px; border-radius: 8px; color: var(--muted); font-size: clamp(.62rem, 2.35vw, .76rem); font-weight: 750; line-height: 1.1; text-align: center; }
     .mobile-tab-bar a:hover, .mobile-tab-bar a[aria-current] { color: var(--link); background: var(--soft); }
 }
+
+
+/* Optional mobile-only PWA install button in the footer. */
+.pwa-install { display: none; }
+.pwa-install[hidden], .pwa-install-help[hidden] { display: none !important; }
+.pwa-install-help { margin: 0; font-size: .84rem; max-width: 270px; }
+@media (max-width: 760px) {
+    .pwa-install:not([hidden]) { display: flex; flex-direction: column; gap: 9px; align-items: flex-start; margin-top: 12px; }
+    .pwa-install .button { width: 100%; max-width: 230px; justify-content: center; }
+}
