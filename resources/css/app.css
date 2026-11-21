@@ -322,3 +322,58 @@ textarea { max-width: 100%; overflow-wrap: break-word; }
     .pwa-install:not([hidden]) { display: flex; flex-direction: column; gap: 9px; align-items: flex-start; margin-top: 12px; }
     .pwa-install .button { width: 100%; max-width: 230px; justify-content: center; }
 }
+
+
+/* 2026-11-20 mobile feedback: keep masthead on one row and the profile icon centered.
+   Theme selection moves into the hamburger drawer at mobile widths. */
+.drawer-theme-control { display: none; }
+.admin-nav-disclosure { display: block; min-width: 0; }
+.admin-nav-disclosure > summary { display: none; }
+.admin-nav-links { display: grid; gap: 4px; min-width: 0; }
+.admin-nav-links > a { display: block; min-width: 0; overflow-wrap: anywhere; }
+@media (max-width: 760px) {
+    .masthead {
+        display: grid;
+        grid-template-columns: 42px minmax(0, 1fr) 44px;
+        align-items: center;
+        gap: 9px;
+        min-height: 66px;
+    }
+    .masthead .brand { min-width: 0; max-width: 100%; gap: 8px; overflow: hidden; }
+    .masthead .brand img, .masthead .brand-mark { flex: 0 0 36px; width: 36px; height: 36px; }
+    .masthead .brand > span:last-child { min-width: 0; overflow: hidden; }
+    .masthead .brand strong { display: block; max-width: 100%; font-size: clamp(1.05rem, 4vw, 1.34rem); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .masthead .brand small { display: block; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .header-actions { display: flex; flex: none; flex-wrap: nowrap; justify-content: flex-end; min-width: 0; gap: 0; }
+    .header-actions .theme-control, .header-actions .header-post, .header-actions .header-search { display: none; }
+    .header-actions .sign-in {
+        display: inline-flex; justify-content: center; align-items: center;
+        box-sizing: border-box; flex: 0 0 44px; width: 44px; height: 44px;
+        padding: 0; margin: 0; border-radius: 10px; color: var(--text);
+    }
+    .header-actions .sign-in svg { display: block; width: 23px; height: 23px; flex: 0 0 auto; }
+    .header-actions .sign-in span { display: none; }
+    .drawer-theme-control {
+        display: flex; align-items: center; gap: 12px; padding: 10px 13px;
+        border-radius: 9px; color: var(--text); font-weight: 650; min-height: 48px;
+    }
+    .drawer-theme-control select { margin-left: auto; min-width: 0; width: 100px; max-width: 42%; font-size: .9rem; }
+    /* Former flex-shrinking tab row collapsed link text into one visible pile. */
+    .admin-nav { display: block; overflow: visible; white-space: normal; padding: 0; margin-bottom: 16px; }
+    .admin-nav-disclosure { width: 100%; }
+    .admin-nav-disclosure > summary {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 10px; padding: 15px 17px; font-weight: 750;
+        list-style: none; cursor: pointer; min-height: 50px;
+    }
+    .admin-nav-disclosure > summary::-webkit-details-marker { display: none; }
+    .admin-nav-disclosure[open] > summary svg { transform: rotate(180deg); }
+    .admin-nav-links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; padding: 0 10px 12px; }
+    .admin-nav-links > strong { display: none; }
+    .admin-nav-links > a { white-space: normal; font-size: .82rem; padding: 10px; line-height: 1.4; }
+    .admin-shell > section { min-width: 0; }
+}
+@media (max-width: 370px) {
+    .masthead { gap: 6px; }
+    .masthead .brand small { display: none; }
+}
