@@ -1,5 +1,26 @@
 # CanadaMB optional installable web app (PWA) — prelaunch
 
+## Chrome Android visual refinement — pending deployment
+
+Owner confirms real PWA installation works from Google Chrome on Android. The old
+manifest and HTML theme colors used each portal's brand accent, causing bright
+pink (CanadaMB) or green (BrandonMB) system areas above/below the app. This
+fix sets the manifest's theme color from the globally published **light header**
+(and splash background from the light page), while the page-level theme meta
+automatically follows the published **light/dark header** colors and the user's
+System/Light/Dark selection. Icons and decorative accent lines retain their
+portal-specific branding. No service worker, route, IP allowlist, auth or schema
+changes are needed.
+
+After CI and deliberate Hostinger deployment: test standalone Google Chrome on
+Android in Light, Dark and System modes, including toggling OS appearance while
+the app remains open. Check the top status bar and bottom Android navigation
+area, the app's own four-tab bar and contrast of system icons. Previously minted
+WebAPKs can retain an old manifest theme until Chrome refreshes the package;
+remove/reinstall the old install if the new theme is not picked up. Android/
+Chrome versions may differ in their ability to re-theme the OS's bottom gesture
+area; don't treat a browser-controlled limitation as an app install failure.
+
 ## Current release — 2026-11-21, PWA metadata reachability fix
 
 Active live SHA: `7c86e4cef9986c54e8a72b3ee0fffc3f63a58d32`. The original visitor-approved-IP gate was also blocking the app manifest and icons for **Google's external WebAPK minting service**. We introduced an exact allowlist exception for **GET/HEAD only** on `/app.webmanifest` and `/pwa/icon/{180,192,512}.png`, with a short public cache lifetime and `noindex`. All HTML pages, Marketplace, admin, messages, API and `/sw.js` remain **403 to unapproved IPs**. The public metadata carries only site branding, description and app icons, not accounts, sessions or listings.
