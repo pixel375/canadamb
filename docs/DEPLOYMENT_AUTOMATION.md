@@ -18,11 +18,16 @@ both IP-restricted domains. The deployment script refuses unattended changes
 to database migrations or seeders. Sensitive schema changes, public launch and
 prelaunch allowlist changes remain reviewed operations.
 
-After a successful deployment, independent workflows automatically audit the
-**deployed SHA derived from the build artifact**, database/media backup
-checksums, original public web root, prelaunch protection, PWA manifest and
-icons. The manual workflow remains available for exceptional reviewed updates,
-but routine code/UI releases should no longer require the owner to click Run.
+After a successful deployment, two independent reusable audit jobs run
+automatically as part of that same guarded workflow. The private audit checks
+the **exact deployed SHA provided by the verified deployment**, database/media
+backup checksums, original web root and prelaunch protection; a separate
+public-origin audit checks PWA manifests/icons and private-route HTTP 403.
+Failures flag the overall deployment workflow rather than relying on chained
+workflow_run events. The manual workflow remains available for exceptional
+reviewed updates, but routine code/UI releases no longer require a Run click.
+
+**First automated CI-to-deployment check passed:** [dispatcher run 44942686683](https://github.com/pixel375/canadamb/actions/runs/44942686683) launched [guarded live deployment 44942699928](https://github.com/pixel375/canadamb/actions/runs/44942699928) without manual intervention. The follow-on documentation-only commit exercises the new audit-job gate.
 
 This section supersedes the older 2026-11-19 manual-only description below.
 It is also a harmless documentation-only implementation commit used to validate
