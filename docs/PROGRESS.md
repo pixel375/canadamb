@@ -1,5 +1,10 @@
 # Progress
 
+## 2026-11-21 — independently verified public PWA manifest and icon access
+
+A further real-device report showed Android still added browser shortcuts. Investigated the WebAPK minting requirements and confirmed prelaunch middleware returned 403 for manifest/icons from non-approved networks. Live source `7c86e4cef9986c54e8a72b3ee0fffc3f63a58d32` now makes **only safe public PWA metadata** readable externally. [CI](https://github.com/pixel375/canadamb/actions/runs/44871680397), [deployment](https://github.com/pixel375/canadamb/actions/runs/44871824468), [real external asset/403 audit](https://github.com/pixel375/canadamb/actions/runs/44871914153), and [independent deployment audit](https://github.com/pixel375/canadamb/actions/runs/44871963432) all passed. Approved-IP protection remains on homepage and all application content; network-only service worker remains protected and no private cache is created. **A real Chrome Android WebAPK still needs user validation; Brave may only provide shortcuts.** Details: [PWA acceptance notes](PWA_INSTALL.md).
+
+
 ## 2026-11-20 — screenshot-driven mobile header/admin and PWA install fixes
 
 User mobile Brave screenshots uncovered (1) account/profile icon wrapping under dark-mode control, (2) admin navigation labels shrinking into a single overlapped line, and (3) Brave adding a plain shortcut instead of a standalone installed PWA. Source `7702f240537b3e39e7102854f6ed2e17b0b07277` passed [Verify CanadaMB](https://github.com/pixel375/canadamb/actions/runs/44862188182), was deployed with [guarded Hostinger update](https://github.com/pixel375/canadamb/actions/runs/44862352431) and independently verified by [postdeploy audit](https://github.com/pixel375/canadamb/actions/runs/44862436382). Backups, original web-root directory and both IP-restricted websites remained intact.
