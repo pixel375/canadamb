@@ -19,8 +19,8 @@ use App\Http\Controllers\MarketplaceController;
 use App\Http\Controllers\MessagesController;
 use App\Http\Controllers\NewsController;
 use App\Http\Controllers\PropertyDraftController;
-use App\Http\Controllers\UserProfileController;
 use App\Http\Controllers\PublicController;
+use App\Http\Controllers\UserProfileController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [PublicController::class, 'home'])->name('home');
