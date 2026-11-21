@@ -1,5 +1,31 @@
 # CanadaMB optional installable web app (PWA) — prelaunch
 
+## November 21 follow-up — dark native bars and blue launcher icon (pending deployment)
+
+Real owner screenshots showed a dark navy header/foot navigation but a pink
+Android WebAPK icon and pink system-bar areas. **The first theme-color change was
+only merged to the implementation branch, not deployed**; the public production
+release was still `7c86e4cef9986c54e8a72b3ee0fffc3f63a58d32`.
+
+This follow-up defaults the installed manifest's native theme and splash to the
+published dark header/page (`#121C2A`/`#0E1622` for the default palette). The
+per-page `theme-color` meta value still synchronizes with the visitor's
+System/Light/Dark preference. CanadaMB launcher icon now uses the existing
+blue (`#75BFFF`) and navy (`#112339`) header-brand colors instead of the
+rainbow gradient's first pink accent; BrandonMB keeps its distinct green icon.
+The icon URLs now carry `?v=2` to refresh cached artwork, without changing
+the manifest's URL or install identity. PWA code, private prelaunch gating,
+route scope, DB schema and user sessions remain unchanged.
+
+**To make this visible:** merge after CI; run the trusted manual Hostinger
+deployment on the exact green implementation SHA with database changes OFF;
+verify private backups, postdeploy audit and external PWA manifest/icon
+metadata; then uninstall the old Android CanadaMB WebAPK and reinstall it from
+Chrome if the pink OS bars/launcher icon persist. Chrome can delay updates to
+an already-minted WebAPK, and some Chrome/Android versions do not apply
+page-level dynamic theme changes to the bottom system gesture area; verify on
+actual device rather than promising guaranteed OS behavior.
+
 ## Chrome Android visual refinement — pending deployment
 
 Owner confirms real PWA installation works from Google Chrome on Android. The old

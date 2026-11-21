@@ -13,7 +13,7 @@ class PwaController extends Controller
     public function manifest(Request $request, NetworkSettings $settings): JsonResponse
     {
         $site = $this->enabledSite($request, $settings);
-        $lightPalette = $settings->forSite($site)['palette']['light'] ?? [];
+        $darkPalette = $settings->forSite($site)['palette']['dark'] ?? [];
 
         $manifest = [
             'id' => '/',
@@ -23,13 +23,14 @@ class PwaController extends Controller
             'start_url' => '/',
             'scope' => '/',
             'display' => 'standalone',
-            // Brand accent remains in the icon artwork; Android system bars
-            // should blend with the site's light-mode page and header instead.
-            'background_color' => $lightPalette['page'] ?? '#F6F8FB',
-            'theme_color' => $lightPalette['header'] ?? '#FFFFFF',
+            // Default installed WebAPK system bars and splash to the dark
+            // header/page, not the portal's decorative accent color. The page
+            // meta tag updates the bars for Light, Dark or System selection.
+            'background_color' => $darkPalette['page'] ?? '#0E1622',
+            'theme_color' => $darkPalette['header'] ?? '#121C2A',
             'icons' => [
-                ['src' => '/pwa/icon/192.png', 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any'],
-                ['src' => '/pwa/icon/512.png', 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any maskable'],
+                ['src' => '/pwa/icon/192.png?v=2', 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any'],
+                ['src' => '/pwa/icon/512.png?v=2', 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any maskable'],
             ],
         ];
 
@@ -75,34 +76,38 @@ JS;
     {
         abort_unless(in_array($size, [180, 192, 512], true), 404);
         $site = $this->enabledSite($request, $settings);
-        $accent = $this->accent($site);
+        // The network launcher uses the same light-blue / navy mark as its
+        // header logo in dark mode. Other portals retain their own local accent.
+        $iconBackground = $site->isNetwork()
+            ? ($settings->forSite($site)['palette']['dark']['primary'] ?? '#75BFFF')
+            : $this->accent($site);
+        $iconMark = $site->isNetwork() ? '#112339' : '#FFFFFF';
+        abort_unless(is_string($iconBackground) && preg_match('/^#[0-9a-fA-F]{6}$/D', $iconBackground), 503);
 
-        // Generate branded icons on the same origin as the selected portal.
-        // PHP GD is already required by the current production image pipeline.
+        // PHP GD is already required by the existing production image pipeline.
         abort_unless(extension_loaded('gd'), 503);
         $image = imagecreatetruecolor($size, $size);
         abort_if($image === false, 503);
 
-        $hex = ltrim($accent, '#');
-        $red = hexdec(substr($hex, 0, 2));
-        $green = hexdec(substr($hex, 2, 2));
-        $blue = hexdec(substr($hex, 4, 2));
-        $background = imagecolorallocate($image, $red, $green, $blue);
-        $white = imagecolorallocate($image, 255, 255, 255);
+        $hex = ltrim($iconBackground, '#');
+        $background = imagecolorallocate($image,
+            hexdec(substr($hex, 0, 2)), hexdec(substr($hex, 2, 2)), hexdec(substr($hex, 4, 2)));
+        $hex = ltrim($iconMark, '#');
+        $mark = imagecolorallocate($image,
+            hexdec(substr($hex, 0, 2)), hexdec(substr($hex, 2, 2)), hexdec(substr($hex, 4, 2)));
         imagefill($image, 0, 0, $background);
 
-        // The artwork stays in the inner 70% for Android maskable icon crops.
-        imagefilledellipse($image, (int) ($size * .5), (int) ($size * .5),
-            (int) ($size * .68), (int) ($size * .68), $white);
-        imagefilledellipse($image, (int) ($size * .4), (int) ($size * .41),
-            (int) ($size * .085), (int) ($size * .085), $background);
+        // Mountains and a round sun replicate the site's CSS fallback logo.
+        // All foreground artwork stays inside the maskable inner safe circle.
+        imagefilledellipse($image, (int) ($size * .39), (int) ($size * .34),
+            (int) ($size * .135), (int) ($size * .135), $mark);
         imagefilledpolygon($image, [
-            (int) ($size * .26), (int) ($size * .66),
-            (int) ($size * .42), (int) ($size * .48),
-            (int) ($size * .52), (int) ($size * .6),
-            (int) ($size * .65), (int) ($size * .42),
-            (int) ($size * .76), (int) ($size * .66),
-        ], $background);
+            (int) ($size * .24), (int) ($size * .72),
+            (int) ($size * .43), (int) ($size * .49),
+            (int) ($size * .54), (int) ($size * .61),
+            (int) ($size * .65), (int) ($size * .45),
+            (int) ($size * .78), (int) ($size * .72),
+        ], $mark);
 
         ob_start();
         imagepng($image, null, 9);

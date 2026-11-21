@@ -16,9 +16,9 @@ class PwaInstallTest extends TestCase
     public function test_manifests_and_branded_icons_are_independent_on_each_domain(): void
     {
         foreach ([
-            'canadamb.ca' => 'CanadaMB',
-            'brandonmb.ca' => 'BrandonMB',
-        ] as $host => $name) {
+            'canadamb.ca' => ['CanadaMB', [117, 191, 255], [17, 35, 57]],
+            'brandonmb.ca' => ['BrandonMB', [34, 160, 107], [255, 255, 255]],
+        ] as $host => [$name, $expectedBackground, $expectedMark]) {
             $manifest = $this->get("https://$host/app.webmanifest");
             $manifest->assertOk()
                 ->assertHeader('Content-Type', 'application/manifest+json; charset=utf-8')
@@ -27,15 +27,15 @@ class PwaInstallTest extends TestCase
                 ->assertJsonPath('id', '/')
                 ->assertJsonPath('scope', '/')
                 ->assertJsonPath('display', 'standalone')
-                ->assertJsonPath('theme_color', '#FFFFFF')
-                ->assertJsonPath('background_color', '#F6F8FB')
-                ->assertJsonPath('icons.0.src', '/pwa/icon/192.png')
-                ->assertJsonPath('icons.1.src', '/pwa/icon/512.png');
+                ->assertJsonPath('theme_color', '#121C2A')
+                ->assertJsonPath('background_color', '#0E1622')
+                ->assertJsonPath('icons.0.src', '/pwa/icon/192.png?v=2')
+                ->assertJsonPath('icons.1.src', '/pwa/icon/512.png?v=2');
 
             $this->get("https://$host/")
                 ->assertOk()
                 ->assertSee('<link rel="manifest" href="/app.webmanifest">', false)
-                ->assertSee('href="/pwa/icon/180.png"', false)
+                ->assertSee('href="/pwa/icon/180.png?v=2"', false)
                 ->assertSee('name="theme-color"', false)
                 ->assertSee('data-light-color="#FFFFFF"', false)
                 ->assertSee('data-dark-color="#121C2A"', false)
@@ -49,6 +49,14 @@ class PwaInstallTest extends TestCase
                 $this->assertNotFalse($dimensions);
                 $this->assertSame([$size, $size], array_slice($dimensions, 0, 2));
                 $this->assertSame('image/png', $dimensions['mime']);
+
+                $bitmap = imagecreatefromstring($icon->getContent());
+                $this->assertNotFalse($bitmap);
+                $background = imagecolorsforindex($bitmap, imagecolorat($bitmap, 0, 0));
+                $mark = imagecolorsforindex($bitmap, imagecolorat($bitmap, (int) ($size * .39), (int) ($size * .34)));
+                $this->assertSame($expectedBackground, [$background['red'], $background['green'], $background['blue']]);
+                $this->assertSame($expectedMark, [$mark['red'], $mark['green'], $mark['blue']]);
+                imagedestroy($bitmap);
             }
             $this->get("https://$host/pwa/icon/1024.png")->assertNotFound();
             $worker = $this->get("https://$host/sw.js");
