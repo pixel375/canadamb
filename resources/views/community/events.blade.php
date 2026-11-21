@@ -1,12 +1,15 @@
-<x-layouts.site title="Community events">
+<x-layouts.site title="Events in Discussions">
     <div class="container page-shell narrow">
         <div class="page-intro"><div><h1>Community events</h1><p>Find upcoming events in {{ request()->attributes->get('site')->location?->name ?? 'Manitoba' }}.</p></div><a class="button button-primary" href="/events/new">Submit an event</a></div>
-        <form method="get" action="/events" class="panel filter-bar">
+        <details class="search-disclosure" @if(!empty($filters)) open @endif>
+            <summary><x-icon name="search" size="18"/> Event filters <x-icon class="disclosure-arrow" name="chevron-down" size="17"/></summary>
+            <form method="get" action="/events" class="panel filter-bar">
             <label>Search events<input type="search" name="q" maxlength="100" value="{{ $filters['q'] ?? '' }}"></label>
             <label>Category<select name="category"><option value="">All categories</option>@foreach(\App\Support\Community::EVENTS as $id => $label)<option value="{{ $id }}" @selected(($filters['category'] ?? null) === $id)>{{ $label }}</option>@endforeach</select></label>
             <label>Calendar month<input type="month" name="month" value="{{ $filters['month'] ?? '' }}"></label>
             <button class="button button-primary">Filter events</button>
         </form>
+        </details>
         @if($month)
             @php
                 $calendarFilters = array_filter(['q' => $filters['q'] ?? null, 'category' => $filters['category'] ?? null]);
