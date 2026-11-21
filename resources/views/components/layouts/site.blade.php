@@ -42,6 +42,11 @@
 @if($isPreview)<aside class="preview-notice">Preview of {{ $site->name }} <a href="/admin/communities/{{ $site->id }}">Return to community settings</a></aside>@endif
 <header class="site-header">
     <div class="container masthead">
+        @unless($isPreview)
+            <button id="site-menu-open" class="site-menu-trigger" type="button" aria-label="Open all sections menu" aria-controls="site-drawer" aria-haspopup="dialog">
+                <x-icon name="menu" size="23"/>
+            </button>
+        @endunless
         <a class="brand" href="{{ $isPreview ? url()->current() : '/' }}" aria-label="{{ $site->name }} home">
             @if($site->logo_url)
                 <img src="{{ $site->logo_url }}" width="42" height="42" alt="">
@@ -65,7 +70,7 @@
                     </select>
                 </label>
                 @auth
-                    <a class="sign-in" href="/account/listings" aria-label="My account"><x-icon name="person" size="18"/> <span>My account</span></a>
+                    <a class="sign-in" href="/account/profile" aria-label="My profile"><x-icon name="person" size="18"/> <span>My account</span></a>
                 @else
                     <a class="sign-in" href="{{ $site->isNetwork() ? '/login' : '/auth/start' }}" aria-label="Sign in"><x-icon name="person" size="18"/> <span>Sign in</span></a>
                 @endauth
@@ -75,15 +80,29 @@
     </div>
     <div class="navigation-wrap">
         <div class="container navigation">
-            <nav aria-label="Main navigation">
+            <nav aria-label="Primary navigation">
                 <a @if(request()->is('/')) aria-current="page" @endif href="/">Home</a>
-                @if($networkSettings['modules']['news'] ?? false)<a @if(request()->is('news', 'news/*')) aria-current="page" @endif href="/news">News</a>@endif
-                @if($networkSettings['modules']['businesses'] ?? false)<a @if(request()->is('businesses*', 'business-updates')) aria-current="page" @endif href="/businesses">Businesses</a>@endif
-                @if($networkSettings['modules']['community'] ?? false)<a @if(request()->is('community', 'community/*')) aria-current="page" @endif href="/community">Community</a>@endif
-                @if($networkSettings['modules']['events'] ?? false)<a @if(request()->is('events', 'events/*')) aria-current="page" @endif href="/events">Events</a>@endif
-                @if($networkSettings['modules']['jobs'] ?? false)<a @if(request()->is('jobs', 'jobs/*')) aria-current="page" @endif href="/jobs">Jobs</a>@endif
-                @if($marketEnabled)<a @if(request()->is('marketplace', 'marketplace/*')) aria-current="page" @endif href="/marketplace">Marketplace</a>@endif
-                @if($site->isNetwork())<a @if(request()->is('communities')) aria-current="page" @endif href="/communities">Communities</a>@endif
+                @if($marketEnabled)<a @if(request()->is('marketplace*')) aria-current="page" @endif href="/marketplace">Marketplace</a>@endif
+                @if($networkSettings['modules']['news'] ?? false)<a @if(request()->is('news*')) aria-current="page" @endif href="/news">News</a>@endif
+                @if(($networkSettings['modules']['businesses'] ?? false) || ($networkSettings['modules']['jobs'] ?? false))
+                    <details class="desktop-nav-group">
+                        <summary @if(request()->is('businesses*', 'business-updates', 'jobs*')) aria-current="page" @endif>Businesses <x-icon name="chevron-down" size="15"/></summary>
+                        <div class="desktop-nav-submenu">
+                            @if($networkSettings['modules']['businesses'] ?? false)<a href="/businesses">Directory</a>@endif
+                            @if($networkSettings['modules']['jobs'] ?? false)<a href="/jobs">Jobs</a>@endif
+                        </div>
+                    </details>
+                @endif
+                @if($networkSettings['modules']['community'] ?? false)
+                    <details class="desktop-nav-group">
+                        <summary @if(request()->is('community*', 'events*')) aria-current="page" @endif>Discussions <x-icon name="chevron-down" size="15"/></summary>
+                        <div class="desktop-nav-submenu">
+                            <a href="/community">All discussions</a>
+                            @if($networkSettings['modules']['events'] ?? false)<a href="/events">Events calendar</a>@endif
+                        </div>
+                    </details>
+                @endif
+                @if($site->isNetwork())<a href="/communities" @if(request()->is('communities')) aria-current="page" @endif>Communities</a>@endif
             </nav>
             @unless($isPreview)
                 @if($site->isNetwork())
@@ -96,6 +115,60 @@
     </div>
     <div class="site-accent" aria-hidden="true"></div>
 </header>
+@unless($isPreview)
+<dialog id="site-drawer" class="site-drawer" aria-label="All sections">
+    <div class="site-drawer-head">
+        <strong>Explore {{ $site->name }}</strong>
+        <button id="site-menu-close" class="site-drawer-close" type="button" aria-label="Close menu"><x-icon name="close" size="22"/></button>
+    </div>
+    <nav class="site-drawer-nav" aria-label="All site sections">
+        <a href="/"><x-icon name="home" size="20"/> Home</a>
+        <a href="/account/messages"><x-icon name="messages" size="20"/> Messages</a>
+        @if($networkSettings['modules']['news'] ?? false)<a href="/news"><x-icon name="news" size="20"/> News</a>@endif
+        @if($marketEnabled)<a href="/marketplace"><x-icon name="marketplace" size="20"/> Marketplace</a>@endif
+        @if(($networkSettings['modules']['businesses'] ?? false) || ($networkSettings['modules']['jobs'] ?? false))
+        <details class="drawer-submenu" @if(request()->is('businesses*', 'jobs*')) open @endif>
+            <summary><x-icon name="building" size="20"/> Businesses <x-icon class="drawer-chevron" name="chevron-down" size="17"/></summary>
+            <div>
+                @if($networkSettings['modules']['businesses'] ?? false)<a href="/businesses">Directory</a>@endif
+                @if($networkSettings['modules']['jobs'] ?? false)<a href="/jobs">Jobs</a>@endif
+            </div>
+        </details>
+        @endif
+        @if($networkSettings['modules']['community'] ?? false)
+        <details class="drawer-submenu" @if(request()->is('community*', 'events*')) open @endif>
+            <summary><x-icon name="discussions" size="20"/> Discussions <x-icon class="drawer-chevron" name="chevron-down" size="17"/></summary>
+            <div>
+                <a href="/community">All discussions</a>
+                @if($networkSettings['modules']['events'] ?? false)<a href="/events">Events calendar</a>@endif
+            </div>
+        </details>
+        @endif
+        <hr>
+        @if($site->isNetwork())
+            <a href="/communities"><x-icon name="map" size="20"/> Communities</a>
+        @else
+            <a href="{{ \App\Support\NetworkUrl::to(\App\Support\NetworkUrl::main(), '/communities') }}"><x-icon name="map" size="20"/> Communities</a>
+        @endif
+        @auth
+            <a href="/account/profile"><x-icon name="person" size="20"/> My Profile</a>
+            <a href="/account/settings"><x-icon name="settings" size="20"/> Settings</a>
+            @can('manage-network')<a href="{{ \App\Support\NetworkUrl::to(\App\Support\NetworkUrl::main(), '/admin') }}"><x-icon name="shield" size="20"/> Administration</a>@endcan
+        @else
+            <a href="{{ $site->isNetwork() ? '/login' : '/auth/start' }}"><x-icon name="person" size="20"/> Sign in</a>
+        @endauth
+        <hr>
+        <a href="/about">About us</a>
+        <a href="/contact">Contact us</a>
+    </nav>
+</dialog>
+<nav class="mobile-tab-bar" aria-label="Quick navigation">
+    <a href="/" @if(request()->is('/')) aria-current="page" @endif><x-icon name="home" size="22"/><span>Home</span></a>
+    <a href="/marketplace" @if(request()->is('marketplace*')) aria-current="page" @endif><x-icon name="marketplace" size="22"/><span>Marketplace</span></a>
+    <a href="/account/messages" @if(request()->is('account/messages*')) aria-current="page" @endif><x-icon name="messages" size="22"/><span>Messages</span></a>
+    <a href="/account/community-notifications" @if(request()->is('account/community-notifications*')) aria-current="page" @endif><x-icon name="bell" size="22"/><span>Notifications</span></a>
+</nav>
+@endunless
 <main id="main" @if($mainClass ?? null) class="{{ $mainClass }}" @endif>
     @if(session('status'))<div class="container"><p role="status" class="notice">{{ __(session('status')) }}</p></div>@endif
     @if($errors->any())
@@ -115,6 +188,8 @@
             @if($site->isNetwork())<a href="/communities">Manitoba communities</a>
             @else<a href="{{ \App\Support\NetworkUrl::to(\App\Support\NetworkUrl::main()) }}">Part of CanadaMB</a>@endif
             @if($site->contact_email)<a href="mailto:{{ $site->contact_email }}">Contact</a>@endif
+            <a href="/about">About us</a>
+            <a href="/contact">Contact us</a>
             <a href="/photo-credits">Photo credits</a>
         </nav>
     </div>
