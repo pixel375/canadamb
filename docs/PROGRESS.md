@@ -1,5 +1,12 @@
 # Progress
 
+## 2026-11-20 — screenshot-driven mobile header/admin and PWA install fixes
+
+User mobile Brave screenshots uncovered (1) account/profile icon wrapping under dark-mode control, (2) admin navigation labels shrinking into a single overlapped line, and (3) Brave adding a plain shortcut instead of a standalone installed PWA. Source `7702f240537b3e39e7102854f6ed2e17b0b07277` passed [Verify CanadaMB](https://github.com/pixel375/canadamb/actions/runs/44862188182), was deployed with [guarded Hostinger update](https://github.com/pixel375/canadamb/actions/runs/44862352431) and independently verified by [postdeploy audit](https://github.com/pixel375/canadamb/actions/runs/44862436382). Backups, original web-root directory and both IP-restricted websites remained intact.
+
+Mobile header now uses a fixed one-row CSS grid; theme selector is in the hamburger drawer and profile icon stays centered on the right. Admin navigation uses a collapsible disclosure with two-column links on phones. PWA adds a network-only root-scoped service worker with a fetch handler (no Cache API, private offline data or authorization bypass). **Real Android Chrome standalone/WebAPK install and phone screenshots must still be tested; Brave has a reported browser-side shortcut-only bug**, tracked on [issue #8](https://github.com/pixel375/canadamb/issues/8). Previous Brave shortcut should be removed before retesting in Chrome. There are no schema migrations and deploy-on-push is disabled.
+
+
 ## 2026-11-20 — mobile shell and PWA deployed to IP-restricted prelaunch
 
 Source SHA 90c36b5c9b56530fa15ebbe2633e23cd8b9916b0 passed Verify CanadaMB CI (run 44849693577), the guarded Hostinger release (run 44849860885) and the independent read-only production audit (run 44850000025). Both domains remain behind the approved-IP access gate; database, OAuth keys, backups and original public_html inode were preserved. The release had no schema migrations. GitHub deployment remains manual-only.
