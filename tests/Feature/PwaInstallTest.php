@@ -94,7 +94,7 @@ class PwaInstallTest extends TestCase
 
             $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.10'])
                 ->get("https://$host/app.webmanifest")
-                ->assertOk()->assertHeader('Cache-Control', 'private, no-store');
+                ->assertOk()->assertHeader('Cache-Control', 'no-store, private');
         }
     }
 }
