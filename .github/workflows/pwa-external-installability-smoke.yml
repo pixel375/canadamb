@@ -1,9 +1,7 @@
 name: CanadaMB public PWA metadata vs private prelaunch audit
 
 on:
-  workflow_run:
-    workflows: ['Deploy CanadaMB Prelaunch']
-    types: [completed]
+  workflow_call:
   workflow_dispatch:
 
 permissions:
@@ -11,12 +9,6 @@ permissions:
 
 jobs:
   inspect:
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'workflow_run' &&
-       github.event.workflow_run.conclusion == 'success' &&
-       github.event.workflow_run.head_branch == 'main' &&
-       github.event.workflow_run.head_repository.full_name == 'pixel375/canadamb')
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
