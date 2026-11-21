@@ -1,5 +1,9 @@
 name: CanadaMB postdeploy production verification (read only)
 on:
+  # One-time independent postdeploy verification for PWA manifest reachability fix.
+  push:
+    branches: [main]
+    paths: ['.github/workflows/hostinger-postdeploy-audit.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -30,7 +34,7 @@ jobs:
           ssh-keygen -y -P '' -f "$dir/key" >/dev/null
           ssh -T -o BatchMode=yes -o ConnectTimeout=20 -o StrictHostKeyChecking=yes \
             -o "UserKnownHostsFile=$dir/known_hosts" -o IdentitiesOnly=yes -i "$dir/key" -p "$SSH_PORT" \
-            "$SSH_USER@$SSH_HOST" bash -se -- '7702f240537b3e39e7102854f6ed2e17b0b07277' <<'REMOTE'
+            "$SSH_USER@$SSH_HOST" bash -se -- '7c86e4cef9986c54e8a72b3ee0fffc3f63a58d32' <<'REMOTE'
           set -Eeuo pipefail
           sha=$1
           site="$HOME/domains/canadamb.ca"
