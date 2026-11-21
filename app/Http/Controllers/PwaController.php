@@ -13,7 +13,7 @@ class PwaController extends Controller
     public function manifest(Request $request, NetworkSettings $settings): JsonResponse
     {
         $site = $this->enabledSite($request, $settings);
-        $accent = $this->accent($site);
+        $lightPalette = $settings->forSite($site)['palette']['light'] ?? [];
 
         $manifest = [
             'id' => '/',
@@ -23,8 +23,10 @@ class PwaController extends Controller
             'start_url' => '/',
             'scope' => '/',
             'display' => 'standalone',
-            'background_color' => '#ffffff',
-            'theme_color' => $accent,
+            // Brand accent remains in the icon artwork; Android system bars
+            // should blend with the site's light-mode page and header instead.
+            'background_color' => $lightPalette['page'] ?? '#F6F8FB',
+            'theme_color' => $lightPalette['header'] ?? '#FFFFFF',
             'icons' => [
                 ['src' => '/pwa/icon/192.png', 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any'],
                 ['src' => '/pwa/icon/512.png', 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any maskable'],
