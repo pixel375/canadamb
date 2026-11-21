@@ -21,7 +21,10 @@
         <link rel="apple-touch-icon" href="/pwa/icon/180.png">
         <meta name="apple-mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-title" content="{{ $site->name }}">
-        <meta name="theme-color" content="{{ $site->accent['colors'][0] ?? '#2759a5' }}">
+        <meta name="theme-color"
+              content="{{ $networkSettings['palette']['light']['header'] ?? '#FFFFFF' }}"
+              data-light-color="{{ $networkSettings['palette']['light']['header'] ?? '#FFFFFF' }}"
+              data-dark-color="{{ $networkSettings['palette']['dark']['header'] ?? '#121C2A' }}">
     @endif
     <meta name="color-scheme" content="light dark">
     @unless(app()->runningUnitTests())
