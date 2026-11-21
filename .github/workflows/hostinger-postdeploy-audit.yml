@@ -1,8 +1,10 @@
 name: CanadaMB postdeploy production verification (read only)
 on:
-  workflow_run:
-    workflows: ['Deploy CanadaMB Prelaunch']
-    types: [completed]
+  workflow_call:
+    inputs:
+      commit_sha:
+        required: true
+        type: string
   workflow_dispatch:
     inputs:
       commit_sha:
@@ -14,12 +16,6 @@ permissions:
   actions: read
 jobs:
   verify:
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'workflow_run' &&
-       github.event.workflow_run.conclusion == 'success' &&
-       github.event.workflow_run.head_branch == 'main' &&
-       github.event.workflow_run.head_repository.full_name == 'pixel375/canadamb')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: hostinger-prelaunch
@@ -30,28 +26,15 @@ jobs:
       SSH_PRIVATE_KEY: ${{ secrets.HOSTINGER_SSH_PRIVATE_KEY }}
       SSH_KNOWN_HOSTS: ${{ secrets.HOSTINGER_KNOWN_HOSTS }}
     steps:
-      - name: Derive the exact expected release SHA from the successful deploy artifact
+      - name: Validate exact audited SHA
         id: expected
         shell: bash
         env:
-          GH_TOKEN: ${{ github.token }}
-          SOURCE_RUN: ${{ github.event.workflow_run.id }}
-          MANUAL_SHA: ${{ inputs.commit_sha }}
+          EXPECTED_SHA: ${{ inputs.commit_sha }}
         run: |
           set -Eeuo pipefail
-          if [[ "$GITHUB_EVENT_NAME" == workflow_run ]]; then
-            [[ "$SOURCE_RUN" =~ ^[0-9]+$ ]] || exit 1
-            artifact=$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN/artifacts?per_page=100" \
-              --jq '.artifacts[].name' | grep -E '^prelaunch-build-[0-9a-f]{40}$' || true)
-            [[ "$artifact" =~ ^prelaunch-build-([0-9a-f]{40})$ ]] || {
-              echo "::error::Expected exactly one SHA-pinned deploy build artifact."; exit 1;
-            }
-            sha="${BASH_REMATCH[1]}"
-          else
-            sha="$MANUAL_SHA"
-          fi
-          [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || exit 1
-          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
+          echo "sha=$EXPECTED_SHA" >> "$GITHUB_OUTPUT"
 
       - name: Verify deployed SHA, DB readiness, private backups, cron script and original public root
         shell: bash
