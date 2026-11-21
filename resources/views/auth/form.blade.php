@@ -8,7 +8,7 @@
     };
     $name = old('name');
     $email = old('email', request()->query->all()['email'] ?? null);
-    $continuation = old('continuation', request()->query->all()['continuation'] ?? null);
+    $continuation = request()->query->all()['continuation'] ?? old('continuation');
     $continuation = is_string($continuation) && preg_match('/^[a-zA-Z0-9]{40}$/D', $continuation) ? $continuation : null;
 @endphp
 <x-layouts.site :title="$title">

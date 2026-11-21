@@ -145,4 +145,15 @@ class PassOneSsoTest extends TestCase
         }
         $this->assertSame('/marketplace?search=a%20b&sort=recent', NetworkUrl::pathOn($site, 'https://brandonmb.ca/marketplace?search=a%20b&sort=recent'));
     }
+
+    public function test_a_tabs_continuation_takes_priority_over_another_tabs_validation_input(): void
+    {
+        $current = str_repeat('a', 40);
+        $other = str_repeat('b', 40);
+        $this->withSession(['_old_input' => ['continuation' => $other]])
+            ->withCookie(config('session.cookie'), session()->getId())
+            ->get('https://canadamb.ca/login?continuation='.$current)
+            ->assertOk()->assertSee('name="continuation" value="'.$current.'"', false)
+            ->assertDontSee('name="continuation" value="'.$other.'"', false);
+    }
 }
