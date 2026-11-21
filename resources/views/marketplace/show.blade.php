@@ -51,7 +51,7 @@
             <aside class="listing-detail-aside" aria-label="Seller and other listings">
                 <section class="panel seller-panel">
                     <h2>Seller</h2>
-                    <p class="seller-name">{{ $item->seller->name }}</p>
+                    <p class="seller-name"><a class="text-link" href="/users/{{ $item->seller->id }}">{{ $item->seller->name }}</a></p>
                     <p class="seller-since">Member since {{ $item->seller->created_at->format('F Y') }}</p>
                     @auth
                         @if($item->user_id === auth()->id())
