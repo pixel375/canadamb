@@ -13,6 +13,10 @@
 | 6 — Full professional UI/UX redesign | Later (parallel design research allowed) | Distinct polished design direction informed by owner references, provincial/homepage modularity, listing and seller cards, photo galleries, responsive sidebars, color presets, light/dark mode, accessibility and performance. Use shared components across city sites while retaining local accents. |
 | 7 — Public launch | Last | Robust review of authentication/SSO, CSRF, access controls, mail, logs, backups, performance, data rights and moderation; policies, user privacy/export/deletion, launch content, search indexing; explicit approval before disabling prelaunch. |
 
+## Mobile installable app (PWA) — backlog
+
+[Issue #8 — Optional PWA with mobile-footer Install App button](https://github.com/pixel375/canadamb/issues/8) is scheduled after the first mobile navigation/profile functionality pass. Provide independent CanadaMB/BrandonMB app manifests and icons, Android install prompting only after the visitor taps the footer button, and honest iOS Add to Home Screen instructions. Keep install optional and non-intrusive. Cache static public assets conservatively; never offline-cache private messages, OAuth tokens, admin content or other personal pages. Preserve IP-restricted prelaunch and existing SSO. Add an admin toggle for footer install CTA with the configurable homepage/footer controls.
+
 ## Observed rollout checkpoints
 
 - **Phase 0 functional infrastructure:** SSH/SFTP, real production MariaDB restore rehearsal, guarded two-domain first/second deployments, hPanel cron execution and a live database queue canary all passed. Keep deployment manual-only and public prelaunch gate active.
