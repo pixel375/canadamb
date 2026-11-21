@@ -3,7 +3,10 @@
     <div class="container page-shell">
         <div class="admin-shell">
             <nav class="admin-nav panel" aria-label="Network administration">
-                <strong>Network administration</strong>
+                <details class="admin-nav-disclosure" open>
+                    <summary>Administration sections <x-icon name="chevron-down" size="18"/></summary>
+                    <div class="admin-nav-links">
+                        <strong>Network administration</strong>
                 @can('manage-network')
                 <a href="/admin" @if(request()->is('admin')) aria-current="page" @endif>Network overview</a>
                 <a href="/admin/communities" @if(request()->is('admin/communities*')) aria-current="page" @endif>Community websites</a>
@@ -19,6 +22,8 @@
                 <a href="/admin/audit" @if(request()->is('admin/audit')) aria-current="page" @endif>Audit log</a>
                 @endcan
                 @can('manage-news')<a href="/admin/news" @if(request()->is('admin/news*')) aria-current="page" @endif>News editorial</a>@endcan
+                    </div>
+                </details>
             </nav>
             <section aria-label="{{ $title }}">{{ $slot }}</section>
         </div>
