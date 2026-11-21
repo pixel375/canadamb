@@ -1,5 +1,14 @@
 # CanadaMB optional installable web app (PWA) — prelaunch
 
+## Mobile QA refinement after original rollout
+
+New live SHA: `7702f240537b3e39e7102854f6ed2e17b0b07277`.
+
+After owner screenshots identified a Brave Android shortcut instead of standalone installation, a scoped `/sw.js` was added and registered on enabled PWA pages. It intercepts same-origin GET only to forward them directly to the network via `fetch()`—**no Cache API, precaching, offline pages, token storage or privacy bypass**. The worker endpoint is Laravel-served through the existing prelaunch IP guard. The installer remains browser-controlled; **Brave Android has a [reported PWA-vs-shortcut bug](https://github.com/brave/brave-browser/issues/56133)**. Validate with Android **Chrome** (after removing any old Brave shortcut) and confirm standalone window (no URL bar) and its presence among Android installed apps where supported. Browser install UI is not guaranteed by a website.
+
+This update also fixed mobile profile-icon wrapping and collapsed the overlapping admin navigation into an accessible phone menu. [CI](https://github.com/pixel375/canadamb/actions/runs/44862188182), [deploy](https://github.com/pixel375/canadamb/actions/runs/44862352431), [postdeploy audit](https://github.com/pixel375/canadamb/actions/runs/44862436382).
+
+
 Live application SHA: 90c36b5c9b56530fa15ebbe2633e23cd8b9916b0
 
 ## Verified
