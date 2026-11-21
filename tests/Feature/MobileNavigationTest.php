@@ -27,7 +27,8 @@ class MobileNavigationTest extends TestCase
                 ->assertSee('Businesses', false)
                 ->assertSee('Discussions', false)
                 ->assertSee('href="/about"', false)
-                ->assertSee('href="/contact"', false);
+                ->assertSee('href="/contact"', false)
+                ->assertSee('id="theme-choice-mobile"', false);
         }
 
         $this->actingAs(User::factory()->create())
@@ -56,6 +57,18 @@ class MobileNavigationTest extends TestCase
             $this->assertArrayHasKey(1, $filtered);
             $this->assertMatchesRegularExpression('/\bopen\b/', $filtered[1]);
         }
+    }
+
+    public function test_admin_navigation_is_a_compact_responsive_disclosure(): void
+    {
+        $admin = User::factory()->create(['role' => 'super_admin']);
+
+        $this->actingAs($admin)->get('https://canadamb.ca/admin')
+            ->assertOk()
+            ->assertSee('class="admin-nav-disclosure" open', false)
+            ->assertSee('Administration sections')
+            ->assertSee('class="admin-nav-links"', false)
+            ->assertSee('Discussions &amp; events', false);
     }
 
     public function test_member_profiles_are_public_without_email_and_account_settings_are_private(): void
