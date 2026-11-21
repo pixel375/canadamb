@@ -47,6 +47,14 @@ class PwaInstallTest extends TestCase
                 $this->assertSame('image/png', $dimensions['mime']);
             }
             $this->get("https://$host/pwa/icon/1024.png")->assertNotFound();
+            $worker = $this->get("https://$host/sw.js");
+            $worker->assertOk()
+                ->assertHeader('Content-Type', 'application/javascript; charset=utf-8')
+                ->assertHeader('Service-Worker-Allowed', '/')
+                ->assertHeader('Cache-Control', 'no-store, private')
+                ->assertSee('event.respondWith(fetch(event.request))', false)
+                ->assertDontSee('caches.open(', false)
+                ->assertDontSee('cache.put(', false);
         }
     }
 
@@ -63,6 +71,7 @@ class PwaInstallTest extends TestCase
         foreach (['canadamb.ca', 'brandonmb.ca'] as $host) {
             $this->get("https://$host/app.webmanifest")->assertNotFound();
             $this->get("https://$host/pwa/icon/192.png")->assertNotFound();
+            $this->get("https://$host/sw.js")->assertNotFound();
             $this->get("https://$host/")
                 ->assertOk()
                 ->assertDontSee('rel="manifest"', false)
@@ -90,6 +99,9 @@ class PwaInstallTest extends TestCase
                 ->assertForbidden()->assertHeader('X-Robots-Tag', 'noindex, nofollow');
             $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.11'])
                 ->get("https://$host/pwa/icon/512.png")
+                ->assertForbidden();
+            $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.11'])
+                ->get("https://$host/sw.js")
                 ->assertForbidden();
 
             $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.10'])
