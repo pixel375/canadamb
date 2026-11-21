@@ -162,4 +162,71 @@ if (siteDrawer && siteMenuOpen && typeof siteDrawer.showModal === 'function') {
     });
 }
 
+
+
+// Installation is always optional. No service worker is registered or private
+// response cached. Chromium provides a prompt only after its own eligibility
+// checks; iOS Safari offers on-demand Home Screen instructions instead.
+const installWrap = document.getElementById('pwa-install');
+const installButton = document.getElementById('pwa-install-button');
+const installHelp = document.getElementById('pwa-install-help');
+if (installWrap && installButton) {
+    const standalone = () => window.matchMedia('(display-mode: standalone)').matches ||
+        window.navigator.standalone === true;
+    const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const safari = ios && /Safari/i.test(navigator.userAgent) &&
+        !/CriOS|FxiOS|EdgiOS|OPiOS/i.test(navigator.userAgent);
+    let pendingInstall = null;
+
+    const reveal = () => {
+        if (!standalone()) installWrap.hidden = false;
+    };
+    const hide = () => {
+        installWrap.hidden = true;
+        if (installHelp) installHelp.hidden = true;
+    };
+
+    if (standalone()) {
+        hide();
+    } else if (safari) {
+        reveal();
+    }
+
+    window.addEventListener('beforeinstallprompt', event => {
+        if (standalone()) return;
+        event.preventDefault();
+        pendingInstall = event;
+        reveal();
+    });
+
+    installButton.addEventListener('click', async () => {
+        if (standalone()) {
+            hide();
+            return;
+        }
+        if (pendingInstall) {
+            const request = pendingInstall;
+            pendingInstall = null;
+            try {
+                await request.prompt();
+                const choice = await request.userChoice;
+                if (choice?.outcome === 'accepted') hide();
+            } catch {
+                // Browser/OS may withdraw the prompt; never claim installation.
+                hide();
+            }
+        } else if (safari && installHelp) {
+            installHelp.hidden = !installHelp.hidden;
+        } else {
+            hide();
+        }
+    });
+
+    window.addEventListener('appinstalled', hide);
+    window.matchMedia('(display-mode: standalone)').addEventListener('change', event => {
+        if (event.matches) hide();
+    });
+}
+
 Alpine.start();
