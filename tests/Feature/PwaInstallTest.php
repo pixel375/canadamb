@@ -89,24 +89,33 @@ class PwaInstallTest extends TestCase
         $this->get('https://brandonmb.ca/app.webmanifest')->assertOk();
     }
 
-    public function test_prelaunch_guard_also_protects_manifest_and_icons(): void
+    public function test_prelaunch_exposes_only_public_pwa_metadata(): void
     {
         config(['network.prelaunch' => true, 'network.prelaunch_ips' => ['192.0.2.10']]);
 
         foreach (['canadamb.ca', 'brandonmb.ca'] as $host) {
             $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.11'])
                 ->get("https://$host/app.webmanifest")
-                ->assertForbidden()->assertHeader('X-Robots-Tag', 'noindex, nofollow');
+                ->assertOk()
+                ->assertHeader('X-Robots-Tag', 'noindex, nofollow')
+                ->assertHeader('Cache-Control', 'public, max-age=300');
+            foreach ([180, 192, 512] as $size) {
+                $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.11'])
+                    ->get("https://$host/pwa/icon/$size.png")
+                    ->assertOk()
+                    ->assertHeader('Content-Type', 'image/png');
+            }
+            foreach (['/', '/marketplace', '/account/messages', '/admin', '/sw.js'] as $path) {
+                $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.11'])
+                    ->get("https://$host$path")
+                    ->assertForbidden();
+            }
             $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.11'])
-                ->get("https://$host/pwa/icon/512.png")
+                ->post("https://$host/app.webmanifest")
                 ->assertForbidden();
-            $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.11'])
-                ->get("https://$host/sw.js")
-                ->assertForbidden();
-
             $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.10'])
-                ->get("https://$host/app.webmanifest")
-                ->assertOk()->assertHeader('Cache-Control', 'no-store, private');
+                ->get("https://$host/")
+                ->assertOk();
         }
     }
 }
