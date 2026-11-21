@@ -225,3 +225,16 @@ jobs:
         shell: bash
         run: |
           rm -rf "$RUNNER_TEMP/canadamb-ssh"
+
+  verify_private:
+    name: Independent exact-SHA database, backup and prelaunch audit
+    needs: deploy
+    uses: ./.github/workflows/hostinger-postdeploy-audit.yml
+    with:
+      commit_sha: ${{ inputs.commit_sha }}
+    secrets: inherit
+
+  verify_public:
+    name: Independent PWA metadata and private-access audit
+    needs: deploy
+    uses: ./.github/workflows/pwa-external-installability-smoke.yml
