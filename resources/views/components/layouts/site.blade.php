@@ -16,6 +16,13 @@
     @if($structuredData && ! $preview)
         <script type="application/ld+json">{!! json_encode($structuredData, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_THROW_ON_ERROR) !!}</script>
     @endif
+    @if(! ($preview ?? false) && ($networkSettings['pwa_install_enabled'] ?? true))
+        <link rel="manifest" href="/app.webmanifest">
+        <link rel="apple-touch-icon" href="/pwa/icon/180.png">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-title" content="{{ $site->name }}">
+        <meta name="theme-color" content="{{ $site->accent['colors'][0] ?? '#2759a5' }}">
+    @endif
     <meta name="color-scheme" content="light dark">
     @unless(app()->runningUnitTests())
         @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -184,6 +191,15 @@
             <strong>{{ $site->name }}</strong>
             <p>Independent Manitoba community network.</p>
         </div>
+        @if(! ($preview ?? false) && ($networkSettings['pwa_install_enabled'] ?? true))
+            <div class="pwa-install" id="pwa-install" hidden>
+                <button class="button button-outline" type="button" id="pwa-install-button"
+                    aria-controls="pwa-install-help">Install App</button>
+                <p id="pwa-install-help" class="pwa-install-help" hidden>
+                    In Safari, tap Share, then Add to Home Screen. Enable "Open as Web App" if offered.
+                </p>
+            </div>
+        @endif
         <nav aria-label="Footer">
             @if($site->isNetwork())<a href="/communities">Manitoba communities</a>
             @else<a href="{{ \App\Support\NetworkUrl::to(\App\Support\NetworkUrl::main()) }}">Part of CanadaMB</a>@endif
