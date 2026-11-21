@@ -2,6 +2,7 @@ import Alpine from 'alpinejs';
 
 const modes = ['system', 'light', 'dark'];
 const themeChoice = document.getElementById('theme-choice');
+const mobileThemeChoice = document.getElementById('theme-choice-mobile');
 
 function theme(value) {
     if (value === 'system') {
@@ -10,6 +11,7 @@ function theme(value) {
         document.documentElement.dataset.theme = value;
     }
     if (themeChoice) themeChoice.value = value;
+    if (mobileThemeChoice) mobileThemeChoice.value = value;
 }
 
 try {
@@ -19,14 +21,16 @@ try {
     theme('system');
 }
 
-themeChoice?.addEventListener('change', () => {
-    theme(themeChoice.value);
-    try {
-        localStorage.setItem('canadamb-theme', themeChoice.value);
-    } catch {
-        // A browser may disable persistent site storage.
-    }
-});
+for (const control of [themeChoice, mobileThemeChoice]) {
+    control?.addEventListener('change', () => {
+        theme(control.value);
+        try {
+            localStorage.setItem('canadamb-theme', control.value);
+        } catch {
+            // A browser may disable persistent site storage.
+        }
+    });
+}
 
 Alpine.data('themeEditor', (palettes, current, selected) => ({
     palettes,
@@ -164,9 +168,19 @@ if (siteDrawer && siteMenuOpen && typeof siteDrawer.showModal === 'function') {
 
 
 
-// Installation is always optional. No service worker is registered or private
-// response cached. Chromium provides a prompt only after its own eligibility
+// Installation remains optional. The tiny service worker uses network-only
+// fetches: it never caches account pages, OAuth responses or private messages. Chromium provides a prompt only after its own eligibility
 // checks; iOS Safari offers on-demand Home Screen instructions instead.
+// Register a pass-through worker so Chromium can offer real app install prompts.
+// Every request still goes to Hostinger; no Cache API, precache or offline store.
+if ('serviceWorker' in navigator && document.querySelector('link[rel="manifest"]')) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {
+            // Installation CTA remains hidden without browser eligibility.
+        });
+    });
+}
+
 const installWrap = document.getElementById('pwa-install');
 const installButton = document.getElementById('pwa-install-button');
 const installHelp = document.getElementById('pwa-install-help');
@@ -227,6 +241,15 @@ if (installWrap && installButton) {
     window.matchMedia('(display-mode: standalone)').addEventListener('change', event => {
         if (event.matches) hide();
     });
+}
+
+// Keep the many administration links in a compact disclosure on phones.
+const adminMenu = document.querySelector('.admin-nav-disclosure');
+if (adminMenu) {
+    const mobileAdmin = window.matchMedia('(max-width: 760px)');
+    const syncAdmin = () => { adminMenu.open = !mobileAdmin.matches; };
+    syncAdmin();
+    mobileAdmin.addEventListener('change', syncAdmin);
 }
 
 Alpine.start();
