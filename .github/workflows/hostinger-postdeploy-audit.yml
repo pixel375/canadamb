@@ -1,9 +1,5 @@
 name: CanadaMB postdeploy production verification (read only)
 on:
-  # One-time independent postdeploy audit of the verified CanadaMB PWA release.
-  push:
-    branches: [main]
-    paths: ['.github/workflows/hostinger-postdeploy-audit.yml']
   workflow_dispatch:
 permissions:
   contents: read
