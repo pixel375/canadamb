@@ -1,10 +1,6 @@
 name: CanadaMB public PWA metadata vs private prelaunch audit
 
 on:
-  # One-time external PWA metadata and prelaunch privacy verification after PWA release.
-  push:
-    branches: [main]
-    paths: ['.github/workflows/pwa-external-installability-smoke.yml']
   workflow_dispatch:
 
 permissions:
