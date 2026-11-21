@@ -1,5 +1,33 @@
 # Hostinger Git auto-deployment — options and safe approach (2026-11-19)
 
+## 2026-11-21 — Routine deployment now automated after green CI
+
+The trusted default-branch `.github/workflows/hostinger-autodeploy.yml` listens for
+successful **push** runs of **Verify CanadaMB** on
+`implementation/network-foundation` only. It checks that the exact green SHA
+is still the implementation branch tip and dispatches the existing guarded
+`Deploy CanadaMB Prelaunch` workflow, explicitly setting
+`allow_reviewed_database_changes=false`. PRs, other branches, failed CI and
+superseded commits do not dispatch. GitHub Actions, not a public Hostinger Git
+webhook, holds the SSH environment credentials.
+
+The unchanged deploy workflow independently rechecks exact-SHA push CI and
+branch ancestry, builds assets, verifies SSH host keys, backs up the production
+database and media, deploys a private versioned Laravel release, and checks
+both IP-restricted domains. The deployment script refuses unattended changes
+to database migrations or seeders. Sensitive schema changes, public launch and
+prelaunch allowlist changes remain reviewed operations.
+
+After a successful deployment, independent workflows automatically audit the
+**deployed SHA derived from the build artifact**, database/media backup
+checksums, original public web root, prelaunch protection, PWA manifest and
+icons. The manual workflow remains available for exceptional reviewed updates,
+but routine code/UI releases should no longer require the owner to click Run.
+
+This section supersedes the older 2026-11-19 manual-only description below.
+It is also a harmless documentation-only implementation commit used to validate
+the full CI-to-deploy-to-audit handoff before declaring automation proven.
+
 ## Automated workflow status — connected, no production update yet (2026-11-19)
 
 **Implemented on GitHub `main`:**
