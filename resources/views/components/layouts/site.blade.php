@@ -18,11 +18,11 @@
     @endif
     @if(! ($preview ?? false) && ($networkSettings['pwa_install_enabled'] ?? true))
         <link rel="manifest" href="/app.webmanifest">
-        <link rel="apple-touch-icon" href="/pwa/icon/180.png">
+        <link rel="apple-touch-icon" href="/pwa/icon/180.png?v=2">
         <meta name="apple-mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-title" content="{{ $site->name }}">
         <meta name="theme-color"
-              content="{{ $networkSettings['palette']['light']['header'] ?? '#FFFFFF' }}"
+              content="{{ $networkSettings['palette']['dark']['header'] ?? '#121C2A' }}"
               data-light-color="{{ $networkSettings['palette']['light']['header'] ?? '#FFFFFF' }}"
               data-dark-color="{{ $networkSettings['palette']['dark']['header'] ?? '#121C2A' }}">
     @endif
