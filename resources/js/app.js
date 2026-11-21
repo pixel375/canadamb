@@ -137,4 +137,29 @@ for (const gallery of document.querySelectorAll('[data-listing-gallery]')) {
     }, { passive: true });
 }
 
+
+
+// Native modal drawer traps focus and supports Escape without custom key handling.
+const siteDrawer = document.getElementById('site-drawer');
+const siteMenuOpen = document.getElementById('site-menu-open');
+const siteMenuClose = document.getElementById('site-menu-close');
+if (siteDrawer && siteMenuOpen && typeof siteDrawer.showModal === 'function') {
+    siteMenuOpen.addEventListener('click', () => {
+        if (!siteDrawer.open) siteDrawer.showModal();
+        document.documentElement.classList.add('site-menu-open');
+        siteMenuClose?.focus();
+    });
+    siteMenuClose?.addEventListener('click', () => siteDrawer.close());
+    siteDrawer.addEventListener('click', event => {
+        if (event.target === siteDrawer) siteDrawer.close();
+    });
+    siteDrawer.addEventListener('close', () => {
+        document.documentElement.classList.remove('site-menu-open');
+        siteMenuOpen.focus();
+    });
+    window.matchMedia('(min-width: 761px)').addEventListener('change', event => {
+        if (event.matches && siteDrawer.open) siteDrawer.close();
+    });
+}
+
 Alpine.start();
