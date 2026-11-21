@@ -1,10 +1,6 @@
 name: CanadaMB public PWA metadata vs private prelaunch audit
 
 on:
-  # One-time outside-allowlist check after PWA metadata exception deployment.
-  push:
-    branches: [main]
-    paths: ['.github/workflows/pwa-external-installability-smoke.yml']
   workflow_dispatch:
 
 permissions:
