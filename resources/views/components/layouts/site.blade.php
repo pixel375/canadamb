@@ -167,6 +167,14 @@
         <hr>
         <a href="/about">About us</a>
         <a href="/contact">Contact us</a>
+        <label class="drawer-theme-control">
+            <x-icon name="moon" size="19"/> Appearance
+            <select id="theme-choice-mobile" aria-label="Mobile appearance">
+                <option value="system">System</option>
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+            </select>
+        </label>
     </nav>
 </dialog>
 <nav class="mobile-tab-bar" aria-label="Quick navigation">
