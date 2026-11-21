@@ -3,6 +3,15 @@ import Alpine from 'alpinejs';
 const modes = ['system', 'light', 'dark'];
 const themeChoice = document.getElementById('theme-choice');
 const mobileThemeChoice = document.getElementById('theme-choice-mobile');
+const systemDark = window.matchMedia('(prefers-color-scheme: dark)');
+const systemBarTheme = document.querySelector('meta[name="theme-color"]');
+
+function updateSystemBarTheme(value) {
+    if (!systemBarTheme) return;
+    const dark = value === 'dark' || (value === 'system' && systemDark.matches);
+    const color = dark ? systemBarTheme.dataset.darkColor : systemBarTheme.dataset.lightColor;
+    if (color && /^#[0-9a-f]{6}$/i.test(color)) systemBarTheme.content = color;
+}
 
 function theme(value) {
     if (value === 'system') {
@@ -12,6 +21,7 @@ function theme(value) {
     }
     if (themeChoice) themeChoice.value = value;
     if (mobileThemeChoice) mobileThemeChoice.value = value;
+    updateSystemBarTheme(value);
 }
 
 try {
@@ -20,6 +30,12 @@ try {
 } catch {
     theme('system');
 }
+
+// Keep installed PWA chrome aligned when the device's dark mode changes.
+// An explicit Light/Dark selection always takes precedence over the OS.
+systemDark.addEventListener('change', () => {
+    if (!document.documentElement.dataset.theme) updateSystemBarTheme('system');
+});
 
 for (const control of [themeChoice, mobileThemeChoice]) {
     control?.addEventListener('change', () => {

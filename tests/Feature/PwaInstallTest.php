@@ -16,9 +16,9 @@ class PwaInstallTest extends TestCase
     public function test_manifests_and_branded_icons_are_independent_on_each_domain(): void
     {
         foreach ([
-            'canadamb.ca' => ['CanadaMB', '#E85D75'],
-            'brandonmb.ca' => ['BrandonMB', '#22A06B'],
-        ] as $host => [$name, $colour]) {
+            'canadamb.ca' => 'CanadaMB',
+            'brandonmb.ca' => 'BrandonMB',
+        ] as $host => $name) {
             $manifest = $this->get("https://$host/app.webmanifest");
             $manifest->assertOk()
                 ->assertHeader('Content-Type', 'application/manifest+json; charset=utf-8')
@@ -27,7 +27,8 @@ class PwaInstallTest extends TestCase
                 ->assertJsonPath('id', '/')
                 ->assertJsonPath('scope', '/')
                 ->assertJsonPath('display', 'standalone')
-                ->assertJsonPath('theme_color', $colour)
+                ->assertJsonPath('theme_color', '#FFFFFF')
+                ->assertJsonPath('background_color', '#F6F8FB')
                 ->assertJsonPath('icons.0.src', '/pwa/icon/192.png')
                 ->assertJsonPath('icons.1.src', '/pwa/icon/512.png');
 
@@ -35,6 +36,9 @@ class PwaInstallTest extends TestCase
                 ->assertOk()
                 ->assertSee('<link rel="manifest" href="/app.webmanifest">', false)
                 ->assertSee('href="/pwa/icon/180.png"', false)
+                ->assertSee('name="theme-color"', false)
+                ->assertSee('data-light-color="#FFFFFF"', false)
+                ->assertSee('data-dark-color="#121C2A"', false)
                 ->assertSee('id="pwa-install-button"', false)
                 ->assertSee('Install App');
 
