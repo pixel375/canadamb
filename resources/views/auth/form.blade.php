@@ -54,7 +54,7 @@
         @endif
         @if($mode === 'login')
             <div class="inline-actions">@if(app(\App\Support\NetworkSettings::class)->registrationAllowed())<a class="text-link" href="{{ $continuation ? '/register?continuation='.$continuation : '/register' }}">Create account</a>@endif<a class="text-link" href="/forgot-password">Forgot password?</a></div>
-        @elseif($mode !== 'verify')<a class="text-link" href="/login">Back to sign in</a>
+        @elseif($mode !== 'verify')<a class="text-link" href="{{ $continuation ? '/login?continuation='.$continuation : '/login' }}">Back to sign in</a>
         @else<form action="/account/logout" method="post">@csrf<button class="button button-outline">Sign out</button></form>@endif
     </div>
 </x-layouts.site>

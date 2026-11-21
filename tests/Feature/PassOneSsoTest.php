@@ -41,6 +41,8 @@ class PassOneSsoTest extends TestCase
         $this->assertStringStartsWith('https://canadamb.ca/login?continuation=', $login);
         parse_str(parse_url($login, PHP_URL_QUERY), $firstLogin);
         $this->get($login)->assertOk()->assertSee('name="continuation" value="'.$firstLogin['continuation'].'"', false);
+        $this->get('https://canadamb.ca/register?continuation='.$firstLogin['continuation'])->assertOk()
+            ->assertSee('href="/login?continuation='.$firstLogin['continuation'].'">Back to sign in', false);
         // A second flow may reach the login page before the first tab submits.
         $secondAuthorize = preg_replace('/([?&]state=)[a-zA-Z0-9]{64}/', '${1}'.str_repeat('z', 64), $authorize);
         $second = $this->get($secondAuthorize)->assertRedirect()->headers->get('Location');
