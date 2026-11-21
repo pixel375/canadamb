@@ -98,7 +98,7 @@ class PwaInstallTest extends TestCase
                 ->get("https://$host/app.webmanifest")
                 ->assertOk()
                 ->assertHeader('X-Robots-Tag', 'noindex, nofollow')
-                ->assertHeader('Cache-Control', 'public, max-age=300');
+                ->assertHeader('Cache-Control', 'max-age=300, public');
             foreach ([180, 192, 512] as $size) {
                 $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.11'])
                     ->get("https://$host/pwa/icon/$size.png")
