@@ -19,11 +19,20 @@ use App\Http\Controllers\MarketplaceController;
 use App\Http\Controllers\MessagesController;
 use App\Http\Controllers\NewsController;
 use App\Http\Controllers\PropertyDraftController;
+use App\Http\Controllers\UserProfileController;
 use App\Http\Controllers\PublicController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [PublicController::class, 'home'])->name('home');
 Route::view('/photo-credits', 'photo-credits');
+Route::view('/about', 'pages.about');
+Route::view('/contact', 'pages.contact');
+Route::get('/users/{user}', [UserProfileController::class, 'show'])->whereNumber('user');
+Route::middleware('auth')->group(function () {
+    Route::get('/account/profile', [UserProfileController::class, 'mine']);
+    Route::get('/account/settings', [UserProfileController::class, 'settings']);
+    Route::post('/account/settings', [UserProfileController::class, 'update'])->middleware('throttle:8,1');
+});
 Route::get('/communities', [PublicController::class, 'communities']);
 Route::get('/sitemap.xml', [PublicController::class, 'sitemap']);
 Route::get('/robots.txt', [PublicController::class, 'robots']);
