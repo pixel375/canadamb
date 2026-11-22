@@ -15,7 +15,7 @@ require $release.'/vendor/autoload.php';
 $app = require $release.'/bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();
 set_exception_handler(function (Throwable $error): never {
-    fwrite(STDERR, "Pass 02 notification rehearsal failed: ".$error->getMessage().PHP_EOL);
+    fwrite(STDERR, 'Pass 02 notification rehearsal failed: '.$error->getMessage().PHP_EOL);
     exit(1);
 });
 
