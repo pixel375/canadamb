@@ -238,7 +238,8 @@ final class NotificationFeed
         // A blocked or non-participating viewer cannot see even a historical stub.
         $query->whereRaw("(conversation.id IS NULL OR ($participants AND NOT $blocked))");
 
-        return [$participants, "listing.status = 'active' AND listing.expires_at > ?", 'conversation.id', [now()]];
+        // Participants can continue an existing conversation after the public listing closes.
+        return [$participants, 'listing.id IS NOT NULL', 'conversation.id', []];
     }
 
     private function atLocation(Builder $query, Site $site, string $present, string $location): void

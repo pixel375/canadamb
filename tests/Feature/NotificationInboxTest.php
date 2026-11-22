@@ -96,6 +96,14 @@ class NotificationInboxTest extends TestCase
         $this->get('https://canadamb.ca/account/notifications?status=unread&category=messages')->assertOk()
             ->assertSee('No unread notifications in this view.');
         $this->assertNull(DB::table('notifications')->find($notice->id)->read_at);
+
+        $listing->forceFill(['status' => 'sold'])->save();
+        $followUp = 'Private pickup confirmation after the sale.';
+        $this->actingAs($buyer)->post("https://brandonmb.ca/account/messages/$conversation->id", ['body' => $followUp])->assertRedirect();
+        $newNotice = DB::table('notifications')->latest('id')->firstOrFail();
+        $this->actingAs($seller)->get("$inbox?status=unread")->assertOk()->assertSee('1 unread notifications')
+            ->assertSee('New Marketplace message')->assertDontSee($followUp);
+        $this->get("$inbox/unified/$newNotice->id/open")->assertRedirect("https://brandonmb.ca/account/messages/$conversation->id");
         $this->post("https://brandonmb.ca/account/messages/$conversation->id/block")->assertRedirect();
         $this->get($inbox)->assertOk()->assertDontSee('New Marketplace message')->assertDontSee($body);
         $this->get($open)->assertNotFound();
