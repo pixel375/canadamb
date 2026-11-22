@@ -1,5 +1,5 @@
 <x-layouts.admin title="Global settings">
-    <div class="page-intro"><div><h1>Global settings</h1><p>Published version {{ $state->version }}{{ $state->draft_id ? ' · Draft available' : '' }}</p></div></div>
+    <div class="page-intro"><div><h1>Global settings</h1><p>Published version {{ $state->version }} · Revision {{ $state->published_id }}{{ $state->draft_id ? ' · Draft available' : '' }}</p></div></div>
     <form method="post" action="/admin/settings" class="panel form-stack">
         @csrf
         <h2>Module availability</h2>
@@ -24,10 +24,44 @@
         </fieldset>
         <div><button class="button button-primary">Save draft</button></div>
     </form>
+    <form method="post" action="/admin/settings" class="panel form-stack" id="approval-policy">
+        @csrf
+        <h2>Approval policy</h2>
+        <p>Automatic approval makes eligible submissions public before a moderator reviews them. Only new submissions qualify. Marketplace photo listings, listing edits and relists, job edits, new business profiles, and ownership claims require manual review.</p>
+        <p>Local portals can require review even when the network allows automatic approval.</p>
+        <div class="form-grid">
+            @foreach($policyTypes as $type => $label)
+                <label>{{ $label }}
+                    <select name="approval_policies[{{ $type }}]">
+                        <option value="manual_review" @selected(old('approval_policies.'.$type, $draftPolicies[$type]) === 'manual_review')>Manual review</option>
+                        <option value="auto_approve" @selected(old('approval_policies.'.$type, $draftPolicies[$type]) === 'auto_approve')>Automatic approval</option>
+                    </select>
+                    <small class="field-note">Published · {{ $publishedPolicies[$type] === 'auto_approve' ? 'Automatic approval' : 'Manual review' }}</small>
+                </label>
+            @endforeach
+        </div>
+        <div><button class="button button-primary">Save approval policy draft</button></div>
+    </form>
     @if($state->draft_id)
-        <form method="post" action="/admin/settings/publish" class="panel inline-actions">@csrf
-            <p>This publishes pending appearance and module settings together.</p>
-            <button class="button button-primary">Publish network settings</button>
+        <form method="post" action="/admin/settings/publish" class="panel form-stack">
+            @csrf
+            <input type="hidden" name="revision" value="{{ $state->draft_id }}">
+            <h2>Draft auto-approval preview</h2>
+            <p>Eligible submissions to approve automatically under revision {{ $state->draft_id }}</p>
+            <p>{{ implode(', ', $draftAutomaticTypes) ?: 'None' }}</p>
+            <p>Publishing applies the full revision, including pending appearance, module, and approval settings.</p>
+            <div><button class="button button-primary">Publish network settings</button></div>
+        </form>
+    @endif
+    @if($state->previous_id)
+        <form method="post" action="/admin/settings/rollback" class="panel form-stack">
+            @csrf
+            <input type="hidden" name="revision" value="{{ $state->previous_id }}">
+            <h2>Rollback preview</h2>
+            <p>Eligible submissions to approve automatically under previous revision {{ $state->previous_id }}</p>
+            <p>{{ implode(', ', $previousAutomaticTypes) ?: 'None' }}</p>
+            <p>Rolling back restores the full previous revision. It applies to future submissions.</p>
+            <div><button class="button button-outline">Restore previous revision</button></div>
         </form>
     @endif
 </x-layouts.admin>

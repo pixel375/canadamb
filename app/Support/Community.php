@@ -12,6 +12,8 @@ use Illuminate\Validation\ValidationException;
 
 class Community
 {
+    public const REPLIES_PER_PAGE = 25;
+
     public const FORUMS = ['general' => 'General discussion', 'recommendations' => 'Recommendations', 'help' => 'Questions and help',
         'lost-and-found' => 'Lost and found', 'local-issues' => 'Local issues', 'interests' => 'Hobbies and interests'];
 
@@ -28,6 +30,14 @@ class Community
         return CommunityThread::where('status', 'approved')->with(['location', 'author'])
             ->withCount(['replies' => fn (Builder $query) => $query->where('status', 'approved')])
             ->when($location, fn (Builder $query, int $id) => $query->where('location_id', $id));
+    }
+
+    public function replyPath(CommunityThread $thread, int $reply): string
+    {
+        $earlier = $thread->replies()->where('status', 'approved')->where('id', '<', $reply)->count();
+        $page = intdiv($earlier, self::REPLIES_PER_PAGE) + 1;
+
+        return "/community/$thread->id?page=$page#reply-$reply";
     }
 
     public function events(?int $location): Builder

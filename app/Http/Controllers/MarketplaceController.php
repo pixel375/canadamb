@@ -6,6 +6,7 @@ use App\Http\Requests\SaveListing;
 use App\Models\Listing;
 use App\Models\ListingCategory;
 use App\Models\Location;
+use App\Support\ApprovalPolicy;
 use App\Support\ListingPhotoOrder;
 use App\Support\ListingPhotos;
 use App\Support\Marketplace;
@@ -117,21 +118,28 @@ class MarketplaceController extends Controller
         return $this->form($request, new Listing);
     }
 
-    public function store(SaveListing $request, ListingPhotos $photos)
+    public function store(SaveListing $request, ListingPhotos $photos, ApprovalPolicy $policy)
     {
-        abort_unless($this->marketplace->enabled($request->attributes->get('site')), 404);
+        $site = $request->attributes->get('site');
+        abort_unless($this->marketplace->enabled($site), 404);
         $data = $request->attributesForPersistence();
         $files = $request->file('photos', []);
         $order = ListingPhotoOrder::references(new Listing, $request->photoPlan(), $files);
         $media = $photos->store($files);
         try {
-            $item = DB::transaction(function () use ($request, $data, $order, $media) {
-                $item = Listing::create($data + ['user_id' => $request->user()->id, 'status' => 'pending']);
+            $item = DB::transaction(function () use ($request, $data, $order, $media, $policy, $site) {
+                $author = $request->user()->id;
+                $item = Listing::create($data + ['user_id' => $author, 'status' => 'pending']);
                 ListingPhotoOrder::save($item, $order, $media);
-                $this->marketplace->history($item, null, $request->user()->id);
+                $this->marketplace->history($item, null, $author);
+                $revision = $media === [] ? $policy->automaticRevision($site, 'listing', $item->location_id) : null;
+                if ($revision !== null) {
+                    $this->marketplace->changeStatus($item, 'active', null, moderated: true);
+                    $policy->recordAutomaticApproval('listing', $item->id, $author, $site, $revision, $item->location_id);
+                }
 
                 return $item;
-            });
+            }, attempts: 3);
         } catch (Throwable $exception) {
             $photos->delete($media);
             throw $exception;
@@ -140,7 +148,7 @@ class MarketplaceController extends Controller
             return response()->json(['data' => $this->publicData($item) + ['status' => $item->status]], 201);
         }
 
-        return redirect('/account/listings')->with('status', 'Your listing was submitted for review.');
+        return redirect('/account/listings')->with('status', $item->status === 'active' ? 'Your listing was published.' : 'Your listing was submitted for review.');
     }
 
     public function mine(Request $request)

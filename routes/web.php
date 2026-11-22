@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\CommunityController;
 use App\Http\Controllers\Admin\CommunityModerationController;
 use App\Http\Controllers\Admin\EditorialController;
 use App\Http\Controllers\Admin\JobReviewController;
+use App\Http\Controllers\Admin\ModerationWorkbenchController;
 use App\Http\Controllers\Admin\NetworkController;
 use App\Http\Controllers\Admin\PropertyReviewController;
 use App\Http\Controllers\Admin\SettingsController;
@@ -116,7 +117,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/account/saved', [ListingEngagementController::class, 'saved']);
     Route::post('/marketplace/{listing}/save', [ListingEngagementController::class, 'save'])->whereNumber('listing')->middleware('throttle:24,1');
     Route::delete('/marketplace/{listing}/save', [ListingEngagementController::class, 'remove'])->whereNumber('listing')->middleware('throttle:24,1');
-    Route::post('/marketplace/{listing}/report', [ListingEngagementController::class, 'report'])->whereNumber('listing')->middleware('throttle:8,1');
+    Route::post('/marketplace/{listing}/report', [ListingEngagementController::class, 'report'])->whereNumber('listing')->middleware('throttle:abuse-reports');
     Route::post('/marketplace/{listing}/message', [MessagesController::class, 'start'])->whereNumber('listing')->middleware('throttle:message-start');
     Route::get('/businesses/{slug}/branches/{branch}/contact', [MessagesController::class, 'contactBusiness'])->whereNumber('branch');
     Route::post('/businesses/{slug}/branches/{branch}/message', [MessagesController::class, 'startBusiness'])->whereNumber('branch')->middleware('throttle:message-start');
@@ -125,7 +126,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/account/messages', [MessagesController::class, 'index']);
     Route::get('/account/messages/{conversation}', [MessagesController::class, 'show'])->whereNumber('conversation');
     Route::post('/account/messages/{conversation}', [MessagesController::class, 'reply'])->whereNumber('conversation')->middleware('throttle:message-reply');
-    Route::post('/account/messages/{conversation}/report', [MessagesController::class, 'report'])->whereNumber('conversation')->middleware('throttle:8,1');
+    Route::post('/account/messages/{conversation}/report', [MessagesController::class, 'report'])->whereNumber('conversation')->middleware('throttle:abuse-reports');
     Route::get('/account/messages/{conversation}/attachments/{attachment}', [MessagesController::class, 'attachment'])
         ->whereNumber(['conversation', 'attachment'])->middleware('throttle:message-download');
     Route::post('/account/messages/{conversation}/block', [MessagesController::class, 'block'])->whereNumber('conversation');
@@ -160,7 +161,16 @@ Route::prefix('admin')->middleware(['auth', 'verified', 'can:manage-network'])->
     Route::post('/community/events/{event}', [CommunityModerationController::class, 'events'])->whereNumber('event');
     Route::get('/', [NetworkController::class, 'index']);
     Route::get('/audit', [NetworkController::class, 'audit']);
-    Route::get('/moderation', [NetworkController::class, 'moderation']);
+    Route::get('/moderation', [ModerationWorkbenchController::class, 'index'])->name('moderation.index');
+    Route::get('/moderation/marketplace', [NetworkController::class, 'moderation']);
+    Route::get('/moderation/items/{type}/{item}', [ModerationWorkbenchController::class, 'show'])
+        ->whereNumber('item')->name('moderation.items.show');
+    Route::post('/moderation/items/{type}/{item}', [ModerationWorkbenchController::class, 'decide'])
+        ->whereNumber('item')->middleware('throttle:60,1')->name('moderation.items.decide');
+    Route::post('/moderation/bulk/preview', [ModerationWorkbenchController::class, 'preview'])
+        ->middleware('throttle:20,1')->name('moderation.bulk.preview');
+    Route::post('/moderation/bulk', [ModerationWorkbenchController::class, 'bulk'])
+        ->middleware('throttle:12,1')->name('moderation.bulk');
     Route::get('/business-review', [BusinessReviewController::class, 'index']);
     Route::post('/business-review/{business}', [BusinessReviewController::class, 'profile'])->whereNumber('business');
     Route::post('/business-claims/{claim}', [BusinessReviewController::class, 'claim'])->whereNumber('claim');
@@ -173,6 +183,7 @@ Route::prefix('admin')->middleware(['auth', 'verified', 'can:manage-network'])->
         Route::get('/settings', [SettingsController::class, 'edit']);
         Route::post('/settings', [SettingsController::class, 'save']);
         Route::post('/settings/publish', [SettingsController::class, 'publish']);
+        Route::post('/settings/rollback', [SettingsController::class, 'rollback']);
         Route::get('/theme', [ThemeController::class, 'edit']);
         Route::post('/theme', [ThemeController::class, 'draft']);
         Route::post('/theme/publish', [ThemeController::class, 'publish']);
@@ -188,6 +199,8 @@ Route::prefix('admin')->middleware(['auth', 'verified', 'can:manage-network'])->
     Route::post('/communities/{site}/status', [CommunityController::class, 'status'])->whereNumber('site');
     Route::post('/communities/{site}/readiness', [CommunityController::class, 'readiness'])->whereNumber('site');
 });
+
+require __DIR__.'/moderation-reports.php';
 
 Route::prefix('admin/news')->middleware(['auth', 'verified', 'can:manage-news'])->group(function () {
     Route::get('/', [EditorialController::class, 'index']);

@@ -55,6 +55,22 @@
                     <option value="hide" @selected(old('modules.'.$key, ($managed->overrides['modules'][$key] ?? true) ? 'inherit' : 'hide') === 'hide')>Hide when local overrides are permitted</option>
                 </select></label>
             @endforeach
+            @can('manage-theme')
+                <fieldset class="form-stack">
+                    <legend class="font-bold">Local approval policy</legend>
+                    <p>Require manual review for submissions to this location, including those made on CanadaMB. Inherited policy follows the published network revision.</p>
+                    <div class="form-grid">
+                        @foreach(\App\Support\ApprovalPolicy::TYPES as $type => $label)
+                            <label>{{ $label }}
+                                <select name="approval_policies[{{ $type }}]">
+                                    <option value="inherit">Inherit network policy</option>
+                                    <option value="manual_review" @selected(old('approval_policies.'.$type, $managed->overrides['approval_policies'][$type] ?? 'inherit') === 'manual_review')>Require manual review</option>
+                                </select>
+                            </label>
+                        @endforeach
+                    </div>
+                </fieldset>
+            @endcan
         @endunless
         <div><button class="button button-primary">{{ $editing ? 'Save community' : 'Create draft' }}</button></div>
     </form>

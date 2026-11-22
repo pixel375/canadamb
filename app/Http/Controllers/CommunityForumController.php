@@ -5,17 +5,17 @@ namespace App\Http\Controllers;
 use App\Models\CommunityReply;
 use App\Models\CommunityThread;
 use App\Models\Location;
+use App\Support\ApprovalPolicy;
 use App\Support\Community;
 use App\Support\LocationScope;
 use App\Support\NetworkUrl;
+use App\Support\NotificationInbox;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class CommunityForumController extends Controller
 {
-    private const REPLIES_PER_PAGE = 25;
-
     public function __construct(private readonly Community $community) {}
 
     public function index(Request $request)
@@ -40,7 +40,7 @@ class CommunityForumController extends Controller
             return redirect()->away($canonical, 301, ['Cache-Control' => 'no-store']);
         }
 
-        $replies = $item->replies()->where('status', 'approved')->with('author')->oldest('id')->paginate(self::REPLIES_PER_PAGE);
+        $replies = $item->replies()->where('status', 'approved')->with('author')->oldest('id')->paginate(Community::REPLIES_PER_PAGE);
         $following = $request->user() && DB::table('community_thread_follows')
             ->where(['thread_id' => $thread, 'user_id' => $request->user()->id])->exists();
 
@@ -51,11 +51,9 @@ class CommunityForumController extends Controller
     {
         $post = CommunityReply::where('status', 'approved')->findOrFail($reply);
         $thread = $this->visible($request)->findOrFail($post->thread_id);
-        $earlier = $thread->replies()->where('status', 'approved')->where('id', '<', $reply)->count();
-        $page = intdiv($earlier, self::REPLIES_PER_PAGE) + 1;
         $site = $this->community->canonicalSite($thread, 'community');
 
-        return redirect()->away(NetworkUrl::to($site, "/community/$thread->id?page=$page#reply-$reply"));
+        return redirect()->away(NetworkUrl::to($site, $this->community->replyPath($thread, $reply)));
     }
 
     public function create(Request $request)
@@ -68,7 +66,7 @@ class CommunityForumController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(Request $request, ApprovalPolicy $policy)
     {
         $site = $request->attributes->get('site');
         abort_unless($this->community->enabled($site, 'community'), 404);
@@ -78,21 +76,48 @@ class CommunityForumController extends Controller
         ]);
         $requested = isset($data['location_id']) ? (int) $data['location_id'] : null;
         $data['location_id'] = $site->isNetwork() && $requested === null ? null : LocationScope::forPublication($site, $requested);
-        CommunityThread::create($data + ['author_id' => $request->user()->id]);
+        $approved = DB::transaction(function () use ($request, $site, $data, $policy) {
+            $author = $request->user()->id;
+            $item = new CommunityThread($data + ['author_id' => $author]);
+            $revision = $policy->automaticRevision($site, 'thread', $item->location_id);
+            if ($revision !== null) {
+                $item->forceFill(['status' => 'approved', 'last_activity_at' => now()]);
+            }
+            $item->save();
+            if ($revision !== null) {
+                $policy->recordAutomaticApproval('thread', $item->id, $author, $site, $revision, $item->location_id);
+            }
 
-        return redirect('/community')->with('status', 'Discussion submitted for review.');
+            return $revision !== null;
+        }, attempts: 3);
+
+        return redirect('/community')->with('status', $approved ? 'Discussion published.' : 'Discussion submitted for review.');
     }
 
-    public function reply(Request $request, int $thread)
+    public function reply(Request $request, int $thread, ApprovalPolicy $policy)
     {
         $data = $request->validate(['body' => 'required|string|min:5|max:3000']);
-        DB::transaction(function () use ($request, $thread, $data) {
+        $site = $request->attributes->get('site');
+        $approved = DB::transaction(function () use ($request, $thread, $data, $site, $policy) {
             $item = $this->visible($request)->lockForUpdate()->findOrFail($thread);
             abort_if($item->locked, 409, 'This discussion is locked.');
-            $item->replies()->create($data + ['author_id' => $request->user()->id]);
-        });
+            $author = $request->user()->id;
+            $reply = $item->replies()->make($data + ['author_id' => $author]);
+            $revision = $policy->automaticRevision($site, 'reply', $item->location_id);
+            if ($revision !== null) {
+                $reply->forceFill(['status' => 'approved']);
+                $item->forceFill(['last_activity_at' => now()])->save();
+            }
+            $reply->save();
+            if ($revision !== null) {
+                $policy->recordAutomaticApproval('reply', $reply->id, $author, $site, $revision, $item->location_id);
+                NotificationInbox::recordFollowedReply($item->id, $reply->id, $author, $item->location_id);
+            }
 
-        return redirect('/community/'.$thread)->with('status', 'Reply submitted for review.');
+            return $revision !== null;
+        }, attempts: 3);
+
+        return redirect('/community/'.$thread)->with('status', $approved ? 'Reply published.' : 'Reply submitted for review.');
     }
 
     public function follow(Request $request, int $thread)

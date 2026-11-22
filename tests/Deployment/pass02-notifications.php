@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\CommunityModerationController;
 use App\Models\CommunityThread;
 use App\Models\Site;
 use App\Models\User;
+use App\Support\ModerationDecision;
 use App\Support\NotificationFeed;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Http\Request;
@@ -26,7 +27,9 @@ if (DB::getDatabaseName() !== 'canadamb_ci_pass02' || config('database.connectio
 if (isset($argv[3], $argv[4])) {
     $editor = User::findOrFail((int) $argv[3]);
     $reply = (int) $argv[4];
-    $request = Request::create("https://canadamb.ca/admin/community/replies/$reply", 'POST', ['action' => 'approve']);
+    $request = Request::create("https://canadamb.ca/admin/community/replies/$reply", 'POST', [
+        'action' => 'approve', 'version' => $argv[5],
+    ]);
     $request->setUserResolver(fn () => $editor);
     DB::statement('SET SESSION innodb_lock_wait_timeout = 20');
     DB::connection()->beforeExecuting(function (string $sql) use ($directory, $editor): void {
@@ -53,6 +56,7 @@ if ($historical->pluck('id')->all() !== [8101, 8102]
 
 $thread = CommunityThread::findOrFail(8101);
 $reply = $thread->replies()->create(['author_id' => 8102, 'body' => 'Review race fixture.']);
+$version = class_exists(ModerationDecision::class) ? ModerationDecision::version('reply', $reply->fresh()) : '';
 DB::table('community_thread_follows')->insert(['thread_id' => $thread->id, 'user_id' => 8101]);
 $editors = [];
 foreach (['first', 'second'] as $name) {
@@ -68,7 +72,7 @@ try {
     // Hold the parent row so both independent connections reach the same lock before either decision.
     CommunityThread::lockForUpdate()->findOrFail($thread->id);
     foreach ($editors as $editor) {
-        $process = proc_open([PHP_BINARY, $script, $release, $directory, (string) $editor, (string) $reply->id], [
+        $process = proc_open([PHP_BINARY, $script, $release, $directory, (string) $editor, (string) $reply->id, $version], [
             0 => ['pipe', 'r'], 1 => ['file', "$directory/$editor.result", 'w'], 2 => STDERR,
         ], $pipes);
         if (! is_resource($process)) {

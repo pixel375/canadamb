@@ -1,5 +1,12 @@
 # Hostinger production prelaunch acceptance
 
+## Pass 05 moderation release checks
+
+- [ ] Confirm the exact reviewed SHA passed Verify CanadaMB and the populated Pass 04 to Pass 05 rehearsal. Inspect default migration denial, preflight SQL, existing-row and private-media preservation, backup restore and the competing review outcome.
+- [ ] Release prior passes in sequence after the owner approves their database changes. Review the two Pass 05 migrations against the named production schema and obtain separate production authorization before changing the default migration input.
+- [ ] Confirm the public root, database backup and private-storage backup meet the [Hostinger release process](HOSTINGER_DEPLOYMENT.md). Record restore checksums and recovery responsibilities before activation.
+- [ ] Perform the [allowlisted moderation browser checks](CENTRAL_MODERATION.md#allowlisted-acceptance-after-authorization). Leave all production approval modes on manual review.
+
 ## Pass 04 messaging release checks
 
 - [ ] Confirm Verify CanadaMB is green for the exact reviewed SHA. Check the disposable Pass 03 to Pass 04 MariaDB rehearsal for the default denial, previewed SQL, preserved legacy data, isolated SQL and storage restore, and concurrent send result.

@@ -26,6 +26,7 @@ class NotificationController extends Controller
         return view('account.notifications', [
             'items' => $items, 'category' => $category, 'status' => $status, 'categories' => NotificationFeed::CATEGORIES,
             'feed' => $this->feed,
+            'reasons' => $this->feed->reasons($items->getCollection()),
         ]);
     }
 

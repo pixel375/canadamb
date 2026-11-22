@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Business;
+use App\Models\BusinessUpdate;
 use App\Models\Location;
+use App\Support\ApprovalPolicy;
 use App\Support\BusinessDirectory;
 use App\Support\LocationScope;
 use App\Support\MessageContact;
@@ -189,34 +191,43 @@ class BusinessController extends Controller
         return redirect('/account/businesses/'.$business.'#branch-messages')->with('status', 'Branch messaging preference saved.');
     }
 
-    public function postUpdate(Request $request, int $business)
+    public function postUpdate(Request $request, int $business, ApprovalPolicy $policy)
     {
-        $item = $this->managed($request, $business);
-        $data = $request->validate([
-            'business_location_id' => 'required|integer', 'type' => 'required|in:announcement,promotion,update',
-            'title' => 'required|string|max:140', 'body' => 'required|string|max:3000',
-        ]);
-        $branch = $item->locations()->findOrFail($data['business_location_id']);
-        LocationScope::forPublication($request->attributes->get('site'), $branch->location_id);
+        $site = $request->attributes->get('site');
+        abort_unless($this->directory->enabled($site), 404);
 
-        DB::transaction(function () use ($request, $item, $data) {
-            $locked = Business::lockForUpdate()->findOrFail($item->id);
-            abort_unless($locked->status === 'active', 409);
-            if (DB::table('business_updates')->whereIn('business_location_id', $locked->locations()->select('id'))
+        $approved = DB::transaction(function () use ($request, $site, $business, $policy) {
+            $profile = $this->managed($request, $business, lock: true);
+            $data = $request->validate([
+                'business_location_id' => 'required|integer', 'type' => 'required|in:announcement,promotion,update',
+                'title' => 'required|string|max:140', 'body' => 'required|string|max:3000',
+            ]);
+            $branch = $profile->locations()->lockForUpdate()->findOrFail($data['business_location_id']);
+            $location = LocationScope::forPublication($site, $branch->location_id);
+            abort_unless($profile->status === 'active', 409);
+            if (DB::table('business_updates')->whereIn('business_location_id', $profile->locations()->select('id'))
                 ->where('created_at', '>=', now()->subDay())->count() >= 5) {
                 throw ValidationException::withMessages(['title' => 'This profile has reached its daily update limit.']);
             }
-            DB::table('business_updates')->insert($data + [
-                'author_id' => $request->user()->id, 'status' => 'pending', 'created_at' => now(), 'updated_at' => now(),
+            $author = $request->user()->id;
+            $revision = $policy->automaticRevision($site, 'business-update', $location);
+            $item = BusinessUpdate::create($data + [
+                'author_id' => $author, 'status' => $revision !== null ? 'approved' : 'pending',
+                'published_at' => $revision !== null ? now() : null,
             ]);
-        });
+            if ($revision !== null) {
+                $policy->recordAutomaticApproval('business-update', $item->id, $author, $site, $revision, $location);
+            }
 
-        return redirect('/account/businesses/'.$business)->with('status', 'Business update submitted for review.');
+            return $revision !== null;
+        }, attempts: 3);
+
+        return redirect('/account/businesses/'.$business)->with('status', $approved ? 'Business update published.' : 'Business update submitted for review.');
     }
 
-    private function managed(Request $request, int $id): Business
+    private function managed(Request $request, int $id, bool $lock = false): Business
     {
-        return Business::managedBy($request->user()->id)->findOrFail($id);
+        return Business::managedBy($request->user()->id)->when($lock, fn ($query) => $query->lockForUpdate())->findOrFail($id);
     }
 
     private function profileRules(bool $includePublicContact): array

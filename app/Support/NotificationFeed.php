@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\Site;
 use Illuminate\Database\Query\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use stdClass;
 
@@ -124,6 +125,24 @@ final class NotificationFeed
         };
     }
 
+    /** Only the short member-facing reason can leave the moderation history. */
+    public function reasons(Collection $items): array
+    {
+        $outcomes = $items->filter(fn (stdClass $item) => $item->relevant && $item->storage === 'unified'
+            && (str_ends_with($item->event, '.rejected') || $item->event === 'listing.removed'));
+        if ($outcomes->isEmpty()) {
+            return [];
+        }
+        $key = fn (string $type, int $resource, int $source) => "$type:$resource:$source";
+        $decisions = DB::table('moderation_decisions')->whereIn('notice_source_id', $outcomes->pluck('source_id')->unique())
+            ->whereNotNull('reason')->get(['type', 'resource_id', 'notice_source_id', 'reason'])
+            ->mapWithKeys(fn ($item) => [$key($item->type, $item->resource_id, $item->notice_source_id) => $item->reason]);
+
+        return $outcomes->mapWithKeys(fn ($item) => [
+            $item->id => $decisions[$key(explode('.', $item->event)[0], $item->resource_id, $item->source_id)] ?? null,
+        ])->all();
+    }
+
     private function table(string $storage): string
     {
         return $storage === 'legacy' ? 'community_notifications' : 'notifications';
@@ -170,6 +189,7 @@ final class NotificationFeed
             ? "CASE WHEN $hasLink AND ($social) THEN thread.title ELSE NULL END" : 'NULL';
 
         return $query->select('notice.id', 'notice.read_at', 'notice.created_at')
+            ->selectRaw($legacy ? 'NULL as source_id, NULL as resource_id' : 'notice.source_id, notice.resource_id')
             ->selectRaw('? as storage, ? as category, '.$event.' as event', [$legacy ? 'legacy' : 'unified', $category])
             ->selectRaw($type === 'message' ? 'conversation.context_type as message_context' : 'NULL as message_context')
             ->selectRaw("CASE WHEN $social THEN 1 ELSE 0 END as priority")

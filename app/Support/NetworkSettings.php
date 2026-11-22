@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\Site;
+use App\Models\User;
 use Closure;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -47,9 +48,9 @@ final class NetworkSettings
         return ! config('network.prelaunch') || ($this->published()['prelaunch_test_registration_enabled'] ?? false) === true;
     }
 
-    public function forSite(Site $site): array
+    public function forSite(Site $site, ?array $settings = null): array
     {
-        $settings = $this->published();
+        $settings ??= $this->published();
         foreach ($settings['permitted_module_overrides'] as $module) {
             if (isset($site->overrides['modules'][$module])) {
                 // Site overrides can disable a globally available module.
@@ -58,6 +59,16 @@ final class NetworkSettings
         }
 
         return $settings;
+    }
+
+    public function publishedForSubmission(): array
+    {
+        $revision = DB::table('network_configuration')
+            ->join('configuration_revisions', 'configuration_revisions.id', '=', 'network_configuration.published_id')
+            ->where('network_configuration.id', 1)->sharedLock()
+            ->firstOrFail(['configuration_revisions.id', 'configuration_revisions.settings']);
+
+        return ['id' => (int) $revision->id, 'settings' => json_decode($revision->settings, true, flags: JSON_THROW_ON_ERROR)];
     }
 
     public function state(): stdClass
@@ -91,13 +102,28 @@ final class NetworkSettings
         }, attempts: 3);
     }
 
-    public function publish(int $actor, bool $rollback = false): void
+    public function publish(int $actor, bool $rollback = false, ?int $expectedRevision = null): void
     {
-        DB::transaction(function () use ($actor, $rollback) {
+        DB::transaction(function () use ($actor, $rollback, $expectedRevision) {
             $state = $this->lockedState();
             $target = $rollback ? $state->previous_id : $state->draft_id;
             if ($target === null) {
                 throw ValidationException::withMessages(['theme' => 'No revision is available for that action.']);
+            }
+            abort_if($expectedRevision !== null && $expectedRevision !== (int) $target, 409, 'The configuration changed. Reload to preview the latest revision.');
+
+            $current = $this->revision($state->published_id);
+            $proposed = $this->revision($target);
+            $before = ApprovalPolicy::networkModes($current);
+            $after = ApprovalPolicy::networkModes($proposed);
+            $beforeTypes = ApprovalPolicy::automaticTypes($current);
+            $afterTypes = ApprovalPolicy::automaticTypes($proposed);
+            $approvalChanges = $before !== $after || $beforeTypes !== $afterTypes;
+            if ($approvalChanges || in_array(ApprovalPolicy::AUTO, $after, true)) {
+                abort_unless(User::whereKey($actor)->where('role', 'super_admin')->whereNotNull('email_verified_at')->exists(), 403);
+            }
+            if ($approvalChanges && $expectedRevision === null) {
+                throw ValidationException::withMessages(['revision' => 'Preview the approval policy revision on the Global settings page before publishing or rolling back.']);
             }
 
             DB::table('network_configuration')->where('id', 1)->update([
@@ -106,9 +132,16 @@ final class NetworkSettings
                 'draft_id' => $rollback ? $state->draft_id : null,
                 'version' => $state->version + 1,
             ]);
-            Audit::record($rollback ? 'configuration.rollback' : 'configuration.publish', $actor, context: [
+            $context = [
                 'before' => $state->published_id, 'after' => $target, 'version' => $state->version + 1,
-            ]);
+            ];
+            if ($before !== $after) {
+                $context['approval_policies'] = ['before' => $before, 'after' => $after];
+            }
+            if ($beforeTypes !== $afterTypes) {
+                $context['auto_approval_types'] = ['before' => array_keys($beforeTypes), 'after' => array_keys($afterTypes)];
+            }
+            Audit::record($rollback ? 'configuration.rollback' : 'configuration.publish', $actor, context: $context);
         }, attempts: 3);
     }
 

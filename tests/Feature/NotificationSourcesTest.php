@@ -12,6 +12,7 @@ use App\Models\Listing;
 use App\Models\Location;
 use App\Models\User;
 use App\Support\ListingPhotoOrder;
+use App\Support\ModerationDecision;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -95,13 +96,14 @@ class NotificationSourcesTest extends TestCase
             'title' => 'Local workshop', 'body' => 'An announcement for local customers.',
         ]);
         $this->actingAs($this->moderator())->post("https://canadamb.ca/admin/business-review/$business->id", [
-            'decision' => 'approved', 'notes' => 'Checked the profile.',
+            'decision' => 'approved', 'notes' => 'Checked the profile.', 'version' => ModerationDecision::version('business', $business->fresh()),
         ])->assertRedirect();
         $this->post("https://canadamb.ca/admin/business-claims/$claim", [
-            'decision' => 'rejected', 'notes' => 'Reviewed the claim.',
+            'decision' => 'rejected', 'notes' => 'Reviewed the claim.', 'reason' => 'Unable to verify the claim.',
+            'version' => ModerationDecision::version('claim', DB::table('business_claims')->where('id', $claim)->first()),
         ])->assertRedirect();
         $this->post("https://canadamb.ca/admin/business-updates/$update->id", [
-            'decision' => 'approved', 'notes' => 'Checked the update.',
+            'decision' => 'approved', 'notes' => 'Checked the update.', 'version' => ModerationDecision::version('business-update', $update->fresh()),
         ])->assertRedirect();
 
         $this->assertNotice($owner, 'business.approved', $business->id, [$brandon->location_id, $winnipeg->location_id]);
@@ -122,8 +124,12 @@ class NotificationSourcesTest extends TestCase
         $unclaimed = Business::create(['slug' => 'unclaimed-business', 'name' => 'Unclaimed Business', 'category' => 'retail', 'status' => 'pending']);
         $unclaimed->locations()->create(['location_id' => $location, 'address' => '2 Test Road']);
         $url = 'https://canadamb.ca/admin/business-review';
-        $this->actingAs($this->moderator())->post("$url/$business->id", ['decision' => 'approved', 'notes' => 'Checked both owners.'])->assertRedirect();
-        $this->post("$url/$unclaimed->id", ['decision' => 'approved', 'notes' => 'Reviewed an unclaimed business.'])->assertRedirect();
+        $this->actingAs($this->moderator())->post("$url/$business->id", [
+            'decision' => 'approved', 'notes' => 'Checked both owners.', 'version' => ModerationDecision::version('business', $business->fresh()),
+        ])->assertRedirect();
+        $this->post("$url/$unclaimed->id", [
+            'decision' => 'approved', 'notes' => 'Reviewed an unclaimed business.', 'version' => ModerationDecision::version('business', $unclaimed->fresh()),
+        ])->assertRedirect();
         $this->assertNotice($owner, 'business.approved', $business->id, [$location]);
         $this->assertNotice($coOwner, 'business.approved', $business->id, [$location]);
         $this->assertDatabaseCount('notifications', 2);
@@ -182,11 +188,18 @@ class NotificationSourcesTest extends TestCase
         DB::table('community_notifications')->insert(['user_id' => $legacyFollower->id, 'reply_id' => $reply->id, 'created_at' => now()]);
         DB::table('member_settings')->insert(['user_id' => $optedOut->id, 'notify_discussion_replies' => false]);
         $url = 'https://canadamb.ca/admin/community';
-        $this->actingAs($this->moderator())->post("$url/threads/$thread->id", ['action' => 'approve'])->assertRedirect();
-        $this->post("$url/threads/$thread->id", ['action' => 'pin'])->assertRedirect();
-        $this->post("$url/replies/$reply->id", ['action' => 'approve'])->assertRedirect();
-        $this->post("$url/replies/$reply->id", ['action' => 'approve'])->assertConflict();
-        $this->post("$url/events/$event->id", ['action' => 'reject', 'reason' => 'The organizer cancelled.'])->assertRedirect();
+        $this->actingAs($this->moderator())->post("$url/threads/$thread->id", [
+            'action' => 'approve', 'version' => ModerationDecision::version('thread', $thread->fresh()),
+        ])->assertRedirect();
+        $this->post("$url/threads/$thread->id", [
+            'action' => 'pin', 'version' => ModerationDecision::version('thread', $thread->fresh()),
+        ])->assertRedirect();
+        $review = ['action' => 'approve', 'version' => ModerationDecision::version('reply', $reply->fresh())];
+        $this->post("$url/replies/$reply->id", $review)->assertRedirect();
+        $this->post("$url/replies/$reply->id", $review)->assertConflict();
+        $this->post("$url/events/$event->id", [
+            'action' => 'reject', 'reason' => 'The organizer cancelled.', 'version' => ModerationDecision::version('event', $event->fresh()),
+        ])->assertRedirect();
 
         $this->assertNotice($author, 'thread.approved', $thread->id, [$location]);
         $this->assertNotice($replyAuthor, 'reply.approved', $reply->id, [$location]);

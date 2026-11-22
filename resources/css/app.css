@@ -459,3 +459,18 @@ textarea { max-width: 100%; overflow-wrap: break-word; }
     .masthead { gap: 6px; }
     .masthead .brand small { display: none; }
 }
+
+.moderation-filters, .moderation-count-grid, .moderation-metadata {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 164px), 1fr));
+    gap: 14px;
+}
+.moderation-row { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+.moderation-row > div { min-width: 0; flex: 1 1 210px; }
+.moderation-row h2, .moderation-metadata dd { overflow-wrap: anywhere; }
+.moderation-thumbnail { width: 76px; height: 62px; object-fit: cover; border-radius: 8px; }
+.moderation-select { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; }
+.moderation-select input { width: 18px; height: 18px; }
+.moderation-metadata dt { color: var(--muted); font-size: .83rem; font-weight: 650; }
+.moderation-metadata dd { margin: 2px 0 0; }
+.moderation-history + .moderation-history { border-top: 1px solid var(--border); padding-top: 12px; }

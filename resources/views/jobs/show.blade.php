@@ -36,6 +36,7 @@
                     </form>
                 @endauth
             </div>
+            <x-content-report-form type="job" :target="$item->id" :author="$item->author_id" label="job posting"/>
         </article>
     </div>
 </x-layouts.site>

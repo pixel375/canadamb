@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\CommunityEvent;
 use App\Models\Location;
+use App\Support\ApprovalPolicy;
 use App\Support\Community;
 use App\Support\LocationScope;
 use App\Support\NetworkUrl;
@@ -78,7 +79,7 @@ class CommunityEventController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(Request $request, ApprovalPolicy $policy)
     {
         $site = $request->attributes->get('site');
         abort_unless($this->community->enabled($site, 'events'), 404);
@@ -99,9 +100,23 @@ class CommunityEventController extends Controller
         }
         $data['starts_at'] = $starts->format('Y-m-d H:i:s');
         $data['ends_at'] = $ends?->format('Y-m-d H:i:s');
-        CommunityEvent::create($data + ['author_id' => $request->user()->id]);
+        $approved = DB::transaction(function () use ($request, $site, $data, $policy, $starts, $ends) {
+            $author = $request->user()->id;
+            $item = new CommunityEvent($data + ['author_id' => $author]);
+            $revision = $policy->automaticRevision($site, 'event', $item->location_id);
+            $approved = $revision !== null && ! ($ends ?? $starts)->isPast();
+            if ($approved) {
+                $item->forceFill(['status' => 'approved']);
+            }
+            $item->save();
+            if ($approved) {
+                $policy->recordAutomaticApproval('event', $item->id, $author, $site, $revision, $item->location_id);
+            }
 
-        return redirect('/account/events')->with('status', 'Event submitted for review.');
+            return $approved;
+        }, attempts: 3);
+
+        return redirect('/account/events')->with('status', $approved ? 'Event published.' : 'Event submitted for review.');
     }
 
     public function owned(Request $request)

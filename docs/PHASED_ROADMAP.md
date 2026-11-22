@@ -16,6 +16,10 @@ Issue #15 completes ordered photo editing, normalized private images, accessible
 
 Issue #17 expands the existing inbox to Marketplace, business, and job conversations. The migration preserves legacy Marketplace records and adds context, independent notification preferences, restrained contact assignment, private attachments, and reports. The stacked review targets the corrected Pass 03 branch. Production schema review and allowlisted acceptance follow the earlier release gates. [Issue #17](https://github.com/pixel375/canadamb/issues/17) · [Messaging and recovery runbook](UNIFIED_MESSAGING.md)
 
+## Pass 05 — Centralized moderation and reporting
+
+The CanadaMB workbench handles existing submission types and abuse reports, including audited access to specific reported messages. Approval policies start on manual review. The review branch targets corrected Pass 04. Sequence prior-pass acceptance and explicit production migration approval before releasing the additive decision and report tables. [Issue #19](https://github.com/pixel375/canadamb/issues/19) · [Moderation and recovery notes](CENTRAL_MODERATION.md)
+
 **Strategy:** Finish infrastructure reliability and end-to-end functionality before a major visual makeover. Establish basic reusable UI primitives now so later design work doesn't require rebuilding feature logic. All changes must be committed/tested and promoted to the live release deliberately; no blind auto-deploy.
 
 | Phase | Priority | Scope and release gate |
