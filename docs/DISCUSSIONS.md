@@ -20,7 +20,9 @@ Open **My Discussions** at `/account/discussions` to manage your posts on the cu
 
 The original location stays fixed. A moderator lock suspends author changes, including withdrawal and restoration. A material edit to an approved post returns it for moderation, except when the published approval policy allows immediate approval. Pending edits stay pending. Previously rejected posts require a material revision and manual review. An unlocked pending or approved post can be withdrawn. Explicitly restoring a withdrawn post places it in manual review. Stable IDs retain replies, follows, reports, and earlier audit history.
 
-Owner writes and moderation use the same required revision and lock the thread. A stale decision returns a conflict and requires a fresh review. A changed status produces an owner notice linked to the recorded transition. Follower notices are delivered once when a reply is approved. Earlier reply notices keep their original read states and use the new links.
+Owner writes and moderation use the same required revision and lock the thread. A stale decision returns a conflict and requires a fresh review. Reply approval also verifies the parent discussion revision. A changed status produces an owner notice linked to the recorded transition. Follower notices are delivered once when a reply is approved. Earlier reply notices keep their original read states and use the new links. Historical approval outcomes remain visible to their recipients, with public links available while the approved content is accessible.
+
+When a discussion with reports is edited, the prior public text is sealed in the existing audit store before the edit commits. A reviewer opens it through the authorized report detail, and that access is recorded. The archived text is grouped by reported revision. Existing report IDs and the one-report-per-member-per-discussion rule are preserved. Keep the Laravel application key available with the rest of the deployment's protected recovery configuration.
 
 ## Release checks
 

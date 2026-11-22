@@ -1,6 +1,6 @@
 <x-layouts.admin title="Report review">
     <div class="page-intro">
-        <div><a class="text-link" href="{{ route('moderation.reports.index') }}">Abuse reports</a><h1>{{ $record->title ?? 'Source unavailable' }}</h1></div>
+        <div><a class="text-link" href="{{ route('moderation.reports.index') }}">Abuse reports</a><h1>{{ $discussionEvidence['title'] ?? $record->title ?? 'Source unavailable' }}</h1></div>
     </div>
     <article class="panel form-stack">
         <div>
@@ -15,8 +15,11 @@
             </form>
         @else
             <div><h2>Report submission</h2><p class="prose-text">{{ $reason }}</p></div>
+            @if($discussionEvidence)
+                <div><h2>Reported discussion text</h2><p class="prose-text">{{ $discussionEvidence['body'] }}</p></div>
+            @endif
             @if($record->title !== null)
-                <div><a class="text-link" href="{{ route('moderation.items.show', ['type' => $record->type, 'item' => $record->source_id]) }}">Review reported content</a></div>
+                <div><a class="text-link" href="{{ route('moderation.items.show', ['type' => $record->type, 'item' => $record->source_id]) }}">{{ $record->type === 'thread' ? 'Review current discussion' : 'Review reported content' }}</a></div>
             @endif
         @endif
     </article>

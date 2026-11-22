@@ -6,6 +6,7 @@ use App\Models\CommunityThread;
 use App\Support\ApprovalPolicy;
 use App\Support\Audit;
 use App\Support\Community;
+use App\Support\DiscussionReportEvidence;
 use App\Support\ModerationDecision;
 use App\Support\NotificationInbox;
 use Illuminate\Database\Eloquent\Builder;
@@ -97,6 +98,7 @@ class OwnedDiscussionsController extends Controller
             $site = $request->attributes->get('site');
             // Existing drafts stay in review, and a moderator's rejection requires a new manual decision.
             $revision = $previous === 'approved' ? $policy->automaticRevision($site, 'thread', $item->location_id) : null;
+            DiscussionReportEvidence::preserve($item, $item->author_id);
             $item->fill(['title' => $data['title'], 'body' => $body, 'category' => $data['category']]);
             $item->forceFill($revision === null ? ['status' => 'pending'] : ['status' => 'approved', 'last_activity_at' => now()])->save();
             $approvalNotice = $revision === null ? null

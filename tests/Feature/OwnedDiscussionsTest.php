@@ -238,6 +238,97 @@ class OwnedDiscussionsTest extends TestCase
         $this->assertSame($version, $this->version($item));
     }
 
+    public function test_moderation_preserves_the_text_behind_reports_when_a_thread_is_edited(): void
+    {
+        $owner = User::factory()->create();
+        $reader = User::factory()->create();
+        $moderator = User::factory()->create(['role' => 'network_admin']);
+        $thread = $this->thread($owner, ['status' => 'approved', 'body' => 'Original public text that was reported.']);
+        $report = [
+            'source_type' => 'thread', 'source_id' => $thread->id, 'reporter_id' => $reader->id,
+            'location_id' => $thread->location_id, 'reason' => 'Please review the original details.',
+        ];
+        // Simulate a report that already existed at the Pass 05 baseline.
+        $first = DB::table('content_reports')->insertGetId($report);
+        $url = self::CITY.self::OWN.'/'.$thread->id;
+        $this->actingAs($owner)->put($url, $this->postDetails($thread, ['title' => 'New title', 'body' => 'Revised text for another review.'])
+            + ['version' => $this->version($thread)])->assertRedirect();
+        $this->moderate($moderator, $thread, 'approve', $this->version($thread))->assertRedirect();
+        $this->actingAs(User::factory()->create())->post(self::CITY."/reports/thread/$thread->id", [
+            'reason' => 'Please review these revised details.',
+        ])->assertRedirect();
+        $second = DB::table('content_reports')->max('id');
+        $this->actingAs($owner)->put($url, $this->postDetails($thread->fresh(), ['body' => 'Third revision not submitted as evidence.'])
+            + ['version' => $this->version($thread)])->assertRedirect();
+
+        $prefix = self::MAIN.'/admin/moderation/reports/thread/';
+        $this->get($prefix.$first)->assertForbidden();
+        $this->actingAs($moderator)->get($prefix.$first)->assertOk()->assertSee($thread->title)->assertSee($thread->body)
+            ->assertDontSee('Revised text for another review.')->assertDontSee('Third revision not submitted as evidence.');
+        $this->get($prefix.$second)->assertOk()->assertSee('Revised text for another review.')->assertDontSee($thread->body);
+        $this->assertDatabaseHas('content_reports', ['id' => $first] + $report);
+        $this->assertDatabaseCount('content_reports', 2);
+        $this->assertFalse(DB::table('audit_logs')->where('context', 'like', '%'.$thread->body.'%')->exists());
+    }
+
+    public function test_bulk_preview_label_and_version_use_the_same_resource_snapshot(): void
+    {
+        $thread = $this->thread(User::factory()->create(), ['title' => 'Title before concurrent editing']);
+        $interleaved = false;
+        DB::listen(function ($query) use ($thread, &$interleaved): void {
+            if (! $interleaved && str_contains($query->sql, 'moderation_queue')) {
+                $interleaved = true;
+                CommunityThread::whereKey($thread->id)->update(['title' => 'Title after concurrent editing']);
+            }
+        });
+        $this->actingAs(User::factory()->create(['role' => 'network_admin']))
+            ->post(self::MAIN.'/admin/moderation/bulk/preview', ['type' => 'thread', 'ids' => [$thread->id]])
+            ->assertOk()->assertSee('Title after concurrent editing')->assertDontSee('Title before concurrent editing')
+            ->assertSee($this->version($thread));
+        $this->assertTrue($interleaved);
+    }
+
+    public function test_reply_review_token_changes_after_a_parent_edit_and_reapproval(): void
+    {
+        $owner = User::factory()->create();
+        $moderator = User::factory()->create(['role' => 'network_admin']);
+        $thread = $this->thread($owner, ['status' => 'approved']);
+        $reply = $thread->replies()->create(['author_id' => User::factory()->create()->id, 'body' => 'A reply to the initial discussion.']);
+        $stale = ModerationDecision::version('reply', $reply->fresh());
+        $this->actingAs($owner)->put(self::MAIN.self::OWN.'/'.$thread->id,
+            $this->postDetails($thread, ['body' => 'The discussion has been materially revised.']) + ['version' => $this->version($thread)])
+            ->assertRedirect();
+        $this->moderate($moderator, $thread, 'approve', $this->version($thread))->assertRedirect();
+        $path = self::MAIN."/admin/community/replies/$reply->id";
+        $this->post($path, ['action' => 'approve', 'version' => $stale])->assertConflict();
+        $this->post($path, ['action' => 'approve', 'version' => ModerationDecision::version('reply', $reply->fresh())])->assertRedirect();
+    }
+
+    public function test_approval_notices_survive_parent_withdrawal_without_a_public_link(): void
+    {
+        $owner = User::factory()->create();
+        $reader = User::factory()->create();
+        $moderator = User::factory()->create(['role' => 'network_admin']);
+        $thread = $this->thread($owner);
+        $this->moderate($moderator, $thread, 'approve', $this->version($thread))->assertRedirect();
+        $reply = $thread->replies()->create(['author_id' => $reader->id, 'body' => 'A reply for the neighbourhood.']);
+        $this->post(self::MAIN."/admin/community/replies/$reply->id", [
+            'action' => 'approve', 'version' => ModerationDecision::version('reply', $reply->fresh()),
+        ])->assertRedirect();
+        $this->actingAs($owner)->post(self::CITY.self::OWN."/$thread->id/withdraw", ['version' => $this->version($thread)])
+            ->assertRedirect();
+        $settings = app(NetworkSettings::class);
+        $settings->saveDraft($moderator->id, function (array $draft): array {
+            $draft['modules']['community'] = false;
+
+            return $draft;
+        });
+        $settings->publish($moderator->id);
+        $notices = '/account/notifications?category=discussions&status=unread';
+        $this->get(self::CITY.$notices)->assertOk()->assertSee('Discussion approved')->assertSee('Discussion withdrawn')->assertDontSee('View item');
+        $this->actingAs($reader)->get(self::CITY.$notices)->assertOk()->assertSee('Discussion reply approved')->assertDontSee('View item');
+    }
+
     private function thread(User $author, array $attributes = []): CommunityThread
     {
         return CommunityThread::forceCreate($attributes + [

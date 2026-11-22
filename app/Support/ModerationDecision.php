@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\CommunityReply;
 use App\Models\JobPosting;
 use App\Models\Listing;
 use Illuminate\Database\Eloquent\Model;
@@ -27,7 +28,18 @@ final class ModerationDecision
         $decision = DB::table('moderation_decisions')->where('type', $type)->where('resource_id', $item->id)
             ->latest('id')->when($lock, fn ($query) => $query->lockForUpdate())->value('id');
 
-        return hash('sha256', json_encode([$type, $attributes, $decision], JSON_THROW_ON_ERROR));
+        $version = [$type, $attributes, $decision];
+        if ($item instanceof CommunityReply) {
+            $thread = $item->thread;
+            $context = array_intersect_key($thread->getRawOriginal(), array_flip(['id', 'title', 'body', 'category', 'status', 'location_id', 'locked']));
+            ksort($context);
+            $context['decision'] = DB::table('moderation_decisions')->where('type', 'thread')->where('resource_id', $thread->id)
+                ->latest('id')->when($lock, fn ($query) => $query->lockForUpdate())->value('id');
+
+            $version[] = $context;
+        }
+
+        return hash('sha256', json_encode($version, JSON_THROW_ON_ERROR));
     }
 
     public static function requireCurrent(string $type, Model|stdClass $item, string $version): void

@@ -69,6 +69,7 @@ class CommunityModerationController extends Controller
             $initial = CommunityReply::findOrFail($reply);
             $thread = CommunityThread::lockForUpdate()->findOrFail($initial->thread_id);
             $item = $thread->replies()->lockForUpdate()->findOrFail($reply);
+            $item->setRelation('thread', $thread);
             ModerationDecision::requireCurrent('reply', $item, $data['version']);
             abort_if($request->attributes->get('bulk_moderation') && $item->status !== 'pending', 409);
             $approval = $data['action'] === 'approve';

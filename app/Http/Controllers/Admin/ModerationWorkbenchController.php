@@ -102,8 +102,13 @@ class ModerationWorkbenchController extends Controller
             $resource = isset($rows[$id]) ? ModerationQueue::find($type, $id) : null;
             $version = $resource !== null && $resource->status === 'pending' && ! ($resource instanceof Listing && $resource->media->isNotEmpty())
                 ? ModerationDecision::version($type, $resource) : null;
+            $title = match ($type) {
+                'business' => $resource?->name,
+                'reply' => $resource?->thread->title,
+                default => $resource?->title,
+            };
             $items[] = [
-                'id' => $id, 'title' => $rows[$id]->title ?? null, 'version' => $version,
+                'id' => $id, 'title' => $title ?? $rows[$id]->title ?? null, 'version' => $version,
                 'proof' => $version === null ? null : $this->previewProof($request->user()->id, $type, $id, $version),
             ];
         }

@@ -96,6 +96,28 @@ async page => {
         await page.getByText(/Please include the library schedule/).waitFor();
         check(await page.getByText('Private test decision detail.').count() === 0, 'Private note was exposed to the author');
         await viewport(page, 1280, 'light');
+
+        await reviewer.goto(main + '/admin/moderation/reports/thread/1');
+        await reviewer.getByRole('heading', { name: 'Reported discussion text' }).waitFor();
+        await reviewer.getByText('Reading group members are invited to share their recommendations.', { exact: true }).waitFor();
+        check(await reviewer.getByText('The group details have changed and require a fresh moderator review.', { exact: true }).count() === 0,
+            'The report displayed the revised post as its evidence');
+        await reviewer.goto(main + '/admin/moderation/items/thread/1');
+        await reviewer.getByRole('button', { name: 'Lock', exact: true }).click();
+        await reviewer.getByRole('button', { name: 'Unlock', exact: true }).waitFor();
+        await page.goto(main + '/account/discussions/1/preview');
+        await page.getByText('A moderator locked this discussion.', { exact: false }).waitFor();
+        check(await page.getByRole('link', { name: 'Edit discussion' }).count() === 0, 'Locked thread allowed editing');
+        await reviewer.getByRole('button', { name: 'Unlock', exact: true }).click();
+        await reviewer.getByRole('button', { name: 'Lock', exact: true }).waitFor();
+        await page.reload();
+        await page.getByRole('button', { name: 'Withdraw discussion' }).click();
+        await page.getByRole('button', { name: 'Restore for review' }).click();
+        await page.getByText('Discussion restored and submitted for review.').waitFor();
+        check((await visitor.goto(main + '/discussions/1')).status() === 404, 'Restored pending thread was public');
+        await page.goto(main + '/account/discussions');
+        await page.getByRole('heading', { name: 'My Discussions' }).waitFor();
+        await viewport(page, 320, 'dark');
         console.log('Discussions passed local Chromium checks at 320, 390, 768 and 1280 CSS pixels.');
     } finally {
         await Promise.all([moderator.close(), reader.close()]);
