@@ -19,6 +19,7 @@ use App\Http\Controllers\ListingEngagementController;
 use App\Http\Controllers\MarketplaceController;
 use App\Http\Controllers\MessagesController;
 use App\Http\Controllers\NewsController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PropertyDraftController;
 use App\Http\Controllers\PublicController;
 use App\Http\Controllers\PwaController;
@@ -37,17 +38,20 @@ Route::middleware('auth')->group(function () {
     Route::get('/account/profile', [UserProfileController::class, 'mine']);
     Route::get('/account/settings', [UserProfileController::class, 'settings']);
     Route::post('/account/settings', [UserProfileController::class, 'update'])->middleware('throttle:8,1');
+    Route::post('/account/settings/password', [UserProfileController::class, 'changePassword'])->middleware('throttle:5,1')->block(8, 8);
 });
 Route::get('/communities', [PublicController::class, 'communities']);
 Route::get('/sitemap.xml', [PublicController::class, 'sitemap']);
 Route::get('/robots.txt', [PublicController::class, 'robots']);
 Route::get('/businesses', [BusinessController::class, 'index']);
 Route::get('/business-updates', [BusinessController::class, 'updates']);
+Route::get('/business-updates/{update}', [BusinessController::class, 'showUpdate'])->whereNumber('update');
 Route::get('/businesses/{slug}', [BusinessController::class, 'show']);
 Route::get('/news', [NewsController::class, 'index']);
 Route::get('/news/{article}', [NewsController::class, 'show'])->whereNumber('article');
 Route::get('/community', [CommunityForumController::class, 'index']);
 Route::get('/community/{thread}', [CommunityForumController::class, 'thread'])->whereNumber('thread');
+Route::get('/community/replies/{reply}', [CommunityForumController::class, 'showReply'])->whereNumber('reply');
 Route::get('/events', [CommunityEventController::class, 'index']);
 Route::get('/events/{event}', [CommunityEventController::class, 'show'])->whereNumber('event');
 Route::get('/jobs', [JobController::class, 'index']);
@@ -85,8 +89,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/community/{thread}/replies', [CommunityForumController::class, 'reply'])->whereNumber('thread')->middleware('throttle:12,1');
     Route::post('/community/{thread}/follow', [CommunityForumController::class, 'follow'])->whereNumber('thread')->middleware('throttle:30,1');
     Route::delete('/community/{thread}/follow', [CommunityForumController::class, 'unfollow'])->whereNumber('thread')->middleware('throttle:30,1');
-    Route::get('/account/community-notifications', [CommunityForumController::class, 'notifications']);
-    Route::post('/account/community-notifications/{notification}/read', [CommunityForumController::class, 'readNotification'])->whereNumber('notification');
+    Route::get('/account/notifications', [NotificationController::class, 'index'])->name('account.notifications');
+    Route::post('/account/notifications/read-all', [NotificationController::class, 'readAll'])->middleware('throttle:10,1')->name('account.notifications.read-all');
+    Route::get('/account/notifications/{storage}/{notification}/open', [NotificationController::class, 'open'])
+        ->whereIn('storage', ['unified', 'legacy'])->whereNumber('notification')->name('account.notifications.open');
+    Route::post('/account/notifications/{storage}/{notification}/read', [NotificationController::class, 'read'])
+        ->whereIn('storage', ['unified', 'legacy'])->whereNumber('notification')->middleware('throttle:40,1')->name('account.notifications.read');
+    Route::get('/account/community-notifications', [NotificationController::class, 'index'])->name('account.notifications.legacy');
+    Route::post('/account/community-notifications/{notification}/read', [NotificationController::class, 'readLegacy'])
+        ->whereNumber('notification')->middleware('throttle:40,1');
     Route::get('/events/new', [CommunityEventController::class, 'create']);
     Route::post('/events', [CommunityEventController::class, 'store'])->middleware('throttle:6,1');
     Route::get('/account/events', [CommunityEventController::class, 'owned']);

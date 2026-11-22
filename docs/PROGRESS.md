@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-21 — Pass 02 member settings and notification inbox
+
+Pass 02 adds private member settings, optional public profile fields, and a location-scoped in-app inbox on both portals. Its two additive migrations retain existing `community_notifications` and their read timestamps. Verify CanadaMB includes a Pass 01 to Pass 02 upgrade rehearsal on disposable MariaDB, including the default migration denial and a restore of the upgrade's backups. Record exact-SHA CI evidence in the PR. Production migration approval, live deployment and owner browser acceptance are separate gates. [Issue #13](https://github.com/pixel375/canadamb/issues/13) · [Upgrade and owner QA](MEMBER_NOTIFICATIONS.md)
+
 ## 2026-11-21 — Pass 01 registration and authentication
 
 Implemented default-off, published prelaunch tester registration, targeted and audited tester verification, non-enumerating mail-enabled password recovery, and session-bound Passport sign-in across CanadaMB and BrandonMB. No migrations, seeders or operational secrets changed. Deployment and real-device acceptance are recorded separately in the PR and the release checklist. [Issue #11](https://github.com/pixel375/canadamb/issues/11) · [Browser acceptance](AUTHENTICATION.md#pass-01-prelaunch-acceptance)

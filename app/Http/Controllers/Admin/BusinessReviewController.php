@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Business;
 use App\Models\BusinessUpdate;
 use App\Support\Audit;
+use App\Support\NotificationInbox;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -32,7 +33,12 @@ class BusinessReviewController extends Controller
             $item = Business::lockForUpdate()->findOrFail($business);
             abort_unless($item->status === 'pending', 409);
             $item->update(['status' => $data['decision'] === 'approved' ? 'active' : 'rejected']);
-            Audit::record('business.'.$data['decision'], $request->user()->id, context: ['business' => $business, 'notes' => $data['notes']]);
+            $event = 'business.'.$data['decision'];
+            $audit = Audit::record($event, $request->user()->id, context: ['business' => $business, 'notes' => $data['notes']]);
+            $owners = $item->members()->wherePivot('role', 'owner')->limit(2)->pluck('users.id');
+            if ($owners->count() === 1) {
+                NotificationInbox::record($owners->first(), $event, $audit, $business, $item->locations()->pluck('location_id')->all());
+            }
         });
 
         return $this->success();
@@ -58,7 +64,8 @@ class BusinessReviewController extends Controller
                 'status' => $data['decision'], 'notes' => $data['notes'], 'reviewer_id' => $request->user()->id,
                 'reviewed_at' => now(), 'updated_at' => now(),
             ]);
-            Audit::record('business.claim-'.$data['decision'], $request->user()->id, context: ['claim' => $claim, 'business' => $business->id]);
+            $audit = Audit::record('business.claim-'.$data['decision'], $request->user()->id, context: ['claim' => $claim, 'business' => $business->id]);
+            NotificationInbox::record($row->user_id, 'claim.'.$data['decision'], $audit, $claim, $business->locations()->pluck('location_id')->all());
         });
 
         return $this->success();
@@ -71,7 +78,10 @@ class BusinessReviewController extends Controller
             $item = BusinessUpdate::lockForUpdate()->findOrFail($update);
             abort_unless($item->status === 'pending', 409);
             $item->update(['status' => $data['decision'], 'published_at' => $data['decision'] === 'approved' ? now() : null]);
-            Audit::record('business.update-'.$data['decision'], $request->user()->id, context: ['update' => $update, 'notes' => $data['notes']]);
+            $audit = Audit::record('business.update-'.$data['decision'], $request->user()->id, context: ['update' => $update, 'notes' => $data['notes']]);
+            if ($item->author_id !== null) {
+                NotificationInbox::record($item->author_id, 'business-update.'.$data['decision'], $audit, $update, [$item->branch->location_id]);
+            }
         });
 
         return $this->success();

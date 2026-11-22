@@ -21,7 +21,7 @@ class MobileNavigationTest extends TestCase
                 ->assertSee('id="site-drawer"', false)
                 ->assertSee('class="mobile-tab-bar"', false)
                 ->assertSee('href="/account/messages"', false)
-                ->assertSee('href="/account/community-notifications"', false)
+                ->assertSee('href="/account/notifications"', false)
                 ->assertSee('aria-label="Sign in"', false)
                 ->assertDontSee('href="/account/settings"', false)
                 ->assertSee('Businesses', false)

@@ -4,6 +4,10 @@
 
 Issue #11 delivers a default-off prelaunch registration switch, audited manual verification, centralized recovery and Passport sign-in across both portals. Keep the live registration switch off until the owner begins [allowlisted browser acceptance](AUTHENTICATION.md#pass-01-prelaunch-acceptance). Account profile, notification and later design work are outside Pass 01. [Issue #11](https://github.com/pixel375/canadamb/issues/11)
 
+## Pass 02 — Member profiles, settings and in-app notifications
+
+Issue #13 adds profile privacy controls and one member inbox for existing activity across CanadaMB and BrandonMB. Existing community notifications remain in their original table. The new schema requires a reviewed upgrade and explicit production approval before merge into the deployment branch. See the [migration and owner browser checks](MEMBER_NOTIFICATIONS.md). [Issue #13](https://github.com/pixel375/canadamb/issues/13)
+
 **Strategy:** Finish infrastructure reliability and end-to-end functionality before a major visual makeover. Establish basic reusable UI primitives now so later design work doesn't require rebuilding feature logic. All changes must be committed/tested and promoted to the live release deliberately; no blind auto-deploy.
 
 | Phase | Priority | Scope and release gate |

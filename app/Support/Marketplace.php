@@ -53,15 +53,15 @@ final class Marketplace
         return NetworkUrl::main();
     }
 
-    public function history(Listing $listing, ?string $from, ?int $actor, ?string $reason = null): void
+    public function history(Listing $listing, ?string $from, ?int $actor, ?string $reason = null): int
     {
-        DB::table('listing_status_history')->insert([
+        return DB::table('listing_status_history')->insertGetId([
             'listing_id' => $listing->id, 'actor_id' => $actor, 'previous_status' => $from,
             'status' => $listing->status, 'reason' => $reason, 'created_at' => now(),
         ]);
     }
 
-    public function changeStatus(Listing $listing, string $status, ?int $actor, ?string $reason = null): void
+    public function changeStatus(Listing $listing, string $status, ?int $actor, ?string $reason = null, bool $moderated = false): void
     {
         $from = $listing->status;
         $listing->status = $status;
@@ -70,6 +70,16 @@ final class Marketplace
             $listing->expires_at = now()->addDays(30);
         }
         $listing->save();
-        $this->history($listing, $from, $actor, $reason);
+        $history = $this->history($listing, $from, $actor, $reason);
+        $event = match ($status) {
+            'active' => 'listing.approved',
+            'rejected' => 'listing.rejected',
+            'removed' => 'listing.removed',
+            'expired' => 'listing.expired',
+            default => null,
+        };
+        if ($event !== null && $from !== $status && ($moderated || $status === 'expired')) {
+            NotificationInbox::record($listing->user_id, $event, $history, $listing->id, [$listing->location_id]);
+        }
     }
 }

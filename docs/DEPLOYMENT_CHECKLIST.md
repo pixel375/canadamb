@@ -1,5 +1,12 @@
 # Hostinger production prelaunch acceptance
 
+## Pass 02 member settings and inbox release checks
+
+- [ ] Confirm Verify CanadaMB is green for the reviewed SHA. Check the Pass 01 to Pass 02 MariaDB rehearsal output for the previewed SQL, preservation of legacy read/unread rows, expected indexes, and successful isolated restore of the SQL and storage backups.
+- [ ] Review the two additive migrations and obtain explicit production database-change approval for the exact target SHA and database. Keep the PR open until that approval and the guarded promotion plan are in place. Leave the automatic migration input at its default `false`.
+- [ ] Record the current release and backup checksums. Confirm the guarded release pauses cron and writes, backs up the database and storage, and records a matching migration preflight before activation.
+- [ ] Verify the live SHA and applied migrations, independent deployment and external PWA/prelaunch audits, and existing notification read state using the approved [owner checks](MEMBER_NOTIFICATIONS.md#allowlisted-owner-checks). Preserve Pass 01 acceptance as a separate check.
+
 ## Pass 01 authentication release checks
 
 - [ ] Confirm the exact merged SHA passed Verify CanadaMB, guarded Hostinger deployment with database changes disabled, and both independent postdeploy audits.

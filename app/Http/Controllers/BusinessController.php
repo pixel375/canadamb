@@ -63,6 +63,15 @@ class BusinessController extends Controller
         return view('business.updates', ['updates' => $this->directory->updates($site->location_id)->paginate(18)]);
     }
 
+    public function showUpdate(Request $request, int $update)
+    {
+        $site = $request->attributes->get('site');
+        abort_unless($this->directory->enabled($site), 404);
+        $item = $this->directory->updates($site->location_id)->whereNotNull('published_at')->findOrFail($update);
+
+        return response()->view('business.update', ['item' => $item])->header('X-Robots-Tag', 'noindex');
+    }
+
     public function claim(Request $request, string $slug)
     {
         $site = $request->attributes->get('site');

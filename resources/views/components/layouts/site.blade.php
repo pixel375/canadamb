@@ -81,6 +81,7 @@
                     </select>
                 </label>
                 @auth
+                    <a class="sign-in header-inbox" href="/account/notifications"><x-icon name="bell" size="18"/> <span>Notifications</span><x-unread-notifications :count="$unreadNotifications"/></a>
                     <a class="sign-in" href="/account/profile" aria-label="My profile"><x-icon name="person" size="18"/> <span>My account</span></a>
                 @else
                     <a class="sign-in" href="{{ $site->isNetwork() ? '/login' : '/auth/start' }}" aria-label="Sign in"><x-icon name="person" size="18"/> <span>Sign in</span></a>
@@ -163,6 +164,7 @@
             <a href="{{ \App\Support\NetworkUrl::to(\App\Support\NetworkUrl::main(), '/communities') }}"><x-icon name="map" size="20"/> Communities</a>
         @endif
         @auth
+            <a href="/account/notifications"><x-icon name="bell" size="20"/> Notifications <x-unread-notifications :count="$unreadNotifications"/></a>
             <a href="/account/profile"><x-icon name="person" size="20"/> My Profile</a>
             <a href="/account/settings"><x-icon name="settings" size="20"/> Settings</a>
             @can('manage-network')<a href="{{ \App\Support\NetworkUrl::to(\App\Support\NetworkUrl::main(), '/admin') }}"><x-icon name="shield" size="20"/> Administration</a>@endcan
@@ -187,7 +189,7 @@
     <a href="/" @if(request()->is('/')) aria-current="page" @endif><x-icon name="home" size="22"/><span>Home</span></a>
     <a href="/marketplace" @if(request()->is('marketplace*')) aria-current="page" @endif><x-icon name="marketplace" size="22"/><span>Marketplace</span></a>
     <a href="/account/messages" @if(request()->is('account/messages*')) aria-current="page" @endif><x-icon name="messages" size="22"/><span>Messages</span></a>
-    <a href="/account/community-notifications" @if(request()->is('account/community-notifications*')) aria-current="page" @endif><x-icon name="bell" size="22"/><span>Notifications</span></a>
+    <a href="/account/notifications" @if(request()->is('account/notifications*', 'account/community-notifications*')) aria-current="page" @endif><x-icon name="bell" size="22"/><span>Notifications</span><x-unread-notifications :count="$unreadNotifications"/></a>
 </nav>
 @endunless
 <main id="main" @if($mainClass ?? null) class="{{ $mainClass }}" @endif>
