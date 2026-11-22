@@ -6,6 +6,8 @@ The same account works on CanadaMB and BrandonMB. `/users/{id}` shows the member
 
 Notices store recipient and source IDs, timestamps and geographic coverage. The inbox checks the current source, module, membership and conversation access before rendering links and again before opening them. Unavailable items have a generic description and contribute no unread count. The message inbox's existing read markers also clear effective unread counts. Historical notices are retained without a timed purge. New notices cascade on recipient deletion, while older notices keep their existing database relationship to the original reply.
 
+Disabling a module hides its links and optional activity. Eligible mandatory moderation notices still show a generic outcome and contribute to unread counts. Business profile reviews notify each recorded owner, while an ownerless profile sends no notice. Previous Marketplace messages and moderation decisions are outside the legacy discussion read-through.
+
 The PWA worker, manifest and icons do not read or save the member session, so background installation requests cannot consume form feedback. These endpoints still use the existing host and prelaunch policies.
 
 ## Schema and migration review

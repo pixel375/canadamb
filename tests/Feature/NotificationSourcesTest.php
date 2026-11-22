@@ -107,6 +107,25 @@ class NotificationSourcesTest extends TestCase
         $this->assertDatabaseCount('notifications', 3);
     }
 
+    public function test_business_profile_review_notifies_each_known_owner_and_never_guesses_for_unclaimed_profiles(): void
+    {
+        $owner = User::factory()->create();
+        $coOwner = User::factory()->create();
+        $editor = User::factory()->create();
+        $business = Business::create(['slug' => 'shared-business', 'name' => 'Shared Business', 'category' => 'retail', 'status' => 'pending']);
+        $location = $this->location('brandon');
+        $business->locations()->create(['location_id' => $location, 'address' => '1 Test Road']);
+        $business->members()->attach([$owner->id => ['role' => 'owner'], $coOwner->id => ['role' => 'owner'], $editor->id => ['role' => 'editor']]);
+        $unclaimed = Business::create(['slug' => 'unclaimed-business', 'name' => 'Unclaimed Business', 'category' => 'retail', 'status' => 'pending']);
+        $unclaimed->locations()->create(['location_id' => $location, 'address' => '2 Test Road']);
+        $url = 'https://canadamb.ca/admin/business-review';
+        $this->actingAs($this->moderator())->post("$url/$business->id", ['decision' => 'approved', 'notes' => 'Checked both owners.'])->assertRedirect();
+        $this->post("$url/$unclaimed->id", ['decision' => 'approved', 'notes' => 'Reviewed an unclaimed business.'])->assertRedirect();
+        $this->assertNotice($owner, 'business.approved', $business->id, [$location]);
+        $this->assertNotice($coOwner, 'business.approved', $business->id, [$location]);
+        $this->assertDatabaseCount('notifications', 2);
+    }
+
     public function test_job_review_notifies_the_author_only_after_a_current_review_is_written(): void
     {
         $writer = User::factory()->create();

@@ -9,8 +9,10 @@ use App\Models\CommunityThread;
 use App\Models\Conversation;
 use App\Models\Listing;
 use App\Models\Location;
+use App\Models\Site;
 use App\Models\User;
 use App\Support\NetworkSettings;
+use App\Support\NotificationFeed;
 use App\Support\NotificationInbox;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -109,7 +111,7 @@ class NotificationInboxTest extends TestCase
         $this->get($open)->assertNotFound();
     }
 
-    public function test_disabled_unpublished_and_revoked_targets_disappear_from_badges_and_links(): void
+    public function test_disabled_modules_preserve_mandatory_outcomes_without_revealing_inaccessible_targets(): void
     {
         $member = User::factory()->create();
         $author = User::factory()->create();
@@ -120,28 +122,55 @@ class NotificationInboxTest extends TestCase
         $business->locations()->create(['location_id' => $listing->location_id, 'address' => '1 Main Street']);
         $business->members()->attach($member->id, ['role' => 'owner']);
         $marketplace = $this->notice($member, 'listing.approved', $listing->id, $listing->location_id);
+        $rejected = $this->listing('brandon', $member);
+        $rejected->forceFill(['status' => 'rejected', 'title' => 'Private rejected title'])->save();
+        $this->notice($member, 'listing.rejected', $rejected->id, $rejected->location_id);
         $profile = $this->notice($member, 'business.approved', $business->id, $listing->location_id);
         $inbox = 'https://brandonmb.ca/account/notifications';
-        $this->actingAs($member)->get($inbox)->assertOk()->assertSee('3 unread notifications');
+        $this->actingAs($member)->get($inbox)->assertOk()->assertSee('4 unread notifications');
         $this->get("$inbox/unified/$profile/open")->assertRedirect('https://brandonmb.ca/businesses/shared-shop');
         $business->members()->detach($member->id);
-        CommunityThread::sole()->forceFill(['status' => 'rejected'])->save();
         app(NetworkSettings::class)->saveDraft($admin->id, function (array $settings): array {
             $settings['modules']['marketplace'] = false;
+            $settings['modules']['businesses'] = false;
+            $settings['modules']['community'] = false;
 
             return $settings;
         });
         app(NetworkSettings::class)->publish($admin->id);
-        $this->get($inbox)->assertOk()->assertSee('This activity is no longer available.')
-            ->assertDontSee('Thread that will be unpublished')->assertDontSee('3 unread notifications')
-            ->assertDontSee('Marketplace listing approved')->assertDontSee('Business profile approved');
-        $this->get("$inbox?status=unread")->assertOk()->assertSee('No unread notifications in this view.');
+        foreach (['https://canadamb.ca', 'https://brandonmb.ca'] as $host) {
+            $this->get("$host/account/notifications?status=unread")->assertOk()
+                ->assertSee('2 unread notifications')->assertSee('Marketplace listing approved')->assertSee('Marketplace listing rejected')
+                ->assertDontSee('Thread that will be unpublished')->assertDontSee('Business profile approved')
+                ->assertDontSee('Private rejected title')->assertDontSee("/unified/$marketplace/open");
+        }
         $this->get("$inbox/legacy/$legacy/open")->assertNotFound();
         $this->get("$inbox/unified/$marketplace/open")->assertNotFound();
         $this->get("$inbox/unified/$profile/open")->assertNotFound();
         $listing->delete();
         $this->post("$inbox/unified/$marketplace/read")->assertRedirect();
         $this->assertNotNull(DB::table('notifications')->find($marketplace)->read_at);
+    }
+
+    public function test_unread_badge_uses_one_indexed_probe_for_large_read_history(): void
+    {
+        $member = User::factory()->create();
+        $site = Site::where('code', 'brandon')->sole();
+        foreach (array_chunk(range(1, 600), 100) as $ids) {
+            DB::table('notifications')->insert(array_map(fn ($id) => [
+                'user_id' => $member->id, 'event' => 'listing.approved', 'source_id' => $id, 'resource_id' => $id, 'read_at' => now(),
+            ], $ids));
+        }
+        DB::enableQueryLog();
+        try {
+            $this->assertSame(0, app(NotificationFeed::class)->unread($site, $member->id));
+            $queries = DB::getQueryLog();
+            $this->assertCount(1, $queries);
+            $this->assertStringNotContainsString('union', strtolower($queries[0]['query']));
+        } finally {
+            DB::disableQueryLog();
+            DB::flushQueryLog();
+        }
     }
 
     public function test_legacy_duplicate_is_counted_once_and_views_are_paginated(): void

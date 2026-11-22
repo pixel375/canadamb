@@ -25,7 +25,7 @@ final class NotificationFeed
         'messages' => ['message'],
     ];
 
-    public function rows(Site $site, int $user, ?string $category = null): Builder
+    public function rows(Site $site, int $user, ?string $category = null, bool $unreadOnly = false): Builder
     {
         $modules = app(NetworkSettings::class)->forSite($site)['modules'];
         $queries = [];
@@ -37,7 +37,7 @@ final class NotificationFeed
                     'discussions' => $type === 'event' ? 'events' : 'community',
                     default => $group,
                 };
-                $queries[] = $this->source($site, $user, $type, $group, (bool) ($modules[$module] ?? false));
+                $queries[] = $this->source($site, $user, $type, $group, (bool) ($modules[$module] ?? false), $unreadOnly);
             }
         }
         $combined = array_shift($queries);
@@ -50,7 +50,12 @@ final class NotificationFeed
 
     public function unread(Site $site, int $user): int
     {
-        return $this->rows($site, $user)->where('unread', 1)->count();
+        $hasUnread = DB::query()->selectRaw('1')
+            ->whereExists(DB::table('notifications')->where('user_id', $user)->whereNull('read_at'))
+            ->orWhereExists(DB::table('community_notifications')->where('user_id', $user)->whereNull('read_at'))
+            ->exists();
+
+        return $hasUnread ? $this->rows($site, $user, unreadOnly: true)->where('unread', 1)->count() : 0;
     }
 
     public function markRead(stdClass $item, int $user): void
@@ -120,10 +125,13 @@ final class NotificationFeed
         return $storage === 'legacy' ? 'community_notifications' : 'notifications';
     }
 
-    private function source(Site $site, int $user, string $type, string $category, bool $enabled): Builder
+    private function source(Site $site, int $user, string $type, string $category, bool $enabled, bool $unreadOnly): Builder
     {
         $legacy = $type === 'legacy';
         $query = DB::table($this->table($legacy ? 'legacy' : 'unified').' as notice')->where('notice.user_id', $user);
+        if ($unreadOnly) {
+            $query->whereNull('notice.read_at');
+        }
         if (! $legacy) {
             $query->whereIn('notice.event', NotificationInbox::EVENTS[$type]);
             if ($type === 'reply') {
@@ -147,10 +155,10 @@ final class NotificationFeed
         $event = $legacy ? "'reply.followed'" : 'notice.event';
         $social = $legacy || $type === 'message' ? '1 = 1'
             : ($type === 'reply' ? "notice.event = 'reply.followed'" : '1 = 0');
-        $applicable = $enabled ? "($authorized)" : '1 = 0';
-        $hasLink = "($applicable AND ($published) AND ($social OR $event LIKE '%.approved'))";
-        // A legitimate negative review is useful even when the target is no longer public.
-        $relevant = "($applicable AND (($published) OR (NOT ($social) AND $event NOT LIKE '%.approved')))";
+        $module = $enabled ? '1 = 1' : '1 = 0';
+        $hasLink = "(($authorized) AND ($module) AND ($published) AND ($social OR $event LIKE '%.approved'))";
+        // Module visibility hides destinations and optional activity, while authorized moderation outcomes remain readable.
+        $relevant = "(($authorized) AND ((($published) AND (($module) OR NOT ($social))) OR (NOT ($social) AND $event NOT LIKE '%.approved')))";
         $unread = $type === 'message'
             ? 'item.id > CASE WHEN conversation.buyer_id = notice.user_id THEN conversation.buyer_last_read_id ELSE conversation.seller_last_read_id END'
             : '1 = 1';

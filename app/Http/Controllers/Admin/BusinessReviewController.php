@@ -35,9 +35,9 @@ class BusinessReviewController extends Controller
             $item->update(['status' => $data['decision'] === 'approved' ? 'active' : 'rejected']);
             $event = 'business.'.$data['decision'];
             $audit = Audit::record($event, $request->user()->id, context: ['business' => $business, 'notes' => $data['notes']]);
-            $owners = $item->members()->wherePivot('role', 'owner')->limit(2)->pluck('users.id');
-            if ($owners->count() === 1) {
-                NotificationInbox::record($owners->first(), $event, $audit, $business, $item->locations()->pluck('location_id')->all());
+            $locations = $item->locations()->pluck('location_id')->all();
+            foreach ($item->members()->wherePivot('role', 'owner')->pluck('users.id') as $owner) {
+                NotificationInbox::record($owner, $event, $audit, $business, $locations);
             }
         });
 
