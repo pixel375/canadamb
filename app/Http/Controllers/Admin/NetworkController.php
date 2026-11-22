@@ -66,7 +66,7 @@ class NetworkController extends Controller
             $item = Listing::lockForUpdate()->findOrFail($listing);
             abort_unless(in_array($item->status, ['pending', 'active'], true), 409);
             abort_if($data['status'] === 'active' && $item->status !== 'pending', 409);
-            $marketplace->changeStatus($item, $data['status'], $request->user()->id, $data['reason'] ?? null);
+            $marketplace->changeStatus($item, $data['status'], $request->user()->id, $data['reason'] ?? null, moderated: true);
             Audit::record('listing.'.$data['status'], $request->user()->id, context: ['listing' => $listing]);
         });
 

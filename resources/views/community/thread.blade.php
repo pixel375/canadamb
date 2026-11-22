@@ -16,7 +16,7 @@
         <section class="panel">
             <h2>Replies</h2>
             @forelse($replies as $reply)
-                <article class="item-row"><div><h3>@if($reply->author)<a href="/users/{{ $reply->author->id }}">{{ $reply->author->name }}</a>@else Former member @endif</h3><p><time datetime="{{ $reply->created_at->toIso8601String() }}">{{ $reply->created_at->timezone('America/Winnipeg')->format('M j, Y · g:i a T') }}</time></p><p class="prose-text">{{ $reply->body }}</p></div></article>
+                <article id="reply-{{ $reply->id }}" class="item-row"><div><h3>@if($reply->author)<a href="/users/{{ $reply->author->id }}">{{ $reply->author->name }}</a>@else Former member @endif</h3><p><time datetime="{{ $reply->created_at->toIso8601String() }}">{{ $reply->created_at->timezone('America/Winnipeg')->format('M j, Y · g:i a T') }}</time></p><p class="prose-text">{{ $reply->body }}</p></div></article>
             @empty<p>No published replies yet.</p>@endforelse
             {{ $replies->links() }}
         </section>

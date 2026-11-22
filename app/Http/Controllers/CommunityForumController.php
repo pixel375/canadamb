@@ -2,18 +2,20 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CommunityReply;
 use App\Models\CommunityThread;
 use App\Models\Location;
 use App\Support\Community;
 use App\Support\LocationScope;
 use App\Support\NetworkUrl;
-use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class CommunityForumController extends Controller
 {
+    private const REPLIES_PER_PAGE = 25;
+
     public function __construct(private readonly Community $community) {}
 
     public function index(Request $request)
@@ -38,11 +40,22 @@ class CommunityForumController extends Controller
             return redirect()->away($canonical, 301, ['Cache-Control' => 'no-store']);
         }
 
-        $replies = $item->replies()->where('status', 'approved')->with('author')->oldest('id')->paginate(25);
+        $replies = $item->replies()->where('status', 'approved')->with('author')->oldest('id')->paginate(self::REPLIES_PER_PAGE);
         $following = $request->user() && DB::table('community_thread_follows')
             ->where(['thread_id' => $thread, 'user_id' => $request->user()->id])->exists();
 
         return view('community.thread', compact('item', 'canonical', 'replies', 'following'));
+    }
+
+    public function showReply(Request $request, int $reply)
+    {
+        $post = CommunityReply::where('status', 'approved')->findOrFail($reply);
+        $thread = $this->visible($request)->findOrFail($post->thread_id);
+        $earlier = $thread->replies()->where('status', 'approved')->where('id', '<', $reply)->count();
+        $page = intdiv($earlier, self::REPLIES_PER_PAGE) + 1;
+        $site = $this->community->canonicalSite($thread, 'community');
+
+        return redirect()->away(NetworkUrl::to($site, "/community/$thread->id?page=$page#reply-$reply"));
     }
 
     public function create(Request $request)
@@ -95,36 +108,6 @@ class CommunityForumController extends Controller
         DB::table('community_thread_follows')->where(['thread_id' => $thread, 'user_id' => $request->user()->id])->delete();
 
         return redirect('/community/'.$thread)->with('status', 'You stopped following this discussion.');
-    }
-
-    public function notifications(Request $request)
-    {
-        $notifications = $this->visibleNotifications($request)
-            ->orderByDesc('notifications.id')->paginate(20, ['notifications.id', 'notifications.read_at', 'notifications.created_at', 'threads.id as thread_id', 'threads.title']);
-
-        return view('community.notifications', compact('notifications'));
-    }
-
-    public function readNotification(Request $request, int $notification)
-    {
-        abort_unless($this->visibleNotifications($request)->where('notifications.id', $notification)->exists(), 404);
-        DB::table('community_notifications')->where(['id' => $notification, 'user_id' => $request->user()->id])
-            ->whereNull('read_at')->update(['read_at' => now()]);
-
-        return redirect('/account/community-notifications');
-    }
-
-    private function visibleNotifications(Request $request): Builder
-    {
-        $site = $request->attributes->get('site');
-        abort_unless($this->community->enabled($site, 'community'), 404);
-
-        return DB::table('community_notifications as notifications')
-            ->join('community_replies as replies', 'replies.id', '=', 'notifications.reply_id')
-            ->join('community_threads as threads', 'threads.id', '=', 'replies.thread_id')
-            ->where('threads.status', 'approved')->where('replies.status', 'approved')
-            ->where('notifications.user_id', $request->user()->id)
-            ->when($site->location_id, fn ($query, $id) => $query->where('threads.location_id', $id));
     }
 
     private function visible(Request $request)

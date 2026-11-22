@@ -6,9 +6,9 @@ use Illuminate\Support\Facades\DB;
 
 final class Audit
 {
-    public static function record(string $action, ?int $actor, ?int $site = null, array $context = []): void
+    public static function record(string $action, ?int $actor, ?int $site = null, array $context = []): int
     {
-        DB::table('audit_logs')->insert([
+        return DB::table('audit_logs')->insertGetId([
             'action' => $action,
             'actor_id' => $actor,
             'site_id' => $site,

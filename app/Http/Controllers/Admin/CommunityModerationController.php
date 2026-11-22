@@ -7,6 +7,7 @@ use App\Models\CommunityEvent;
 use App\Models\CommunityReply;
 use App\Models\CommunityThread;
 use App\Support\Audit;
+use App\Support\NotificationInbox;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -45,7 +46,10 @@ class CommunityModerationController extends Controller
                 default => $item->status === 'approved',
             }, 409);
             $item->forceFill($changes)->save();
-            Audit::record('community.thread.'.$action, $request->user()->id, context: ['thread' => $thread, 'reason' => $data['reason'] ?? null]);
+            $audit = Audit::record('community.thread.'.$action, $request->user()->id, context: ['thread' => $thread, 'reason' => $data['reason'] ?? null]);
+            if ($item->author_id !== null && isset($changes['status'])) {
+                NotificationInbox::record($item->author_id, 'thread.'.$item->status, $audit, $thread, [$item->location_id]);
+            }
         });
 
         return $this->done();
@@ -63,14 +67,16 @@ class CommunityModerationController extends Controller
             if ($approval) {
                 abort_unless($thread->status === 'approved', 409);
                 $thread->forceFill(['last_activity_at' => now()])->save();
-                DB::table('community_notifications')->insertUsing(['user_id', 'reply_id', 'created_at'],
-                    DB::table('community_thread_follows')->where('thread_id', $thread->id)
-                        ->when($item->author_id, fn ($query, $author) => $query->where('user_id', '!=', $author))
-                        ->select('user_id')->selectRaw('?, ?', [$item->id, now()]),
-                );
             }
             $item->forceFill(['status' => $approval ? 'approved' : 'rejected'])->save();
-            Audit::record('community.reply.'.$data['action'], $request->user()->id, context: ['reply' => $reply, 'reason' => $data['reason'] ?? null]);
+            $audit = Audit::record('community.reply.'.$data['action'], $request->user()->id, context: ['reply' => $reply, 'reason' => $data['reason'] ?? null]);
+            $locations = [$thread->location_id];
+            if ($item->author_id !== null) {
+                NotificationInbox::record($item->author_id, 'reply.'.$item->status, $audit, $reply, $locations);
+            }
+            if ($approval) {
+                NotificationInbox::recordFollowedReply($thread->id, $reply, $item->author_id, $thread->location_id);
+            }
         });
 
         return $this->done();
@@ -88,7 +94,10 @@ class CommunityModerationController extends Controller
                 abort_unless(in_array($item->status, ['pending', 'approved', 'cancelled'], true), 409);
             }
             $item->forceFill(['status' => $data['action'] === 'approve' ? 'approved' : 'rejected'])->save();
-            Audit::record('community.event.'.$data['action'], $request->user()->id, context: ['event' => $event, 'reason' => $data['reason'] ?? null]);
+            $audit = Audit::record('community.event.'.$data['action'], $request->user()->id, context: ['event' => $event, 'reason' => $data['reason'] ?? null]);
+            if ($item->author_id !== null) {
+                NotificationInbox::record($item->author_id, 'event.'.$item->status, $audit, $event, [$item->location_id]);
+            }
         });
 
         return $this->done();

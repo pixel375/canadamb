@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Conversation;
 use App\Models\User;
 use App\Support\Marketplace;
+use App\Support\NotificationInbox;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -113,5 +114,6 @@ class MessagesController extends Controller
         $message = $thread->messages()->create(['sender_id' => $id, 'body' => $body]);
         $marker = $thread->marker($id);
         Conversation::whereKey($thread->id)->where($marker, '<', $message->id)->update([$marker => $message->id]);
+        NotificationInbox::record($thread->other($id), 'message.received', $message->id, $message->id, [$thread->listing()->value('location_id')]);
     }
 }

@@ -12,6 +12,7 @@ use App\Models\CommunityOAuthClient;
 use App\Models\User;
 use App\Support\Identity;
 use App\Support\NetworkSettings;
+use App\Support\NotificationFeed;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Notifications\ResetPassword as ResetNotification;
 use Illuminate\Auth\Notifications\VerifyEmail;
@@ -57,7 +58,12 @@ class AppServiceProvider extends ServiceProvider
         View::composer('components.layouts.site', function ($view) {
             $site = request()->attributes->get('site');
             if ($site) {
-                $view->with(['site' => $site, 'networkSettings' => app(NetworkSettings::class)->forSite($site)]);
+                $viewer = request()->user();
+                $view->with([
+                    'site' => $site,
+                    'networkSettings' => app(NetworkSettings::class)->forSite($site),
+                    'unreadNotifications' => $viewer?->hasVerifiedEmail() ? app(NotificationFeed::class)->unread($site, $viewer->id) : 0,
+                ]);
             }
         });
 

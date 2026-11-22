@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\JobPosting;
 use App\Support\Audit;
 use App\Support\JobBoard;
+use App\Support\NotificationInbox;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -35,7 +36,10 @@ class JobReviewController extends Controller
                 abort_unless(in_array($item->status, ['pending', 'approved'], true), 409);
                 $item->forceFill(['status' => 'rejected'])->save();
             }
-            Audit::record('jobs.'.$data['action'], $request->user()->id, context: ['job' => $job, 'reason' => $data['reason'] ?? null]);
+            $audit = Audit::record('jobs.'.$data['action'], $request->user()->id, context: ['job' => $job, 'reason' => $data['reason'] ?? null]);
+            if ($item->author_id !== null) {
+                NotificationInbox::record($item->author_id, 'job.'.$item->status, $audit, $job, [$item->branch->location_id]);
+            }
         });
 
         return redirect('/admin/jobs')->with('status', 'Job moderation saved.');

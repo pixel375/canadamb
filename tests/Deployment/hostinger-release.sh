@@ -5,13 +5,26 @@ set -euo pipefail
 umask 077
 
 repo=$(git rev-parse --show-toplevel)
-commit=$(git rev-parse HEAD)
+target=$(git rev-parse HEAD)
+commit=$target
+scenario=${1:-staging}
+member_migration=2026_11_21_000001_create_member_settings_table
+inbox_migration=2026_11_21_000002_create_notification_inbox_tables
+if [[ $scenario == production-pass-02 ]]; then
+    commit=f8497962b32b6720fc39f28814acf5a63c259d26
+    if [[ $commit == "$target" ]] || ! git merge-base --is-ancestor "$commit" "$target" ||
+        ! git cat-file -e "$target:database/migrations/$member_migration.php" ||
+        ! git cat-file -e "$target:database/migrations/$inbox_migration.php"; then
+        echo 'The Pass 02 rehearsal requires the Pass 01 baseline and a descendant commit containing both Pass 02 migrations.' >&2
+        exit 1
+    fi
+fi
 site=$(mktemp -d /tmp/canadamb-release-test.XXXXXXXX)
 trap 'rm -rf -- "$site"' EXIT
 app="$site/canadamb-app"
 release="$app/releases/$commit"
-export CANADAMB_DEPLOYMENT_MODE="${1:-staging}"
-case "$CANADAMB_DEPLOYMENT_MODE" in
+export CANADAMB_DEPLOYMENT_MODE="$scenario"
+case "$scenario" in
     staging)
         export CANADAMB_STAGING_DB=canadamb_ci_staging
         database=$CANADAMB_STAGING_DB
@@ -20,13 +33,18 @@ case "$CANADAMB_DEPLOYMENT_MODE" in
         prelaunch=false
         partner_user=release_probe
         ;;
-    production-initial)
+    production-initial|production-pass-02)
+        export CANADAMB_DEPLOYMENT_MODE=production-initial
         export CANADAMB_PRODUCTION_DB=canadamb_ci_production
+        partner_user=production_probe
+        if [[ $scenario == production-pass-02 ]]; then
+            export CANADAMB_PRODUCTION_DB=canadamb_ci_pass02
+            partner_user=pass02_probe
+        fi
         database=$CANADAMB_PRODUCTION_DB
         database_option=production-database
         staging=false
         prelaunch=true
-        partner_user=production_probe
         ;;
     *) exit 2 ;;
 esac
@@ -67,7 +85,12 @@ MAIL_MAILER=smtp
 ENV
 
 deploy() {
-    bash "$repo/deploy/hostinger-release.sh" "$1" "$site" "$commit" "${@:2}"
+    if [[ $scenario == production-pass-02 ]]; then
+        git -C "$app/source" show "$commit:deploy/hostinger-release.sh" |
+            bash -s -- "$1" "$site" "$commit" "${@:2}"
+    else
+        bash "$repo/deploy/hostinger-release.sh" "$1" "$site" "$commit" "${@:2}"
+    fi
 }
 
 expect_rejection() {
@@ -84,7 +107,16 @@ if grep -Fq 'exec > >(' "$repo/deploy/hostinger-release.sh" ||
     exit 1
 fi
 release_script_checksum=$(sha256sum "$repo/deploy/hostinger-release.sh" | awk '{print $1}')
-deploy prepare "$repo/public/build"
+build="$repo/public/build"
+if [[ $scenario == production-pass-02 ]]; then
+    baseline="$site/pass01-source"
+    mkdir "$baseline"
+    git -C "$app/source" archive "$commit" | tar -x -C "$baseline"
+    (cd "$baseline" && npm ci --prefer-offline && npm run build)
+    build="$baseline/public/build"
+    printf '%s\n' "$commit" > "$build/source-commit"
+fi
+deploy prepare "$build"
 test -s "$repo/deploy/hostinger-release.sh"
 expect_rejection deploy preflight
 MYSQL_PWD=release-probe-test-only docker exec -e MYSQL_PWD "$CI_MARIADB_CONTAINER" mariadb-dump -u "$partner_user" "$database" > "$backup/$database.sql"
@@ -130,6 +162,117 @@ PHP
 php "$site/dispatch-probe.php" "$release"
 bash "$repo/deploy/hostinger-cron.sh" "$site" "$(command -v php)"
 grep -qx processed "$app/shared/storage/logs/queue-probe"
+
+if [[ $scenario == production-pass-02 ]]; then
+    database_sql() {
+        MYSQL_PWD=release-probe-test-only docker exec -i -e MYSQL_PWD "$CI_MARIADB_CONTAINER" \
+            mariadb --batch --skip-column-names -u "$partner_user" "$database" "$@"
+    }
+    restore_sql() {
+        MYSQL_PWD="$CI_MARIADB_ROOT_PASSWORD" docker exec -i -e MYSQL_PWD "$CI_MARIADB_CONTAINER" \
+            mariadb --batch --skip-column-names -u root "$@"
+    }
+
+    database_sql <<'SQL'
+INSERT INTO users (id, name, email, password, created_at, updated_at) VALUES
+    (8101, 'Prelaunch Reader', 'ci-reader@example.invalid', 'disabled-fixture', '2026-01-01 09:00:00', '2026-01-01 09:00:00'),
+    (8102, 'Discussion Author', 'ci-author@example.invalid', 'disabled-fixture', '2026-01-01 09:00:00', '2026-01-01 09:00:00');
+INSERT INTO community_threads (id, author_id, location_id, title, body, category, status, last_activity_at)
+    SELECT 8101, 8101, id, 'Legacy discussion', 'Disposable rehearsal fixture.', 'general', 'approved', '2026-01-01 09:20:00'
+    FROM locations WHERE slug = 'brandon';
+INSERT INTO community_replies (id, thread_id, author_id, body, status) VALUES
+    (8101, 8101, 8102, 'Already read.', 'approved'),
+    (8102, 8101, 8102, 'Still unread.', 'approved');
+INSERT INTO community_notifications (id, user_id, reply_id, read_at, created_at) VALUES
+    (8101, 8101, 8101, '2026-01-01 09:30:00', '2026-01-01 09:10:00'),
+    (8102, 8101, 8102, NULL, '2026-01-01 09:20:00');
+SQL
+    legacy_query='SELECT id, user_id, reply_id, read_at, created_at FROM community_notifications ORDER BY id'
+    legacy_rows=$'8101\t8101\t8101\t2026-01-01 09:30:00\t2026-01-01 09:10:00\n8102\t8101\t8102\tNULL\t2026-01-01 09:20:00'
+    inventory_query="SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN ('member_settings','notifications','notification_locations') ORDER BY BINARY TABLE_NAME"
+    migration_query="SELECT migration FROM migrations WHERE migration IN ('$member_migration','$inbox_migration') ORDER BY migration"
+    legacy_schema=$(database_sql -e 'SHOW CREATE TABLE community_notifications')
+    test "$(database_sql -e "$legacy_query")" = "$legacy_rows"
+    test -z "$(database_sql -e "$inventory_query")"
+    test -z "$(database_sql -e "$migration_query")"
+    printf '%s\n' 'Pass 02 media rehearsal' > "$app/shared/storage/app/private/pass02-probe.txt"
+    root_inode=$(stat -c '%i' "$site/public_html")
+    key_hashes=$(sha256sum "$app/shared/storage/"oauth-{private,public}.key)
+
+    export CANADAMB_PHP_BIN="$(command -v php)"
+    export CANADAMB_COMPOSER_BIN="$(command -v composer)"
+    unset CANADAMB_STAGING_DB
+    upgrade=(bash "$repo/deploy/hostinger-upgrade.sh" "$site" "$target" "$repo/public/build")
+    expect_rejection "${upgrade[@]}"
+    test "$(readlink -f "$app/current")" = "$release"
+    test ! -e "$app/releases/$target"
+    test ! -e "$app/update.pause"
+    test ! -e "$release/storage/framework/down"
+    test -z "$(database_sql -e "$inventory_query")"
+    test -z "$(database_sql -e "$migration_query")"
+    test "$(database_sql -e "$legacy_query")" = "$legacy_rows"
+    echo 'Default production upgrade refused the pending Pass 02 migrations.'
+
+    mkdir "$site/pending-migrations"
+    git -C "$app/source" archive "$target" "database/migrations/$member_migration.php" "database/migrations/$inbox_migration.php" |
+        tar -x -C "$site/pending-migrations"
+    php "$release/artisan" migrate --pretend --force --no-ansi --realpath --path="$site/pending-migrations/database/migrations"
+    test -z "$(database_sql -e "$migration_query")"
+    test -z "$(database_sql -e "$inventory_query")"
+
+    # Explicit authorization is limited to the exact candidate in this disposable CI schema.
+    "${upgrade[@]}" true
+    test "$(readlink -f "$app/current")" = "$app/releases/$target"
+    test "$(stat -c '%i' "$site/public_html")" = "$root_inode"
+    test "$(sha256sum "$app/shared/storage/"oauth-{private,public}.key)" = "$key_hashes"
+    test ! -e "$app/update.pause"
+    test ! -e "$app/releases/$target/storage/framework/down"
+    test "$(database_sql -e "$legacy_query")" = "$legacy_rows"
+    test "$(database_sql -e 'SHOW CREATE TABLE community_notifications')" = "$legacy_schema"
+    test "$(database_sql -e "$migration_query")" = "$member_migration"$'\n'"$inbox_migration"
+    test "$(database_sql -e "$inventory_query")" = $'member_settings\nnotification_locations\nnotifications'
+    for table in member_settings notifications notification_locations; do
+        test "$(database_sql -e "SELECT COUNT(*) FROM $table")" = 0
+    done
+    indexes=$(database_sql <<'SQL'
+SELECT CONCAT(TABLE_NAME, ':', NON_UNIQUE, ':', GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX))
+FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE()
+  AND TABLE_NAME IN ('member_settings','notifications','notification_locations')
+GROUP BY TABLE_NAME, INDEX_NAME, NON_UNIQUE;
+SQL
+    )
+    for index in \
+        member_settings:0:user_id \
+        notification_locations:0:notification_id,location_id \
+        notification_locations:1:location_id,notification_id \
+        notifications:0:user_id,event,source_id \
+        notifications:1:user_id,created_at,id \
+        notifications:1:user_id,read_at,created_at,id; do
+        grep -qxF "$index" <<< "$indexes"
+    done
+    test "$(cat "$app/shared/storage/app/private/pass02-probe.txt")" = 'Pass 02 media rehearsal'
+
+    upgrade_backup="$app/shared/backups/$target"
+    (cd "$upgrade_backup" && sha256sum -c checksums.sha256)
+    mkdir "$site/restored-media"
+    tar -xzf "$upgrade_backup/storage.tar.gz" -C "$site/restored-media"
+    cmp -s "$site/restored-media/storage/app/private/pass02-probe.txt" "$app/shared/storage/app/private/pass02-probe.txt"
+    for key_file in oauth-{private,public}.key; do
+        cmp -s "$site/restored-media/storage/$key_file" "$app/shared/storage/$key_file"
+    done
+    restore_database=canadamb_ci_pass02_restore
+    restore_sql -e "CREATE DATABASE $restore_database"
+    restore_sql "$restore_database" < "$upgrade_backup/$database.sql"
+    test -z "$(restore_sql "$restore_database" -e "$inventory_query")"
+    test -z "$(restore_sql "$restore_database" -e "$migration_query")"
+    test "$(restore_sql "$restore_database" -e "$legacy_query")" = "$legacy_rows"
+    test "$(restore_sql "$restore_database" -e 'SHOW CREATE TABLE community_notifications')" = "$legacy_schema"
+    test "$(restore_sql "$restore_database" -e 'SELECT host FROM domains WHERE host IN ("canadamb.ca", "brandonmb.ca") ORDER BY host')" = $'brandonmb.ca\ncanadamb.ca'
+    echo 'Pass 02 upgrade preserved legacy read state and restored the pre-migration database and media backups in isolation.'
+    mkdir "$site/notification-race"
+    php "$repo/tests/Deployment/pass02-notifications.php" "$app/releases/$target" "$site/notification-race"
+    exit 0
+fi
 
 if [[ $CANADAMB_DEPLOYMENT_MODE == production-initial ]]; then
     MYSQL_PWD=release-probe-test-only docker exec -e MYSQL_PWD "$CI_MARIADB_CONTAINER" mariadb-dump -u "$partner_user" "$database" > "$site/installed.sql"
