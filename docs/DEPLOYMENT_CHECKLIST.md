@@ -1,5 +1,13 @@
 # Hostinger production prelaunch acceptance
 
+## Pass 04 messaging release checks
+
+- [ ] Confirm Verify CanadaMB is green for the exact reviewed SHA. Check the disposable Pass 03 to Pass 04 MariaDB rehearsal for the default denial, previewed SQL, preserved legacy data, isolated SQL and storage restore, and concurrent send result.
+- [ ] Obtain explicit approval for the reviewed migration on the named production database before promotion. Keep the migration input at its default `false` until that approval. Record the source SHA and backup checksums.
+- [ ] Verify shared private storage has room for attachments and the database and media backups. Confirm web PHP upload limits support 5 MiB per file and a 12 MiB message plus multipart overhead. The Pass 03 Marketplace upload limits also cover this size.
+- [ ] Confirm the guarded release pauses writes and cron, takes SQL and storage backups, records the matching migration preflight, and runs the reviewed migrations. Verify the active SHA and independent deployment and external prelaunch audits.
+- [ ] Complete the [allowlisted messaging browser checks](UNIFIED_MESSAGING.md#allowlisted-browser-checks) before recording owner acceptance.
+
 ## Pass 03 Marketplace release checks
 
 - [ ] After the approved Pass 02 release, retarget or rebase the stacked Marketplace PR and confirm exact-commit CI and the media backup. Pass 03 has no new schema changes.

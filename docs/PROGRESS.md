@@ -1,5 +1,9 @@
 # Progress
 
+## Pass 04 unified messaging
+
+Pass 04 adds one inbox for Marketplace, business, and job messages, with separate notification preferences, opt-in business and job contacts, private attachments, and conversation reports. Its migration retains existing Marketplace history and read markers. Verify CanadaMB exercises the populated Pass 03 to Pass 04 upgrade, isolated restore, and simultaneous send on disposable MariaDB. Track exact-SHA CI and owner browser evidence separately. [Issue #17](https://github.com/pixel375/canadamb/issues/17) · [Messaging release and owner checks](UNIFIED_MESSAGING.md)
+
 ## Pass 03 Marketplace completion
 
 Pass 03 is stacked on the corrected Pass 02 branch. It adds ordered photo editing, JPEG orientation and private media recovery, swipe and keyboard gallery controls, seller listing lifecycle and discovery improvements. Pass 03 adds no schema migration. Use the issue and pull request for exact-commit CI evidence and keep live browser checks separate. [Issue #15](https://github.com/pixel375/canadamb/issues/15) · [Marketplace implementation and acceptance](MARKETPLACE_FEEDBACK.md)

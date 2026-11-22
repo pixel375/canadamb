@@ -13,12 +13,18 @@
             </details>
         @else <p class="notice">This business has no branches in the current portal.</p> @endif
         <section class="panel"><h2>Your job postings</h2>
+            @if($items->isNotEmpty())
+                <p class="field-note">One verified owner or manager can opt in to receive private messages for each job.</p>
+            @endif
             @forelse($items as $item)
                 <article class="item-row"><div>
                     <h3>{{ $item->title }}</h3><p>{{ ucfirst($item->status) }} · {{ $item->branch->location->name }} · Closes {{ $item->closing_on->format('M j, Y') }}</p>
                 </div><div class="inline-actions">
                     @if(in_array($item->status, ['pending', 'approved', 'rejected'], true))<a class="button button-outline" href="/account/businesses/{{ $employer->id }}/jobs/{{ $item->id }}/edit">Edit</a>@endif
                     @if(in_array($item->status, ['pending', 'approved'], true))<form method="post" action="/account/businesses/{{ $employer->id }}/jobs/{{ $item->id }}/withdraw">@csrf<button class="button button-outline">Withdraw</button></form>@endif
+                    <x-message-contact-setting :action="'/account/businesses/'.$employer->id.'/jobs/'.$item->id.'/message-contact'"
+                        :contact="in_array($item->message_contact_user_id, $contactUsers, true) ? $item->message_contact_user_id : null"
+                        :subject="$item->title" :can-enable="!in_array($item->status, ['expired', 'withdrawn'], true)"/>
                 </div></article>
             @empty<p>No jobs have been posted for these branches.</p>@endforelse
             {{ $items->links() }}

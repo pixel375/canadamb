@@ -84,6 +84,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/account/businesses/{business}/jobs/{job}/edit', [JobController::class, 'edit'])->whereNumber(['business', 'job']);
     Route::put('/account/businesses/{business}/jobs/{job}', [JobController::class, 'update'])->whereNumber(['business', 'job'])->middleware('throttle:12,1');
     Route::post('/account/businesses/{business}/jobs/{job}/withdraw', [JobController::class, 'withdraw'])->whereNumber(['business', 'job']);
+    Route::put('/account/businesses/{business}/jobs/{job}/message-contact', [JobController::class, 'messageContact'])->whereNumber(['business', 'job'])->middleware('throttle:12,1');
     Route::get('/account/saved-jobs', [JobController::class, 'saved']);
     Route::post('/jobs/{job}/save', [JobController::class, 'save'])->whereNumber('job');
     Route::delete('/jobs/{job}/save', [JobController::class, 'remove'])->whereNumber('job');
@@ -116,10 +117,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/marketplace/{listing}/save', [ListingEngagementController::class, 'save'])->whereNumber('listing')->middleware('throttle:24,1');
     Route::delete('/marketplace/{listing}/save', [ListingEngagementController::class, 'remove'])->whereNumber('listing')->middleware('throttle:24,1');
     Route::post('/marketplace/{listing}/report', [ListingEngagementController::class, 'report'])->whereNumber('listing')->middleware('throttle:8,1');
-    Route::post('/marketplace/{listing}/message', [MessagesController::class, 'start'])->whereNumber('listing')->middleware('throttle:15,1');
+    Route::post('/marketplace/{listing}/message', [MessagesController::class, 'start'])->whereNumber('listing')->middleware('throttle:message-start');
+    Route::get('/businesses/{slug}/branches/{branch}/contact', [MessagesController::class, 'contactBusiness'])->whereNumber('branch');
+    Route::post('/businesses/{slug}/branches/{branch}/message', [MessagesController::class, 'startBusiness'])->whereNumber('branch')->middleware('throttle:message-start');
+    Route::get('/jobs/{job}/contact', [MessagesController::class, 'contactJob'])->whereNumber('job');
+    Route::post('/jobs/{job}/message', [MessagesController::class, 'startJob'])->whereNumber('job')->middleware('throttle:message-start');
     Route::get('/account/messages', [MessagesController::class, 'index']);
     Route::get('/account/messages/{conversation}', [MessagesController::class, 'show'])->whereNumber('conversation');
-    Route::post('/account/messages/{conversation}', [MessagesController::class, 'reply'])->whereNumber('conversation')->middleware('throttle:25,1');
+    Route::post('/account/messages/{conversation}', [MessagesController::class, 'reply'])->whereNumber('conversation')->middleware('throttle:message-reply');
+    Route::post('/account/messages/{conversation}/report', [MessagesController::class, 'report'])->whereNumber('conversation')->middleware('throttle:8,1');
+    Route::get('/account/messages/{conversation}/attachments/{attachment}', [MessagesController::class, 'attachment'])
+        ->whereNumber(['conversation', 'attachment'])->middleware('throttle:message-download');
     Route::post('/account/messages/{conversation}/block', [MessagesController::class, 'block'])->whereNumber('conversation');
     Route::delete('/account/messages/{conversation}/block', [MessagesController::class, 'unblock'])->whereNumber('conversation');
     Route::post('/businesses/{slug}/claim', [BusinessController::class, 'claim'])->middleware('throttle:8,1');
@@ -128,6 +136,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/account/businesses', [BusinessController::class, 'store'])->middleware('throttle:5,1');
     Route::get('/account/businesses/{business}', [BusinessController::class, 'edit'])->whereNumber('business');
     Route::put('/account/businesses/{business}', [BusinessController::class, 'update'])->whereNumber('business')->middleware('throttle:20,1');
+    Route::put('/account/businesses/{business}/branches/{branch}/message-contact', [BusinessController::class, 'messageContact'])->whereNumber(['business', 'branch'])->middleware('throttle:12,1');
     Route::post('/account/businesses/{business}/updates', [BusinessController::class, 'postUpdate'])->whereNumber('business')->middleware('throttle:8,1');
 });
 

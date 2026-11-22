@@ -10,14 +10,23 @@ commit=$target
 scenario=${1:-staging}
 member_migration=2026_11_21_000001_create_member_settings_table
 inbox_migration=2026_11_21_000002_create_notification_inbox_tables
+messaging_migration=2026_11_22_000001_expand_unified_messaging
+pending_migrations=()
 if [[ $scenario == production-pass-02 ]]; then
     commit=f8497962b32b6720fc39f28814acf5a63c259d26
-    if [[ $commit == "$target" ]] || ! git merge-base --is-ancestor "$commit" "$target" ||
-        ! git cat-file -e "$target:database/migrations/$member_migration.php" ||
-        ! git cat-file -e "$target:database/migrations/$inbox_migration.php"; then
-        echo 'The Pass 02 rehearsal requires the Pass 01 baseline and a descendant commit containing both Pass 02 migrations.' >&2
+    pending_migrations=("$member_migration" "$inbox_migration")
+elif [[ $scenario == production-pass-04 ]]; then
+    commit=cc3112c036e26ef5ed4893451b7b4d735aa7d567
+    pending_migrations=("$messaging_migration")
+fi
+if (( ${#pending_migrations[@]} )); then
+    if [[ $commit == "$target" ]] || ! git merge-base --is-ancestor "$commit" "$target"; then
+        echo 'The rehearsal requires the exact baseline and a descendant candidate.' >&2
         exit 1
     fi
+    for migration in "${pending_migrations[@]}"; do
+        git cat-file -e "$target:database/migrations/$migration.php"
+    done
 fi
 site=$(mktemp -d /tmp/canadamb-release-test.XXXXXXXX)
 trap 'rm -rf -- "$site"' EXIT
@@ -33,13 +42,16 @@ case "$scenario" in
         prelaunch=false
         partner_user=release_probe
         ;;
-    production-initial|production-pass-02)
+    production-initial|production-pass-02|production-pass-04)
         export CANADAMB_DEPLOYMENT_MODE=production-initial
         export CANADAMB_PRODUCTION_DB=canadamb_ci_production
         partner_user=production_probe
         if [[ $scenario == production-pass-02 ]]; then
             export CANADAMB_PRODUCTION_DB=canadamb_ci_pass02
             partner_user=pass02_probe
+        elif [[ $scenario == production-pass-04 ]]; then
+            export CANADAMB_PRODUCTION_DB=canadamb_ci_pass04
+            partner_user=pass04_probe
         fi
         database=$CANADAMB_PRODUCTION_DB
         database_option=production-database
@@ -85,7 +97,7 @@ MAIL_MAILER=smtp
 ENV
 
 deploy() {
-    if [[ $scenario == production-pass-02 ]]; then
+    if [[ $commit != "$target" ]]; then
         git -C "$app/source" show "$commit:deploy/hostinger-release.sh" |
             bash -s -- "$1" "$site" "$commit" "${@:2}"
     else
@@ -108,8 +120,8 @@ if grep -Fq 'exec > >(' "$repo/deploy/hostinger-release.sh" ||
 fi
 release_script_checksum=$(sha256sum "$repo/deploy/hostinger-release.sh" | awk '{print $1}')
 build="$repo/public/build"
-if [[ $scenario == production-pass-02 ]]; then
-    baseline="$site/pass01-source"
+if [[ $commit != "$target" ]]; then
+    baseline="$site/baseline-source"
     mkdir "$baseline"
     git -C "$app/source" archive "$commit" | tar -x -C "$baseline"
     (cd "$baseline" && npm ci --prefer-offline && npm run build)
@@ -163,16 +175,21 @@ php "$site/dispatch-probe.php" "$release"
 bash "$repo/deploy/hostinger-cron.sh" "$site" "$(command -v php)"
 grep -qx processed "$app/shared/storage/logs/queue-probe"
 
-if [[ $scenario == production-pass-02 ]]; then
-    database_sql() {
-        MYSQL_PWD=release-probe-test-only docker exec -i -e MYSQL_PWD "$CI_MARIADB_CONTAINER" \
-            mariadb --batch --skip-column-names -u "$partner_user" "$database" "$@"
-    }
-    restore_sql() {
-        MYSQL_PWD="$CI_MARIADB_ROOT_PASSWORD" docker exec -i -e MYSQL_PWD "$CI_MARIADB_CONTAINER" \
-            mariadb --batch --skip-column-names -u root "$@"
-    }
+database_sql() {
+    MYSQL_PWD=release-probe-test-only docker exec -i -e MYSQL_PWD "$CI_MARIADB_CONTAINER" \
+        mariadb --batch --skip-column-names -u "$partner_user" "$database" "$@"
+}
+restore_sql() {
+    MYSQL_PWD="$CI_MARIADB_ROOT_PASSWORD" docker exec -i -e MYSQL_PWD "$CI_MARIADB_CONTAINER" \
+        mariadb --batch --skip-column-names -u root "$@"
+}
 
+if [[ $scenario == production-pass-04 ]]; then
+    source "$repo/tests/Deployment/pass04-messaging.sh"
+    exit 0
+fi
+
+if [[ $scenario == production-pass-02 ]]; then
     database_sql <<'SQL'
 INSERT INTO users (id, name, email, password, created_at, updated_at) VALUES
     (8101, 'Prelaunch Reader', 'ci-reader@example.invalid', 'disabled-fixture', '2026-01-01 09:00:00', '2026-01-01 09:00:00'),

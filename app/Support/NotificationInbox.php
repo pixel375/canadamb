@@ -23,7 +23,12 @@ final class NotificationInbox
 
     private const OPTIONAL = [
         'reply.followed' => 'notify_discussion_replies',
-        'message.received' => 'notify_marketplace_messages',
+    ];
+
+    private const MESSAGE_PREFERENCES = [
+        'marketplace' => 'notify_marketplace_messages',
+        'business' => 'notify_business_messages',
+        'job' => 'notify_job_messages',
     ];
 
     /** Called while the reply is locked in the moderation transaction. */
@@ -52,14 +57,17 @@ final class NotificationInbox
     }
 
     /** Source state changes must enclose this write in their transaction. */
-    public static function record(int $recipientId, string $event, int $sourceId, int $resourceId, array $locationIds): void
+    public static function record(int $recipientId, string $event, int $sourceId, int $resourceId, array $locationIds, string $messageContext = 'marketplace'): void
     {
         $type = explode('.', $event, 2)[0];
         if (! in_array($event, self::EVENTS[$type] ?? [], true)) {
             throw new InvalidArgumentException('Unknown inbox event.');
         }
 
-        if ($preference = self::OPTIONAL[$event] ?? null) {
+        $preference = $event === 'message.received'
+            ? (self::MESSAGE_PREFERENCES[$messageContext] ?? throw new InvalidArgumentException('Unknown message context.'))
+            : (self::OPTIONAL[$event] ?? null);
+        if ($preference !== null) {
             if (DB::table('member_settings')->where('user_id', $recipientId)->where($preference, false)->exists()) {
                 return;
             }

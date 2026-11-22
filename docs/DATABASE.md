@@ -15,5 +15,9 @@ Production uses a single MariaDB database. Local development and feature tests c
 | 2026_11_19_000003 | Community forums, follows, notifications, and local events |
 | 2026_11_19_000004 | Employer job postings and bookmarks |
 | 2026_11_19_000005 | Private property drafts and photo metadata |
+| 2026_11_21_000001 and 000002 | Member settings, unified notices, and notification locations |
+| 2026_11_22_000001 | Unified message contexts, designated contacts, send tokens, attachments, reports, and per-context message preferences |
 
 Configuration publishing locks the singleton settings pointer and swaps it to an immutable numbered revision in one transaction with its audit. Revision payloads are cached by immutable ID. The published pointer and site records are read from the database, so a visibility or theme edit takes effect across domains. Enable database cache locks and retain a tested pre-migration backup.
+
+See the [unified messaging upgrade and restore procedure](UNIFIED_MESSAGING.md#schema-and-release-rehearsal) for the populated MariaDB and SQLite checks.

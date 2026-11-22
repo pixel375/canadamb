@@ -37,7 +37,12 @@
             <fieldset class="member-settings-options" aria-describedby="notification-help">
                 <legend>In-app notifications</legend>
                 <p class="field-note" id="notification-help">Account and moderation notices are required.</p>
-                @foreach(['notify_discussion_replies' => 'Replies to discussions I follow', 'notify_marketplace_messages' => 'New Marketplace messages'] as $name => $label)
+                @foreach([
+                    'notify_discussion_replies' => 'Replies to discussions I follow',
+                    'notify_marketplace_messages' => 'New Marketplace messages',
+                    'notify_business_messages' => 'New Business directory messages',
+                    'notify_job_messages' => 'New Jobs messages',
+                ] as $name => $label)
                     <input type="hidden" name="{{ $name }}" value="0">
                     <label class="checkbox"><input type="checkbox" name="{{ $name }}" value="1" @checked($field($name, $preferences->$name))> {{ $label }}</label>
                 @endforeach

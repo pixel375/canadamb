@@ -12,6 +12,10 @@ Issue #13 adds profile privacy controls and one member inbox for existing activi
 
 Issue #15 completes ordered photo editing, normalized private images, accessible media browsing, seller relisting and published listing discovery. The review is stacked on Pass 02 until the approved schema release is complete. Verify the rebased or retargeted Pass 03 diff and exact commit before a future release. [Issue #15](https://github.com/pixel375/canadamb/issues/15) · [Marketplace feedback](MARKETPLACE_FEEDBACK.md)
 
+## Pass 04 — Unified private messaging
+
+Issue #17 expands the existing inbox to Marketplace, business, and job conversations. The migration preserves legacy Marketplace records and adds context, independent notification preferences, restrained contact assignment, private attachments, and reports. The stacked review targets the corrected Pass 03 branch. Production schema review and allowlisted acceptance follow the earlier release gates. [Issue #17](https://github.com/pixel375/canadamb/issues/17) · [Messaging and recovery runbook](UNIFIED_MESSAGING.md)
+
 **Strategy:** Finish infrastructure reliability and end-to-end functionality before a major visual makeover. Establish basic reusable UI primitives now so later design work doesn't require rebuilding feature logic. All changes must be committed/tested and promoted to the live release deliberately; no blind auto-deploy.
 
 | Phase | Priority | Scope and release gate |

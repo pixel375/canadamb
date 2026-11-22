@@ -18,13 +18,28 @@
             <label>Description<textarea name="description" rows="5" maxlength="2500">{{ old('description', $business->description) }}</textarea></label>
             <label>Hours<textarea name="hours" rows="3" maxlength="1000">{{ old('hours', $business->hours) }}</textarea></label>
             <label>Website<input type="url" name="website" maxlength="255" value="{{ old('website', $business->website) }}"></label>
-            <label>Public contact email<input type="email" name="public_email" maxlength="254" value="{{ old('public_email', $business->public_email) }}"></label>
-            <label>Public phone<input type="tel" name="phone" maxlength="32" value="{{ old('phone', $business->phone) }}"></label>
+            @if($mayEditPublicContact)
+                <label>Public business email<input type="email" name="public_email" maxlength="254" value="{{ old('public_email', $business->public_email) }}"></label>
+                <label>Public business phone<input type="tel" name="phone" maxlength="32" value="{{ old('phone', $business->phone) }}"></label>
+            @endif
             <div><button class="button button-primary">{{ $business->exists ? 'Save profile' : 'Submit for review' }}</button></div>
         </form>
-        @if($business->status === 'active' && app(\App\Support\JobBoard::class)->enabled($site)
-            && $business->members()->whereKey(auth()->id())->wherePivotIn('role', ['owner', 'manager'])->exists())
+        @if($business->status === 'active' && $mayManageMessages && app(\App\Support\JobBoard::class)->enabled($site))
             <div class="panel"><a href="/account/businesses/{{ $business->id }}/jobs" class="button button-outline">Manage job postings</a></div>
+        @endif
+        @if($business->exists && $showMessageContacts)
+            <section class="panel form-stack" id="branch-messages">
+                <h2>Private branch messages</h2>
+                <p class="field-note">One verified owner or manager can opt in for each branch. New messages go to their account inbox.</p>
+                @foreach($branches as $branch)
+                    <div class="item-row">
+                        <div><h3>{{ $branch->location->name }}</h3><p>{{ $branch->address }}</p></div>
+                        <x-message-contact-setting :action="'/account/businesses/'.$business->id.'/branches/'.$branch->id.'/message-contact'"
+                            :contact="in_array($branch->message_contact_user_id, $contactUsers, true) ? $branch->message_contact_user_id : null"
+                            :subject="$branch->address.', '.$branch->location->name"/>
+                    </div>
+                @endforeach
+            </section>
         @endif
         @if($business->status === 'active' && $branches->isNotEmpty())
             <form class="panel form-stack" method="post" action="/account/businesses/{{ $business->id }}/updates">@csrf
