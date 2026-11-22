@@ -2,6 +2,17 @@
 
 Source: the owner's hands-on testing of several disposable listings on `canadamb.ca` and `brandonmb.ca`, plus the provided saved HTML/CSS snapshots of the provincial home and a Brandon listing. **Record now; implement in a separate pass after deployment/reliability essentials.** Do not represent proposed work as implemented.
 
+## Pass 03 implementation
+
+[Issue #15](https://github.com/pixel375/canadamb/issues/15) builds on the existing Marketplace and Pass 02 notification and profile rules. The stacked PR uses the corrected Pass 02 branch as its base while production schema review is pending.
+
+- The photo editor supports five photos in total, with individual retention, removal, replacement and ordering. The native file input remains available without JavaScript. An edit with no uploaded files keeps the existing set. An older submitter that sends files without an explicit order replaces the whole set.
+- New uploads are normalized to private 1600px and 480px WebP files. JPEG orientation is applied to the output pixels, alpha is preserved, and original metadata is discarded. The original upload is never served. Existing stored WebPs are unchanged by release.
+- New files are cleaned up after a failed save. Replaced files are removed after the database commit and only when no media row references them. An interrupted process can leave an unreferenced file. The read-only `php artisan marketplace:photo-orphans` report lists candidates after the 24-hour grace period. Use `--apply` only after reviewing the dry run, confirming the storage backup, and ensuring that a restore or import is not in progress. The command is not scheduled.
+- Marketplace moderation shows the submitted photos. The review screen sends its listing version with the decision and rejects changes submitted against an older version.
+- Listings stay on the browsing domain while exposing a single canonical URL. Brandon data access remains location-scoped, as do pending media and saved items. Management retains status history and private rejection feedback. Relisting goes back through review.
+- The listing expiry job remains hourly under the existing minute cron. Public access ends at the timestamp even if the cleanup schedule has not yet updated the status. [Production acceptance](DEPLOYMENT_CHECKLIST.md#pass-03-marketplace-release-checks)
+
 ## Implementation pass after scheduler verification (2026-11-19)
 
 The earlier rows document owner-reported defects at the live UX checkpoint. A **first code pass** on `implementation/network-foundation` now addresses MKT-01/02/03/04/05/07/08/09:

@@ -18,3 +18,17 @@ The browser check covers both brand identities, separate sessions, appearance pe
 The browser fixture needs the new community, events, and jobs modules enabled. A fresh seeded database enables them. When launching Artisan with a temporary DB_DATABASE override, use `php artisan serve --no-reload --host=127.0.0.1 --port=8000` to preserve it in Laravel’s development-server child process.
 
 For staging acceptance, use clearly labelled test records in Brandon and a rural community. Check both detail links and sitemaps. Use a real SMTP test mailbox, submit a form with its CSRF token, reject a cross-origin submission without one, test Vite URLs on both hosts, and remove staging fixtures before launch.
+
+## Pass 03 Marketplace browser workflow
+
+Use a fresh, seeded, disposable SQLite database and the local `canadamb.localhost` and `brandonmb.localhost` hosts from the README. Set `APP_URL` to the CanadaMB development URL including the chosen port. Generate local Passport keys, run `php artisan network:sync-sso`, and build Vite assets. With the same database and storage settings for both processes, run:
+
+    php tests/Browser/marketplace-fixture.php
+    php artisan serve --no-reload --host=127.0.0.1 --port=8000
+
+In a second terminal, run the browser using the same port:
+
+    npx --yes --package @playwright/cli playwright-cli -s=marketplace open http://canadamb.localhost:8000/
+    npx --yes --package @playwright/cli playwright-cli -s=marketplace run-code --filename tests/Browser/marketplace-completion.js
+
+The script signs in through CanadaMB, creates and edits a Brandon photo set, approves the listing, checks current-host browsing and the Brandon canonical, exercises keyboard and swipe gallery navigation, tests the buyer contact return, filters provincial and city results, and relists sold and expired fixture records. Use a fresh database when rerunning so the fixtures start in the expected states. Local browser emulation complements the [allowlisted physical-device checks](DEPLOYMENT_CHECKLIST.md#pass-03-marketplace-release-checks).

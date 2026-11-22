@@ -7,6 +7,7 @@ use App\Support\Marketplace;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Arr;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class SaveListing extends FormRequest
 {
@@ -23,6 +24,8 @@ class SaveListing extends FormRequest
             'details' => ['sometimes', 'array', 'max:10'],
             'photos' => ['sometimes', 'array', 'list', 'max:5'],
             'photos.*' => ['required', 'file', 'image', 'mimes:jpeg,jpg,png,webp', 'max:4096'],
+            'photo_plan' => ['sometimes', 'required', 'string', 'max:200', 'json'],
+            'photo_version' => ['bail', Rule::requiredIf($this->isMethod('PUT') || $this->isMethod('PATCH')), 'string', 'regex:/\A[a-f0-9]{64}\z/'],
         ];
         foreach (Marketplace::FIELDS as $fields) {
             foreach ($fields as $field => $label) {
@@ -49,8 +52,36 @@ class SaveListing extends FormRequest
         $data['negotiable'] = (bool) ($data['negotiable'] ?? false);
         $fields = Marketplace::FIELDS[$data['category']] ?? [];
         $data['attributes'] = array_filter(Arr::only($data['details'] ?? [], array_keys($fields)), fn ($value) => $value !== null);
-        unset($data['price'], $data['details'], $data['photos']);
+        unset($data['price'], $data['details'], $data['photos'], $data['photo_plan'], $data['photo_version']);
 
         return $data;
+    }
+
+    public function photoPlan(): ?array
+    {
+        if (! $this->has('photo_plan')) {
+            return null;
+        }
+
+        $references = json_decode($this->validated('photo_plan'));
+        if (! is_array($references) || count($references) > 5) {
+            throw ValidationException::withMessages(['photo_plan' => 'Choose up to five photos.']);
+        }
+
+        $uploads = [];
+        foreach ($references as $reference) {
+            if (! is_string($reference) || ! preg_match('/\A(?:existing:[1-9][0-9]{0,19}|new:[0-4])\z/', $reference)) {
+                throw ValidationException::withMessages(['photo_plan' => 'The photo order contains an invalid entry.']);
+            }
+            if (str_starts_with($reference, 'new:')) {
+                $uploads[] = (int) substr($reference, 4);
+            }
+        }
+        sort($uploads);
+        if (count(array_unique($references)) !== count($references) || $uploads !== array_keys($this->file('photos', []))) {
+            throw ValidationException::withMessages(['photo_plan' => 'Each photo must appear once in the submitted order.']);
+        }
+
+        return $references;
     }
 }
