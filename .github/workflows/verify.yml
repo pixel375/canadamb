@@ -56,6 +56,10 @@ jobs:
       - run: npm audit
       - run: bash -n deploy/hostinger-release.sh && bash -n deploy/hostinger-upgrade.sh && bash -n deploy/hostinger-cron.sh && bash -n deploy/smoke.sh && bash -n tests/Deployment/hostinger-release.sh && bash -n tests/Deployment/pass04-messaging.sh && php -l deploy/hostinger-backup.php
       - run: bash -n tests/Deployment/pass05-moderation.sh && php -l tests/Deployment/pass05-moderation-race.php
+      - run: |
+          bash -n tests/Deployment/pass05-legacy-fixture.sh
+          bash -n tests/Deployment/pass06-discussions.sh
+          php -l tests/Deployment/pass06-discussion-race.php
       - name: Ensure MariaDB dump client is installed for the update rehearsal
         run: |
           if ! command -v mariadb-dump >/dev/null; then
@@ -73,6 +77,7 @@ jobs:
           bash tests/Deployment/hostinger-release.sh production-pass-02
           bash tests/Deployment/hostinger-release.sh production-pass-04
           bash tests/Deployment/hostinger-release.sh production-pass-05
+          bash tests/Deployment/hostinger-release.sh production-pass-06
         env:
           CI_MARIADB_CONTAINER: ${{ job.services.mariadb.id }}
           CI_MARIADB_ROOT_PASSWORD: service-test-only

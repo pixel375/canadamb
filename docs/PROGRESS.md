@@ -1,5 +1,9 @@
 # Progress
 
+## Pass 06 Discussions
+
+The stacked Discussions branch adds first-class routes, same-host legacy redirects, scoped browsing and a versioned author lifecycle. Existing reports, replies, follows, notices and event records retain their IDs. No schema migrations were added. The disposable release rehearses an update and restore from the corrected Pass 05 baseline and checks a competing author edit and moderator decision. Production approval and physical-device acceptance remain separate. [Issue #21](https://github.com/pixel375/canadamb/issues/21) · [Discussions runbook](DISCUSSIONS.md)
+
 ## Pass 05 centralized moderation
 
 The stacked moderation branch adds filtered queues, versioned decisions, bounded bulk review, privacy-scoped reports and approval policies with manual defaults. The additive migrations create decision and report tables. The release rehearsal uses corrected Pass 04 records and checks old rows, private media, backup restoration and simultaneous decisions. The stacked changes await schema review and production authorization. [Issue #19](https://github.com/pixel375/canadamb/issues/19) · [Moderation and acceptance](CENTRAL_MODERATION.md)

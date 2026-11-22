@@ -16,9 +16,15 @@ async page => {
     check(await page.getByRole('link', { name: 'Communities', exact: true }).count() === 0, 'Provincial menu leaked into Brandon navigation');
     check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Mobile homepage overflows');
     check(await page.locator('.site-accent').evaluate(el => getComputedStyle(el).backgroundColor) === 'rgb(34, 160, 107)', 'Brandon accent did not render');
-    const navigation = page.getByRole('navigation', { name: 'Main navigation' });
-    check(await navigation.getByRole('link', { name: 'Community', exact: true }).isVisible(), 'Community navigation is missing');
+    await page.getByRole('button', { name: 'Open all sections menu' }).click();
+    const navigation = page.getByRole('navigation', { name: 'All site sections' });
+    const discussions = navigation.locator('details').filter({ has: navigation.getByText('Discussions', { exact: true }) });
+    await discussions.getByText('Discussions', { exact: true }).click();
+    check(await discussions.getByRole('link', { name: 'All discussions' }).getAttribute('href') === '/discussions', 'Discussions navigation has the wrong destination');
+    check(await discussions.getByRole('link', { name: 'Events calendar' }).isVisible(), 'Events calendar is missing from Discussions');
+    await navigation.getByText('Businesses', { exact: true }).click();
     check(await navigation.getByRole('link', { name: 'Jobs', exact: true }).isVisible(), 'Jobs navigation is missing');
+    await page.keyboard.press('Escape');
     await page.goto(brandon + '/events?month=2027-03');
     check(await page.getByRole('region', { name: 'Monthly event calendar' }).isVisible(), 'Brandon event calendar did not render');
     check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Mobile calendar overflows');

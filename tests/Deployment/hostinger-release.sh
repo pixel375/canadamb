@@ -23,8 +23,10 @@ elif [[ $scenario == production-pass-04 ]]; then
 elif [[ $scenario == production-pass-05 ]]; then
     commit=013637b1278c24a2c572ed742f87d131fc2ff162
     pending_migrations=("$decision_migration" "$reports_migration")
+elif [[ $scenario == production-pass-06 ]]; then
+    commit=b2b0f05e6818482094c69e217605b90c43f9752c
 fi
-if (( ${#pending_migrations[@]} )); then
+if (( ${#pending_migrations[@]} )) || [[ $scenario == production-pass-06 ]]; then
     if [[ $commit == "$target" ]] || ! git merge-base --is-ancestor "$commit" "$target"; then
         echo 'The rehearsal requires the exact baseline and a descendant candidate.' >&2
         exit 1
@@ -47,7 +49,7 @@ case "$scenario" in
         prelaunch=false
         partner_user=release_probe
         ;;
-    production-initial|production-pass-02|production-pass-04|production-pass-05)
+    production-initial|production-pass-02|production-pass-04|production-pass-05|production-pass-06)
         export CANADAMB_DEPLOYMENT_MODE=production-initial
         export CANADAMB_PRODUCTION_DB=canadamb_ci_production
         partner_user=production_probe
@@ -60,6 +62,9 @@ case "$scenario" in
         elif [[ $scenario == production-pass-05 ]]; then
             export CANADAMB_PRODUCTION_DB=canadamb_ci_pass05
             partner_user=pass05_probe
+        elif [[ $scenario == production-pass-06 ]]; then
+            export CANADAMB_PRODUCTION_DB=canadamb_ci_pass06
+            partner_user=pass06_probe
         fi
         database=$CANADAMB_PRODUCTION_DB
         database_option=production-database
@@ -191,6 +196,11 @@ restore_sql() {
     MYSQL_PWD="$CI_MARIADB_ROOT_PASSWORD" docker exec -i -e MYSQL_PWD "$CI_MARIADB_CONTAINER" \
         mariadb --batch --skip-column-names -u root "$@"
 }
+
+if [[ $scenario == production-pass-06 ]]; then
+    source "$repo/tests/Deployment/pass06-discussions.sh"
+    exit 0
+fi
 
 if [[ $scenario == production-pass-05 ]]; then
     source "$repo/tests/Deployment/pass05-moderation.sh"

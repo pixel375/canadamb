@@ -124,7 +124,7 @@ class MemberProfileSettingsTest extends TestCase
         $thread->forceFill(['status' => 'approved', 'last_activity_at' => now()])->save();
         $thread->replies()->create(['author_id' => $replier->id, 'body' => 'I can help with the project.'])->forceFill(['status' => 'approved'])->save();
 
-        $this->get("https://brandonmb.ca/community/$thread->id")->assertOk()
+        $this->get("https://brandonmb.ca/discussions/$thread->id")->assertOk()
             ->assertSee("href=\"/users/$author->id\"", false)->assertSee("href=\"/users/$replier->id\"", false)
             ->assertDontSee($author->email)->assertDontSee($replier->email);
     }

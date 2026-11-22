@@ -12,6 +12,8 @@ use Illuminate\Validation\ValidationException;
 
 class Community
 {
+    public const DISCUSSIONS_PATH = '/discussions';
+
     public const REPLIES_PER_PAGE = 25;
 
     public const FORUMS = ['general' => 'General discussion', 'recommendations' => 'Recommendations', 'help' => 'Questions and help',
@@ -37,7 +39,7 @@ class Community
         $earlier = $thread->replies()->where('status', 'approved')->where('id', '<', $reply)->count();
         $page = intdiv($earlier, self::REPLIES_PER_PAGE) + 1;
 
-        return "/community/$thread->id?page=$page#reply-$reply";
+        return self::DISCUSSIONS_PATH."/$thread->id?page=$page#reply-$reply";
     }
 
     public function events(?int $location): Builder

@@ -103,7 +103,7 @@ class ContentReportController extends Controller
         if ($type === 'thread') {
             $thread = $threads->lockForUpdate()->findOrFail($target);
 
-            return [$thread->author_id, $thread->location_id, '/community/'.$thread->id];
+            return [$thread->author_id, $thread->location_id, Community::DISCUSSIONS_PATH.'/'.$thread->id];
         }
 
         $initial = CommunityReply::where('status', 'approved')->findOrFail($target, ['id', 'thread_id']);

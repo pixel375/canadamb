@@ -138,7 +138,7 @@ class ApprovalPolicyTest extends TestCase
         $this->travel(2)->minutes();
         $this->actingAs($owner)->post(self::CITY.'/community/'.$thread->id.'/replies', ['body' => 'Approved reply text.'])->assertSessionHasNoErrors();
         $this->assertTrue($thread->fresh()->last_activity_at->gt($thread->last_activity_at));
-        $this->get(self::CITY.'/community/'.$thread->id)->assertOk()->assertSee('Approved reply text.');
+        $this->get(self::CITY.'/discussions/'.$thread->id)->assertOk()->assertSee('Approved reply text.');
         $this->post(self::CITY.'/events', $this->event())->assertSessionHasNoErrors();
 
         $business = Business::create(['name' => 'Approved employer', 'slug' => 'approved-employer', 'category' => 'retail', 'status' => 'active']);

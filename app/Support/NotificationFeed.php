@@ -88,6 +88,8 @@ final class NotificationFeed
 
         return match ($item->event) {
             'reply.followed' => 'New reply in a discussion you follow',
+            'thread.pending' => 'Discussion awaiting review',
+            'thread.withdrawn' => 'Discussion withdrawn',
             'message.received' => match ($item->message_context) {
                 'business' => 'New business message',
                 'job' => 'New job message',
@@ -118,8 +120,8 @@ final class NotificationFeed
             'business', 'claim' => '/businesses/'.$key,
             'business-update' => '/business-updates/'.$key,
             'job' => '/jobs/'.$key,
-            'thread' => '/community/'.$key,
-            'reply' => '/community/replies/'.$key,
+            'thread' => Community::DISCUSSIONS_PATH.'/'.$key,
+            'reply' => Community::DISCUSSIONS_PATH.'/replies/'.$key,
             'event' => '/events/'.$key,
             'message' => '/account/messages/'.$key,
         };
@@ -181,7 +183,8 @@ final class NotificationFeed
         $module = $enabled ? '1 = 1' : '1 = 0';
         $hasLink = "(($authorized) AND ($module) AND ($published) AND ($social OR $event LIKE '%.approved'))";
         // Module visibility hides destinations and optional activity, while authorized moderation outcomes remain readable.
-        $relevant = "(($authorized) AND ((($published) AND (($module) OR NOT ($social))) OR (NOT ($social) AND $event NOT LIKE '%.approved')))";
+        $historical = in_array($type, ['thread', 'reply'], true) ? '1 = 1' : "$event NOT LIKE '%.approved'";
+        $relevant = "(($authorized) AND ((($published) AND (($module) OR NOT ($social))) OR (NOT ($social) AND ($historical))))";
         $unread = $type === 'message'
             ? ConversationAccess::unreadSql('conversation', 'item', 'notice.user_id', 'notice.user_id')
             : '1 = 1';

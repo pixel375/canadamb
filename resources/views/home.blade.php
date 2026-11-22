@@ -90,10 +90,10 @@
             <div class="community-activity">
                 @if($recentDiscussions->isNotEmpty())
                     <section class="homepage-section" aria-labelledby="discussion-title">
-                        <div class="section-heading"><h2 id="discussion-title">Recent discussions</h2>@unless($preview ?? false)<a class="text-link" href="/community">All discussions <x-icon name="arrow" size="16"/></a>@endunless</div>
+                        <div class="section-heading"><h2 id="discussion-title">Recent discussions</h2>@unless($preview ?? false)<a class="text-link" href="/discussions">All discussions <x-icon name="arrow" size="16"/></a>@endunless</div>
                         <div class="panel">
                             @foreach($recentDiscussions as $thread)
-                                <article class="item-row"><div><h3>@if($preview ?? false){{ $thread->title }}@else<a href="/community/{{ $thread->id }}">{{ $thread->title }}</a>@endif</h3><p>{{ $thread->location?->name ?? 'Manitoba' }} · {{ $thread->replies_count }} {{ \Illuminate\Support\Str::plural('reply', $thread->replies_count) }}</p></div></article>
+                                <article class="item-row"><div><h3>@if($preview ?? false){{ $thread->title }}@else<a href="/discussions/{{ $thread->id }}">{{ $thread->title }}</a>@endif</h3><p>{{ $thread->location?->name ?? 'Manitoba' }} · {{ $thread->replies_count }} {{ \Illuminate\Support\Str::plural('reply', $thread->replies_count) }}</p></div></article>
                             @endforeach
                         </div>
                     </section>

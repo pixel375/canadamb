@@ -79,7 +79,7 @@ final class ApprovalPolicy
         return $revision;
     }
 
-    public function recordAutomaticApproval(string $type, int $id, int $author, Site $site, int $revision, ?int $location): void
+    public function recordAutomaticApproval(string $type, int $id, int $author, Site $site, int $revision, ?int $location): int
     {
         [$action, $resource] = self::AUDIT[$type];
         $audit = Audit::record($action, null, $site->id, [$resource => $id, 'approval_policy_revision' => $revision]);
@@ -87,6 +87,8 @@ final class ApprovalPolicy
             // Marketplace uses its status history as the notification source.
             NotificationInbox::record($author, $type.'.approved', $audit, $id, [$location]);
         }
+
+        return $audit;
     }
 
     private function siteAllows(Site $site, array $published, string $type): bool

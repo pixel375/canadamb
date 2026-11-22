@@ -28,6 +28,9 @@
                 <p class="member-copy field-note">Private email address · {{ $member->email }}</p>
                 <div class="inline-actions">
                     <a class="text-link" href="/account/notifications">Notifications</a>
+                    @if($member->hasVerifiedEmail() && app(\App\Support\Community::class)->enabled(request()->attributes->get('site'), 'community'))
+                        <a class="text-link" href="/account/discussions">My discussions</a>
+                    @endif
                     @if($marketplaceEnabled)
                         <a class="text-link" href="/account/listings">My Marketplace listings</a>
                         <a class="text-link" href="/account/messages">Messages</a>

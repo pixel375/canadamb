@@ -191,6 +191,31 @@ for (const gallery of document.querySelectorAll('[data-listing-gallery]')) {
 
 
 
+const discussionReply = document.getElementById('discussion-reply');
+const discussionQuoteStatus = document.getElementById('discussion-quote-status');
+if (discussionReply && discussionQuoteStatus) {
+    for (const button of document.querySelectorAll('[data-discussion-quote]')) {
+        button.hidden = false;
+        button.addEventListener('click', () => {
+            const reply = button.closest('article');
+            const author = reply.querySelector('[data-quote-author]').textContent.replace(/\s+/gu, ' ').trim();
+            const text = Array.from(reply.querySelector('[data-quote-body]').textContent.trim());
+            const excerpt = text.slice(0, 280).join('') + (text.length > 280 ? '…' : '');
+            const quoted = excerpt.split(/\r?\n/).map(line => '> ' + line).join('\n');
+            const separator = discussionReply.value ? '\n\n' : '';
+            const insertion = separator + author + ' wrote:\n' + quoted + '\n\n';
+            if (discussionReply.value.length + insertion.length > discussionReply.maxLength) {
+                discussionQuoteStatus.textContent = 'Shorten your reply to add this quote.';
+            } else {
+                discussionReply.value += insertion;
+                discussionQuoteStatus.textContent = '';
+            }
+            discussionReply.focus();
+        });
+    }
+    discussionReply.addEventListener('input', () => { discussionQuoteStatus.textContent = ''; });
+}
+
 // Native modal drawer traps focus and supports Escape without custom key handling.
 const siteDrawer = document.getElementById('site-drawer');
 const siteMenuOpen = document.getElementById('site-menu-open');

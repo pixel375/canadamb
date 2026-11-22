@@ -15,7 +15,7 @@ final class NotificationInbox
         'claim' => ['claim.approved', 'claim.rejected'],
         'business-update' => ['business-update.approved', 'business-update.rejected'],
         'job' => ['job.approved', 'job.rejected'],
-        'thread' => ['thread.approved', 'thread.rejected'],
+        'thread' => ['thread.approved', 'thread.rejected', 'thread.pending', 'thread.withdrawn'],
         'reply' => ['reply.approved', 'reply.rejected', 'reply.followed'],
         'event' => ['event.approved', 'event.rejected'],
         'message' => ['message.received'],

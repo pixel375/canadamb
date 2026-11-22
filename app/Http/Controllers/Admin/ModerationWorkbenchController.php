@@ -11,12 +11,14 @@ use App\Support\Marketplace;
 use App\Support\ModerationDecision;
 use App\Support\ModerationQueue;
 use App\Support\ModerationReports;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use stdClass;
 use Symfony\Component\HttpFoundation\InputBag;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
@@ -68,6 +70,7 @@ class ModerationWorkbenchController extends Controller
 
         return view('admin.moderation-workbench.show', [
             'row' => $row, 'resource' => $resource, 'type' => $type, 'label' => ModerationQueue::TYPES[$type],
+            'title' => $this->reviewTitle($type, $resource) ?? $row->title,
             'version' => ModerationDecision::version($type, $resource), 'ownerNames' => $ownerNames, 'branches' => $branches,
             'claimAccount' => $type === 'claim' ? User::whereKey($resource->user_id)->value('email') : null,
             'history' => $queue->history($type, $item)->paginate(15, pageName: 'history'),
@@ -103,12 +106,22 @@ class ModerationWorkbenchController extends Controller
             $version = $resource !== null && $resource->status === 'pending' && ! ($resource instanceof Listing && $resource->media->isNotEmpty())
                 ? ModerationDecision::version($type, $resource) : null;
             $items[] = [
-                'id' => $id, 'title' => $rows[$id]->title ?? null, 'version' => $version,
+                'id' => $id, 'title' => $this->reviewTitle($type, $resource) ?? $rows[$id]->title ?? null, 'version' => $version,
                 'proof' => $version === null ? null : $this->previewProof($request->user()->id, $type, $id, $version),
             ];
         }
 
         return view('admin.moderation-workbench.bulk-preview', compact('type', 'items'));
+    }
+
+    private function reviewTitle(string $type, Model|stdClass|null $resource): ?string
+    {
+        return match ($type) {
+            'business' => $resource?->name,
+            'claim' => null,
+            'reply' => $resource?->thread->title,
+            default => $resource?->title,
+        };
     }
 
     public function bulk(Request $request)

@@ -208,11 +208,16 @@ class NotificationInboxTest extends TestCase
         }
         $notice = $this->notice($member, 'reply.followed', $reply->id, $thread->location_id);
         $this->actingAs($member)->get("https://canadamb.ca/account/notifications/unified/$notice/open")
-            ->assertRedirect("https://canadamb.ca/community/replies/$reply->id");
-        $this->get("https://canadamb.ca/account/notifications/legacy/$legacy/open")->assertRedirect();
+            ->assertRedirect("https://canadamb.ca/discussions/replies/$reply->id");
+        $this->get("https://canadamb.ca/account/notifications/legacy/$legacy/open")
+            ->assertRedirect('https://canadamb.ca/discussions/replies/'.DB::table('community_notifications')->where('id', $legacy)->value('reply_id'));
         $this->get("https://canadamb.ca/community/replies/$reply->id")
-            ->assertRedirect("https://brandonmb.ca/community/$thread->id?page=2#reply-$reply->id");
-        $this->get("https://brandonmb.ca/community/$thread->id?page=2")->assertOk()->assertSee("id=\"reply-$reply->id\"", false);
+            ->assertStatus(301)->assertRedirect("https://canadamb.ca/discussions/replies/$reply->id");
+        $this->get("https://canadamb.ca/discussions/replies/$reply->id")
+            ->assertRedirect("https://canadamb.ca/discussions/$thread->id?page=2#reply-$reply->id");
+        $this->get("https://brandonmb.ca/discussions/replies/$reply->id")
+            ->assertRedirect("https://brandonmb.ca/discussions/$thread->id?page=2#reply-$reply->id");
+        $this->get("https://canadamb.ca/discussions/$thread->id?page=2")->assertOk()->assertSee("id=\"reply-$reply->id\"", false);
         $reply->forceFill(['status' => 'rejected'])->save();
         $this->get("https://canadamb.ca/community/replies/$reply->id")->assertNotFound();
     }
