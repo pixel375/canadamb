@@ -11,6 +11,7 @@ use App\Models\JobPosting;
 use App\Models\Listing;
 use App\Models\Location;
 use App\Models\User;
+use App\Support\ListingPhotoOrder;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -27,8 +28,9 @@ class NotificationSourcesTest extends TestCase
         $seller = User::factory()->create();
         $listing = $this->listing($seller);
         $url = "https://canadamb.ca/admin/moderation/$listing->id";
-        $this->actingAs($this->moderator())->post($url, ['status' => 'active'])->assertRedirect();
-        $this->post($url, ['status' => 'active'])->assertConflict();
+        $approval = ['status' => 'active', 'version' => ListingPhotoOrder::version($listing->fresh())];
+        $this->actingAs($this->moderator())->post($url, $approval)->assertRedirect();
+        $this->post($url, $approval)->assertConflict();
         $approval = $this->assertNotice($seller, 'listing.approved', $listing->id, [$listing->location_id]);
         $this->assertDatabaseHas('listing_status_history', ['id' => $approval->source_id, 'listing_id' => $listing->id, 'status' => 'active']);
 
@@ -40,7 +42,7 @@ class NotificationSourcesTest extends TestCase
         $this->assertDatabaseCount('notifications', 2);
 
         $this->actingAs($seller)->post("https://brandonmb.ca/account/listings/$listing->id/status", ['status' => 'pending'])->assertRedirect();
-        $this->actingAs($this->moderator())->post($url, ['status' => 'active'])->assertRedirect();
+        $this->actingAs($this->moderator())->post($url, ['status' => 'active', 'version' => ListingPhotoOrder::version($listing->fresh())])->assertRedirect();
         $this->assertSame(2, DB::table('notifications')->where([
             'user_id' => $seller->id, 'event' => 'listing.approved', 'resource_id' => $listing->id,
         ])->count());
@@ -63,6 +65,7 @@ class NotificationSourcesTest extends TestCase
         try {
             $this->actingAs($this->moderator())->post("https://canadamb.ca/admin/moderation/$listing->id", [
                 'status' => 'removed', 'reason' => 'Listing did not meet marketplace requirements.',
+                'version' => ListingPhotoOrder::version($listing->fresh()),
             ])->assertRedirect();
             $this->assertNotice($seller, 'listing.removed', $listing->id, [$listing->location_id]);
         } finally {

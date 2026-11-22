@@ -13,7 +13,6 @@ use App\Support\NetworkUrl;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 use Throwable;
 
 class MarketplaceController extends Controller
@@ -175,9 +174,6 @@ class MarketplaceController extends Controller
         $data = $request->attributesForPersistence();
         $requested = $request->photoPlan();
         $version = $request->validated('photo_version');
-        if ($requested !== null && $version === null) {
-            throw ValidationException::withMessages(['photo_plan' => 'Reload the edit form before changing photos.']);
-        }
         $files = $request->file('photos', []);
         $item = $this->owned($request, $listing);
         $this->assertEditableVersion($item, $version);
@@ -266,10 +262,10 @@ class MarketplaceController extends Controller
         ]);
     }
 
-    private function assertEditableVersion(Listing $item, ?string $version): void
+    private function assertEditableVersion(Listing $item, string $version): void
     {
         abort_unless(in_array($item->status, ['pending', 'active', 'expired', 'rejected'], true), 409);
-        abort_if($version !== null && ! hash_equals(ListingPhotoOrder::version($item), $version), 409, 'This listing changed. Reload the edit form and review the latest version.');
+        abort_if(! hash_equals(ListingPhotoOrder::version($item), $version), 409, 'This listing changed. Reload the edit form and review the latest version.');
     }
 
     private function owned(Request $request, int $id, bool $lock = false): Listing

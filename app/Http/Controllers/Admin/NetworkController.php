@@ -61,14 +61,14 @@ class NetworkController extends Controller
         $data = $request->validate([
             'status' => ['required', Rule::in(['active', 'rejected', 'removed'])],
             'reason' => ['required_unless:status,active', 'nullable', 'string', 'max:240'],
-            'version' => ['sometimes', 'required', 'string', 'regex:/\A[a-f0-9]{64}\z/'],
+            'version' => ['bail', 'required', 'string', 'regex:/\A[a-f0-9]{64}\z/'],
         ]);
 
         DB::transaction(function () use ($request, $listing, $data, $marketplace) {
             $item = Listing::lockForUpdate()->findOrFail($listing);
             abort_unless(in_array($item->status, ['pending', 'active'], true), 409);
             abort_if($data['status'] === 'active' && $item->status !== 'pending', 409);
-            abort_if(isset($data['version']) && ! hash_equals(ListingPhotoOrder::version($item), $data['version']), 409,
+            abort_if(! hash_equals(ListingPhotoOrder::version($item), $data['version']), 409,
                 'This listing changed after the review screen opened. Reload it before making a decision.');
             $marketplace->changeStatus($item, $data['status'], $request->user()->id, $data['reason'] ?? null, moderated: true);
             Audit::record('listing.'.$data['status'], $request->user()->id, context: ['listing' => $listing]);

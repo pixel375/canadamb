@@ -134,7 +134,7 @@ class MarketplacePhotoWorkflowTest extends TestCase
         $this->put($url, $this->payload('Changed description') + [
             'photos' => [UploadedFile::fake()->image('large.png')->size(4097)],
         ])->assertSessionHasErrors('photos.0');
-        $this->put($this->listingUrl($rural), $this->payload('Invalid city update'))->assertNotFound();
+        $this->put($this->listingUrl($rural), $this->payload('Invalid city update') + ['photo_version' => ListingPhotoOrder::version($rural->fresh())])->assertNotFound();
         $this->assertSame($files, Storage::disk(self::DISK)->allFiles());
 
         ListingMedia::creating(fn () => throw new RuntimeException('Simulated persistence failure.'));
@@ -157,9 +157,10 @@ class MarketplacePhotoWorkflowTest extends TestCase
     {
         $listing = $this->createListing(User::factory()->create(), 2);
         $before = $listing->media()->pluck('id')->all();
-        $this->put($this->listingUrl($listing), $this->payload('New title from legacy form'))->assertRedirect();
+        $this->put($this->listingUrl($listing), $this->payload('New title from legacy form') + ['photo_version' => $this->version($listing)])->assertRedirect();
         $this->assertSame($before, $listing->media()->pluck('id')->all());
         $this->put($this->listingUrl($listing), $this->payload('New title from legacy form') + [
+            'photo_version' => $this->version($listing),
             'photos' => [UploadedFile::fake()->image('replacement.png')],
         ])->assertRedirect();
         $this->assertCount(1, $listing->media()->get());
@@ -178,6 +179,7 @@ class MarketplacePhotoWorkflowTest extends TestCase
         $this->actingAs($admin)->get($review)->assertOk()
             ->assertSee("/marketplace/$listing->id/thumbnail/$original->id")->assertSee($stale);
         $this->actingAs($seller)->put($this->listingUrl($listing), $this->payload($listing->title) + [
+            'photo_version' => $stale,
             'photos' => [UploadedFile::fake()->image('new-photo.png')],
         ])->assertRedirect();
         $this->actingAs($admin)->post("$review/$listing->id", ['status' => 'active', 'version' => $stale])->assertConflict();
@@ -195,6 +197,7 @@ class MarketplacePhotoWorkflowTest extends TestCase
         $other = $this->createListing($owner, 1);
         $other->media->firstOrFail()->update(['thumbnail_path' => $original->image_path]);
         $this->put($this->listingUrl($first), $this->payload($first->title) + [
+            'photo_version' => $this->version($first),
             'photos' => [UploadedFile::fake()->image('new-photo.png')],
         ])->assertSessionHasNoErrors()->assertRedirect();
         Storage::disk(self::DISK)->assertExists($original->image_path);
@@ -209,6 +212,7 @@ class MarketplacePhotoWorkflowTest extends TestCase
         $listing->forceFill(['status' => 'active', 'published_at' => now()->subMonth(), 'expires_at' => now()->subMinute()])->save();
         $rural = Location::where('slug', 'elkhorn')->sole()->id;
         $this->put(self::MAIN.'/account/listings/'.$listing->id, $this->payload('Edited after expiry') + [
+            'photo_version' => ListingPhotoOrder::version($listing->fresh()),
             'location_id' => $rural,
         ])->assertRedirect();
         $this->assertDatabaseHas('listings', ['id' => $listing->id, 'location_id' => $rural, 'status' => 'pending']);

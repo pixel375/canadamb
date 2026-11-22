@@ -7,6 +7,7 @@ use App\Models\Location;
 use App\Models\Site;
 use App\Models\User;
 use App\Support\Identity;
+use App\Support\ListingPhotoOrder;
 use App\Support\Marketplace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -71,7 +72,9 @@ class MarketplaceDiscoveryLifecycleTest extends TestCase
         $reason = 'Please clarify the posting condition.';
         $manage = '/account/listings/'.$item->id;
 
-        $this->actingAs($admin)->post(self::MAIN.'/admin/moderation/'.$item->id, ['status' => 'rejected', 'reason' => $reason])->assertRedirect();
+        $this->actingAs($admin)->post(self::MAIN.'/admin/moderation/'.$item->id, [
+            'status' => 'rejected', 'reason' => $reason, 'version' => ListingPhotoOrder::version($item->fresh()),
+        ])->assertRedirect();
         $this->actingAs(User::factory()->create())->get(self::MAIN.'/account/listings')->assertOk()->assertDontSee($reason);
         $this->actingAs($seller)->get(self::CITY.'/account/listings')->assertOk()->assertDontSee($reason);
         $this->get(self::MAIN.'/account/listings')->assertOk()->assertSee($reason)->assertSee('Rejected')->assertSee('Remove listing');
@@ -115,7 +118,7 @@ class MarketplaceDiscoveryLifecycleTest extends TestCase
         $this->get(self::CITY.'/marketplace/'.$elapsed->id)->assertNotFound();
 
         $this->actingAs(User::factory()->create(['role' => 'network_admin']))
-            ->post(self::MAIN.'/admin/moderation/'.$elapsed->id, ['status' => 'active'])->assertRedirect();
+            ->post(self::MAIN.'/admin/moderation/'.$elapsed->id, ['status' => 'active', 'version' => ListingPhotoOrder::version($elapsed->fresh())])->assertRedirect();
         $this->get(self::CITY.'/marketplace/'.$elapsed->id)->assertOk();
         $this->assertTrue($elapsed->fresh()->expires_at->isFuture());
     }

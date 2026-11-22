@@ -6,6 +6,7 @@ use App\Models\Conversation;
 use App\Models\Listing;
 use App\Models\Location;
 use App\Models\User;
+use App\Support\ListingPhotoOrder;
 use App\Support\Marketplace;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -35,7 +36,7 @@ class MarketplaceEngagementTest extends TestCase
         $path = "/marketplace/$item->id/photo/$photo->id";
         $this->actingAs(User::factory()->create())->get('https://canadamb.ca'.$path)->assertNotFound();
         $this->actingAs(User::factory()->create(['role' => 'network_admin']))
-            ->post("https://canadamb.ca/admin/moderation/$item->id", ['status' => 'active'])->assertRedirect();
+            ->post("https://canadamb.ca/admin/moderation/$item->id", ['status' => 'active', 'version' => ListingPhotoOrder::version($item->fresh())])->assertRedirect();
         $this->actingAs(User::factory()->create())->get('https://canadamb.ca'.$path)->assertOk()->assertHeader('Content-Type', 'image/webp');
         $this->get("https://canadamb.ca/marketplace/$item->id")
             ->assertOk()
@@ -85,7 +86,7 @@ class MarketplaceEngagementTest extends TestCase
         $this->assertSame([800, 1200], array_slice($full, 0, 2));
         $this->assertSame([320, 480], array_slice($thumbnail, 0, 2));
 
-        $this->actingAs($admin)->post("https://canadamb.ca/admin/moderation/$item->id", ['status' => 'active'])->assertRedirect();
+        $this->actingAs($admin)->post("https://canadamb.ca/admin/moderation/$item->id", ['status' => 'active', 'version' => ListingPhotoOrder::version($item->fresh())])->assertRedirect();
         $this->get("https://brandonmb.ca/marketplace/$item->id")
             ->assertOk()
             ->assertSee("src=\"/marketplace/$item->id/photo/{$images[0]->id}\"", false)
@@ -93,6 +94,7 @@ class MarketplaceEngagementTest extends TestCase
             ->assertSee('View photo 2 of 2 larger', false);
 
         $this->actingAs($seller)->put("https://brandonmb.ca/account/listings/$item->id", [
+            'photo_version' => ListingPhotoOrder::version($item->fresh()),
             'title' => 'Desk with updated photo',
             'description' => 'Updated photo shows the entire desk.',
             'category' => 'furniture',

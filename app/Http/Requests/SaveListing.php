@@ -25,7 +25,7 @@ class SaveListing extends FormRequest
             'photos' => ['sometimes', 'array', 'list', 'max:5'],
             'photos.*' => ['required', 'file', 'image', 'mimes:jpeg,jpg,png,webp', 'max:4096'],
             'photo_plan' => ['sometimes', 'required', 'string', 'max:200', 'json'],
-            'photo_version' => ['sometimes', 'required', 'string', 'regex:/\A[a-f0-9]{64}\z/'],
+            'photo_version' => ['bail', Rule::requiredIf($this->isMethod('PUT') || $this->isMethod('PATCH')), 'string', 'regex:/\A[a-f0-9]{64}\z/'],
         ];
         foreach (Marketplace::FIELDS as $fields) {
             foreach ($fields as $field => $label) {
