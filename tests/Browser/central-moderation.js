@@ -54,7 +54,7 @@ async page => {
         await admin.getByRole('heading', { name: 'Bulk review preview' }).waitFor();
         await fits(admin, 768, 'dark');
         await admin.getByRole('button', { name: 'Approve selected' }).click();
-        await admin.getByText('2 decision saved / 0 skipped').waitFor();
+        await admin.getByText('2 decisions saved · 0 skipped').waitFor();
 
         await admin.goto(main + '/admin/moderation/reports');
         await admin.getByRole('link', { name: 'Public trail notice' }).waitFor();

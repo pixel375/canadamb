@@ -1,5 +1,8 @@
 <x-layouts.admin title="Bulk review results">
-    <div class="page-intro"><div><h1>Bulk review results</h1><p>{{ collect($results)->where('success', true)->count() }} decision saved / {{ collect($results)->where('success', false)->count() }} skipped</p></div></div>
+    @php
+        $saved = collect($results)->where('success', true)->count();
+    @endphp
+    <div class="page-intro"><div><h1>Bulk review results</h1><p>{{ $saved }} {{ \Illuminate\Support\Str::plural('decision', $saved) }} saved · {{ count($results) - $saved }} skipped</p></div></div>
     <div class="panel">
         <ul class="notification-list">
             @foreach($results as $result)
