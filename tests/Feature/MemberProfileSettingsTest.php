@@ -79,6 +79,19 @@ class MemberProfileSettingsTest extends TestCase
         $this->assertDatabaseMissing('member_settings', ['user_id' => $member->id]);
     }
 
+    public function test_background_pwa_requests_leave_settings_feedback_for_the_redirect(): void
+    {
+        $member = User::factory()->create();
+        $host = 'https://canadamb.ca';
+        $this->actingAs($member)->post($host.'/account/settings', ['name' => 'Updated member'])->assertRedirect('/account/settings');
+        $sessionCookie = config('session.cookie');
+        $this->withCookie($sessionCookie, session()->getId());
+        foreach (['/sw.js', '/app.webmanifest', '/pwa/icon/192.png'] as $metadata) {
+            $this->get($host.$metadata)->assertOk()->assertCookieMissing($sessionCookie);
+        }
+        $this->get($host.'/account/settings')->assertOk()->assertSee('Profile settings saved.');
+    }
+
     public function test_profile_applies_listing_privacy_and_publication_scope(): void
     {
         $member = User::factory()->create();
