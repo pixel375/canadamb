@@ -19,8 +19,20 @@
         <article class="panel form-stack">
             <div><h2>{{ $item->title }}</h2><p>{{ $item->seller->name }} · {{ $item->location->name }} · {{ $item->categoryRecord->name }} · {{ $item->priceLabel() }} · {{ ucfirst($item->status) }}</p></div>
             <p class="prose-text">{{ $item->description }}</p>
+            @if($item->media->isNotEmpty())
+                <ul class="listing-photo-previews" aria-label="Submitted photos">
+                    @foreach($item->media as $photo)
+                        <li>
+                            <a class="listing-gallery-link" href="/marketplace/{{ $item->id }}/photo/{{ $photo->id }}" target="_blank" rel="noopener">
+                                <img src="/marketplace/{{ $item->id }}/thumbnail/{{ $photo->id }}" alt="Submitted photo {{ $loop->iteration }} (opens in a new tab)" loading="lazy">
+                            </a>
+                        </li>
+                    @endforeach
+                </ul>
+            @endif
             <form action="/admin/moderation/{{ $item->id }}" method="post" class="form-stack">
                 @csrf
+                <input type="hidden" name="version" value="{{ \App\Support\ListingPhotoOrder::version($item) }}">
                 <label>Reason for rejection or removal<input name="reason" maxlength="240"></label>
                 <div class="inline-actions">
                     @if($item->status === 'pending')

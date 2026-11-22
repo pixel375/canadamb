@@ -107,6 +107,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/account/events/{event}/cancel', [CommunityEventController::class, 'cancel'])->whereNumber('event');
     Route::get('/marketplace/new', [MarketplaceController::class, 'create']);
     Route::post('/marketplace', [MarketplaceController::class, 'store'])->middleware('throttle:12,1');
+    Route::get('/marketplace/{listing}/contact', [MarketplaceController::class, 'contact'])->whereNumber('listing');
     Route::get('/account/listings', [MarketplaceController::class, 'mine']);
     Route::get('/account/listings/{listing}/edit', [MarketplaceController::class, 'edit'])->whereNumber('listing');
     Route::put('/account/listings/{listing}', [MarketplaceController::class, 'update'])->whereNumber('listing')->middleware('throttle:20,1');

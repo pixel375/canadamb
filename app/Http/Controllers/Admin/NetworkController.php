@@ -8,6 +8,7 @@ use App\Models\Location;
 use App\Models\Site;
 use App\Models\User;
 use App\Support\Audit;
+use App\Support\ListingPhotoOrder;
 use App\Support\Marketplace;
 use App\Support\NetworkSettings;
 use Illuminate\Http\Request;
@@ -33,7 +34,7 @@ class NetworkController extends Controller
 
     public function moderation()
     {
-        return view('admin.moderation', ['items' => Listing::with(['location', 'seller', 'categoryRecord'])
+        return view('admin.moderation', ['items' => Listing::with(['location', 'seller', 'categoryRecord', 'media'])
             ->whereIn('status', ['pending', 'active'])->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")
             ->latest('updated_at')->paginate(25), 'reports' => DB::table('listing_reports')
             ->join('listings', 'listings.id', '=', 'listing_reports.listing_id')
@@ -60,12 +61,15 @@ class NetworkController extends Controller
         $data = $request->validate([
             'status' => ['required', Rule::in(['active', 'rejected', 'removed'])],
             'reason' => ['required_unless:status,active', 'nullable', 'string', 'max:240'],
+            'version' => ['sometimes', 'required', 'string', 'regex:/\A[a-f0-9]{64}\z/'],
         ]);
 
         DB::transaction(function () use ($request, $listing, $data, $marketplace) {
             $item = Listing::lockForUpdate()->findOrFail($listing);
             abort_unless(in_array($item->status, ['pending', 'active'], true), 409);
             abort_if($data['status'] === 'active' && $item->status !== 'pending', 409);
+            abort_if(isset($data['version']) && ! hash_equals(ListingPhotoOrder::version($item), $data['version']), 409,
+                'This listing changed after the review screen opened. Reload it before making a decision.');
             $marketplace->changeStatus($item, $data['status'], $request->user()->id, $data['reason'] ?? null, moderated: true);
             Audit::record('listing.'.$data['status'], $request->user()->id, context: ['listing' => $listing]);
         });

@@ -27,14 +27,25 @@
                             <div class="listing-lightbox-inner">
                                 <div class="listing-lightbox-header">
                                     <span data-gallery-counter aria-live="polite"></span>
-                                    <button type="button" class="button button-outline" data-gallery-close aria-label="Close photo viewer">Close</button>
+                                    <div class="listing-lightbox-navigation">
+                                        <button type="button" class="listing-gallery-arrow" data-gallery-prev aria-label="Previous photo" @if($item->media->count() < 2) hidden @endif>‹</button>
+                                        <button type="button" class="listing-gallery-arrow" data-gallery-next aria-label="Next photo" @if($item->media->count() < 2) hidden @endif>›</button>
+                                    </div>
+                                    <button type="button" class="button button-outline" data-gallery-close aria-label="Close photo viewer" autofocus>Close</button>
                                 </div>
-                                <div class="listing-lightbox-stage">
-                                    <button type="button" class="listing-gallery-arrow" data-gallery-prev aria-label="Previous photo">‹</button>
-                                    <img data-gallery-preview alt="">
-                                    <button type="button" class="listing-gallery-arrow" data-gallery-next aria-label="Next photo">›</button>
+                                <div class="listing-lightbox-stage" data-gallery-stage>
+                                    <img data-gallery-preview alt="" draggable="false">
                                 </div>
-                                <p class="listing-lightbox-hint">Use the arrow keys to browse, or Escape to close.</p>
+                                @if($item->media->count() > 1)
+                                    <div class="listing-lightbox-thumbnails" role="group" aria-label="Choose a photo">
+                                        @foreach($item->media as $photo)
+                                            <button class="listing-lightbox-thumb" type="button" data-gallery-thumb
+                                                aria-label="Show photo {{ $loop->iteration }} of {{ $item->media->count() }}">
+                                                <img src="/marketplace/{{ $item->id }}/thumbnail/{{ $photo->id }}" alt="" loading="lazy">
+                                            </button>
+                                        @endforeach
+                                    </div>
+                                @endif
                             </div>
                         </dialog>
                     </div>
@@ -49,42 +60,7 @@
                 </dl>
             </article>
             <aside class="listing-detail-aside" aria-label="Seller and other listings">
-                <section class="panel seller-panel">
-                    <h2>Seller</h2>
-                    <p class="seller-name"><a class="text-link" href="/users/{{ $item->seller->id }}">{{ $item->seller->name }}</a></p>
-                    <p class="seller-since">Member since {{ $item->seller->created_at->format('F Y') }}</p>
-                    @auth
-                        @if($item->user_id === auth()->id())
-                            <p class="field-note">This is your listing.</p>
-                            <a class="button button-primary seller-action" href="/account/listings/{{ $item->id }}/edit">Edit listing</a>
-                            <a class="button button-outline seller-action" href="/account/listings">Manage my listings</a>
-                            <form method="post" action="/account/listings/{{ $item->id }}/status">
-                                @csrf
-                                <input type="hidden" name="status" value="sold">
-                                <button class="button button-outline seller-action" type="submit">Mark as sold</button>
-                            </form>
-                        @else
-                            <form class="form-stack seller-contact" method="post" action="/marketplace/{{ $item->id }}/message">
-                                @csrf
-                                <label>Message the seller<textarea name="body" maxlength="2000" rows="3" required placeholder="Hi, is this still available?">{{ old('body') }}</textarea></label>
-                                <button class="button button-primary">Send message</button>
-                            </form>
-                            <form method="post" action="/marketplace/{{ $item->id }}/save">
-                                @csrf<button class="button button-outline seller-action">Save listing</button>
-                            </form>
-                            <details class="seller-report"><summary>Report listing</summary>
-                                <form class="form-stack mt-2" method="post" action="/marketplace/{{ $item->id }}/report">
-                                    @csrf
-                                    <label>Reason<textarea name="reason" minlength="8" maxlength="500" required>{{ old('reason') }}</textarea></label>
-                                    <button class="button button-outline">Submit report</button>
-                                </form>
-                            </details>
-                        @endif
-                    @else
-                        <p class="field-note">To contact the seller, sign in to your CanadaMB account. Your email address is not displayed publicly.</p>
-                        <a class="button button-primary seller-action" href="{{ $currentSite->isNetwork() ? '/login' : '/auth/start' }}">Sign in to message</a>
-                    @endauth
-                </section>
+                @include('marketplace.seller')
                 @if($related->isNotEmpty())
                     <section class="panel listing-suggestions">
                         <h2>Similar listings</h2>
@@ -97,7 +73,7 @@
                 @endif
                 @if($recent->isNotEmpty())
                     <section class="panel listing-suggestions">
-                        <h2>Recently listed nearby</h2>
+                        <h2>Recently listed</h2>
                         <div class="listing-grid listing-grid-compact">
                             @foreach($recent as $suggestion)
                                 <x-listing-card :item="$suggestion"/>

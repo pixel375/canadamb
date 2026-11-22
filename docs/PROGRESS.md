@@ -1,5 +1,9 @@
 # Progress
 
+## Pass 03 Marketplace completion
+
+Pass 03 is stacked on the corrected Pass 02 branch. It adds ordered photo editing, JPEG orientation and private media recovery, swipe and keyboard gallery controls, seller listing lifecycle and discovery improvements. Pass 03 adds no schema migration. Use the issue and pull request for exact-commit CI evidence and keep live browser checks separate. [Issue #15](https://github.com/pixel375/canadamb/issues/15) · [Marketplace implementation and acceptance](MARKETPLACE_FEEDBACK.md)
+
 ## 2026-11-21 — Pass 02 member settings and notification inbox
 
 Pass 02 adds private member settings, optional public profile fields, and a location-scoped in-app inbox on both portals. Its two additive migrations retain existing `community_notifications` and their read timestamps. Verify CanadaMB includes a Pass 01 to Pass 02 upgrade rehearsal on disposable MariaDB, including the default migration denial and a restore of the upgrade's backups. Record exact-SHA CI evidence in the PR. Production migration approval, live deployment and owner browser acceptance are separate gates. [Issue #13](https://github.com/pixel375/canadamb/issues/13) · [Upgrade and owner QA](MEMBER_NOTIFICATIONS.md)

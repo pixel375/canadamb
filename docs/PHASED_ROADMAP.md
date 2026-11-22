@@ -8,6 +8,10 @@ Issue #11 delivers a default-off prelaunch registration switch, audited manual v
 
 Issue #13 adds profile privacy controls and one member inbox for existing activity across CanadaMB and BrandonMB. Existing community notifications remain in their original table. The new schema requires a reviewed upgrade and explicit production approval before merge into the deployment branch. See the [migration and owner browser checks](MEMBER_NOTIFICATIONS.md). [Issue #13](https://github.com/pixel375/canadamb/issues/13)
 
+## Pass 03 — Marketplace completion
+
+Issue #15 completes ordered photo editing, normalized private images, accessible media browsing, seller relisting and published listing discovery. The review is stacked on Pass 02 until the approved schema release is complete. Verify the rebased or retargeted Pass 03 diff and exact commit before a future release. [Issue #15](https://github.com/pixel375/canadamb/issues/15) · [Marketplace feedback](MARKETPLACE_FEEDBACK.md)
+
 **Strategy:** Finish infrastructure reliability and end-to-end functionality before a major visual makeover. Establish basic reusable UI primitives now so later design work doesn't require rebuilding feature logic. All changes must be committed/tested and promoted to the live release deliberately; no blind auto-deploy.
 
 | Phase | Priority | Scope and release gate |

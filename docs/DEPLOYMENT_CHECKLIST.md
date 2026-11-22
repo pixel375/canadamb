@@ -1,5 +1,13 @@
 # Hostinger production prelaunch acceptance
 
+## Pass 03 Marketplace release checks
+
+- [ ] After the approved Pass 02 release, retarget or rebase the stacked Marketplace PR and confirm exact-commit CI and the media backup. Pass 03 has no new schema changes.
+- [ ] Verify PHP's effective web upload limits allow five 4 MB files and multipart overhead (`upload_max_filesize` at least 4 MB, `post_max_size` at least 22 MB, and `max_file_uploads` at least 5), with GD JPEG, PNG and WebP support and sufficient memory.
+- [ ] From allowlisted desktop and phone browsers, sign in from a Brandon Marketplace action and return to it from CanadaMB. Post five portrait and landscape photos, save an edit without changing them, then retain, remove, replace and reorder individual photos. Test common iPhone and Android JPEG orientations on actual devices.
+- [ ] Check keyboard, touch, narrow-width and installed-PWA gallery and form behavior on both domains. Confirm current-host browsing, one canonical URL, Brandon-only results, in-app seller contact, hidden private photos, and rejection feedback visible only to the owner.
+- [ ] Confirm the existing minute hPanel cron invokes the Laravel scheduler and observe an authorized disposable listing at the next due hourly expiry. Verify one status-history entry and one inbox notice across repeated execution. Record the live SHA and independent deployment and prelaunch/PWA audit evidence.
+
 ## Pass 02 member settings and inbox release checks
 
 - [ ] Confirm Verify CanadaMB is green for the reviewed SHA. Check the Pass 01 to Pass 02 MariaDB rehearsal output for the previewed SQL, preservation of legacy read/unread rows, expected indexes, and successful isolated restore of the SQL and storage backups.
