@@ -40,7 +40,7 @@ class ModerationReportsController extends Controller
         $queue = $this->reports->queue()
             ->when($filters['type'] ?? null, fn ($query, $type) => $query->where('type', $type))
             ->when($filters['status'] !== 'all', fn ($query) => $query->where('status', $filters['status']))
-            ->when($filters['location'] ?? null, fn ($query, $location) => $query->where('location_id', (int) $location))
+            ->when($filters['location'] ?? null, fn ($query, $location) => $this->reports->atLocation($query, (int) $location))
             ->when($filters['source'] ?? null, fn ($query, $source) => $query->where('source_id', (int) $source))
             ->when($filters['q'] ?? null, fn ($query, $term) => $query->whereLike('title', '%'.$term.'%'))
             ->when($filters['from'] ?? null, fn ($query, $from) => $query->whereDate('submitted_at', '>=', $from))

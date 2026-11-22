@@ -39,6 +39,14 @@ final class ModerationReports
                 ->whereColumn('disposition.report_type', 'flag.source_type')->whereColumn('disposition.report_id', 'flag.id'));
     }
 
+    public function atLocation(Builder $queue, int $location): Builder
+    {
+        return $queue->where(fn (Builder $scoped) => $scoped->where('location_id', $location)
+            ->orWhere(fn (Builder $provincial) => $provincial->where('type', 'business')->whereNull('location_id')
+                ->whereExists(fn (Builder $branches) => $branches->selectRaw('1')->from('business_locations as branch')
+                    ->whereColumn('branch.business_id', 'report_queue.source_id')->where('branch.location_id', $location))));
+    }
+
     public function queue(): Builder
     {
         $listing = DB::table('listing_reports as report')

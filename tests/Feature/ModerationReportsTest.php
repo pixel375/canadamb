@@ -83,6 +83,30 @@ class ModerationReportsTest extends TestCase
         $this->get(self::CITY.'/community/'.$thread->id)->assertDontSee($reason);
     }
 
+    public function test_provincial_business_report_covers_all_its_locations_and_city_report_stays_local(): void
+    {
+        [$business, $brandon] = $this->business(User::factory()->create());
+        $winnipeg = Location::where('slug', 'winnipeg')->sole()->id;
+        $elkhorn = Location::where('slug', 'elkhorn')->sole()->id;
+        $business->locations()->create(['location_id' => $winnipeg, 'address' => '2 Fixture Road']);
+        $provincial = User::factory()->create();
+        $local = User::factory()->create();
+        $path = "/reports/business/$business->id";
+        $data = ['reason' => 'Please review this business profile.'];
+        $this->actingAs($provincial)->post(self::MAIN.$path, $data)->assertRedirect();
+        $this->post(self::CITY.$path, $data)->assertRedirect()->assertSessionHas('status', 'You have already reported this content.');
+        $this->actingAs($local)->post(self::CITY.$path, $data)->assertRedirect();
+        $reports = DB::table('content_reports')->pluck('location_id', 'reporter_id');
+        $this->assertNull($reports[$provincial->id]);
+        $this->assertSame($brandon->location_id, $reports[$local->id]);
+        $this->actingAs(User::factory()->create(['role' => 'network_admin']));
+        foreach ([$brandon->location_id => 2, $winnipeg => 1, $elkhorn => 0] as $location => $total) {
+            $view = $this->get(self::REPORTS."?type=business&location=$location")->assertOk();
+            $this->assertSame($total, $view->viewData('queue')->total());
+        }
+        $this->assertDatabaseCount('content_reports', 2);
+    }
+
     public function test_public_reports_obey_location_verification_and_visibility(): void
     {
         $author = User::factory()->create();

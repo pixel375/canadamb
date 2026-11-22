@@ -59,11 +59,12 @@ class ContentReportController extends Controller
         $directory = app(BusinessDirectory::class);
         abort_unless($directory->enabled($site), 404);
         $business = $directory->visible($site)->lockForUpdate()->findOrFail($target);
-        $branch = $business->locations()->when($site->location_id, fn ($query, $location) => $query->where('location_id', $location))
-            ->orderBy('id')->lockForUpdate()->firstOrFail(['id', 'location_id']);
+        if ($site->location_id !== null) {
+            $business->locations()->where('location_id', $site->location_id)->lockForUpdate()->firstOrFail(['id']);
+        }
         abort_if($business->members()->where('users.id', $reporter)->exists(), 403);
 
-        return [null, $branch->location_id, '/businesses/'.$business->slug];
+        return [null, $site->location_id, '/businesses/'.$business->slug];
     }
 
     private function businessPost(Site $site, string $type, int $target): array

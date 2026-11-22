@@ -19,7 +19,7 @@ Same-type batches take up to 25 pending submissions. The preview records the sel
 
 ## Reports and evidence
 
-The Reports queue includes existing listing and conversation reports plus reports on eligible business profiles and updates, jobs, threads, replies and events. Reports use the submitting portal's visibility rules, rate limits and deduplication. A report decision leaves the content's publication state unchanged.
+The Reports queue includes existing listing and conversation reports plus reports on eligible business profiles and updates, jobs, threads, replies and events. Reports use the submitting portal's visibility rules, rate limits and deduplication. A business profile report submitted on CanadaMB covers the profile as a whole and appears under each location with a current branch. A city submission retains its city attribution. Earlier reports retain their recorded locations. A report decision leaves the content's publication state unchanged.
 
 A CSRF-protected **View reported evidence** action discloses the report submission and, when eligible, the specifically reported message. The audit records the actor, report ID, message ID and time. The reviewer cannot be a participant. Reporter names, unrelated messages and attachment details or bytes stay outside this view. Evidence responses use `private, no-store` and `noindex`. Resolve or dismiss reports with a private note. Report decisions generate no notices for reported members.
 

@@ -5,7 +5,7 @@
     <article class="panel form-stack">
         <div>
             <p class="section-label">{{ \App\Support\ModerationReports::TYPES[$record->type] }} · {{ \App\Support\ModerationReports::STATUSES[$record->status] }}</p>
-            <p>Report #{{ $record->id }} · {{ $location ?? 'Location unspecified' }} · {{ $record->submitted_at ?? 'Submission date unavailable' }}</p>
+            <p>Report #{{ $record->id }} · {{ $location ?? ($record->type === 'business' ? 'Province-wide profile' : 'Location unspecified') }} · {{ $record->submitted_at ?? 'Submission date unavailable' }}</p>
         </div>
         @if($record->type === 'conversation')
             <form method="post" action="{{ route('moderation.reports.evidence', $record->id) }}" class="form-stack">

@@ -70,7 +70,7 @@
                 <div>
                     <p class="section-label">{{ $types[$record->type] }} · {{ $statuses[$record->status] }}</p>
                     <h2><a class="text-link" href="{{ route('moderation.reports.show', ['type' => $record->type, 'report' => $record->id]) }}">{{ $record->title ?? 'Source unavailable' }}</a></h2>
-                    <p>Report #{{ $record->id }} · {{ $locations[$record->location_id] ?? 'Location unspecified' }} · {{ $record->submitted_at ?? 'Submission date unavailable' }}</p>
+                    <p>Report #{{ $record->id }} · {{ $locations[$record->location_id] ?? ($record->type === 'business' ? 'Province-wide profile' : 'Location unspecified') }} · {{ $record->submitted_at ?? 'Submission date unavailable' }}</p>
                 </div>
                 @if($bulkAvailable)
                     <label class="checkbox"><input type="checkbox" value="{{ $record->id }}" name="items[]" form="report-batch"> Select report #{{ $record->id }}</label>
