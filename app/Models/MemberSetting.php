@@ -5,7 +5,10 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['bio', 'preferred_location_id', 'show_bio', 'show_city', 'show_listings', 'notify_discussion_replies', 'notify_marketplace_messages'])]
+#[Fillable([
+    'bio', 'preferred_location_id', 'show_bio', 'show_city', 'show_listings', 'notify_discussion_replies',
+    'notify_marketplace_messages', 'notify_business_messages', 'notify_job_messages',
+])]
 class MemberSetting extends Model
 {
     protected $primaryKey = 'user_id';
@@ -18,6 +21,8 @@ class MemberSetting extends Model
         'show_listings' => true,
         'notify_discussion_replies' => true,
         'notify_marketplace_messages' => true,
+        'notify_business_messages' => true,
+        'notify_job_messages' => true,
     ];
 
     protected function casts(): array
@@ -28,6 +33,8 @@ class MemberSetting extends Model
             'show_listings' => 'boolean',
             'notify_discussion_replies' => 'boolean',
             'notify_marketplace_messages' => 'boolean',
+            'notify_business_messages' => 'boolean',
+            'notify_job_messages' => 'boolean',
         ];
     }
 }

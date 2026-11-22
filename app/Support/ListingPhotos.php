@@ -72,6 +72,12 @@ class ListingPhotos
         }
     }
 
+    /** @return resource */
+    public function normalizedWebpStream(UploadedFile $file)
+    {
+        return $this->encodeWebp($this->normalize($file));
+    }
+
     private function normalize(UploadedFile $file): GdImage
     {
         $path = $file->getRealPath();
@@ -127,17 +133,33 @@ class ListingPhotos
 
     private function write(GdImage $image, string $path, Filesystem $storage): void
     {
-        $stream = fopen('php://temp', 'w+b');
+        $stream = $this->encodeWebp($image);
         try {
-            if (! imagewebp($image, $stream, 84) || ftell($stream) === 0) {
-                throw new RuntimeException('Could not encode the listing photo.');
-            }
-            rewind($stream);
             if (! $storage->put($path, $stream)) {
                 throw new RuntimeException('Could not store the listing photo.');
             }
         } finally {
             fclose($stream);
         }
+    }
+
+    /** @return resource */
+    private function encodeWebp(GdImage $image)
+    {
+        $stream = fopen('php://temp', 'w+b');
+        if ($stream === false) {
+            throw new RuntimeException('Could not open the encoded photo stream.');
+        }
+
+        try {
+            if (! imagewebp($image, $stream, 84) || ftell($stream) === 0 || ! rewind($stream)) {
+                throw new RuntimeException('Could not encode the photo.');
+            }
+        } catch (Throwable $exception) {
+            fclose($stream);
+            throw $exception;
+        }
+
+        return $stream;
     }
 }

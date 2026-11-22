@@ -32,3 +32,17 @@ In a second terminal, run the browser using the same port:
     npx --yes --package @playwright/cli playwright-cli -s=marketplace run-code --filename tests/Browser/marketplace-completion.js
 
 The script signs in through CanadaMB, creates and edits a Brandon photo set, approves the listing, checks current-host browsing and the Brandon canonical, exercises keyboard and swipe gallery navigation, tests the buyer contact return, filters provincial and city results, and relists sold and expired fixture records. Use a fresh database when rerunning so the fixtures start in the expected states. Local browser emulation complements the [allowlisted physical-device checks](DEPLOYMENT_CHECKLIST.md#pass-03-marketplace-release-checks).
+
+## Pass 04 unified messaging browser workflow
+
+Use the same local private storage and two-host setup above with a separate, fresh SQLite database. Migrate, seed, and run `php artisan network:sync-sso` with the local CanadaMB URL and port. Seed the messaging fixture and serve the app:
+
+    php tests/Browser/messaging-fixture.php
+    php artisan serve --no-reload --host=127.0.0.1 --port=8000
+
+From a second terminal:
+
+    npx --yes --package @playwright/cli playwright-cli -s=messages open http://brandonmb.localhost:8000/
+    npx --yes --package @playwright/cli playwright-cli -s=messages run-code --filename tests/Browser/unified-messaging.js
+
+The script tests buyer, seller, employer and administrator boundaries, the three messaging contexts, Passport return, private WebP and PDF delivery, unread counts, blocking and light/dark layouts at four widths. The separate [allowlisted browser checks](UNIFIED_MESSAGING.md#allowlisted-browser-checks) cover the owner’s actual devices after an approved release.

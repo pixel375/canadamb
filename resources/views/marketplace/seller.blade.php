@@ -17,9 +17,9 @@
             <a class="button button-primary seller-action" href="/account/listings">Verify your email to manage this listing</a>
         @endif
     @elseif($viewer?->hasVerifiedEmail())
-        <form id="message-seller" class="form-stack seller-contact" method="post" action="/marketplace/{{ $item->id }}/message">
+        <form id="message-seller" class="form-stack seller-contact" method="post" action="/marketplace/{{ $item->id }}/message" enctype="multipart/form-data">
             @csrf
-            <label>Message the seller<textarea name="body" maxlength="2000" rows="3" required placeholder="Hi, is this still available?">{{ is_string(old('body')) ? old('body') : '' }}</textarea></label>
+            <x-message-fields label="Message the seller"/>
             <button class="button button-primary" type="submit">Send message</button>
         </form>
         <form method="post" action="/marketplace/{{ $item->id }}/save">

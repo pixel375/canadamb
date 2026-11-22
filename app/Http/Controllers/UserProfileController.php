@@ -53,6 +53,8 @@ class UserProfileController extends Controller
             'show_listings' => 'sometimes|boolean',
             'notify_discussion_replies' => 'sometimes|boolean',
             'notify_marketplace_messages' => 'sometimes|boolean',
+            'notify_business_messages' => 'sometimes|boolean',
+            'notify_job_messages' => 'sometimes|boolean',
         ]);
 
         DB::transaction(function () use ($request, $data): void {

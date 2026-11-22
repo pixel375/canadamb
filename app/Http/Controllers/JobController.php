@@ -6,6 +6,7 @@ use App\Models\Business;
 use App\Models\JobPosting;
 use App\Support\JobBoard;
 use App\Support\LocationScope;
+use App\Support\MessageContact;
 use App\Support\NetworkUrl;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -37,7 +38,7 @@ class JobController extends Controller
         return view('jobs.index', compact('items', 'filters'));
     }
 
-    public function show(Request $request, int $job)
+    public function show(Request $request, int $job, MessageContact $contacts)
     {
         $item = $this->visible($request)->findOrFail($job);
         $canonical = NetworkUrl::to($this->jobs->canonicalSite($item), '/jobs/'.$item->id);
@@ -46,19 +47,21 @@ class JobController extends Controller
         }
         $saved = $request->user() && DB::table('job_posting_bookmarks')
             ->where(['user_id' => $request->user()->id, 'job_posting_id' => $job])->exists();
+        $contactUser = $contacts->forJob($item);
 
-        return view('jobs.show', compact('item', 'saved', 'canonical'));
+        return view('jobs.show', compact('item', 'saved', 'canonical', 'contactUser'));
     }
 
-    public function business(Request $request, int $business)
+    public function business(Request $request, int $business, MessageContact $contacts)
     {
         $site = $request->attributes->get('site');
         abort_unless($this->jobs->enabled($site), 404);
         $employer = $this->managedBusiness($request, $business);
         $branches = $employer->locations()->with('location')->when($site->location_id, fn ($query, $location) => $query->where('location_id', $location))->get();
         $items = $this->jobs->scope($site->location_id)->whereIn('business_location_id', $branches->pluck('id'))->latest('id')->paginate(12);
+        $contactUsers = $contacts->eligibleMembers($employer->id)->pluck('users.id')->all();
 
-        return view('jobs.business', compact('employer', 'branches', 'items'));
+        return view('jobs.business', compact('employer', 'branches', 'items', 'contactUsers'));
     }
 
     public function store(Request $request, int $business)
@@ -112,6 +115,23 @@ class JobController extends Controller
         return redirect('/account/businesses/'.$business.'/jobs')->with('status', 'Job withdrawn.');
     }
 
+    public function messageContact(Request $request, int $business, int $job, MessageContact $contacts)
+    {
+        $site = $request->attributes->get('site');
+        abort_unless($this->jobs->enabled($site), 404);
+        $employer = $this->managedBusiness($request, $business);
+        $data = $request->validate(['enabled' => 'required|boolean']);
+
+        DB::transaction(function () use ($request, $employer, $job, $data, $site, $contacts): void {
+            $item = $this->managedJob($request, $employer->id, $job, lock: true);
+            $enabled = (bool) $data['enabled'];
+            abort_if($enabled && in_array($item->status, ['expired', 'withdrawn'], true), 409);
+            $contacts->setConsent($item, $employer->id, $request->user()->id, $enabled, $site->id);
+        }, attempts: 3);
+
+        return redirect('/account/businesses/'.$business.'/jobs')->with('status', 'Job messaging preference saved.');
+    }
+
     public function save(Request $request, int $job)
     {
         $item = $this->visible($request)->findOrFail($job);
@@ -145,7 +165,7 @@ class JobController extends Controller
 
     private function managedBusiness(Request $request, int $business): Business
     {
-        return Business::where('status', 'active')->managedBy($request->user()->id, ['owner', 'manager'])->findOrFail($business);
+        return Business::where('status', 'active')->managedBy($request->user()->id, MessageContact::ROLES)->findOrFail($business);
     }
 
     private function managedJob(Request $request, int $business, int $job, bool $lock = false): JobPosting

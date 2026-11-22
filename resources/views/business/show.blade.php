@@ -7,7 +7,14 @@
             <h1>{{ $business->name }}</h1>
             @if($business->description)<p class="prose-text">{{ $business->description }}</p>@endif
             <div class="form-stack mt-4">
-                @foreach($branches as $branch)<div><h3>{{ $branch->location->name }}</h3><p>{{ $branch->address }}</p></div>@endforeach
+                @foreach($branches as $branch)
+                    <div class="form-stack">
+                        <div><h2>{{ $branch->location->name }}</h2><p>{{ $branch->address }}</p></div>
+                        @if(in_array($branch->message_contact_user_id, $contactUsers, true) && $branch->message_contact_user_id !== auth()->id())
+                            <div><x-message-contact-link :path="'/businesses/'.$business->slug.'/branches/'.$branch->id.'/contact'" label="Message business" :place="$branch->address.', '.$branch->location->name"/></div>
+                        @endif
+                    </div>
+                @endforeach
                 @if($business->hours)<div><h3>Hours</h3><p class="whitespace-pre-line">{{ $business->hours }}</p></div>@endif
                 <div class="inline-actions">
                     @if($business->website)<a class="text-link" href="{{ $business->website }}" rel="nofollow ugc">Website <x-icon name="arrow" size="16"/></a>@endif

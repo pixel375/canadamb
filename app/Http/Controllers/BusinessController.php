@@ -6,6 +6,7 @@ use App\Models\Business;
 use App\Models\Location;
 use App\Support\BusinessDirectory;
 use App\Support\LocationScope;
+use App\Support\MessageContact;
 use App\Support\NetworkUrl;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
@@ -38,21 +39,24 @@ class BusinessController extends Controller
         ]);
     }
 
-    public function show(Request $request, string $slug)
+    public function show(Request $request, string $slug, MessageContact $contacts)
     {
         $site = $request->attributes->get('site');
         abort_unless($this->directory->enabled($site), 404);
         $business = $this->directory->visible($site)->with('locations.location')->where('slug', $slug)->firstOrFail();
         $owner = $this->directory->canonicalSite($business);
         $canonical = NetworkUrl::to($owner, '/businesses/'.$business->slug);
-        if ($owner->id !== $site->id) {
+        if ($site->isNetwork() && $owner->id !== $site->id) {
             return redirect()->away($canonical, 301, ['Cache-Control' => 'no-store']);
         }
         $branches = $business->locations->when($site->location_id, fn ($locations, $id) => $locations->where('location_id', $id));
         $updates = $this->directory->updates($site->location_id)->whereIn('business_location_id', $branches->pluck('id'))->paginate(12);
         $claimed = $business->members()->wherePivot('role', 'owner')->exists();
+        $designations = $branches->pluck('message_contact_user_id')->filter()->unique();
+        $contactUsers = $designations->isEmpty() ? [] : $contacts->eligibleMembers($business->id)
+            ->whereIn('users.id', $designations)->pluck('users.id')->all();
 
-        return view('business.show', compact('business', 'branches', 'updates', 'claimed', 'canonical'));
+        return view('business.show', compact('business', 'branches', 'updates', 'claimed', 'canonical', 'contactUsers'));
     }
 
     public function updates(Request $request)
@@ -113,7 +117,7 @@ class BusinessController extends Controller
 
         return view('business.form', [
             'business' => new Business, 'places' => $site->isNetwork() ? Location::selectable()->orderBy('name')->get() : collect(),
-            'branches' => collect(), 'categories' => BusinessDirectory::CATEGORIES,
+            'branches' => collect(), 'categories' => BusinessDirectory::CATEGORIES, 'mayEditPublicContact' => true,
         ]);
     }
 
@@ -121,7 +125,7 @@ class BusinessController extends Controller
     {
         $site = $request->attributes->get('site');
         abort_unless($this->directory->enabled($site), 404);
-        $data = $request->validate($this->profileRules() + [
+        $data = $request->validate($this->profileRules(includePublicContact: true) + [
             'name' => 'required|string|max:140', 'category' => ['required', Rule::in(array_keys(BusinessDirectory::CATEGORIES))],
             'address' => 'required|string|max:255', 'location_id' => 'nullable|integer',
         ]);
@@ -145,22 +149,44 @@ class BusinessController extends Controller
         return redirect('/account/businesses')->with('status', 'Business profile submitted for review.');
     }
 
-    public function edit(Request $request, int $business)
+    public function edit(Request $request, int $business, MessageContact $contacts)
     {
         $item = $this->managed($request, $business);
         $site = $request->attributes->get('site');
         $branches = $item->locations()->with('location')->when($site->location_id, fn ($query, $id) => $query->where('location_id', $id))->get();
+        $role = $item->members()->whereKey($request->user()->id)->first()?->pivot->role;
+        $mayEditPublicContact = $role === 'owner';
+        $mayManageMessages = in_array($role, MessageContact::ROLES, true);
+        $showMessageContacts = $mayManageMessages && $item->status === 'active' && $this->directory->enabled($site) && $branches->isNotEmpty();
+        $contactUsers = $showMessageContacts ? $contacts->eligibleMembers($item->id)->pluck('users.id')->all() : [];
 
-        return view('business.form', ['business' => $item, 'branches' => $branches]);
+        return view('business.form', ['business' => $item] + compact('branches', 'mayEditPublicContact', 'mayManageMessages', 'showMessageContacts', 'contactUsers'));
     }
 
     public function update(Request $request, int $business)
     {
         $item = $this->managed($request, $business);
-        $data = $request->validate($this->profileRules());
+        $isOwner = $item->members()->whereKey($request->user()->id)->wherePivot('role', 'owner')->exists();
+        $data = $request->validate($this->profileRules(includePublicContact: $isOwner));
         $item->update($data);
 
         return redirect('/account/businesses/'.$business)->with('status', 'Business profile saved.');
+    }
+
+    public function messageContact(Request $request, int $business, int $branch, MessageContact $contacts)
+    {
+        $site = $request->attributes->get('site');
+        abort_unless($this->directory->enabled($site), 404);
+        $data = $request->validate(['enabled' => 'required|boolean']);
+        $owner = $this->directory->visible($site)->managedBy($request->user()->id, MessageContact::ROLES)->findOrFail($business);
+
+        DB::transaction(function () use ($owner, $branch, $site, $request, $data, $contacts): void {
+            $item = $owner->locations()->when($site->location_id, fn ($query, $id) => $query->where('location_id', $id))
+                ->lockForUpdate()->findOrFail($branch);
+            $contacts->setConsent($item, $owner->id, $request->user()->id, (bool) $data['enabled'], $site->id);
+        }, attempts: 3);
+
+        return redirect('/account/businesses/'.$business.'#branch-messages')->with('status', 'Branch messaging preference saved.');
     }
 
     public function postUpdate(Request $request, int $business)
@@ -193,12 +219,11 @@ class BusinessController extends Controller
         return Business::managedBy($request->user()->id)->findOrFail($id);
     }
 
-    private function profileRules(): array
+    private function profileRules(bool $includePublicContact): array
     {
         return [
             'description' => 'nullable|string|max:2500', 'website' => 'nullable|url:http,https|max:255',
-            'public_email' => 'nullable|email|max:254', 'phone' => 'nullable|string|max:32',
             'hours' => 'nullable|string|max:1000',
-        ];
+        ] + ($includePublicContact ? ['public_email' => 'nullable|email|max:254', 'phone' => 'nullable|string|max:32'] : []);
     }
 }

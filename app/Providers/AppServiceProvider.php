@@ -76,6 +76,22 @@ class AppServiceProvider extends ServiceProvider
             }
         });
 
+        foreach (['message-start' => 15, 'message-reply' => 25, 'message-download' => 60] as $name => $limit) {
+            RateLimiter::for($name, function (Request $request) use ($name, $limit): array {
+                $actor = $request->user()?->id;
+                $limits = [
+                    Limit::perMinute($limit)->by("$name:member:$actor"),
+                    Limit::perMinute($limit * 4)->by($name.':ip:'.$request->ip()),
+                ];
+                if ($request->hasFile('attachments')) {
+                    $limits[] = Limit::perMinute(8)->by("message-upload:member:$actor");
+                    $limits[] = Limit::perMinute(32)->by('message-upload:ip:'.$request->ip());
+                }
+
+                return $limits;
+            });
+        }
+
         Fortify::createUsersUsing(CreateUser::class);
         Fortify::resetUserPasswordsUsing(ResetPassword::class);
         Fortify::loginView(fn (Request $request) => $request->attributes->get('site')->isNetwork()

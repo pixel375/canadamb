@@ -37,7 +37,7 @@ final class NotificationFeed
                     'discussions' => $type === 'event' ? 'events' : 'community',
                     default => $group,
                 };
-                $queries[] = $this->source($site, $user, $type, $group, (bool) ($modules[$module] ?? false), $unreadOnly);
+                $queries[] = $this->source($site, $user, $type, $group, $type === 'message' || ($modules[$module] ?? false), $unreadOnly);
             }
         }
         $combined = array_shift($queries);
@@ -87,7 +87,11 @@ final class NotificationFeed
 
         return match ($item->event) {
             'reply.followed' => 'New reply in a discussion you follow',
-            'message.received' => 'New Marketplace message',
+            'message.received' => match ($item->message_context) {
+                'business' => 'New business message',
+                'job' => 'New job message',
+                default => 'New Marketplace message',
+            },
             default => match (explode('.', $item->event)[0]) {
                 'listing' => 'Marketplace listing',
                 'business' => 'Business profile',
@@ -160,13 +164,14 @@ final class NotificationFeed
         // Module visibility hides destinations and optional activity, while authorized moderation outcomes remain readable.
         $relevant = "(($authorized) AND ((($published) AND (($module) OR NOT ($social))) OR (NOT ($social) AND $event NOT LIKE '%.approved')))";
         $unread = $type === 'message'
-            ? 'item.id > CASE WHEN conversation.buyer_id = notice.user_id THEN conversation.buyer_last_read_id ELSE conversation.seller_last_read_id END'
+            ? ConversationAccess::unreadSql('conversation', 'item', 'notice.user_id', 'notice.user_id')
             : '1 = 1';
         $title = in_array($type, ['reply', 'legacy'], true)
             ? "CASE WHEN $hasLink AND ($social) THEN thread.title ELSE NULL END" : 'NULL';
 
         return $query->select('notice.id', 'notice.read_at', 'notice.created_at')
             ->selectRaw('? as storage, ? as category, '.$event.' as event', [$legacy ? 'legacy' : 'unified', $category])
+            ->selectRaw($type === 'message' ? 'conversation.context_type as message_context' : 'NULL as message_context')
             ->selectRaw("CASE WHEN $social THEN 1 ELSE 0 END as priority")
             ->selectRaw("CASE WHEN $hasLink THEN $destination ELSE NULL END as destination_key", $bindings)
             ->selectRaw("$title as title", $title === 'NULL' ? [] : $bindings)
@@ -235,19 +240,20 @@ final class NotificationFeed
     private function message(Builder $query, Site $site): array
     {
         $query->leftJoin('messages as item', 'item.id', '=', 'notice.resource_id')
-            ->leftJoin('conversations as conversation', 'conversation.id', '=', 'item.conversation_id')
-            ->leftJoin('listings as listing', 'listing.id', '=', 'conversation.listing_id');
-        $this->atLocation($query, $site, 'listing.id', 'listing.location_id');
-        $participants = '((conversation.buyer_id = notice.user_id AND conversation.seller_id = item.sender_id)
+            ->leftJoin('conversations as conversation', 'conversation.id', '=', 'item.conversation_id');
+        if ($site->location_id !== null) {
+            $query->where(fn (Builder $local) => $local->whereNull('conversation.id')
+                ->orWhereRaw(ConversationAccess::locationSql('conversation', '?', '?'), [$site->location_id, $site->location_id]));
+        }
+        $member = ConversationAccess::memberSql('conversation', 'notice.user_id', 'notice.user_id');
+        $sender = '((conversation.buyer_id = notice.user_id AND conversation.seller_id = item.sender_id)
             OR (conversation.seller_id = notice.user_id AND conversation.buyer_id = item.sender_id))';
-        $blocked = 'EXISTS (SELECT 1 FROM user_blocks AS block WHERE
-            (block.user_id = notice.user_id AND block.blocked_id = item.sender_id)
-            OR (block.user_id = item.sender_id AND block.blocked_id = notice.user_id))';
+        $unblocked = ConversationAccess::unblockedSql('conversation');
         // A blocked or non-participating viewer cannot see even a historical stub.
-        $query->whereRaw("(conversation.id IS NULL OR ($participants AND NOT $blocked))");
+        $query->whereRaw("(conversation.id IS NULL OR ($member AND $sender AND $unblocked))");
 
-        // Participants can continue an existing conversation after the public listing closes.
-        return [$participants, 'listing.id IS NOT NULL', 'conversation.id', []];
+        // Source publication and module settings govern new contacts, not access to existing messages.
+        return ["$member AND $sender", 'conversation.id IS NOT NULL', 'conversation.id', []];
     }
 
     private function atLocation(Builder $query, Site $site, string $present, string $location): void

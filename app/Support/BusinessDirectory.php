@@ -38,6 +38,9 @@ final class BusinessDirectory
     public function canonicalSite(Business $business): Site
     {
         $business->loadMissing('locations.location.site.domain');
+        if ($business->locations->pluck('location_id')->unique()->count() > 1) {
+            return NetworkUrl::main();
+        }
         $primary = $business->locations->sortBy('id')->first();
         $site = $primary?->location?->site;
 

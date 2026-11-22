@@ -27,6 +27,9 @@
             <p class="prose-text">{{ $item->description }}</p>
             <div class="inline-actions">
                 <a href="{{ $item->apply_url }}" rel="nofollow ugc" class="button button-primary">Apply on the employer’s site</a>
+                @if($contactUser !== null && $contactUser !== auth()->id())
+                    <x-message-contact-link :path="'/jobs/'.$item->id.'/contact'" label="Message employer"/>
+                @endif
                 @auth
                     <form method="post" action="/jobs/{{ $item->id }}/save">@csrf @if($saved) @method('DELETE') @endif
                         <button class="button button-outline">{{ $saved ? 'Remove saved job' : 'Save job' }}</button>
