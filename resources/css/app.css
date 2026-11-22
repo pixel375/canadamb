@@ -376,6 +376,13 @@ html.site-menu-open { overflow: hidden; }
 .search-disclosure > summary .disclosure-arrow { margin-left: auto; transition: transform .15s ease; }
 .search-disclosure[open] > summary .disclosure-arrow { transform: rotate(180deg); }
 .search-disclosure > form { margin: 9px 0 0; }
+.discussion-list h2 { margin-block: 4px; font-size: 1.15rem; }
+.discussion-member { color: var(--link); text-decoration: underline; text-underline-offset: 3px; }
+.discussion-post .prose-text, .discussion-reply .prose-text { color: var(--text); }
+.discussion-reply { padding-block: 14px; border-top: 1px solid var(--border); overflow-wrap: anywhere; }
+.discussion-reply:target { outline: 2px solid var(--primary); outline-offset: 5px; border-radius: 4px; }
+.discussion-replies, .discussion-reply, #discussion-reply { scroll-margin-block: 18px; }
+.discussion-reply button.text-link { cursor: pointer; }
 
 /* Prevent narrow mobile form fields from creating horizontal page scroll. */
 .form-stack, .form-grid, .filter-bar, .panel, .page-shell, fieldset { min-width: 0; max-width: 100%; }

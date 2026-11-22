@@ -1,5 +1,11 @@
 # Hostinger production prelaunch acceptance
 
+## Pass 06 Discussions release checks
+
+- [ ] Confirm exact-commit CI and the populated Pass 05 to Pass 06 rehearsal. Verify unchanged schema and data, private storage restoration, and a single winner in the competing author and moderator requests.
+- [ ] Release earlier passes in sequence after the owner authorizes their schema changes. Pass 06 adds no migrations. Keep the production migration approval input at its default until a specific schema change is approved.
+- [ ] On the allowlisted sites, check the same-host legacy redirects, correct sitemap and canonical, private author preview, reply notifications, and a real-device Brandon sign-in. Verify the existing Events submenu and `/events` on both portals. [Discussions runbook](DISCUSSIONS.md)
+
 ## Pass 05 moderation release checks
 
 - [ ] Confirm the exact reviewed SHA passed Verify CanadaMB and the populated Pass 04 to Pass 05 rehearsal. Inspect default migration denial, preflight SQL, existing-row and private-media preservation, backup restore and the competing review outcome.

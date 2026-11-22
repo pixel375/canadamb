@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\CommunityReply;
 use App\Models\CommunityThread;
 use App\Models\Location;
+use App\Models\Site;
 use App\Support\ApprovalPolicy;
 use App\Support\Community;
 use App\Support\LocationScope;
@@ -12,6 +13,7 @@ use App\Support\NetworkUrl;
 use App\Support\NotificationInbox;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
 class CommunityForumController extends Controller
@@ -22,24 +24,25 @@ class CommunityForumController extends Controller
     {
         $site = $request->attributes->get('site');
         abort_unless($this->community->enabled($site, 'community'), 404);
-        $filters = $request->validate(['q' => 'nullable|string|max:100', 'category' => ['nullable', Rule::in(array_keys(Community::FORUMS))]]);
-        $threads = $this->community->threads($site->location_id)
-            ->when($filters['q'] ?? null, fn ($query, $term) => $query->whereLike('title', '%'.$term.'%'))
+        $filters = $request->validate($this->filterRules($site));
+        $threads = $this->community->threads($site->location_id ?? (isset($filters['location']) ? (int) $filters['location'] : null))
+            ->when(isset($filters['q']), function ($query) use ($filters) {
+                $term = strtr($filters['q'], ['!' => '!!', '%' => '!%', '_' => '!_']);
+                $query->whereRaw("title LIKE ? ESCAPE '!'", ["%$term%"]);
+            })
             ->when($filters['category'] ?? null, fn ($query, $category) => $query->where('category', $category))
-            ->orderByDesc('pinned')->orderByDesc('last_activity_at')->orderByDesc('id')->paginate(18)->withQueryString();
+            ->orderByDesc('pinned')->orderByDesc(($filters['sort'] ?? 'activity') === 'newest' ? 'created_at' : 'last_activity_at')
+            ->orderByDesc('id')->paginate(18)->appends($filters);
+        $places = $site->isNetwork() ? Location::selectable()->orderBy('name')->get(['id', 'name']) : collect();
+        $canonical = NetworkUrl::to($site, Community::DISCUSSIONS_PATH);
 
-        return view('community.forum', compact('threads', 'filters'));
+        return view('community.forum', compact('threads', 'filters', 'places', 'canonical'));
     }
 
     public function thread(Request $request, int $thread)
     {
         $item = $this->visible($request)->findOrFail($thread);
-        $site = $request->attributes->get('site');
-        $canonical = NetworkUrl::to($this->community->canonicalSite($item, 'community'), '/community/'.$item->id);
-        if (parse_url($canonical, PHP_URL_HOST) !== $site->domain->host) {
-            return redirect()->away($canonical, 301, ['Cache-Control' => 'no-store']);
-        }
-
+        $canonical = NetworkUrl::to($this->community->canonicalSite($item, 'community'), Community::DISCUSSIONS_PATH.'/'.$item->id);
         $replies = $item->replies()->where('status', 'approved')->with('author')->oldest('id')->paginate(Community::REPLIES_PER_PAGE);
         $following = $request->user() && DB::table('community_thread_follows')
             ->where(['thread_id' => $thread, 'user_id' => $request->user()->id])->exists();
@@ -49,11 +52,38 @@ class CommunityForumController extends Controller
 
     public function showReply(Request $request, int $reply)
     {
-        $post = CommunityReply::where('status', 'approved')->findOrFail($reply);
-        $thread = $this->visible($request)->findOrFail($post->thread_id);
-        $site = $this->community->canonicalSite($thread, 'community');
+        $thread = $this->visibleReplyThread($request, $reply);
 
-        return redirect()->away(NetworkUrl::to($site, $this->community->replyPath($thread, $reply)));
+        return redirect($this->community->replyPath($thread, $reply), headers: ['Cache-Control' => 'no-store']);
+    }
+
+    public function legacyIndex(Request $request)
+    {
+        $site = $request->attributes->get('site');
+        abort_unless($this->community->enabled($site, 'community'), 404);
+
+        return $this->legacyRedirect($request, Community::DISCUSSIONS_PATH, $this->filterRules($site));
+    }
+
+    public function legacyThread(Request $request, int $thread)
+    {
+        abort_unless($this->visible($request)->whereKey($thread)->exists(), 404);
+
+        return $this->legacyRedirect($request, Community::DISCUSSIONS_PATH.'/'.$thread, ['page' => 'integer|min:1|max:100000']);
+    }
+
+    public function legacyReply(Request $request, int $reply)
+    {
+        $this->visibleReplyThread($request, $reply);
+
+        return $this->legacyRedirect($request, Community::DISCUSSIONS_PATH.'/replies/'.$reply);
+    }
+
+    public function legacyCreate(Request $request)
+    {
+        abort_unless($this->community->enabled($request->attributes->get('site'), 'community'), 404);
+
+        return $this->legacyRedirect($request, Community::DISCUSSIONS_PATH.'/new');
     }
 
     public function create(Request $request)
@@ -66,6 +96,13 @@ class CommunityForumController extends Controller
         ]);
     }
 
+    public function participate(Request $request, int $thread)
+    {
+        $item = $this->visible($request)->findOrFail($thread);
+
+        return redirect(Community::DISCUSSIONS_PATH.'/'.$item->id.($item->locked ? '' : '#discussion-reply'));
+    }
+
     public function store(Request $request, ApprovalPolicy $policy)
     {
         $site = $request->attributes->get('site');
@@ -76,7 +113,7 @@ class CommunityForumController extends Controller
         ]);
         $requested = isset($data['location_id']) ? (int) $data['location_id'] : null;
         $data['location_id'] = $site->isNetwork() && $requested === null ? null : LocationScope::forPublication($site, $requested);
-        $approved = DB::transaction(function () use ($request, $site, $data, $policy) {
+        $item = DB::transaction(function () use ($request, $site, $data, $policy) {
             $author = $request->user()->id;
             $item = new CommunityThread($data + ['author_id' => $author]);
             $revision = $policy->automaticRevision($site, 'thread', $item->location_id);
@@ -88,17 +125,19 @@ class CommunityForumController extends Controller
                 $policy->recordAutomaticApproval('thread', $item->id, $author, $site, $revision, $item->location_id);
             }
 
-            return $revision !== null;
+            return $item;
         }, attempts: 3);
 
-        return redirect('/community')->with('status', $approved ? 'Discussion published.' : 'Discussion submitted for review.');
+        return $item->status === 'approved'
+            ? redirect(Community::DISCUSSIONS_PATH.'/'.$item->id)->with('status', 'Discussion published.')
+            : redirect('/account/discussions/'.$item->id.'/preview')->with('status', 'Discussion submitted for review.');
     }
 
     public function reply(Request $request, int $thread, ApprovalPolicy $policy)
     {
         $data = $request->validate(['body' => 'required|string|min:5|max:3000']);
         $site = $request->attributes->get('site');
-        $approved = DB::transaction(function () use ($request, $thread, $data, $site, $policy) {
+        $publishedReply = DB::transaction(function () use ($request, $thread, $data, $site, $policy) {
             $item = $this->visible($request)->lockForUpdate()->findOrFail($thread);
             abort_if($item->locked, 409, 'This discussion is locked.');
             $author = $request->user()->id;
@@ -114,25 +153,68 @@ class CommunityForumController extends Controller
                 NotificationInbox::recordFollowedReply($item->id, $reply->id, $author, $item->location_id);
             }
 
-            return $revision !== null;
+            return $revision === null ? null : $reply->id;
         }, attempts: 3);
 
-        return redirect('/community/'.$thread)->with('status', $approved ? 'Reply published.' : 'Reply submitted for review.');
+        return $publishedReply === null
+            ? redirect(Community::DISCUSSIONS_PATH.'/'.$thread)->with('status', 'Reply submitted for review.')
+            : redirect(Community::DISCUSSIONS_PATH.'/replies/'.$publishedReply)->with('status', 'Reply published.');
     }
 
     public function follow(Request $request, int $thread)
     {
-        $item = $this->visible($request)->findOrFail($thread);
-        DB::table('community_thread_follows')->insertOrIgnore(['thread_id' => $item->id, 'user_id' => $request->user()->id]);
+        DB::transaction(function () use ($request, $thread) {
+            $item = $this->visible($request)->lockForUpdate()->findOrFail($thread);
+            DB::table('community_thread_follows')->insertOrIgnore(['thread_id' => $item->id, 'user_id' => $request->user()->id]);
+        }, attempts: 3);
 
-        return redirect('/community/'.$thread)->with('status', 'You are following this discussion.');
+        return redirect(Community::DISCUSSIONS_PATH.'/'.$thread)->with('status', 'You are following this discussion.');
     }
 
     public function unfollow(Request $request, int $thread)
     {
-        DB::table('community_thread_follows')->where(['thread_id' => $thread, 'user_id' => $request->user()->id])->delete();
+        DB::transaction(function () use ($request, $thread) {
+            $item = $this->visible($request)->lockForUpdate()->findOrFail($thread);
+            DB::table('community_thread_follows')->where(['thread_id' => $item->id, 'user_id' => $request->user()->id])->delete();
+        }, attempts: 3);
 
-        return redirect('/community/'.$thread)->with('status', 'You stopped following this discussion.');
+        return redirect(Community::DISCUSSIONS_PATH.'/'.$thread)->with('status', 'You stopped following this discussion.');
+    }
+
+    private function filterRules(Site $site): array
+    {
+        return [
+            'q' => 'nullable|string|max:100',
+            'category' => ['nullable', Rule::in(array_keys(Community::FORUMS))],
+            'location' => $site->isNetwork()
+                ? ['nullable', 'integer', Rule::exists('locations', 'id')->where('province', 'MB')->where('selectable', true)]
+                : ['prohibited'],
+            'sort' => 'nullable|in:activity,newest',
+            'page' => 'nullable|integer|min:1|max:100000',
+        ];
+    }
+
+    private function legacyRedirect(Request $request, string $path, array $rules = [])
+    {
+        $query = [];
+        foreach ($rules as $key => $rule) {
+            $value = $request->query($key);
+            if ($value !== null && Validator::make([$key => $value], [$key => $rule])->passes()) {
+                $query[$key] = $value;
+            }
+        }
+
+        $suffix = $query === [] ? '' : '?'.http_build_query($query, encoding_type: PHP_QUERY_RFC3986);
+
+        return redirect($path.$suffix, 301, ['Cache-Control' => 'no-store']);
+    }
+
+    private function visibleReplyThread(Request $request, int $reply): CommunityThread
+    {
+        $visible = $this->visible($request);
+        $post = CommunityReply::where('status', 'approved')->findOrFail($reply, ['id', 'thread_id']);
+
+        return $visible->findOrFail($post->thread_id);
     }
 
     private function visible(Request $request)

@@ -96,6 +96,9 @@ class AppServiceProvider extends ServiceProvider
             Limit::perMinute(32)->by('ip:'.$request->ip()),
         ]);
         RateLimiter::for('moderation-evidence', fn (Request $request) => Limit::perMinute(20)->by($request->user()->id));
+        RateLimiter::for('discussions-search', fn (Request $request) => $request->query('q') === null
+            ? Limit::none()
+            : Limit::perMinute(30)->by($request->user()?->id ?? $request->ip()));
 
         Fortify::createUsersUsing(CreateUser::class);
         Fortify::resetUserPasswordsUsing(ResetPassword::class);

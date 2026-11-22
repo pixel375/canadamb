@@ -100,6 +100,9 @@
                 <p class="field-note">{{ $decision->name ?? (isset($context['approval_policy_revision']) ? 'Approval policy' : 'Reviewer unavailable') }} ·
                     <time datetime="{{ $time->toAtomString() }}">{{ $time->format('M j, Y · g:i a T') }}</time>
                     @if(isset($context['approval_policy_revision'])) · Revision {{ $context['approval_policy_revision'] }} @endif</p>
+                @if(isset($context['previous_status'], $context['status']))
+                    <p class="field-note">{{ ucfirst($context['previous_status']) }} → {{ ucfirst($context['status']) }}</p>
+                @endif
                 @if($decision->reason ?? $context['reason'] ?? null)<p class="prose-text">Reason · {{ $decision->reason ?? $context['reason'] }}</p>@endif
                 @if($decision->notes ?? $context['notes'] ?? null)<p class="prose-text">Internal notes · {{ $decision->notes ?? $context['notes'] }}</p>@endif
             </article>

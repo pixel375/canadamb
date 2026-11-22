@@ -126,10 +126,11 @@ class PublicController extends Controller
             if (! $community->enabled($site, $module) || ! $query->exists()) {
                 continue;
             }
-            $urls[] = NetworkUrl::to($site, '/'.$module);
+            $path = $module === 'community' ? Community::DISCUSSIONS_PATH : '/events';
+            $urls[] = NetworkUrl::to($site, $path);
             foreach ($query->with('location.site.domain')->orderBy('id')->lazy(250)->take(10000) as $item) {
                 if ($community->canonicalSite($item, $module)->id === $site->id) {
-                    $urls[] = NetworkUrl::to($site, '/'.$module.'/'.$item->id);
+                    $urls[] = NetworkUrl::to($site, $path.'/'.$item->id);
                 }
             }
         }

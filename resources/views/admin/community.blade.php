@@ -1,5 +1,5 @@
-<x-layouts.admin title="Community moderation">
-    <div class="page-intro"><div><h1>Community moderation</h1><p>Review discussions, replies, and event submissions.</p></div></div>
+<x-layouts.admin title="Moderate discussions and events">
+    <div class="page-intro"><div><h1>Moderate discussions and events</h1><p>Review discussions, replies, and event submissions.</p></div></div>
     <section class="panel"><h2>Discussions</h2>
         @forelse($threads as $item)
             <article class="form-stack border-b border-gray-300 py-4">

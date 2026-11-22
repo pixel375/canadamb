@@ -55,8 +55,8 @@ class ModerationReportsTest extends TestCase
             'business' => [$business, '/businesses/'.$business->slug, 'active'],
             'business-update' => [$update, '/business-updates/'.$update->id, 'approved'],
             'job' => [$job, '/jobs/'.$job->id, 'approved'],
-            'thread' => [$thread, '/community/'.$thread->id, 'approved'],
-            'reply' => [$reply, '/community/'.$thread->id, 'approved'],
+            'thread' => [$thread, '/discussions/'.$thread->id, 'approved'],
+            'reply' => [$reply, '/discussions/'.$thread->id, 'approved'],
             'event' => [$event, '/events/'.$event->id, 'approved'],
         ];
         $reason = 'The information in this submission needs review.';
@@ -67,7 +67,7 @@ class ModerationReportsTest extends TestCase
             $this->get(self::CITY.$path)->assertOk()->assertSee($action);
             $submitted = $this->post(self::CITY.$action, ['reason' => $reason])->assertRedirect()->assertSessionHasNoErrors();
             if ($type === 'reply') {
-                $submitted->assertRedirect(self::CITY."/community/$thread->id?page=1#reply-$reply->id");
+                $submitted->assertRedirect(self::CITY."/discussions/$thread->id?page=1#reply-$reply->id");
             }
             $this->post(self::CITY.$action, ['reason' => 'This duplicate should leave the original alone.'])
                 ->assertRedirect()->assertSessionHas('status', 'You have already reported this content.');
@@ -80,7 +80,7 @@ class ModerationReportsTest extends TestCase
         }
         $this->assertDatabaseCount('content_reports', 6);
         $this->assertDatabaseCount('notifications', 0);
-        $this->get(self::CITY.'/community/'.$thread->id)->assertDontSee($reason);
+        $this->get(self::CITY.'/discussions/'.$thread->id)->assertOk()->assertDontSee($reason);
     }
 
     public function test_provincial_business_report_covers_all_its_locations_and_city_report_stays_local(): void

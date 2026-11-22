@@ -21,6 +21,7 @@ use App\Http\Controllers\MarketplaceController;
 use App\Http\Controllers\MessagesController;
 use App\Http\Controllers\NewsController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\OwnedDiscussionsController;
 use App\Http\Controllers\PropertyDraftController;
 use App\Http\Controllers\PublicController;
 use App\Http\Controllers\PwaController;
@@ -53,9 +54,12 @@ Route::get('/business-updates/{update}', [BusinessController::class, 'showUpdate
 Route::get('/businesses/{slug}', [BusinessController::class, 'show']);
 Route::get('/news', [NewsController::class, 'index']);
 Route::get('/news/{article}', [NewsController::class, 'show'])->whereNumber('article');
-Route::get('/community', [CommunityForumController::class, 'index']);
-Route::get('/community/{thread}', [CommunityForumController::class, 'thread'])->whereNumber('thread');
-Route::get('/community/replies/{reply}', [CommunityForumController::class, 'showReply'])->whereNumber('reply');
+Route::get('/discussions', [CommunityForumController::class, 'index'])->middleware('throttle:discussions-search');
+Route::get('/discussions/{thread}', [CommunityForumController::class, 'thread'])->whereNumber('thread');
+Route::get('/discussions/replies/{reply}', [CommunityForumController::class, 'showReply'])->whereNumber('reply');
+Route::get('/community', [CommunityForumController::class, 'legacyIndex'])->middleware('throttle:discussions-search');
+Route::get('/community/{thread}', [CommunityForumController::class, 'legacyThread'])->whereNumber('thread');
+Route::get('/community/replies/{reply}', [CommunityForumController::class, 'legacyReply'])->whereNumber('reply');
 Route::get('/events', [CommunityEventController::class, 'index']);
 Route::get('/events/{event}', [CommunityEventController::class, 'show'])->whereNumber('event');
 Route::get('/jobs', [JobController::class, 'index']);
@@ -89,11 +93,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/account/saved-jobs', [JobController::class, 'saved']);
     Route::post('/jobs/{job}/save', [JobController::class, 'save'])->whereNumber('job');
     Route::delete('/jobs/{job}/save', [JobController::class, 'remove'])->whereNumber('job');
-    Route::get('/community/new', [CommunityForumController::class, 'create']);
-    Route::post('/community', [CommunityForumController::class, 'store'])->middleware('throttle:6,1');
-    Route::post('/community/{thread}/replies', [CommunityForumController::class, 'reply'])->whereNumber('thread')->middleware('throttle:12,1');
-    Route::post('/community/{thread}/follow', [CommunityForumController::class, 'follow'])->whereNumber('thread')->middleware('throttle:30,1');
-    Route::delete('/community/{thread}/follow', [CommunityForumController::class, 'unfollow'])->whereNumber('thread')->middleware('throttle:30,1');
+    Route::get('/discussions/new', [CommunityForumController::class, 'create']);
+    Route::get('/discussions/{thread}/participate', [CommunityForumController::class, 'participate'])->whereNumber('thread');
+    Route::get('/community/new', [CommunityForumController::class, 'legacyCreate']);
+    // Keep submitted forms and bookmarked workflows on the same verified write actions.
+    foreach (['/discussions', '/community'] as $forum) {
+        Route::post($forum, [CommunityForumController::class, 'store'])->middleware('throttle:6,1');
+        Route::post($forum.'/{thread}/replies', [CommunityForumController::class, 'reply'])->whereNumber('thread')->middleware('throttle:12,1');
+        Route::post($forum.'/{thread}/follow', [CommunityForumController::class, 'follow'])->whereNumber('thread')->middleware('throttle:30,1');
+        Route::delete($forum.'/{thread}/follow', [CommunityForumController::class, 'unfollow'])->whereNumber('thread')->middleware('throttle:30,1');
+    }
+    Route::prefix('account/discussions')->controller(OwnedDiscussionsController::class)->group(function () {
+        Route::get('/', 'index');
+        Route::get('/{thread}/preview', 'preview')->whereNumber('thread');
+        Route::get('/{thread}/edit', 'edit')->whereNumber('thread');
+        Route::put('/{thread}', 'update')->whereNumber('thread')->middleware('throttle:12,1');
+        Route::post('/{thread}/withdraw', 'withdraw')->whereNumber('thread')->middleware('throttle:12,1');
+        Route::post('/{thread}/restore', 'restore')->whereNumber('thread')->middleware('throttle:12,1');
+    });
     Route::get('/account/notifications', [NotificationController::class, 'index'])->name('account.notifications');
     Route::post('/account/notifications/read-all', [NotificationController::class, 'readAll'])->middleware('throttle:10,1')->name('account.notifications.read-all');
     Route::get('/account/notifications/{storage}/{notification}/open', [NotificationController::class, 'open'])

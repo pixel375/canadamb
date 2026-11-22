@@ -88,6 +88,8 @@ final class NotificationFeed
 
         return match ($item->event) {
             'reply.followed' => 'New reply in a discussion you follow',
+            'thread.pending' => 'Discussion awaiting review',
+            'thread.withdrawn' => 'Discussion withdrawn',
             'message.received' => match ($item->message_context) {
                 'business' => 'New business message',
                 'job' => 'New job message',
@@ -118,8 +120,8 @@ final class NotificationFeed
             'business', 'claim' => '/businesses/'.$key,
             'business-update' => '/business-updates/'.$key,
             'job' => '/jobs/'.$key,
-            'thread' => '/community/'.$key,
-            'reply' => '/community/replies/'.$key,
+            'thread' => Community::DISCUSSIONS_PATH.'/'.$key,
+            'reply' => Community::DISCUSSIONS_PATH.'/replies/'.$key,
             'event' => '/events/'.$key,
             'message' => '/account/messages/'.$key,
         };

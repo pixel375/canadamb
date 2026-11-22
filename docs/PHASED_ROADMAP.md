@@ -20,7 +20,11 @@ Issue #17 expands the existing inbox to Marketplace, business, and job conversat
 
 The CanadaMB workbench handles existing submission types and abuse reports, including audited access to specific reported messages. Approval policies start on manual review. The review branch targets corrected Pass 04. Sequence prior-pass acceptance and explicit production migration approval before releasing the additive decision and report tables. [Issue #19](https://github.com/pixel375/canadamb/issues/19) · [Moderation and recovery notes](CENTRAL_MODERATION.md)
 
-**Strategy:** Finish infrastructure reliability and end-to-end functionality before a major visual makeover. Establish basic reusable UI primitives now so later design work doesn't require rebuilding feature logic. All changes must be committed/tested and promoted to the live release deliberately; no blind auto-deploy.
+## Pass 06 — Discussions
+
+`/discussions` is the public forum path. Same-host compatibility covers old bookmarks and submitted forms. Members can manage their discussions and edit or withdraw eligible posts through the existing review rules. The stacked PR targets corrected Pass 05 and adds no migrations. Pass 07 will handle the agenda and event requests from existing discussions. [Issue #21](https://github.com/pixel375/canadamb/issues/21) · [Routes and author workflow](DISCUSSIONS.md)
+
+**Current release process.** The protected implementation branch uses guarded GitHub CI-to-Hostinger automation. Its checks include an exact verified commit and a default denial for pending unreviewed migrations. Feature-branch pushes and stacked pull requests are review-only. The Phase 0 and Phase 1 checkpoints below describe earlier rollout procedures. [Deployment automation](DEPLOYMENT_AUTOMATION.md)
 
 | Phase | Priority | Scope and release gate |
 | --- | --- | --- |
@@ -39,7 +43,7 @@ The CanadaMB workbench handles existing submission types and abuse reports, incl
 
 ## Observed rollout checkpoints
 
-- **Phase 0 functional infrastructure:** SSH/SFTP, real production MariaDB restore rehearsal, guarded two-domain first/second deployments, hPanel cron execution and a live database queue canary all passed. Keep deployment manual-only and public prelaunch gate active.
+- **Phase 0 functional infrastructure:** SSH/SFTP, real production MariaDB restore rehearsal, guarded two-domain first/second deployments, hPanel cron execution and a live database queue canary all passed. The rollout used manual deployment at this stage. The current guarded workflow superseded that procedure. The public prelaunch gate remains active.
 - **Phase 1 first functional rollout:** target `0b2359f5eb4587f9fd5dfad1b36402df2b7d5349` deployed with core cards/gallery/canonical/category/seller/related improvements, PHPUnit on both database engines and independent postdeploy audit. Approved-IP mobile/browser interaction tests and five-photo edge cases are the next acceptance gate; broad redesign is later.
 
 ## Engineering discipline

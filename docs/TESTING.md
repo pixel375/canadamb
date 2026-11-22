@@ -46,3 +46,9 @@ From a second terminal:
     npx --yes --package @playwright/cli playwright-cli -s=messages run-code --filename tests/Browser/unified-messaging.js
 
 The script tests buyer, seller, employer and administrator boundaries, the three messaging contexts, Passport return, private WebP and PDF delivery, unread counts, blocking and light/dark layouts at four widths. The separate [allowlisted browser checks](UNIFIED_MESSAGING.md#allowlisted-browser-checks) cover the owner’s actual devices after an approved release.
+
+## Discussions
+
+Run `php vendor/bin/phpunit --filter 'DiscussionsRoutesTest|OwnedDiscussionsTest|CommunityPublishingTest|ApprovalPolicyTest|NotificationInboxTest'` for targeted coverage. Verify runs the full suite on SQLite and MariaDB. The `production-pass-06` rehearsal upgrades a populated corrected Pass 05 release using the existing schema, compares persisted data, restores backups and verifies the author-edit and moderator-review conflict.
+
+For browser automation, use a fresh disposable seeded SQLite database with development hosts enabled and Passport test keys. Run `php tests/Browser/discussions-fixture.php`, serve both local hostnames, open `canadamb.localhost` in Playwright, and run `tests/Browser/discussions.js`. It covers posting, approval, central sign-in from Brandon, follow, replies, reports, editing and rejection. Owner device acceptance is tracked in the [Discussions runbook](DISCUSSIONS.md).

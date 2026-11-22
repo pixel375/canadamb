@@ -26,6 +26,9 @@ class MobileNavigationTest extends TestCase
                 ->assertDontSee('href="/account/settings"', false)
                 ->assertSee('Businesses', false)
                 ->assertSee('Discussions', false)
+                ->assertSee('href="/discussions"', false)
+                ->assertSee('href="/events">Events calendar', false)
+                ->assertDontSee('href="/community"', false)
                 ->assertSee('href="/about"', false)
                 ->assertSee('href="/contact"', false)
                 ->assertSee('id="theme-choice-mobile"', false);
@@ -35,12 +38,13 @@ class MobileNavigationTest extends TestCase
             ->get('https://canadamb.ca/')
             ->assertOk()
             ->assertSee('href="/account/profile"', false)
-            ->assertSee('href="/account/settings"', false);
+            ->assertSee('href="/account/settings"', false)
+            ->assertSee('href="/account/discussions"', false);
     }
 
     public function test_search_filters_are_collapsed_initially_and_reopened_when_query_is_present(): void
     {
-        foreach (['marketplace', 'businesses', 'jobs', 'news', 'community', 'events'] as $page) {
+        foreach (['marketplace', 'businesses', 'jobs', 'news', 'discussions', 'events'] as $page) {
             $empty = $this->get('https://canadamb.ca/'.$page)->assertOk()->getContent();
             preg_match('/<details class="search-disclosure"([^>]*)>/', $empty, $initial);
             $this->assertArrayHasKey(1, $initial, $page.' must render a filter disclosure');
@@ -57,6 +61,21 @@ class MobileNavigationTest extends TestCase
             $this->assertArrayHasKey(1, $filtered);
             $this->assertMatchesRegularExpression('/\bopen\b/', $filtered[1]);
         }
+    }
+
+    public function test_discussions_filters_expose_location_only_on_the_provincial_site(): void
+    {
+        $this->get('https://canadamb.ca/discussions?sort=newest')
+            ->assertOk()
+            ->assertSee('action="/discussions"', false)
+            ->assertSee('name="location"', false)
+            ->assertSee('value="newest" selected', false)
+            ->assertSee('href="/discussions">Clear filters', false);
+
+        $this->get('https://brandonmb.ca/discussions')
+            ->assertOk()
+            ->assertSee('name="sort"', false)
+            ->assertDontSee('name="location"', false);
     }
 
     public function test_admin_navigation_is_a_compact_responsive_disclosure(): void

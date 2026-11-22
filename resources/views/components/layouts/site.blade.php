@@ -10,6 +10,7 @@
         <meta name="robots" content="noindex, nofollow">
     @elseif(isset($canonical) || request()->is('/'))
         <link rel="canonical" href="{{ $canonical ?? \App\Support\NetworkUrl::to($site) }}">
+        <meta property="og:url" content="{{ $canonical ?? \App\Support\NetworkUrl::to($site) }}">
     @endif
     <meta property="og:title" content="{{ $title ?? $site->name }}">
     <meta property="og:description" content="{{ $description ?? $site->description }}">
@@ -108,9 +109,9 @@
                 @endif
                 @if($networkSettings['modules']['community'] ?? false)
                     <details class="desktop-nav-group">
-                        <summary @if(request()->is('community*', 'events*')) aria-current="page" @endif>Discussions <x-icon name="chevron-down" size="15"/></summary>
+                        <summary @if(request()->is('discussions*', 'events*', 'account/discussions*')) aria-current="page" @endif>Discussions <x-icon name="chevron-down" size="15"/></summary>
                         <div class="desktop-nav-submenu">
-                            <a href="/community">All discussions</a>
+                            <a href="/discussions" @if(request()->is('discussions')) aria-current="page" @endif>All discussions</a>
                             @if($networkSettings['modules']['events'] ?? false)<a href="/events">Events calendar</a>@endif
                         </div>
                     </details>
@@ -149,10 +150,10 @@
         </details>
         @endif
         @if($networkSettings['modules']['community'] ?? false)
-        <details class="drawer-submenu" @if(request()->is('community*', 'events*')) open @endif>
+        <details class="drawer-submenu" @if(request()->is('discussions*', 'events*', 'account/discussions*')) open @endif>
             <summary><x-icon name="discussions" size="20"/> Discussions <x-icon class="drawer-chevron" name="chevron-down" size="17"/></summary>
             <div>
-                <a href="/community">All discussions</a>
+                <a href="/discussions" @if(request()->is('discussions')) aria-current="page" @endif>All discussions</a>
                 @if($networkSettings['modules']['events'] ?? false)<a href="/events">Events calendar</a>@endif
             </div>
         </details>
@@ -166,6 +167,9 @@
         @auth
             <a href="/account/notifications"><x-icon name="bell" size="20"/> Notifications <x-unread-notifications :count="$unreadNotifications"/></a>
             <a href="/account/profile"><x-icon name="person" size="20"/> My Profile</a>
+            @if(($networkSettings['modules']['community'] ?? false) && auth()->user()->hasVerifiedEmail())
+                <a href="/account/discussions" @if(request()->is('account/discussions*')) aria-current="page" @endif><x-icon name="discussions" size="20"/> My discussions</a>
+            @endif
             <a href="/account/settings"><x-icon name="settings" size="20"/> Settings</a>
             @can('manage-network')<a href="{{ \App\Support\NetworkUrl::to(\App\Support\NetworkUrl::main(), '/admin') }}"><x-icon name="shield" size="20"/> Administration</a>@endcan
         @else

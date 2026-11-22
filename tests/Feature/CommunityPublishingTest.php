@@ -29,16 +29,16 @@ class CommunityPublishingTest extends TestCase
         $this->post('https://brandonmb.ca/community', $input)->assertSessionHasNoErrors()->assertRedirect();
         $thread = CommunityThread::sole();
         $this->assertSame('brandon', $thread->location->slug);
-        $city = "https://brandonmb.ca/community/$thread->id";
-        $main = "https://canadamb.ca/community/$thread->id";
+        $city = "https://brandonmb.ca/discussions/$thread->id";
+        $main = "https://canadamb.ca/discussions/$thread->id";
 
         $this->get($city)->assertNotFound();
         $this->post("https://canadamb.ca/admin/community/threads/$thread->id", ['action' => 'approve'])->assertForbidden();
         $this->actingAs($moderator)->post("https://canadamb.ca/admin/community/threads/$thread->id", [
             'action' => 'approve', 'version' => ModerationDecision::version('thread', $thread->fresh()),
         ])->assertRedirect();
-        $this->get($main)->assertRedirect($city);
-        $this->get('https://canadamb.ca/community')->assertSee($input['title']);
+        $this->get($main)->assertOk()->assertSee($city);
+        $this->get('https://canadamb.ca/discussions')->assertSee($input['title']);
         $this->get('https://canadamb.ca/')->assertSee($input['title']);
 
         $this->actingAs($author)->post("$city/follow")->assertRedirect();

@@ -73,7 +73,11 @@ final class ModerationQueue
             'claim' => [['business.claim-approved', 'business.claim-rejected'], 'claim'],
             'business-update' => [['business.update-approved', 'business.update-rejected'], 'update'],
             'job' => [['jobs.approve', 'jobs.reject'], 'job'],
-            'thread' => [['community.thread.approve', 'community.thread.reject', 'community.thread.pin', 'community.thread.unpin', 'community.thread.lock', 'community.thread.unlock'], 'thread'],
+            'thread' => [[
+                'community.thread.approve', 'community.thread.reject', 'community.thread.pin', 'community.thread.unpin',
+                'community.thread.lock', 'community.thread.unlock', 'community.thread.author-edit', 'community.thread.author-withdraw',
+                'community.thread.author-restore',
+            ], 'thread'],
             'reply' => [['community.reply.approve', 'community.reply.reject'], 'reply'],
             'event' => [['community.event.approve', 'community.event.reject'], 'event'],
         };

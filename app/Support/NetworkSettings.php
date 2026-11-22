@@ -13,10 +13,10 @@ use stdClass;
 final class NetworkSettings
 {
     public const MODULES = ['news' => 'News', 'businesses' => 'Businesses', 'marketplace' => 'Marketplace',
-        'real-estate' => 'Real Estate', 'jobs' => 'Jobs', 'community' => 'Community', 'events' => 'Events'];
+        'real-estate' => 'Real Estate', 'jobs' => 'Jobs', 'community' => 'Discussions', 'events' => 'Events'];
 
     public const OPERATIONAL_MODULES = ['news' => 'News', 'marketplace' => 'Marketplace', 'businesses' => 'Business directory',
-        'community' => 'Community forums', 'events' => 'Events', 'jobs' => 'Jobs'];
+        'community' => 'Discussions', 'events' => 'Events', 'jobs' => 'Jobs'];
 
     public static function defaults(): array
     {

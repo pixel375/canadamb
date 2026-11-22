@@ -9,7 +9,12 @@
     <div class="container page-shell narrow">
         <div class="page-intro">
             <div><h1>Account settings</h1></div>
-            <a class="button button-outline" href="/account/profile">My profile</a>
+            <div class="inline-actions">
+                <a class="button button-outline" href="/account/profile">My profile</a>
+                @if($member->hasVerifiedEmail() && app(\App\Support\Community::class)->enabled(request()->attributes->get('site'), 'community'))
+                    <a class="button button-outline" href="/account/discussions">My discussions</a>
+                @endif
+            </div>
         </div>
         <form class="panel form-stack" method="post" action="/account/settings">
             @csrf
