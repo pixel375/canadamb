@@ -304,6 +304,24 @@ class OwnedDiscussionsTest extends TestCase
         $this->post($path, ['action' => 'approve', 'version' => ModerationDecision::version('reply', $reply->fresh())])->assertRedirect();
     }
 
+    public function test_individual_review_uses_one_revision_for_heading_body_and_token(): void
+    {
+        $thread = $this->thread(User::factory()->create(), ['title' => 'Earlier review title', 'body' => 'Earlier reviewed discussion body.']);
+        $oldVersion = $this->version($thread);
+        $interleaved = false;
+        DB::listen(function ($query) use ($thread, &$interleaved): void {
+            if (! $interleaved && str_contains($query->sql, 'community_threads') && ! str_contains($query->sql, 'moderation_queue')) {
+                $interleaved = true;
+                CommunityThread::whereKey($thread->id)->update(['title' => 'Later review title', 'body' => 'Later reviewed discussion body.']);
+            }
+        });
+        $this->actingAs(User::factory()->create(['role' => 'network_admin']))
+            ->get(self::MAIN.'/admin/moderation/items/thread/'.$thread->id)->assertOk()
+            ->assertSee('Earlier review title')->assertSee('Earlier reviewed discussion body.')->assertSee($oldVersion)
+            ->assertDontSee('Later review title')->assertDontSee('Later reviewed discussion body.');
+        $this->assertTrue($interleaved);
+    }
+
     public function test_approval_notices_survive_parent_withdrawal_without_a_public_link(): void
     {
         $owner = User::factory()->create();

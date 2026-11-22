@@ -7,16 +7,16 @@
     </div>
     <div class="page-intro"><div>
         <p class="field-note">{{ $label }} · {{ ucfirst($resource->status) }} @if($row->reported) · Reported @endif</p>
-        <h1>{{ $row->title }}</h1>
+        <h1>{{ $title }}</h1>
     </div></div>
     <section class="panel form-stack" aria-label="Submitted content">
         <dl class="moderation-metadata">
             <div><dt>Submitted by</dt><dd>{{ $row->submitter ?? ($ownerNames->isNotEmpty() ? $ownerNames->join(', ') : 'Account unavailable') }}</dd></div>
             <div><dt>Location</dt><dd>{{ $row->location ?? ($branches->isEmpty() ? 'Manitoba' : $branches->map(fn ($branch) => $branch->name ?? $branch->location->name)->unique()->join(', ')) }}</dd></div>
             @foreach(['created_at' => 'Submitted', 'updated_at' => 'Last edited'] as $key => $name)
-                @if($row->{$key})
+                @if($resource->{$key})
                     @php
-                        $time = \Illuminate\Support\Carbon::parse($row->{$key})->timezone('America/Winnipeg');
+                        $time = \Illuminate\Support\Carbon::parse($resource->{$key})->timezone('America/Winnipeg');
                     @endphp
                     <div><dt>{{ $name }}</dt><dd><time datetime="{{ $time->toAtomString() }}">{{ $time->format('M j, Y · g:i a T') }}</time></dd></div>
                 @endif
