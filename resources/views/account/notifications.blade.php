@@ -1,7 +1,6 @@
 <x-layouts.site title="Notifications">
     <div class="container page-shell narrow">
         <div class="page-intro"><div><h1>Notifications</h1></div></div>
-        @if(session('status'))<p class="panel" role="status">{{ session('status') }}</p>@endif
         <form class="panel form-stack" method="get" action="{{ route('account.notifications', absolute: false) }}">
             <label>Category
                 <select name="category">

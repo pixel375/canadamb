@@ -11,15 +11,6 @@
             <div><h1>Account settings</h1></div>
             <a class="button button-outline" href="/account/profile">My profile</a>
         </div>
-        @if(session('status'))<p class="panel" role="status">{{ session('status') }}</p>@endif
-        @if($errors->any())
-            <div class="panel form-stack" role="alert">
-                <strong>Check the following details.</strong>
-                <ul>
-                    @foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach
-                </ul>
-            </div>
-        @endif
         <form class="panel form-stack" method="post" action="/account/settings">
             @csrf
             <h2>Public profile</h2>
