@@ -8,7 +8,11 @@ use App\Models\Conversation;
 use App\Models\JobPosting;
 use App\Models\Listing;
 use App\Models\Location;
+use App\Models\Site;
 use App\Models\User;
+use App\Support\NetworkSettings;
+use App\Support\NotificationFeed;
+use App\Support\NotificationInbox;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -118,6 +122,62 @@ class UnifiedMessagingTest extends TestCase
         $business->members()->detach($owner->id);
         $this->post(self::MAIN.$path, $payload)->assertNotFound();
         $this->assertDatabaseCount('conversations', 0);
+    }
+
+    public function test_historical_message_notices_follow_conversation_access_with_all_source_modules_disabled(): void
+    {
+        $buyer = User::factory()->create();
+        $responder = User::factory()->create();
+        [$business, $branch, $job] = $this->employer(User::factory()->create(), $responder);
+        $listing = $this->listing($responder, 'brandon');
+        $rural = $this->listing($responder, 'elkhorn');
+        $contexts = [
+            ['marketplace', ['listing_id' => $listing->id], $listing->location_id],
+            ['business', ['business_location_id' => $branch->id, 'location_id' => $branch->location_id], $branch->location_id],
+            ['job', ['job_posting_id' => $job->id, 'location_id' => $branch->location_id], $branch->location_id],
+            ['marketplace', ['listing_id' => $rural->id], $rural->location_id],
+        ];
+        $outsider = User::factory()->create();
+        $threads = [];
+        foreach ($contexts as [$type, $context, $location]) {
+            $thread = Conversation::create($context + ['context_type' => $type, 'buyer_id' => $buyer->id, 'seller_id' => $responder->id]);
+            $message = $thread->messages()->create(['sender_id' => $buyer->id, 'body' => 'Private conversation content.']);
+            NotificationInbox::record($responder->id, 'message.received', $message->id, $message->id, [$location], $type);
+            NotificationInbox::record($outsider->id, 'message.received', $message->id, $message->id, [$location], $type);
+            $threads[] = $thread;
+        }
+
+        $settings = app(NetworkSettings::class);
+        $settings->saveDraft($responder->id, function (array $settings): array {
+            $settings['modules'] = array_fill_keys(array_keys($settings['modules']), false);
+
+            return $settings;
+        });
+        $settings->publish($responder->id);
+
+        $provincial = Site::whereNull('location_id')->sole();
+        $city = Site::where('location_id', $branch->location_id)->sole();
+        $feed = app(NotificationFeed::class);
+        $this->assertSame(4, $feed->unread($provincial, $responder->id));
+        $this->assertSame(3, $feed->unread($city, $responder->id));
+        $this->assertSame(0, $feed->unread($provincial, $outsider->id));
+        $this->assertSame(0, $feed->rows($city, $outsider->id, 'messages')->count());
+
+        $this->actingAs($responder)->get(self::CITY.'/account/notifications?category=messages&status=unread')->assertOk()
+            ->assertSee('New Marketplace message')->assertSee('New business message')->assertSee('New job message')
+            ->assertDontSee('Private conversation content.')->assertDontSee($listing->title)->assertDontSee($job->title);
+        foreach (array_slice($threads, 0, 3) as $i => $thread) {
+            $this->get(self::CITY."/account/messages/$thread->id")->assertOk();
+            $this->assertSame(2 - $i, $feed->unread($city, $responder->id));
+        }
+        $this->get(self::CITY.'/account/messages/'.$threads[3]->id)->assertNotFound();
+        $this->assertSame(1, $feed->unread($provincial, $responder->id));
+
+        $business->members()->detach($responder->id);
+        $this->assertSame(1, $feed->rows($city, $responder->id, 'messages')->count());
+        $this->post(self::MAIN.'/account/messages/'.$threads[3]->id.'/block')->assertRedirect();
+        $this->assertSame(0, $feed->unread($provincial, $responder->id));
+        $this->assertSame(0, $feed->rows($provincial, $responder->id, 'messages')->count());
     }
 
     public function test_blocks_apply_across_contexts_and_prevent_attachment_access(): void

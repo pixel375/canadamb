@@ -37,7 +37,7 @@ final class NotificationFeed
                     'discussions' => $type === 'event' ? 'events' : 'community',
                     default => $group,
                 };
-                $queries[] = $this->source($site, $user, $type, $group, $type === 'message' || ($modules[$module] ?? false), $unreadOnly, $modules);
+                $queries[] = $this->source($site, $user, $type, $group, $type === 'message' || ($modules[$module] ?? false), $unreadOnly);
             }
         }
         $combined = array_shift($queries);
@@ -129,7 +129,7 @@ final class NotificationFeed
         return $storage === 'legacy' ? 'community_notifications' : 'notifications';
     }
 
-    private function source(Site $site, int $user, string $type, string $category, bool $enabled, bool $unreadOnly, array $modules): Builder
+    private function source(Site $site, int $user, string $type, string $category, bool $enabled, bool $unreadOnly): Builder
     {
         $legacy = $type === 'legacy';
         $query = DB::table($this->table($legacy ? 'legacy' : 'unified').' as notice')->where('notice.user_id', $user);
@@ -154,7 +154,7 @@ final class NotificationFeed
             'listing' => $this->listing($query, $site),
             'business', 'claim', 'business-update', 'job' => $this->business($query, $site, $type),
             'thread', 'reply', 'legacy', 'event' => $this->discussion($query, $site, $type),
-            'message' => $this->message($query, $site, $modules),
+            'message' => $this->message($query, $site),
         };
         $event = $legacy ? "'reply.followed'" : 'notice.event';
         $social = $legacy || $type === 'message' ? '1 = 1'
@@ -237,11 +237,10 @@ final class NotificationFeed
         return [$authorized, "item.status = 'approved' AND thread.status = 'approved'", 'item.id', []];
     }
 
-    private function message(Builder $query, Site $site, array $modules): array
+    private function message(Builder $query, Site $site): array
     {
         $query->leftJoin('messages as item', 'item.id', '=', 'notice.resource_id')
-            ->leftJoin('conversations as conversation', 'conversation.id', '=', 'item.conversation_id')
-            ->leftJoin('listings as listing', 'listing.id', '=', 'conversation.listing_id');
+            ->leftJoin('conversations as conversation', 'conversation.id', '=', 'item.conversation_id');
         if ($site->location_id !== null) {
             $query->where(fn (Builder $local) => $local->whereNull('conversation.id')
                 ->orWhereRaw(ConversationAccess::locationSql('conversation', '?', '?'), [$site->location_id, $site->location_id]));
@@ -253,15 +252,8 @@ final class NotificationFeed
         // A blocked or non-participating viewer cannot see even a historical stub.
         $query->whereRaw("(conversation.id IS NULL OR ($member AND $sender AND $unblocked))");
 
-        $marketplace = (int) ($modules['marketplace'] ?? false);
-        $businesses = (int) ($modules['businesses'] ?? false);
-        $jobs = (int) ($modules['jobs'] ?? false);
-        // Publication status gates new contact, while authorized participants retain existing conversations.
-        $published = "((conversation.context_type = 'marketplace' AND listing.id IS NOT NULL AND $marketplace = 1)
-            OR (conversation.context_type = 'business' AND $businesses = 1)
-            OR (conversation.context_type = 'job' AND $jobs = 1))";
-
-        return ["$member AND $sender", $published, 'conversation.id', []];
+        // Source publication and module settings govern new contacts, not access to existing messages.
+        return ["$member AND $sender", 'conversation.id IS NOT NULL', 'conversation.id', []];
     }
 
     private function atLocation(Builder $query, Site $site, string $present, string $location): void

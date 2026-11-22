@@ -6,6 +6,7 @@ use App\Models\Listing;
 use App\Models\Location;
 use App\Models\User;
 use App\Support\MessageAttachments;
+use App\Support\StaticMessagePdf;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -78,6 +79,27 @@ class MessageAttachmentStorageTest extends TestCase
         $this->assertSame($pdf, Storage::disk(self::DISK)->get($attachment['path']));
     }
 
+    public function test_static_pdf_parser_rejects_every_incomplete_prefix_of_a_valid_document(): void
+    {
+        $pdf = rtrim(self::pdf(), "\n");
+        $this->assertTrue(StaticMessagePdf::accepts($pdf));
+
+        for ($length = 0; $length < strlen($pdf); $length++) {
+            $this->assertFalse(StaticMessagePdf::accepts(substr($pdf, 0, $length)), "Accepted a truncated PDF at byte $length.");
+        }
+    }
+
+    public function test_static_documents_share_a_decoded_byte_budget_across_streams(): void
+    {
+        $compressed = gzcompress(str_repeat(' ', 17 * 1024 * 1024));
+        $additionalStream = '<< /Length '.strlen($compressed)." /Filter /FlateDecode >>\nstream\n".$compressed."\nendstream";
+        $overBudget = self::pdf(stream: $compressed, streamDictionary: '/Filter /FlateDecode', extraObject: $additionalStream);
+
+        $this->assertTrue(StaticMessagePdf::accepts(self::pdf(stream: $compressed, streamDictionary: '/Filter /FlateDecode')));
+        $this->assertTrue(StaticMessagePdf::accepts(self::pdf(extraObject: $additionalStream)));
+        $this->assertRejectedWithoutFiles([UploadedFile::fake()->createWithContent('document.pdf', $overBudget)]);
+    }
+
     #[DataProvider('unsupportedPdfs')]
     public function test_documents_with_unsafe_or_unverifiable_structures_never_reach_storage(string $pdf): void
     {
@@ -93,7 +115,11 @@ class MessageAttachmentStorageTest extends TestCase
             'inline bitmap outside an image stream dictionary' => [self::pdf(stream: 'q BI /W 1 /H 1 /BPC 1 /CS /G ID 0 EI Q')],
             'trailing payload' => [$pdf."\n<html>extra</html>"],
             'bad cross-reference offset' => [preg_replace('/startxref\n\d+/', "startxref\n10", $pdf)],
+            'wrong object offset in cross-reference table' => [preg_replace('/^\d{10}( 00000 n )$/m', '0000000001$1', $pdf, 1)],
             'corrupt page tree' => [self::pdf(pageTree: '<< /Type /Pages /Kids [3 0 R] /Count 9 >>')],
+            'object nesting limit' => [self::pdf(extraObject: str_repeat('[', 25).'null'.str_repeat(']', 25))],
+            'value count limit' => [self::pdf(extraObject: '['.str_repeat('null ', 100_000).']')],
+            'image dimension limit' => [self::pdf(extraObject: "<< /Type /XObject /Subtype /Image /Width 8193 /Height 1 /ColorSpace /DeviceGray /BitsPerComponent 8 /Length 8193 >>\nstream\n".str_repeat(' ', 8193)."\nendstream")],
             'escaped action name' => [self::pdf(catalog: '/Open#41ction 6 0 R')],
             'JavaScript dictionary' => [self::pdf(extraObject: '<< /S /Java#53cript /JS () >>')],
             'launch action' => [self::pdf(extraObject: '<< /S /Launch >>')],
@@ -109,6 +135,7 @@ class MessageAttachmentStorageTest extends TestCase
             'external stream data' => [self::pdf(streamDictionary: '/F (elsewhere)')],
             'unsupported stream filter' => [self::pdf(streamDictionary: '/Filter /LZWDecode')],
             'invalid stream filter value' => [self::pdf(streamDictionary: '/Filter (FlateDecode)')],
+            'truncated compressed stream' => [self::pdf(stream: substr(gzcompress('q Q'), 0, -1), streamDictionary: '/Filter /FlateDecode')],
             'oversized inflated stream' => [self::pdf(stream: gzcompress(str_repeat(' ', 32 * 1024 * 1024 + 1)), streamDictionary: '/Filter /FlateDecode')],
         ];
     }
