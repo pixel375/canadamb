@@ -14,7 +14,7 @@
                     <a href="/admin/settings" @if(request()->is('admin/settings*')) aria-current="page" @endif>Global settings</a>
                     <a href="/admin/theme" @if(request()->is('admin/theme*')) aria-current="page" @endif>Theme & appearance</a>
                 @endcan
-                <a href="/admin/moderation" @if(request()->is('admin/moderation*')) aria-current="page" @endif>Marketplace review</a>
+                <a href="/admin/moderation" @if(request()->is('admin/moderation*')) aria-current="page" @endif>Moderation</a>
                 <a href="/admin/community" @if(request()->is('admin/community')) aria-current="page" @endif>Discussions &amp; events</a>
                 <a href="/admin/jobs" @if(request()->is('admin/jobs')) aria-current="page" @endif>Job moderation</a>
                 @if(config('network.property_drafts'))<a href="/admin/properties" @if(request()->is('admin/properties*')) aria-current="page" @endif>Private property review</a>@endif

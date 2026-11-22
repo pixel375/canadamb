@@ -5,7 +5,7 @@
         @forelse($businesses as $item)
             <article class="form-stack border-b border-gray-300 py-4"><h3>{{ $item->name }}</h3>
                 @foreach($item->locations as $branch)<p>{{ $branch->location->name }} · {{ $branch->address }}</p>@endforeach
-                <p>{{ $item->description }}</p><x-review-decision :action="'/admin/business-review/'.$item->id"/>
+                <p>{{ $item->description }}</p><x-review-decision :action="'/admin/business-review/'.$item->id" :version="\App\Support\ModerationDecision::version('business', $item)"/>
             </article>
         @empty<p>No profiles waiting for review.</p>@endforelse
         {{ $businesses->links() }}
@@ -13,10 +13,10 @@
     <section class="panel">
         <h2>Ownership claims</h2>
         @forelse($claims as $claim)
-            <article class="form-stack border-b border-gray-300 py-4"><div><h3>{{ $claim->name }}</h3><p>Account email · {{ $claim->email }}</p><p>Business contact · {{ $claim->contact_email }}</p></div>
+            <article class="form-stack border-b border-gray-300 py-4"><div><h3>{{ $claim->business_name }}</h3><p>Account email · {{ $claim->account_email }}</p><p>Business contact · {{ $claim->contact_email }}</p></div>
                 <p class="prose-text">{{ $claim->evidence }}</p>
                 <p>Confirm ownership independently before approving.</p>
-                <x-review-decision :action="'/admin/business-claims/'.$claim->id"/>
+                <x-review-decision :action="'/admin/business-claims/'.$claim->id" :version="\App\Support\ModerationDecision::version('claim', (object) \Illuminate\Support\Arr::except((array) $claim, ['business_name', 'account_email']))"/>
             </article>
         @empty<p>No claims waiting for review.</p>@endforelse
         {{ $claims->links() }}
@@ -25,7 +25,7 @@
         <h2>Business updates</h2>
         @forelse($updates as $update)
             <article class="form-stack border-b border-gray-300 py-4"><div><h3>{{ $update->title }}</h3><p>{{ $update->branch->business->name }} · {{ ucfirst($update->type) }}</p></div>
-                <p class="prose-text">{{ $update->body }}</p><x-review-decision :action="'/admin/business-updates/'.$update->id"/>
+                <p class="prose-text">{{ $update->body }}</p><x-review-decision :action="'/admin/business-updates/'.$update->id" :version="\App\Support\ModerationDecision::version('business-update', $update)"/>
             </article>
         @empty<p>No updates waiting for review.</p>@endforelse
         {{ $updates->links() }}

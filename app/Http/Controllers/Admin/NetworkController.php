@@ -10,6 +10,8 @@ use App\Models\User;
 use App\Support\Audit;
 use App\Support\ListingPhotoOrder;
 use App\Support\Marketplace;
+use App\Support\ModerationDecision;
+use App\Support\ModerationReports;
 use App\Support\NetworkSettings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -42,18 +44,12 @@ class NetworkController extends Controller
             ->paginate(15, ['listing_reports.*', 'listings.title'], 'reports_page')]);
     }
 
-    public function resolveReport(Request $request, int $report)
+    public function resolveReport(Request $request, int $report, ModerationReports $reports)
     {
-        $data = $request->validate(['note' => 'required|string|max:240']);
-        DB::transaction(function () use ($request, $report, $data) {
-            abort_unless(DB::table('listing_reports')->where('id', $report)->whereNull('resolved_at')
-                ->update(['resolved_at' => now(), 'updated_at' => now()]), 404);
-            Audit::record('listing.report-resolved', $request->user()->id, context: [
-                'report' => $report, 'note' => $data['note'],
-            ]);
-        });
+        $data = $request->validate(['note' => 'required|string|max:240', 'version' => ModerationReports::VERSION_RULE]);
+        $reports->decide($request->user()->id, 'listing', $report, $data['version'], 'resolved', $data['note']);
 
-        return redirect('/admin/moderation')->with('status', 'Listing report resolved.');
+        return redirect('/admin/moderation/marketplace')->with('status', 'Listing report resolved.');
     }
 
     public function moderate(Request $request, int $listing, Marketplace $marketplace)
@@ -61,7 +57,8 @@ class NetworkController extends Controller
         $data = $request->validate([
             'status' => ['required', Rule::in(['active', 'rejected', 'removed'])],
             'reason' => ['required_unless:status,active', 'nullable', 'string', 'max:240'],
-            'version' => ['bail', 'required', 'string', 'regex:/\A[a-f0-9]{64}\z/'],
+            'version' => ModerationDecision::VERSION_RULES,
+            'notes' => 'nullable|string|max:1200',
         ]);
 
         DB::transaction(function () use ($request, $listing, $data, $marketplace) {
@@ -70,9 +67,17 @@ class NetworkController extends Controller
             abort_if($data['status'] === 'active' && $item->status !== 'pending', 409);
             abort_if(! hash_equals(ListingPhotoOrder::version($item), $data['version']), 409,
                 'This listing changed after the review screen opened. Reload it before making a decision.');
-            $marketplace->changeStatus($item, $data['status'], $request->user()->id, $data['reason'] ?? null, moderated: true);
-            Audit::record('listing.'.$data['status'], $request->user()->id, context: ['listing' => $listing]);
-        });
+            abort_if($request->attributes->get('bulk_moderation') && ($item->status !== 'pending' || $item->media->isNotEmpty()),
+                409, 'Only pending listings without photos can be reviewed in bulk.');
+            $history = $marketplace->changeStatus($item, $data['status'], $request->user()->id, $data['reason'] ?? null, moderated: true);
+            $audit = Audit::record('listing.'.$data['status'], $request->user()->id, context: ['listing' => $listing]);
+            $action = match ($data['status']) {
+                'active' => 'approve',
+                'rejected' => 'reject',
+                'removed' => 'remove',
+            };
+            ModerationDecision::record('listing', $listing, $action, $audit, $data, $history);
+        }, attempts: 3);
 
         return redirect('/admin/moderation')->with('status', 'Moderation action saved.');
     }

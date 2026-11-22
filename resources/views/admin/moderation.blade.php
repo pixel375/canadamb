@@ -5,8 +5,9 @@
             <h2>Open listing reports</h2>
             @foreach($reports as $report)
                 <div class="item-row">
-                    <div><h3>{{ $report->title }}</h3><p>{{ $report->reason }}</p></div>
+                    <div><h3>{{ $report->title }}</h3><a class="text-link" href="{{ route('moderation.reports.show', ['type' => 'listing', 'report' => $report->id]) }}">Review report #{{ $report->id }}</a></div>
                     <form method="post" action="/admin/moderation/reports/{{ $report->id }}" class="form-grid">@csrf
+                        <input type="hidden" name="version" value="{{ \App\Support\ModerationReports::version('listing', $report) }}">
                         <label>Resolution note<input name="note" required maxlength="240"></label>
                         <button class="button button-outline">Resolve report</button>
                     </form>
@@ -19,17 +20,7 @@
         <article class="panel form-stack">
             <div><h2>{{ $item->title }}</h2><p>{{ $item->seller->name }} · {{ $item->location->name }} · {{ $item->categoryRecord->name }} · {{ $item->priceLabel() }} · {{ ucfirst($item->status) }}</p></div>
             <p class="prose-text">{{ $item->description }}</p>
-            @if($item->media->isNotEmpty())
-                <ul class="listing-photo-previews" aria-label="Submitted photos">
-                    @foreach($item->media as $photo)
-                        <li>
-                            <a class="listing-gallery-link" href="/marketplace/{{ $item->id }}/photo/{{ $photo->id }}" target="_blank" rel="noopener">
-                                <img src="/marketplace/{{ $item->id }}/thumbnail/{{ $photo->id }}" alt="Submitted photo {{ $loop->iteration }} (opens in a new tab)" loading="lazy">
-                            </a>
-                        </li>
-                    @endforeach
-                </ul>
-            @endif
+            @include('admin.moderation-workbench.listing-photos')
             <form action="/admin/moderation/{{ $item->id }}" method="post" class="form-stack">
                 @csrf
                 <input type="hidden" name="version" value="{{ \App\Support\ListingPhotoOrder::version($item) }}">

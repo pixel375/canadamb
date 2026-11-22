@@ -22,6 +22,7 @@
                     @if($business->public_email)<a class="text-link" href="mailto:{{ $business->public_email }}">Email business</a>@endif
                 </div>
             </div>
+            <x-content-report-form type="business" :target="$business->id" label="business profile"/>
         </article>
         @if(!$claimed)
             <section class="panel form-stack">
@@ -39,7 +40,13 @@
         @if($updates->isNotEmpty())
             <div class="panel">
                 <h2>Business updates</h2>
-                @foreach($updates as $update)<article class="item-row"><div><p class="section-label">{{ ucfirst($update->type) }} · {{ $update->published_at->format('M j, Y') }}</p><h3>{{ $update->title }}</h3><p class="prose-text">{{ $update->body }}</p></div></article>@endforeach
+                @foreach($updates as $update)
+                    <article class="item-row"><div>
+                        <p class="section-label">{{ ucfirst($update->type) }} · {{ $update->published_at->format('M j, Y') }}</p>
+                        <h3>{{ $update->title }}</h3><p class="prose-text">{{ $update->body }}</p>
+                        <x-content-report-form type="business-update" :target="$update->id" :author="$update->author_id" label="business update"/>
+                    </div></article>
+                @endforeach
                 {{ $updates->links() }}
             </div>
         @endif

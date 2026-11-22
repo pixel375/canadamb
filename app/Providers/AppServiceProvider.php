@@ -91,6 +91,11 @@ class AppServiceProvider extends ServiceProvider
                 return $limits;
             });
         }
+        RateLimiter::for('abuse-reports', fn (Request $request): array => [
+            Limit::perMinute(8)->by('member:'.$request->user()->id),
+            Limit::perMinute(32)->by('ip:'.$request->ip()),
+        ]);
+        RateLimiter::for('moderation-evidence', fn (Request $request) => Limit::perMinute(20)->by($request->user()->id));
 
         Fortify::createUsersUsing(CreateUser::class);
         Fortify::resetUserPasswordsUsing(ResetPassword::class);

@@ -33,6 +33,9 @@
                                 <li class="item-row">
                                     <div>
                                         <p><strong>{{ $feed->caption($item) }}</strong>@if($item->unread) <span class="notification-badge">Unread</span>@endif</p>
+                                        @if($item->storage === 'unified' && isset($reasons[$item->id]))
+                                            <p class="prose-text">{{ $reasons[$item->id] }}</p>
+                                        @endif
                                         @php($timestamp = \Illuminate\Support\Carbon::parse($item->created_at)->timezone('America/Winnipeg'))
                                         <p class="field-note">{{ $categories[$item->category] }} · <time datetime="{{ $timestamp->toAtomString() }}">{{ $timestamp->format('M j, Y, g:i a T') }}</time></p>
                                         @if($item->destination_key !== null)

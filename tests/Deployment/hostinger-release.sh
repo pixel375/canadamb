@@ -11,6 +11,8 @@ scenario=${1:-staging}
 member_migration=2026_11_21_000001_create_member_settings_table
 inbox_migration=2026_11_21_000002_create_notification_inbox_tables
 messaging_migration=2026_11_22_000001_expand_unified_messaging
+decision_migration=2026_11_22_000002_create_moderation_decisions
+reports_migration=2026_11_22_000002_create_moderation_reports
 pending_migrations=()
 if [[ $scenario == production-pass-02 ]]; then
     commit=f8497962b32b6720fc39f28814acf5a63c259d26
@@ -18,6 +20,9 @@ if [[ $scenario == production-pass-02 ]]; then
 elif [[ $scenario == production-pass-04 ]]; then
     commit=cc3112c036e26ef5ed4893451b7b4d735aa7d567
     pending_migrations=("$messaging_migration")
+elif [[ $scenario == production-pass-05 ]]; then
+    commit=013637b1278c24a2c572ed742f87d131fc2ff162
+    pending_migrations=("$decision_migration" "$reports_migration")
 fi
 if (( ${#pending_migrations[@]} )); then
     if [[ $commit == "$target" ]] || ! git merge-base --is-ancestor "$commit" "$target"; then
@@ -42,7 +47,7 @@ case "$scenario" in
         prelaunch=false
         partner_user=release_probe
         ;;
-    production-initial|production-pass-02|production-pass-04)
+    production-initial|production-pass-02|production-pass-04|production-pass-05)
         export CANADAMB_DEPLOYMENT_MODE=production-initial
         export CANADAMB_PRODUCTION_DB=canadamb_ci_production
         partner_user=production_probe
@@ -52,6 +57,9 @@ case "$scenario" in
         elif [[ $scenario == production-pass-04 ]]; then
             export CANADAMB_PRODUCTION_DB=canadamb_ci_pass04
             partner_user=pass04_probe
+        elif [[ $scenario == production-pass-05 ]]; then
+            export CANADAMB_PRODUCTION_DB=canadamb_ci_pass05
+            partner_user=pass05_probe
         fi
         database=$CANADAMB_PRODUCTION_DB
         database_option=production-database
@@ -183,6 +191,11 @@ restore_sql() {
     MYSQL_PWD="$CI_MARIADB_ROOT_PASSWORD" docker exec -i -e MYSQL_PWD "$CI_MARIADB_CONTAINER" \
         mariadb --batch --skip-column-names -u root "$@"
 }
+
+if [[ $scenario == production-pass-05 ]]; then
+    source "$repo/tests/Deployment/pass05-moderation.sh"
+    exit 0
+fi
 
 if [[ $scenario == production-pass-04 ]]; then
     source "$repo/tests/Deployment/pass04-messaging.sh"

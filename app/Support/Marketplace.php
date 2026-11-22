@@ -61,7 +61,7 @@ final class Marketplace
         ]);
     }
 
-    public function changeStatus(Listing $listing, string $status, ?int $actor, ?string $reason = null, bool $moderated = false): void
+    public function changeStatus(Listing $listing, string $status, ?int $actor, ?string $reason = null, bool $moderated = false): int
     {
         $from = $listing->status;
         $listing->status = $status;
@@ -81,5 +81,7 @@ final class Marketplace
         if ($event !== null && $from !== $status && ($moderated || $status === 'expired')) {
             NotificationInbox::record($listing->user_id, $event, $history, $listing->id, [$listing->location_id]);
         }
+
+        return $history;
     }
 }

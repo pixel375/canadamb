@@ -7,6 +7,7 @@ use App\Http\Controllers\PublicController;
 use App\Models\Domain;
 use App\Models\Location;
 use App\Models\Site;
+use App\Support\ApprovalPolicy;
 use App\Support\Audit;
 use App\Support\Identity;
 use App\Support\Marketplace;
@@ -38,6 +39,7 @@ class CommunityController extends Controller
         $data = $this->validated($request);
         $domain = $data['domain'];
         unset($data['domain']);
+        $data['overrides'] = $this->mergeOverrides([], $data['overrides']);
         try {
             $site = DB::transaction(function () use ($request, $data, $domain) {
                 $site = Site::create($data + ['code' => (string) Str::uuid(), 'status' => 'draft']);
@@ -64,6 +66,7 @@ class CommunityController extends Controller
         DB::transaction(function () use ($request, $site, $data) {
             $locked = Site::lockForUpdate()->findOrFail($site->id);
             $before = $locked->only(array_keys($data));
+            $data['overrides'] = $this->mergeOverrides($locked->overrides ?? [], $data['overrides']);
             $locked->update($data);
             Audit::record('site.updated', $request->user()->id, $site->id, ['before' => $before, 'after' => $data]);
         });
@@ -144,6 +147,11 @@ class CommunityController extends Controller
         foreach (NetworkSettings::OPERATIONAL_MODULES as $key => $label) {
             $rules['modules.'.$key] = 'nullable|in:inherit,hide';
         }
+        if ($request->has('approval_policies')) {
+            abort_unless($request->user()->can('manage-theme') && ! $site?->isNetwork(), 403);
+            $rules['approval_policies'] = ['required', 'array:'.implode(',', array_keys(ApprovalPolicy::TYPES))];
+            $rules['approval_policies.*'] = ['required', Rule::in(['inherit', ApprovalPolicy::MANUAL])];
+        }
         if (! $site) {
             if (is_string($request->input('domain'))) {
                 $request->merge(['domain' => strtolower(trim($request->input('domain')))]);
@@ -170,12 +178,30 @@ class CommunityController extends Controller
             }
         }
 
-        return array_diff_key($data, array_flip(['accent_type', 'accent_colors', 'accent_thickness', 'accent_direction', 'accent_radius', 'accent_shadow', 'modules'])) + [
+        $siteOverrides = [];
+        if (! $site || isset($data['modules'])) {
+            $siteOverrides['modules'] = $overrides;
+        }
+        if (isset($data['approval_policies'])) {
+            $siteOverrides['approval_policies'] = $data['approval_policies'];
+        }
+
+        return array_diff_key($data, array_flip(['accent_type', 'accent_colors', 'accent_thickness', 'accent_direction', 'accent_radius', 'accent_shadow', 'modules', 'approval_policies'])) + [
             'accent' => ['type' => $data['accent_type'], 'colors' => $colors, 'thickness' => (int) $data['accent_thickness'],
                 'direction' => (int) $data['accent_direction'], 'radius' => (int) ($data['accent_radius'] ?? 0), 'shadow' => (bool) ($data['accent_shadow'] ?? false)],
             'subtitle' => $data['subtitle'] ?? 'Manitoba Community Network',
             'tagline' => $data['tagline'] ?? 'Your '.$data['name'].'. Your community.',
-            'overrides' => ['modules' => $overrides],
+            'overrides' => $siteOverrides,
         ];
+    }
+
+    private function mergeOverrides(array $current, array $requested): array
+    {
+        if (isset($requested['approval_policies'])) {
+            $policies = array_replace($current['approval_policies'] ?? [], $requested['approval_policies']);
+            $requested['approval_policies'] = array_filter($policies, fn ($mode) => $mode !== 'inherit');
+        }
+
+        return array_replace($current, $requested);
     }
 }

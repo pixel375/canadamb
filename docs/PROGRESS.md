@@ -1,5 +1,9 @@
 # Progress
 
+## Pass 05 centralized moderation
+
+The stacked moderation branch adds filtered queues, versioned decisions, bounded bulk review, privacy-scoped reports and approval policies with manual defaults. The additive migrations create decision and report tables. The release rehearsal uses corrected Pass 04 records and checks old rows, private media, backup restoration and simultaneous decisions. The stacked changes await schema review and production authorization. [Issue #19](https://github.com/pixel375/canadamb/issues/19) · [Moderation and acceptance](CENTRAL_MODERATION.md)
+
 ## Pass 04 unified messaging
 
 Pass 04 adds one inbox for Marketplace, business, and job messages, with separate notification preferences, opt-in business and job contacts, private attachments, and conversation reports. Its migration retains existing Marketplace history and read markers. Verify CanadaMB exercises the populated Pass 03 to Pass 04 upgrade, isolated restore, and simultaneous send on disposable MariaDB. Track exact-SHA CI and owner browser evidence separately. [Issue #17](https://github.com/pixel375/canadamb/issues/17) · [Messaging release and owner checks](UNIFIED_MESSAGING.md)

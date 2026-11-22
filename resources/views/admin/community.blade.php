@@ -5,7 +5,7 @@
             <article class="form-stack border-b border-gray-300 py-4">
                 <div><h3>{{ $item->title }}</h3><p>{{ $item->author?->name ?? 'Former member' }} · {{ $item->location?->name ?? 'Manitoba' }} · {{ ucfirst($item->status) }}</p></div>
                 <p class="prose-text">{{ $item->body }}</p>
-                <x-community-moderation-form :path="'/admin/community/threads/'.$item->id" :approved="$item->status === 'approved'" :thread-controls="true" :pinned="$item->pinned" :locked="$item->locked"/>
+                <x-community-moderation-form :path="'/admin/community/threads/'.$item->id" :version="\App\Support\ModerationDecision::version('thread', $item)" :approved="$item->status === 'approved'" :thread-controls="true" :pinned="$item->pinned" :locked="$item->locked"/>
             </article>
         @empty<p>No discussions to moderate.</p>@endforelse
         {{ $threads->links() }}
@@ -13,7 +13,7 @@
     <section class="panel"><h2>Replies</h2>
         @forelse($replies as $item)
             <article class="form-stack border-b border-gray-300 py-4"><h3>{{ $item->thread->title }}</h3><p>{{ $item->author?->name ?? 'Former member' }}</p><p class="prose-text">{{ $item->body }}</p>
-                <p>{{ ucfirst($item->status) }}</p><x-community-moderation-form :path="'/admin/community/replies/'.$item->id" :approved="$item->status === 'approved'"/>
+                <p>{{ ucfirst($item->status) }}</p><x-community-moderation-form :path="'/admin/community/replies/'.$item->id" :version="\App\Support\ModerationDecision::version('reply', $item)" :approved="$item->status === 'approved'"/>
             </article>
         @empty<p>No replies awaiting review.</p>@endforelse
         {{ $replies->links() }}
@@ -26,7 +26,7 @@
                 @if($item->event_url)<a class="text-link" rel="noreferrer" href="{{ $item->event_url }}">{{ $item->event_url }}</a>@endif
                 <p>{{ ucfirst($item->status) }}</p>
                 @if($item->cancellation_note)<p>Private cancellation note · {{ $item->cancellation_note }}</p>@endif
-                <x-community-moderation-form :path="'/admin/community/events/'.$item->id" :approved="$item->status !== 'pending'"/>
+                <x-community-moderation-form :path="'/admin/community/events/'.$item->id" :version="\App\Support\ModerationDecision::version('event', $item)" :approved="$item->status !== 'pending'"/>
             </article>
         @empty<p>No events awaiting review.</p>@endforelse
         {{ $events->links() }}

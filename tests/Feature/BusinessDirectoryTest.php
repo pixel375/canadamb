@@ -3,8 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\Business;
+use App\Models\BusinessUpdate;
 use App\Models\Location;
 use App\Models\User;
+use App\Support\ModerationDecision;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -52,6 +54,7 @@ class BusinessDirectoryTest extends TestCase
         $this->put("https://brandonmb.ca/account/businesses/$business->id", ['description' => 'Repairs bicycles.'])->assertNotFound();
         $this->actingAs($admin)->post("https://canadamb.ca/admin/business-claims/$claimId", [
             'decision' => 'approved', 'notes' => 'Matched the registration and confirmed control of contact email.',
+            'version' => ModerationDecision::version('claim', DB::table('business_claims')->where('id', $claimId)->first()),
         ])->assertSessionHasNoErrors()->assertRedirect();
         $this->assertDatabaseHas('business_memberships', ['business_id' => $business->id, 'user_id' => $claimant->id, 'role' => 'owner']);
         $this->actingAs($claimant)->put("https://brandonmb.ca/account/businesses/$business->id", [
@@ -67,6 +70,7 @@ class BusinessDirectoryTest extends TestCase
         $update = DB::table('business_updates')->value('id');
         $this->actingAs($admin)->post("https://canadamb.ca/admin/business-updates/$update", [
             'decision' => 'approved', 'notes' => 'Reviewed the update.',
+            'version' => ModerationDecision::version('business-update', BusinessUpdate::findOrFail($update)),
         ])->assertSessionHasNoErrors()->assertRedirect();
         $this->get('https://brandonmb.ca/')->assertSee('Workshop opens Saturday');
         $this->get('https://canadamb.ca/')->assertSee('Workshop opens Saturday');

@@ -18,6 +18,7 @@
             <p>{{ $item->venue }} · Organized by {{ $item->organizer }}</p>
             <p class="prose-text">{{ $item->body }}</p>
             @if($item->event_url && $item->status === 'approved')<a class="text-link" rel="nofollow ugc" href="{{ $item->event_url }}">Event or ticket information</a>@endif
+            <x-content-report-form type="event" :target="$item->id" :author="$item->author_id" label="event"/>
         </article>
     </div>
 </x-layouts.site>

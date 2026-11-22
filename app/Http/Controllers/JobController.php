@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Business;
 use App\Models\JobPosting;
+use App\Support\ApprovalPolicy;
 use App\Support\JobBoard;
 use App\Support\LocationScope;
 use App\Support\MessageContact;
@@ -64,17 +65,31 @@ class JobController extends Controller
         return view('jobs.business', compact('employer', 'branches', 'items', 'contactUsers'));
     }
 
-    public function store(Request $request, int $business)
+    public function store(Request $request, int $business, ApprovalPolicy $policy)
     {
         $site = $request->attributes->get('site');
         abort_unless($this->jobs->enabled($site), 404);
-        $employer = $this->managedBusiness($request, $business);
-        $data = $this->postingData($request);
-        $branch = $employer->locations()->findOrFail($data['business_location_id']);
-        LocationScope::forPublication($site, $branch->location_id);
-        JobPosting::create($data + ['author_id' => $request->user()->id]);
+        $approved = DB::transaction(function () use ($request, $site, $business, $policy) {
+            $employer = $this->managedBusiness($request, $business, lock: true);
+            $data = $this->postingData($request);
+            $branch = $employer->locations()->lockForUpdate()->findOrFail($data['business_location_id']);
+            $location = LocationScope::forPublication($site, $branch->location_id);
+            $author = $request->user()->id;
+            $item = new JobPosting($data + ['author_id' => $author]);
+            $revision = $policy->automaticRevision($site, 'job', $location);
+            $approved = $revision !== null && $data['closing_on'] >= $this->jobs->closingToday();
+            if ($approved) {
+                $item->forceFill(['status' => 'approved', 'published_at' => now()]);
+            }
+            $item->save();
+            if ($approved) {
+                $policy->recordAutomaticApproval('job', $item->id, $author, $site, $revision, $location);
+            }
 
-        return redirect('/account/businesses/'.$business.'/jobs')->with('status', 'Job submitted for review.');
+            return $approved;
+        }, attempts: 3);
+
+        return redirect('/account/businesses/'.$business.'/jobs')->with('status', $approved ? 'Job published.' : 'Job submitted for review.');
     }
 
     public function edit(Request $request, int $business, int $job)
@@ -163,9 +178,10 @@ class JobController extends Controller
         return $this->jobs->visible($site->location_id);
     }
 
-    private function managedBusiness(Request $request, int $business): Business
+    private function managedBusiness(Request $request, int $business, bool $lock = false): Business
     {
-        return Business::where('status', 'active')->managedBy($request->user()->id, MessageContact::ROLES)->findOrFail($business);
+        return Business::where('status', 'active')->managedBy($request->user()->id, MessageContact::ROLES)
+            ->when($lock, fn ($query) => $query->lockForUpdate())->findOrFail($business);
     }
 
     private function managedJob(Request $request, int $business, int $job, bool $lock = false): JobPosting
