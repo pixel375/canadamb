@@ -82,7 +82,8 @@
                     </select>
                 </label>
                 @auth
-                    <a class="sign-in header-inbox" href="/account/notifications"><x-icon name="bell" size="18"/> <span>Notifications</span><x-unread-notifications :count="$unreadNotifications"/></a>
+                    <a class="sign-in header-inbox" href="/account/messages" @if(request()->is('account/messages*')) aria-current="page" @endif><x-icon name="messages" size="19"/> <span>Messages</span><x-unread-messages :count="$unreadMessages"/></a>
+                    <a class="sign-in header-inbox" href="/account/notifications" @if(request()->is('account/notifications*')) aria-current="page" @endif><x-icon name="bell" size="19"/> <span>Notifications</span><x-unread-notifications :count="$unreadNotifications"/></a>
                     <a class="sign-in" href="/account/profile" aria-label="My profile"><x-icon name="person" size="18"/> <span>My account</span></a>
                 @else
                     <a class="sign-in" href="{{ $site->isNetwork() ? '/login' : '/auth/start' }}" aria-label="Sign in"><x-icon name="person" size="18"/> <span>Sign in</span></a>
@@ -137,7 +138,7 @@
     </div>
     <nav class="site-drawer-nav" aria-label="All site sections">
         <a href="/"><x-icon name="home" size="20"/> Home</a>
-        <a href="/account/messages"><x-icon name="messages" size="20"/> Messages</a>
+        <a href="/account/messages"><x-icon name="messages" size="20"/> Messages <x-unread-messages :count="$unreadMessages"/></a>
         @if($networkSettings['modules']['news'] ?? false)<a href="/news"><x-icon name="news" size="20"/> News</a>@endif
         @if($marketEnabled)<a href="/marketplace"><x-icon name="marketplace" size="20"/> Marketplace</a>@endif
         @if(($networkSettings['modules']['businesses'] ?? false) || ($networkSettings['modules']['jobs'] ?? false))
@@ -192,7 +193,7 @@
 <nav class="mobile-tab-bar" aria-label="Quick navigation">
     <a href="/" @if(request()->is('/')) aria-current="page" @endif><x-icon name="home" size="22"/><span>Home</span></a>
     <a href="/marketplace" @if(request()->is('marketplace*')) aria-current="page" @endif><x-icon name="marketplace" size="22"/><span>Marketplace</span></a>
-    <a href="/account/messages" @if(request()->is('account/messages*')) aria-current="page" @endif><x-icon name="messages" size="22"/><span>Messages</span></a>
+    <a href="/account/messages" @if(request()->is('account/messages*')) aria-current="page" @endif><x-icon name="messages" size="22"/><span>Messages</span><x-unread-messages :count="$unreadMessages"/></a>
     <a href="/account/notifications" @if(request()->is('account/notifications*', 'account/community-notifications*')) aria-current="page" @endif><x-icon name="bell" size="22"/><span>Notifications</span><x-unread-notifications :count="$unreadNotifications"/></a>
 </nav>
 @endunless
