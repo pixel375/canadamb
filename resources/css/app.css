@@ -481,3 +481,22 @@ textarea { max-width: 100%; overflow-wrap: break-word; }
 .moderation-metadata dt { color: var(--muted); font-size: .83rem; font-weight: 650; }
 .moderation-metadata dd { margin: 2px 0 0; }
 .moderation-history + .moderation-history { border-top: 1px solid var(--border); padding-top: 12px; }
+
+.event-agenda-nav { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .75rem; }
+.agenda-day { border: 1px solid var(--border); border-radius: .65rem; }
+.agenda-day > summary { display: flex; justify-content: space-between; align-items: center; gap: .7rem; cursor: pointer; padding: .65rem .8rem; min-height: 44px; }
+.agenda-day > summary::before { content: '▸'; color: var(--muted); }
+.agenda-day[open] > summary::before { content: '▾'; }
+.agenda-day > summary > span:first-child { flex: 1; }
+.agenda-day > summary[aria-current] { background: var(--soft); border-radius: .65rem; }
+.agenda-day > a, .agenda-item { display: block; border-top: 1px solid var(--border); padding: .7rem .85rem; overflow-wrap: anywhere; }
+.event-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: .85rem; }
+.event-fields input, .event-fields select { max-width: 100%; min-width: 0; }
+.discussion-title-row { display: flex; justify-content: space-between; align-items: flex-start; gap: .6rem; }
+.discussion-title-row h1 { min-width: 0; overflow-wrap: anywhere; }
+.discussion-options { position: relative; flex: 0 0 auto; }
+.discussion-options > summary { display: grid; place-items: center; cursor: pointer; width: 44px; height: 44px; list-style: none; border: 1px solid var(--border); border-radius: .55rem; }
+.discussion-options-links { z-index: 2; position: absolute; inset-inline-end: 0; width: 13.5rem; max-width: 75vw; background: var(--card); border: 1px solid var(--border); border-radius: .55rem; }
+.discussion-options-links a { display: flex; align-items: center; color: var(--link); padding: .45rem .65rem; min-height: 44px; }
+.discussion-options-links a:hover { background: var(--soft); }
+.linked-event-summary { margin-block: .8rem; padding: .8rem; border: 1px solid var(--border); border-radius: .65rem; overflow-wrap: anywhere; }

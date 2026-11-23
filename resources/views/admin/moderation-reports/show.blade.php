@@ -1,6 +1,6 @@
 <x-layouts.admin title="Report review">
     <div class="page-intro">
-        <div><a class="text-link" href="{{ route('moderation.reports.index') }}">Abuse reports</a><h1>{{ $discussionEvidence['title'] ?? $record->title ?? 'Source unavailable' }}</h1></div>
+        <div><a class="text-link" href="{{ route('moderation.reports.index') }}">Abuse reports</a><h1>{{ $discussionEvidence['title'] ?? $eventEvidence['title'] ?? $record->title ?? 'Source unavailable' }}</h1></div>
     </div>
     <article class="panel form-stack">
         <div>
@@ -17,6 +17,17 @@
             <div><h2>Report submission</h2><p class="prose-text">{{ $reason }}</p></div>
             @if($discussionEvidence)
                 <div><h2>Reported discussion text</h2><p class="prose-text">{{ $discussionEvidence['body'] }}</p></div>
+            @endif
+            @if($eventEvidence)
+                <div class="form-stack">
+                    <h2>Reported event details</h2>
+                    <p>{{ $eventEvidence['venue'] }} · {{ $eventEvidence['organizer'] }}</p>
+                    <p>{{ \Illuminate\Support\Carbon::parse($eventEvidence['starts_at'], 'UTC')->setTimezone('America/Winnipeg')->format('M j, Y · g:i a T') }}</p>
+                    <p class="prose-text">{{ $eventEvidence['body'] }}</p>
+                    @if($eventEvidence['event_url'] ?? null)
+                        <p class="break-all">Reported event URL · {{ $eventEvidence['event_url'] }}</p>
+                    @endif
+                </div>
             @endif
             @if($record->title !== null)
                 <div><a class="text-link" href="{{ route('moderation.items.show', ['type' => $record->type, 'item' => $record->source_id]) }}">{{ $record->type === 'thread' ? 'Review current discussion' : 'Review reported content' }}</a></div>

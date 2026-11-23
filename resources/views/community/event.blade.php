@@ -1,13 +1,4 @@
-@php
-    $eventData = [
-        '@context' => 'https://schema.org', '@type' => 'Event', 'name' => $item->title,
-        'startDate' => $item->localStart()->toAtomString(), 'endDate' => $item->localEnd()?->toAtomString(),
-        'description' => $item->body, 'url' => $canonical, 'eventStatus' => 'https://schema.org/'.($item->status === 'cancelled' ? 'EventCancelled' : 'EventScheduled'),
-        'location' => ['@type' => 'Place', 'name' => $item->venue, 'address' => ['@type' => 'PostalAddress', 'addressLocality' => $item->location->name, 'addressRegion' => 'MB', 'addressCountry' => 'CA']],
-        'organizer' => ['@type' => 'Organization', 'name' => $item->organizer],
-    ];
-@endphp
-<x-layouts.site :title="$item->title" :canonical="$canonical" :structured-data="array_filter($eventData)">
+<x-layouts.site :title="$item->title" :canonical="$canonical" :structured-data="$item->status === 'approved' ? array_filter($item->structuredData($canonical)) : null">
     <div class="container page-shell narrow">
         <a class="text-link mb-4" href="/events">Community events</a>
         <article class="panel">

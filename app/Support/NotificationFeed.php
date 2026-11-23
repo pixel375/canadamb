@@ -90,6 +90,7 @@ final class NotificationFeed
             'reply.followed' => 'New reply in a discussion you follow',
             'thread.pending' => 'Discussion awaiting review',
             'thread.withdrawn' => 'Discussion withdrawn',
+            'event.pending' => 'Event awaiting review',
             'message.received' => match ($item->message_context) {
                 'business' => 'New business message',
                 'job' => 'New job message',
@@ -122,7 +123,7 @@ final class NotificationFeed
             'job' => '/jobs/'.$key,
             'thread' => Community::DISCUSSIONS_PATH.'/'.$key,
             'reply' => Community::DISCUSSIONS_PATH.'/replies/'.$key,
-            'event' => '/events/'.$key,
+            'event' => ($item->linked_event ? Community::DISCUSSIONS_PATH.'/' : '/events/').$key,
             'message' => '/account/messages/'.$key,
         };
     }
@@ -131,7 +132,7 @@ final class NotificationFeed
     public function reasons(Collection $items): array
     {
         $outcomes = $items->filter(fn (stdClass $item) => $item->relevant && $item->storage === 'unified'
-            && (str_ends_with($item->event, '.rejected') || $item->event === 'listing.removed'));
+            && (str_ends_with($item->event, '.rejected') || in_array($item->event, ['listing.removed', 'event.cancelled'], true)));
         if ($outcomes->isEmpty()) {
             return [];
         }
@@ -181,9 +182,10 @@ final class NotificationFeed
         $social = $legacy || $type === 'message' ? '1 = 1'
             : ($type === 'reply' ? "notice.event = 'reply.followed'" : '1 = 0');
         $module = $enabled ? '1 = 1' : '1 = 0';
-        $hasLink = "(($authorized) AND ($module) AND ($published) AND ($social OR $event LIKE '%.approved'))";
+        $linkableOutcome = $type === 'event' ? '1 = 1' : "($social OR $event LIKE '%.approved')";
+        $hasLink = "(($authorized) AND ($module) AND ($published) AND ($linkableOutcome))";
         // Module visibility hides destinations and optional activity, while authorized moderation outcomes remain readable.
-        $historical = in_array($type, ['thread', 'reply'], true) ? '1 = 1' : "$event NOT LIKE '%.approved'";
+        $historical = in_array($type, ['thread', 'reply', 'event'], true) ? '1 = 1' : "$event NOT LIKE '%.approved'";
         $relevant = "(($authorized) AND ((($published) AND (($module) OR NOT ($social))) OR (NOT ($social) AND ($historical))))";
         $unread = $type === 'message'
             ? ConversationAccess::unreadSql('conversation', 'item', 'notice.user_id', 'notice.user_id')
@@ -197,6 +199,7 @@ final class NotificationFeed
             ->selectRaw($type === 'message' ? 'conversation.context_type as message_context' : 'NULL as message_context')
             ->selectRaw("CASE WHEN $social THEN 1 ELSE 0 END as priority")
             ->selectRaw("CASE WHEN $hasLink THEN $destination ELSE NULL END as destination_key", $bindings)
+            ->selectRaw($type === 'event' ? 'CASE WHEN item.thread_id IS NULL THEN 0 ELSE 1 END as linked_event' : '0 as linked_event')
             ->selectRaw("$title as title", $title === 'NULL' ? [] : $bindings)
             ->selectRaw("CASE WHEN $relevant THEN 1 ELSE 0 END as relevant", $bindings)
             ->selectRaw("CASE WHEN $relevant AND notice.read_at IS NULL AND ($unread) THEN 1 ELSE 0 END as unread", $bindings);
@@ -243,9 +246,22 @@ final class NotificationFeed
 
     private function discussion(Builder $query, Site $site, string $type): array
     {
-        if (in_array($type, ['thread', 'event'], true)) {
-            $table = $type === 'thread' ? 'community_threads' : 'community_events';
-            $query->leftJoin($table.' as item', 'item.id', '=', 'notice.resource_id');
+        if ($type === 'event') {
+            $query->leftJoin('community_events as item', 'item.id', '=', 'notice.resource_id')
+                ->leftJoin('community_threads as thread', 'thread.id', '=', 'item.thread_id');
+            $this->atLocation($query, $site, 'item.id', 'item.location_id');
+            if ($site->location_id !== null) {
+                $query->where(fn (Builder $local) => $local->whereNull('item.thread_id')->orWhereColumn('thread.location_id', 'item.location_id'));
+            }
+            $source = LinkedEvents::visibleSourceSql('item', 'thread', app(Community::class)->enabled($site, 'community'), $site->location_id !== null);
+
+            $published = "((item.thread_id IS NULL AND item.status IN ('approved', 'cancelled')) OR (item.thread_id IS NOT NULL AND $source))";
+
+            return ['item.author_id = notice.user_id', $published, 'COALESCE(item.thread_id, item.id)', []];
+        }
+
+        if ($type === 'thread') {
+            $query->leftJoin('community_threads as item', 'item.id', '=', 'notice.resource_id');
             $this->atLocation($query, $site, 'item.id', 'item.location_id');
 
             return ['item.author_id = notice.user_id', "item.status = 'approved'", 'item.id', []];

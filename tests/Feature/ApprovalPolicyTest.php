@@ -9,6 +9,7 @@ use App\Models\Location;
 use App\Models\Site;
 use App\Models\User;
 use App\Support\ListingPhotoOrder;
+use App\Support\ModerationDecision;
 use App\Support\NetworkSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -139,7 +140,13 @@ class ApprovalPolicyTest extends TestCase
         $this->actingAs($owner)->post(self::CITY.'/community/'.$thread->id.'/replies', ['body' => 'Approved reply text.'])->assertSessionHasNoErrors();
         $this->assertTrue($thread->fresh()->last_activity_at->gt($thread->last_activity_at));
         $this->get(self::CITY.'/discussions/'.$thread->id)->assertOk()->assertSee('Approved reply text.');
-        $this->post(self::CITY.'/events', $this->event())->assertSessionHasNoErrors();
+        $eventSource = CommunityThread::forceCreate([
+            'title' => 'A city event', 'body' => 'A community event with plenty of details.', 'category' => 'general',
+            'location_id' => $city->location_id, 'author_id' => $owner->id, 'status' => 'approved',
+        ])->fresh();
+        $this->post(self::CITY."/discussions/$eventSource->id/event", $this->event() + [
+            'thread_version' => ModerationDecision::version('thread', $eventSource),
+        ])->assertSessionHasNoErrors();
 
         $business = Business::create(['name' => 'Approved employer', 'slug' => 'approved-employer', 'category' => 'retail', 'status' => 'active']);
         $branch = $business->locations()->create(['location_id' => $city->location_id, 'address' => '1 Main Street']);

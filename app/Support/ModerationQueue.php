@@ -38,7 +38,7 @@ final class ModerationQueue
             'job' => JobPosting::with('branch.location', 'branch.business')->find($id),
             'thread' => CommunityThread::with(['author', 'location'])->find($id),
             'reply' => CommunityReply::with(['thread.location', 'author'])->find($id),
-            'event' => CommunityEvent::with('location')->find($id),
+            'event' => CommunityEvent::with(['location', 'thread'])->find($id),
             default => null,
         };
     }
@@ -79,7 +79,9 @@ final class ModerationQueue
                 'community.thread.author-restore',
             ], 'thread'],
             'reply' => [['community.reply.approve', 'community.reply.reject'], 'reply'],
-            'event' => [['community.event.approve', 'community.event.reject'], 'event'],
+            'event' => [['community.event.approve', 'community.event.reject', 'community.event.edit', 'community.event.cancel',
+                'community.event.source-review', 'community.event.request', 'community.event.auto-approve',
+                'community.event.author-edit', 'community.event.author-cancel', 'community.event.author-resubmit'], 'event'],
         };
 
         return DB::table('audit_logs as audit')->leftJoin('users as reviewer', 'reviewer.id', '=', 'audit.actor_id')

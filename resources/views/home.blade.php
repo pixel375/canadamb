@@ -103,7 +103,7 @@
                         <div class="section-heading"><h2 id="events-title">Upcoming events</h2>@unless($preview ?? false)<a class="text-link" href="/events">All events <x-icon name="arrow" size="16"/></a>@endunless</div>
                         <div class="panel">
                             @foreach($upcomingEvents as $event)
-                                <article class="item-row"><div><h3>@if($preview ?? false){{ $event->title }}@else<a href="/events/{{ $event->id }}">{{ $event->title }}</a>@endif</h3><p>{{ $event->localStart()->format('M j · g:i a T') }} · {{ $event->location->name }}</p></div></article>
+                                <article class="item-row"><div><h3>@if($preview ?? false){{ $event->title }}@else<a href="{{ $event->publicPath() }}">{{ $event->title }}</a>@endif</h3><p>{{ $event->localStart()->format('M j · g:i a T') }} · {{ $event->location->name }}</p></div></article>
                             @endforeach
                         </div>
                     </section>

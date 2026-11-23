@@ -11,6 +11,9 @@
             <div><h1>Discussions</h1><p>Browse questions and recommendations in {{ $area }}.</p></div>
             <div class="inline-actions">
                 <a class="button button-primary" href="/discussions/new">Start a discussion</a>
+                @if(app(\App\Support\Community::class)->enabled($site, 'events'))
+                    <a class="button button-outline" href="/events">Events calendar</a>
+                @endif
                 @if(auth()->user()?->hasVerifiedEmail())
                     <a class="text-link" href="/account/discussions">My discussions</a>
                 @endif

@@ -12,6 +12,7 @@ use App\Support\Audit;
 use App\Support\BusinessDirectory;
 use App\Support\Community;
 use App\Support\JobBoard;
+use App\Support\LinkedEvents;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -93,10 +94,12 @@ class ContentReportController extends Controller
         $community = app(Community::class);
         abort_unless($community->enabled($site, $type === 'event' ? 'events' : 'community'), 404);
         if ($type === 'event') {
-            $event = $community->events($site->location_id)->withoutEagerLoads()
-                ->whereIn('status', ['approved', 'cancelled'])->lockForUpdate()->findOrFail($target);
+            $visible = $community->publicEvents($site)->withoutEagerLoads();
+            abort_unless((clone $visible)->whereKey($target)->exists(), 404);
+            LinkedEvents::lock($target);
+            $event = $visible->lockForUpdate()->findOrFail($target);
 
-            return [$event->author_id, $event->location_id, '/events/'.$event->id];
+            return [$event->author_id, $event->location_id, $event->publicPath()];
         }
 
         $threads = $community->threads($site->location_id)->withoutEagerLoads();

@@ -44,7 +44,7 @@ class PublicController extends Controller
             'recentDiscussions' => $community->enabled($site, 'community')
                 ? $community->threads($location?->id)->latest('last_activity_at')->latest('id')->limit(4)->get() : collect(),
             'upcomingEvents' => $community->enabled($site, 'events')
-                ? $community->upcoming($community->events($location?->id))->oldest('starts_at')->oldest('id')->limit(4)->get() : collect(),
+                ? $community->upcoming($community->publicEvents($site, $location?->id))->oldest('starts_at')->oldest('id')->limit(4)->get() : collect(),
             'latestJobs' => $jobs->enabled($site)
                 ? $jobs->visible($location?->id)->latest('published_at')->latest('id')->limit(4)->get() : collect(),
             'locations' => $site->isNetwork() ? Location::selectable()->orderBy('name')->get() : collect(),
@@ -122,12 +122,15 @@ class PublicController extends Controller
             }
         }
         $community = app(Community::class);
-        foreach (['community' => $community->threads($site->location_id), 'events' => $community->upcoming($community->events($site->location_id))] as $module => $query) {
+        foreach (['community' => $community->threads($site->location_id), 'events' => $community->upcoming($community->publicEvents($site))] as $module => $query) {
             if (! $community->enabled($site, $module) || ! $query->exists()) {
                 continue;
             }
             $path = $module === 'community' ? Community::DISCUSSIONS_PATH : '/events';
             $urls[] = NetworkUrl::to($site, $path);
+            if ($module === 'events') {
+                $query->whereNull('thread_id');
+            }
             foreach ($query->with('location.site.domain')->orderBy('id')->lazy(250)->take(10000) as $item) {
                 if ($community->canonicalSite($item, $module)->id === $site->id) {
                     $urls[] = NetworkUrl::to($site, $path.'/'.$item->id);

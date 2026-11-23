@@ -1,5 +1,9 @@
 # Progress
 
+## Pass 07 discussion events
+
+Discussion owners can request one event per approved discussion. The agenda uses expandable Manitoba-local days, and legacy standalone detail URLs remain available. The additive foreign key retains earlier event records. Verify includes a populated Pass 06 migration, backup restore and competing event requests and moderator decisions. Production schema approval and physical-device acceptance remain separate. [Issue #23](https://github.com/pixel375/canadamb/issues/23) · [Events and recovery](DISCUSSION_EVENTS.md)
+
 ## Pass 06 Discussions
 
 The stacked Discussions branch adds first-class routes, same-host legacy redirects, scoped browsing and a versioned author lifecycle. Existing reports, replies, follows, notices and event records retain their IDs. No schema migrations were added. The disposable release rehearses an update and restore from the corrected Pass 05 baseline and checks a competing author edit and moderator decision. Production approval and physical-device acceptance remain separate. [Issue #21](https://github.com/pixel375/canadamb/issues/21) · [Discussions runbook](DISCUSSIONS.md)

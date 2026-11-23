@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\CommunityEvent;
 use App\Models\Listing;
 use App\Models\Location;
 use App\Models\User;
@@ -82,9 +83,13 @@ class ModerationWorkbenchController extends Controller
         $data = $request->validate([
             'action' => ['required', Rule::in($this->actions($type))],
             'version' => ModerationDecision::VERSION_RULES,
-            'reason' => 'required_if:action,reject,remove|nullable|string|max:300',
+            'reason' => 'required_if:action,reject,remove,cancel,edit|nullable|string|max:300',
+            'thread_version' => ['sometimes', ...ModerationDecision::VERSION_RULES],
             'notes' => 'nullable|string|max:1200',
         ]);
+        if ($type === 'event' && $data['action'] === 'edit') {
+            $data += $request->only(['category', 'organizer', 'venue', 'event_url', 'starts_at', 'ends_at']);
+        }
         $this->apply($request, $type, $item, $data);
 
         return redirect()->route('moderation.items.show', ['type' => $type, 'item' => $item])
@@ -103,7 +108,9 @@ class ModerationWorkbenchController extends Controller
         $items = [];
         foreach ($data['ids'] as $id) {
             $resource = isset($rows[$id]) ? ModerationQueue::find($type, $id) : null;
-            $version = $resource !== null && $resource->status === 'pending' && ! ($resource instanceof Listing && $resource->media->isNotEmpty())
+            $version = $resource !== null && $resource->status === 'pending'
+                && ! ($resource instanceof Listing && $resource->media->isNotEmpty())
+                && ! ($resource instanceof CommunityEvent && $resource->thread_id !== null)
                 ? ModerationDecision::version($type, $resource) : null;
             $items[] = [
                 'id' => $id, 'title' => $this->reviewTitle($type, $resource) ?? $rows[$id]->title ?? null, 'version' => $version,
@@ -120,6 +127,7 @@ class ModerationWorkbenchController extends Controller
             'business' => $resource?->name,
             'claim' => null,
             'reply' => $resource?->thread->title,
+            'event' => $resource?->thread?->title ?? $resource?->title,
             default => $resource?->title,
         };
     }
@@ -190,7 +198,8 @@ class ModerationWorkbenchController extends Controller
         return match ($type) {
             'listing' => ['approve', 'reject', 'remove'],
             'thread' => ['approve', 'reject', 'pin', 'unpin', 'lock', 'unlock'],
-            'business', 'claim', 'business-update', 'job', 'reply', 'event' => ['approve', 'reject'],
+            'event' => ['approve', 'reject', 'edit', 'cancel'],
+            'business', 'claim', 'business-update', 'job', 'reply' => ['approve', 'reject'],
             default => abort(404),
         };
     }
@@ -203,7 +212,8 @@ class ModerationWorkbenchController extends Controller
 
     private function apply(Request $request, string $type, int $id, array $data, bool $bulk = false): void
     {
-        $fields = array_intersect_key($data, array_flip(['action', 'version', 'notes', 'reason']));
+        $fields = array_intersect_key($data, array_flip(['action', 'version', 'notes', 'reason', 'thread_version',
+            'category', 'organizer', 'venue', 'event_url', 'starts_at', 'ends_at']));
         $fields['decision'] = $data['action'] === 'approve' ? 'approved' : 'rejected';
         $fields['status'] = match ($data['action']) {
             'approve' => 'active',

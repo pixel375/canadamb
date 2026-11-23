@@ -13,6 +13,7 @@ inbox_migration=2026_11_21_000002_create_notification_inbox_tables
 messaging_migration=2026_11_22_000001_expand_unified_messaging
 decision_migration=2026_11_22_000002_create_moderation_decisions
 reports_migration=2026_11_22_000002_create_moderation_reports
+events_migration=2026_11_22_000003_link_community_events_to_threads
 pending_migrations=()
 if [[ $scenario == production-pass-02 ]]; then
     commit=f8497962b32b6720fc39f28814acf5a63c259d26
@@ -25,6 +26,9 @@ elif [[ $scenario == production-pass-05 ]]; then
     pending_migrations=("$decision_migration" "$reports_migration")
 elif [[ $scenario == production-pass-06 ]]; then
     commit=b2b0f05e6818482094c69e217605b90c43f9752c
+elif [[ $scenario == production-pass-07 ]]; then
+    commit=d35a2f0db1dd735a41a92a4cc8341d70a058c1cd
+    pending_migrations=("$events_migration")
 fi
 if (( ${#pending_migrations[@]} )) || [[ $scenario == production-pass-06 ]]; then
     if [[ $commit == "$target" ]] || ! git merge-base --is-ancestor "$commit" "$target"; then
@@ -49,7 +53,7 @@ case "$scenario" in
         prelaunch=false
         partner_user=release_probe
         ;;
-    production-initial|production-pass-02|production-pass-04|production-pass-05|production-pass-06)
+    production-initial|production-pass-02|production-pass-04|production-pass-05|production-pass-06|production-pass-07)
         export CANADAMB_DEPLOYMENT_MODE=production-initial
         export CANADAMB_PRODUCTION_DB=canadamb_ci_production
         partner_user=production_probe
@@ -65,6 +69,9 @@ case "$scenario" in
         elif [[ $scenario == production-pass-06 ]]; then
             export CANADAMB_PRODUCTION_DB=canadamb_ci_pass06
             partner_user=pass06_probe
+        elif [[ $scenario == production-pass-07 ]]; then
+            export CANADAMB_PRODUCTION_DB=canadamb_ci_pass07
+            partner_user=pass07_probe
         fi
         database=$CANADAMB_PRODUCTION_DB
         database_option=production-database
@@ -196,6 +203,11 @@ restore_sql() {
     MYSQL_PWD="$CI_MARIADB_ROOT_PASSWORD" docker exec -i -e MYSQL_PWD "$CI_MARIADB_CONTAINER" \
         mariadb --batch --skip-column-names -u root "$@"
 }
+
+if [[ $scenario == production-pass-07 ]]; then
+    source "$repo/tests/Deployment/pass07-events.sh"
+    exit 0
+fi
 
 if [[ $scenario == production-pass-06 ]]; then
     source "$repo/tests/Deployment/pass06-discussions.sh"
