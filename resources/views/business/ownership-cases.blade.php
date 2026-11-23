@@ -13,7 +13,7 @@
                             <form method="post" action="/account/ownership-cases/{{ $item->id }}/respond">
                                 @csrf
                                 <input type="hidden" name="action" value="{{ $choice }}">
-                                <input type="hidden" name="version" value="{{ \App\Support\ModerationDecision::version('ownership-case', $item) }}">
+                                <input type="hidden" name="version" value="{{ $item->review_version }}">
                                 <button class="button {{ $choice === 'accept' ? 'button-primary' : 'button-outline' }}">{{ $label }}</button>
                             </form>
                         @endforeach
@@ -22,7 +22,7 @@
                         <form method="post" action="/account/ownership-cases/{{ $item->id }}/respond">
                             @csrf
                             <input type="hidden" name="action" value="withdraw">
-                            <input type="hidden" name="version" value="{{ \App\Support\ModerationDecision::version('ownership-case', $item) }}">
+                            <input type="hidden" name="version" value="{{ $item->review_version }}">
                             <button class="button button-outline">Withdraw request</button>
                         </form>
                     @endif
