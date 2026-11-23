@@ -15,7 +15,8 @@ const { chromium } = require('playwright');
     const script = path.join(__dirname, 'navigation-marketplace-discovery.js');
     try {
         await page.goto('http://canadamb.localhost:8000/');
-        const run = vm.runInThisContext('(' + fs.readFileSync(script, 'utf8') + ')', {
+        const source = fs.readFileSync(script, 'utf8').trim().replace(/;$/, '');
+        const run = vm.runInThisContext('(' + source + ')', {
             filename: script,
             timeout: 3000,
         });
