@@ -1,0 +1,75 @@
+name: Browser QA — responsive navigation and categories
+
+on:
+  push:
+    branches:
+      - feature/pass-10-navigation-marketplace-discovery
+  pull_request:
+    paths:
+      - 'resources/**'
+      - 'app/**'
+      - 'routes/**'
+      - 'tests/Browser/**'
+      - '.github/workflows/ui-browser.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  chromium:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: curl, dom, fileinfo, gd, mbstring, openssl, pdo_sqlite, sodium, zip
+          tools: composer:v2
+          coverage: none
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install application and browser tools
+        run: |
+          composer install --prefer-dist --no-interaction --no-progress
+          npm ci
+          npm run build
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Create isolated two-host test database
+        run: |
+          cp .env.example .env
+          php artisan key:generate --force
+          touch database/database.sqlite
+          php artisan migrate:fresh --seed --force
+          git rev-parse HEAD > public/build/source-commit
+      - name: Start isolated local website
+        run: |
+          php artisan serve --host=0.0.0.0 --port=8000 > test-browser-server.log 2>&1 &
+          echo $! > test-browser-server.pid
+          for i in $(seq 1 40); do
+            if curl -fsS -H 'Host: canadamb.localhost' http://127.0.0.1:8000/ >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat test-browser-server.log
+          exit 1
+      - name: Inspect both hosts and category navigation in Chromium
+        run: node tests/Browser/run-navigation.cjs
+      - name: Upload evidence for troubleshooting
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chromium-navigation-${{ github.sha }}
+          path: |
+            test-results/
+            test-browser-server.log
+          if-no-files-found: ignore
+      - name: Stop isolated local server
+        if: always()
+        run: |
+          if [ -f test-browser-server.pid ]; then kill "$(cat test-browser-server.pid)" || true; fi
