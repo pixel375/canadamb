@@ -47,7 +47,7 @@ class MarketplaceController extends Controller
         if ($site->isNetwork()) {
             $rules['location'] = ['bail', 'nullable', 'string', 'max:100', Rule::exists(Location::class, 'slug')->where('province', 'MB')->where('selectable', true)];
         }
-        $filters = array_filter($request->validate($rules), fn ($value) => $value !== null);
+        $filters = array_filter($request->validate($rules), fn ($value) => $value !== null && $value !== '');
         if (($filters['sort'] ?? null) === 'newest') {
             unset($filters['sort']);
         }
