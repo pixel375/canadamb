@@ -8,7 +8,13 @@
             <label>Title<input name="title" value="{{ old('title', $item->title) }}" required maxlength="120"></label>
             <label>Description<textarea name="description" rows="5" required maxlength="5000">{{ old('description', $item->description) }}</textarea></label>
             <div class="form-grid">
-                <label>Category<select name="category" x-model="category" required><option value="">Choose a category</option>@foreach($categories as $key => $label)<option value="{{ $key }}" @selected(old('category', $item->category) === $key)>{{ $label }}</option>@endforeach</select></label>
+                <label>Category<select name="category" x-model="category" required><option value="">Choose a subcategory</option>
+                    @foreach(\App\Support\MarketplaceCategories::grouped($categories->all()) as $group)
+                        <optgroup label="{{ $group['name'] }}">
+                            @foreach($group['available'] as $key => $label)<option value="{{ $key }}" @selected(old('category', $item->category) === $key)>{{ $label }}</option>@endforeach
+                        </optgroup>
+                    @endforeach
+                </select><small class="field-note">Choose the closest subcategory. Public real estate listings are not yet available.</small></label>
                 <label>Condition<select name="condition" required><option value="">Choose a condition</option>@foreach($conditions as $key => $label)<option value="{{ $key }}" @selected(old('condition', $item->condition) === $key)>{{ $label }}</option>@endforeach</select></label>
             </div>
             @foreach($fields as $category => $attributes)
