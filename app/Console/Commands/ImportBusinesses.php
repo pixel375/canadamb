@@ -9,8 +9,11 @@ use App\Support\BusinessImports\BusinessSources;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Console\Command;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
+use Throwable;
 
 class ImportBusinesses extends Command
 {
@@ -92,12 +95,7 @@ class ImportBusinesses extends Command
         $rows = $import->listRows($actor, $id, $this->option('decision'));
         $headings = ['Line', 'Decision', 'Why', 'Candidate IDs', 'Business ID', 'Branch ID'];
         if ($this->option('export')) {
-            $output = fopen('php://output', 'wb');
-            fputcsv($output, $headings, escape: '');
-            foreach ($rows as $row) {
-                fputcsv($output, array_map(self::safeCell(...), $this->reviewRow($row)), escape: '');
-            }
-            fclose($output);
+            $this->writeExport($id, $headings, $rows);
 
             return;
         }
@@ -115,6 +113,36 @@ class ImportBusinesses extends Command
         }
         $this->table($headings, $table);
         $this->comment('Use --review with --decision or --export to inspect the complete plan.');
+    }
+
+    private function writeExport(int $id, array $headings, iterable $rows): void
+    {
+        $folder = storage_path('app/.business-imports');
+        File::ensureDirectoryExists($folder, 0700);
+        $path = $folder.'/review-'.$id.'-'.Str::uuid().'.csv';
+        $output = fopen($path, 'xb');
+        if ($output === false) {
+            throw new RuntimeException('Could not open a private review export.');
+        }
+        try {
+            try {
+                $write = function (array $cells) use ($output): void {
+                    if (fputcsv($output, array_map(self::safeCell(...), $cells), escape: '') === false) {
+                        throw new RuntimeException('Could not finish writing the private review export.');
+                    }
+                };
+                $write($headings);
+                foreach ($rows as $row) {
+                    $write($this->reviewRow($row));
+                }
+            } finally {
+                fclose($output);
+            }
+        } catch (Throwable $error) {
+            File::delete($path);
+            throw $error;
+        }
+        $this->line('Private CSV: '.$path);
     }
 
     private function reviewRow(object $row): array

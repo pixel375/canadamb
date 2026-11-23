@@ -152,6 +152,25 @@ class ReviewedBusinessImportTest extends TestCase
         $this->assertSame(2, DB::table('business_import_runs')->find($plan->id)->skipped);
     }
 
+    public function test_cli_exports_review_as_a_private_csv_without_interactive_prompt_bytes(): void
+    {
+        $plan = $this->stage("one,Example Store,retail,brandon,1 Test Road,,store\n");
+        $folder = storage_path('app/.business-imports');
+        $existing = glob($folder.DIRECTORY_SEPARATOR.'review-*') ?: [];
+        $this->artisan('businesses:import', ['--actor' => $this->operator->id, '--review' => $plan->id, '--export' => true])
+            ->expectsQuestion('Operator password', 'password')->expectsOutputToContain('Private CSV:')->assertSuccessful();
+        $exports = array_values(array_diff(glob($folder.DIRECTORY_SEPARATOR.'review-*') ?: [], $existing));
+        $this->assertCount(1, $exports);
+        try {
+            $file = fopen($exports[0], 'rb');
+            $this->assertSame(['Line', 'Decision', 'Why', 'Candidate IDs', 'Business ID', 'Branch ID'], fgetcsv($file, escape: ''));
+            $this->assertSame(['2', 'create_business', '', '', '', ''], fgetcsv($file, escape: ''));
+            fclose($file);
+        } finally {
+            unlink($exports[0]);
+        }
+    }
+
     public function test_import_rejects_tampering_and_rolls_back_a_failed_write_before_retry(): void
     {
         $this->approve();

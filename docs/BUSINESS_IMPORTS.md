@@ -30,7 +30,7 @@ The seventh column is optional. A stable branch key identifies one physical bran
 ```bash
 php artisan businesses:import /private/businesses.csv --source-id=3
 php artisan businesses:import --review=15 --decision=identity_conflict
-php artisan businesses:import --review=15 --export > /private/review-15.csv
+php artisan businesses:import --review=15 --export
 php artisan businesses:import --resolve=15 --line=4 --action=link --business=81 --token=REVIEW_TOKEN
 php artisan businesses:import --apply=15 --token=LATEST_REVIEW_TOKEN
 ```
@@ -41,7 +41,7 @@ Name matches need explicit evidence. With `--action=link`, use a known matching 
 
 A new profile receives an unclaimed status and goes live only when the reviewed plan is explicitly applied. Rights approval, the authenticated apply actor, input SHA-256, row dispositions and resulting IDs remain in the database. Existing claimed or staffed profiles, pending claims, verified addresses and owner-managed fields are protected. Writes to an address or organization website require an unchanged source-owned baseline. Existing slugs and relations are retained. A group can appear in several communities, while a city detail shows that city's branches.
 
-Use `--full-snapshot` only for genuinely complete input. A full snapshot cannot skip rows and only flags omitted branches as stale. It never deletes or unpublishes them. Incremental plans leave omissions untouched. After a run expires and another day passes, `businesses:import --purge` removes normalized private payloads and keeps the provenance records. Original files and exports are operator-managed outside the web root, subject to the same review retention and backup permissions.
+Use `--full-snapshot` only for genuinely complete input. A full snapshot cannot skip rows and only flags omitted branches as stale. It never deletes or unpublishes them. Incremental plans leave omissions untouched. After a run expires and another day passes, `businesses:import --purge` removes normalized private payloads and keeps the provenance records. Exports are written to a new file under Laravel's private `storage/app/.business-imports/` directory. Delete them and the original files when no longer needed under the review retention and backup policy.
 
 ## Shared-hosting release and recovery
 
