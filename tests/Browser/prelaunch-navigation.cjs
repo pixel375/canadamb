@@ -57,9 +57,43 @@ const fs = require('node:fs');
                         animations: 'disabled',
                     });
                 }
+                await page.goto(host + '/marketplace');
+                check(await page.getByRole('heading', { name: 'What are you looking for?' }).isVisible(),
+                    'Category-first Marketplace missing at ' + host + ' ' + width);
+                check(await page.locator('.market-category-card').count() >= 6,
+                    'Main Marketplace categories are missing');
+                check(await page.getByText('Real Estate').isVisible(),
+                    'Gated Real Estate category is not discoverable');
+                check(await page.getByText('Coming later').isVisible(),
+                    'Real Estate is missing its launch status');
+                check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+                    'Marketplace horizontal overflow at ' + host + ' ' + width);
+                if (width === 390 || width === 1440) {
+                    await page.screenshot({
+                        path: 'test-results/' + (host.includes('brandon') ? 'brandon' : 'province') +
+                            '-marketplace-' + width + '.png',
+                        fullPage: true,
+                        animations: 'disabled',
+                    });
+                }
+                await page.locator('a[href="/marketplace?group=vehicles"]').click();
+                check(await page.getByRole('heading', { name: 'Vehicles & Motors' }).isVisible(),
+                    'Main category does not open subcategories');
+                await page.locator('a[href="/marketplace?category=cars"]').click();
+                check(new URL(page.url()).searchParams.get('category') === 'cars',
+                    'Subcategory did not preserve legacy listing URL');
+                if (host.includes('canadamb') && width === 390) {
+                    await page.goto(host + '/marketplace?location=brandon');
+                    check(await page.getByRole('heading', { name: 'What are you looking for?' }).isVisible(),
+                        'Location-only visit did not open the category chooser');
+                    await page.locator('a[href="/marketplace?group=vehicles&location=brandon"]').click();
+                    await page.locator('a[href="/marketplace?category=cars&location=brandon"]').click();
+                    check(new URL(page.url()).searchParams.get('location') === 'brandon',
+                        'Location was lost while selecting a subcategory');
+                }
             }
         }
-        console.log('PASS: unmerged prelaunch desktop navigation hotfix on two hosts and six widths');
+        console.log('PASS: desktop navigation and category-first Marketplace on both hosts at six widths');
     } catch (error) {
         try { await page.screenshot({ path: 'test-results/prelaunch-nav-failure.png', fullPage: true }); } catch {}
         console.error(error?.stack || error);
