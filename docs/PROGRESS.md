@@ -158,3 +158,10 @@ Run private Hostinger staging validation before connecting an application releas
 ## Pass 09 continuation — after Codex usage cap
 
 The independently reviewed Pass 08 business importer is in stacked PR #26. ChatGPT added a separate development branch `feature/pass-09-ownership-continuation` targeting that branch, with owner-controlled manager/editor invitations requiring explicit verified-member acceptance, private account pages, member revocation and linked message-contact cleanup. This is a first slice, **not completion** of business ownership disputes, owner transfer, branch lifecycle or all security/race acceptance criteria. No production deployment or schema authorization has occurred.
+
+
+## 2026-11-23 — direct GitHub continuation after Codex limit (unmerged)
+
+[PR #26](https://github.com/pixel375/canadamb/pull/26) preserved the licensed import system and initial claim review. [Draft PR #27](https://github.com/pixel375/canadamb/pull/27) adds consenting manager/editor invitations, revoked-role messaging protections, verified successor transfer with independent moderator approval, separately reviewed private ownership disputes and two-reviewer hold release, and reviewed branch additions/corrections/closures/reopenings. It explicitly keeps historical branch IDs, import keys, memberships, job IDs and personal conversations. New branch/status activity is audit logged. The mixed-content moderation hub links to the private reviewer queues.
+
+**Status: development/review only.** The direct-GitHub continuation is not merged, deployed, publicly launched or authorized for production database changes. Finish exact-head PHP tests on SQLite and MariaDB, formatting and Vite checks, disposable populated release/restore rehearsal, independent threat/race review and physical allowlisted device verification before recommending any release. See [ownership runbook](BUSINESS_OWNERSHIP.md).
