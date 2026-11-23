@@ -1,5 +1,11 @@
 # Hostinger production prelaunch acceptance
 
+## Reviewed business imports
+
+- [ ] Confirm exact-commit Verify evidence and populated Pass 07 recovery, including existing business, Jobs and Messaging records.
+- [ ] Review the additive migration and indexes against the target database. Obtain explicit schema approval and retain independently restorable SQL and private storage backups.
+- [ ] Complete a private source rights review. Practice preview, conflict resolution and explicit apply on a disposable database with synthetic input first. [Business import runbook](BUSINESS_IMPORTS.md)
+
 ## Pass 07 discussion events release checks
 
 - [ ] Confirm exact-commit CI and the populated Pass 06 migration rehearsal with default denial, previewed SQL, preserved legacy events and read states, backup restore, and concurrent request and review evidence.

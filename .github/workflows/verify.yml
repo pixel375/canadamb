@@ -62,6 +62,8 @@ jobs:
           php -l tests/Deployment/pass06-discussion-race.php
           bash -n tests/Deployment/pass07-events.sh
           php -l tests/Deployment/pass07-event-race.php
+          bash -n tests/Deployment/pass08-import.sh
+          php -l tests/Deployment/pass08-import-race.php
       - name: Ensure MariaDB dump client is installed for the update rehearsal
         run: |
           if ! command -v mariadb-dump >/dev/null; then
@@ -79,8 +81,16 @@ jobs:
           bash tests/Deployment/hostinger-release.sh production-pass-02
           bash tests/Deployment/hostinger-release.sh production-pass-04
           previous=$(mktemp -d)
+          cleanup() {
+            for pass in pass06 pass07; do
+              if test -d "$previous/$pass"; then
+                git worktree remove --force "$previous/$pass"
+              fi
+            done
+            rmdir "$previous"
+          }
+          trap cleanup EXIT
           git worktree add --detach "$previous/pass06" d35a2f0db1dd735a41a92a4cc8341d70a058c1cd
-          trap 'git worktree remove --force "$previous/pass06"; rmdir "$previous"' EXIT
           (
             cd "$previous/pass06"
             npm ci --prefer-offline
@@ -89,7 +99,15 @@ jobs:
             bash tests/Deployment/hostinger-release.sh production-pass-05
             bash tests/Deployment/hostinger-release.sh production-pass-06
           )
-          bash tests/Deployment/hostinger-release.sh production-pass-07
+          git worktree add --detach "$previous/pass07" 376364382a52800e87da1c963ffd984b10f014c8
+          (
+            cd "$previous/pass07"
+            npm ci --prefer-offline
+            npm run build
+            git rev-parse HEAD > public/build/source-commit
+            bash tests/Deployment/hostinger-release.sh production-pass-07
+          )
+          bash tests/Deployment/hostinger-release.sh production-pass-08
         env:
           CI_MARIADB_CONTAINER: ${{ job.services.mariadb.id }}
           CI_MARIADB_ROOT_PASSWORD: service-test-only

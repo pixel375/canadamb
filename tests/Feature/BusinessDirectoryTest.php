@@ -6,6 +6,7 @@ use App\Models\Business;
 use App\Models\BusinessUpdate;
 use App\Models\Location;
 use App\Models\User;
+use App\Support\BusinessImports\BusinessSources;
 use App\Support\ModerationDecision;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -21,10 +22,24 @@ class BusinessDirectoryTest extends TestCase
     public function test_import_is_idempotent_and_directory_respects_physical_branch_location(): void
     {
         $file = tempnam(sys_get_temp_dir(), 'canadamb-business-');
+        rename($file, $file.'.csv');
+        $file .= '.csv';
+        $operator = User::factory()->create(['role' => 'network_admin']);
         try {
             file_put_contents($file, "external_key,name,category,location,address,website\nb-1,Brandon Bicycle Repair,services,brandon,123 Test Street,https://example.test\nr-1,Elkhorn Farm Repairs,services,elkhorn,456 Test Road,https://example.test\n");
+            $sources = app(BusinessSources::class);
+            $source = $sources->register($operator, 'QA licensed input', 'https://example.test', 'Test fixture',
+                'https://example.test/reuse', '2026-01-01');
+            $sources->approve($operator, $source, 1, 'Reviewed the synthetic QA fixture.');
             foreach ([1, 2] as $attempt) {
-                $this->artisan('businesses:import', ['file' => $file, '--source' => 'QA licensed input', '--license' => 'Test fixture', '--url' => 'https://example.test'])->assertSuccessful();
+                $this->artisan('businesses:import', ['file' => $file, '--actor' => $operator->id, '--source' => 'QA licensed input',
+                    '--license' => 'Test fixture', '--url' => 'https://example.test'])
+                    ->expectsQuestion('Operator password', 'password')->assertSuccessful();
+                $plan = DB::table('business_import_runs')->latest('id')->first();
+                $this->assertDatabaseCount('businesses', $attempt === 1 ? 0 : 2);
+                $this->artisan('businesses:import', ['--apply' => $plan->id, '--actor' => $operator->id, '--token' => $plan->review_token,
+                    '--reason' => 'Reviewed plan against the QA input.'])
+                    ->expectsQuestion('Operator password', 'password')->assertSuccessful();
             }
         } finally {
             unlink($file);

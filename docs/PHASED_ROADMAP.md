@@ -28,6 +28,10 @@ The CanadaMB workbench handles existing submission types and abuse reports, incl
 
 The stacked branch adds event requests from approved discussions, shared event review and a vertical Manitoba agenda. Legacy event URLs remain available. The additive link migration has its own production approval and backup gate. [Issue #23](https://github.com/pixel375/canadamb/issues/23) · [Events and recovery](DISCUSSION_EVENTS.md)
 
+## Passes 08–09 — Business directory foundation
+
+The Pass 08 stack introduces licensed-source review, a dry run with identity conflict decisions, and an atomic multi-branch import. Pass 09 covers independent claim review, dispute and transfer controls, staff roles, branch corrections, and continuity of private messages and Jobs. [Issue #25](https://github.com/pixel375/canadamb/issues/25) · [Import workflow](BUSINESS_IMPORTS.md)
+
 **Current release process.** The protected implementation branch uses guarded GitHub CI-to-Hostinger automation. Its checks include an exact verified commit and a default denial for pending unreviewed migrations. Feature-branch pushes and stacked pull requests are review-only. The Phase 0 and Phase 1 checkpoints below describe earlier rollout procedures. [Deployment automation](DEPLOYMENT_AUTOMATION.md)
 
 | Phase | Priority | Scope and release gate |

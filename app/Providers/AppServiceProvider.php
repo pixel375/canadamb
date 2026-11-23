@@ -51,6 +51,8 @@ class AppServiceProvider extends ServiceProvider
         }
 
         Gate::define('manage-network', fn (User $user) => in_array($user->role, ['network_admin', 'super_admin'], true));
+        Gate::define('manage-business-imports', fn (User $user) => $user->hasVerifiedEmail()
+            && in_array($user->role, ['network_admin', 'super_admin'], true));
         Gate::define('manage-theme', fn (User $user) => $user->role === 'super_admin');
         Gate::define('manage-news', fn (User $user) => in_array($user->role, ['news_editor', 'network_admin', 'super_admin'], true));
         Paginator::defaultView('components.pagination');

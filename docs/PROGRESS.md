@@ -1,5 +1,9 @@
 # Progress
 
+## Pass 08 reviewed business imports
+
+The stacked branch adds a private CSV preview, an operator-reviewed source registry, grouped branch identities, conflict resolution, atomic apply and stale flags. The additive migration preserves historic profile IDs, ownership, claims, jobs and messages. Exact candidate test and recovery evidence is tracked in the stacked PR. Ownership lifecycle development follows import verification. [Issue #25](https://github.com/pixel375/canadamb/issues/25) · [Operator runbook](BUSINESS_IMPORTS.md)
+
 ## Pass 07 discussion events
 
 Discussion owners can request one event per approved discussion. The agenda uses expandable Manitoba-local days, and legacy standalone detail URLs remain available. The additive foreign key retains earlier event records. Verify includes a populated Pass 06 migration, backup restore and competing event requests and moderator decisions. Production schema approval and physical-device acceptance remain separate. [Issue #23](https://github.com/pixel375/canadamb/issues/23) · [Events and recovery](DISCUSSION_EVENTS.md)

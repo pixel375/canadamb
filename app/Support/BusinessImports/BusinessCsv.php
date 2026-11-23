@@ -64,6 +64,15 @@ final class BusinessCsv
         return hash('sha256', strtolower(BusinessDirectory::normalizedText($externalKey)));
     }
 
+    public static function metadataText(string $value, int $limit): string
+    {
+        if (! mb_check_encoding($value, 'UTF-8') || preg_match('/[\p{Cc}\p{Cf}]/u', $value) || mb_strlen($value) > $limit) {
+            throw new RuntimeException('Registry text contains invalid characters or exceeds its length limit.');
+        }
+
+        return BusinessDirectory::normalizedText($value);
+    }
+
     public static function webUrl(string $value, bool $secure = false): bool
     {
         if (str_contains($value, '\\') || filter_var($value, FILTER_VALIDATE_URL) === false) {
@@ -108,7 +117,7 @@ final class BusinessCsv
         if ($fields['website'] !== '' && (strlen($fields['website']) > 255 || ! self::webUrl($fields['website']))) {
             return ['error' => 'Enter an HTTP(S) website without embedded credentials.'];
         }
-        $fields['business_key'] = $fields['business_key'] ?: null;
+        $fields['business_key'] = $fields['business_key'] === '' ? null : $fields['business_key'];
         $fields['website'] = $fields['website'] ?: null;
 
         return ['data' => $fields];
