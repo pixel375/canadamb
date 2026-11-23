@@ -16,6 +16,7 @@ reports_migration=2026_11_22_000002_create_moderation_reports
 events_migration=2026_11_22_000003_link_community_events_to_threads
 business_import_migration=2026_11_22_000004_create_reviewed_business_imports
 team_migration=2026_11_23_000001_create_business_team_invitations
+ownership_migration=2026_11_23_000002_create_business_ownership_cases
 pending_migrations=()
 if [[ $scenario == production-pass-02 ]]; then
     commit=f8497962b32b6720fc39f28814acf5a63c259d26
@@ -36,6 +37,9 @@ elif [[ $scenario == production-pass-08 ]]; then
     pending_migrations=("$business_import_migration")
     if git cat-file -e "$target:database/migrations/$team_migration.php" 2>/dev/null; then
         pending_migrations+=("$team_migration")
+    fi
+    if git cat-file -e "$target:database/migrations/$ownership_migration.php" 2>/dev/null; then
+        pending_migrations+=("$ownership_migration")
     fi
 fi
 if (( ${#pending_migrations[@]} )) || [[ $scenario == production-pass-06 ]]; then
