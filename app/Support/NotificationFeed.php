@@ -182,7 +182,8 @@ final class NotificationFeed
         $social = $legacy || $type === 'message' ? '1 = 1'
             : ($type === 'reply' ? "notice.event = 'reply.followed'" : '1 = 0');
         $module = $enabled ? '1 = 1' : '1 = 0';
-        $hasLink = "(($authorized) AND ($module) AND ($published) AND ($social OR $event LIKE '%.approved'))";
+        $linkableOutcome = $type === 'event' ? '1 = 1' : "($social OR $event LIKE '%.approved')";
+        $hasLink = "(($authorized) AND ($module) AND ($published) AND ($linkableOutcome))";
         // Module visibility hides destinations and optional activity, while authorized moderation outcomes remain readable.
         $historical = in_array($type, ['thread', 'reply', 'event'], true) ? '1 = 1' : "$event NOT LIKE '%.approved'";
         $relevant = "(($authorized) AND ((($published) AND (($module) OR NOT ($social))) OR (NOT ($social) AND ($historical))))";
@@ -254,7 +255,9 @@ final class NotificationFeed
             }
             $source = LinkedEvents::visibleSourceSql('item', 'thread', app(Community::class)->enabled($site, 'community'), $site->location_id !== null);
 
-            return ['item.author_id = notice.user_id', "item.status = 'approved' AND $source", 'COALESCE(item.thread_id, item.id)', []];
+            $published = "((item.thread_id IS NULL AND item.status IN ('approved', 'cancelled')) OR (item.thread_id IS NOT NULL AND $source))";
+
+            return ['item.author_id = notice.user_id', $published, 'COALESCE(item.thread_id, item.id)', []];
         }
 
         if ($type === 'thread') {

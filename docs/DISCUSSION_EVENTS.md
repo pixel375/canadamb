@@ -10,7 +10,7 @@ Events opens from the Discussions menu on desktop and mobile. The agenda at `/ev
 4. The usual review setting is manual. An eligible initial request can use an explicitly published automatic policy. Edits and resubmissions go through manual review. A source edit, withdrawal, rejection or lock requeues an approved event. The discussion must become eligible again and a reviewer must approve the event separately.
 5. **My events** lists both linked and historical standalone events. Owners can edit or resubmit eligible linked events and cancel an approved request or withdraw a pending request. A cancelled linked event can appear with a cancellation label while its discussion remains eligible. Cancellation notes are private.
 
-One event ID survives resubmission. The database enforces one link per discussion. Linked writes lock the discussion before the event and verify both versions when applicable. The workbench shows the source discussion and event metadata. Reviewers can approve, reject, cancel or revise metadata. Linked events are reviewed individually. Report and decision records retain their event IDs. Previously reported text and schedule details are sealed in the existing audit store before changes, and report detail access is recorded.
+One event ID survives resubmission. The database enforces one link per discussion. Linked writes lock the discussion before the event and verify both versions when applicable. The workbench shows the source discussion and event metadata. Reviewers must give a reason when approving, rejecting, cancelling or revising a linked event. Linked events are reviewed individually. Report and decision records retain their event IDs. Previously reported text, schedule details and event URLs are sealed in the existing audit store before changes. The report view displays the original URL as text and records evidence access.
 
 ## Public routes
 
@@ -31,6 +31,7 @@ A Brandon visitor sees only Brandon events whose source is accessible there. The
 
 ## Allowlisted acceptance after release authorization
 
+- Before enabling event intake on the candidate release, verify Hostinger web and CLI PHP apply the current `America/Winnipeg` rules. January and July 2027 should both return `-05:00`. Verify the site displays a winter event at its entered local time. [Manitoba time change notice](https://news.gov.mb.ca/news/index.html?item=75940) · [IANA timezone data](https://www.iana.org/time-zones/releases/2026e)
 - On both portals, check a linked event, a multi-day event, and a standalone bookmark. Verify date counts, month navigation, source links and the Brandon scope.
 - On a physical phone and installed PWA, use the overflow menu, submit an event request, open the calendar day and return to its discussion in light and dark modes.
 - Approve the event, edit its source and check that a second event review is required. Verify old notices, private cancellation notes and reported metadata.

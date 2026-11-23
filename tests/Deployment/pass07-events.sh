@@ -2,6 +2,8 @@
 
 # Rehearse the only Pass 07 migration on the isolated GitHub Actions database.
 [[ $scenario == production-pass-07 && $database == canadamb_ci_pass07 ]]
+test "$(git -C "$repo" diff --name-status --no-renames "$commit" "$target" -- database/migrations database/seeders)" \
+    = "$(printf 'A\tdatabase/migrations/%s.php' "$events_migration")"
 
 source "$repo/tests/Deployment/pass05-legacy-fixture.sh"
 database_sql < "$repo/tests/Deployment/pass06-discussions.sql"

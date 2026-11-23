@@ -92,18 +92,23 @@ class CommunityEventController extends Controller
 
     public function create(Request $request)
     {
-        abort_unless($this->community->enabled($request->attributes->get('site'), 'events'), 404);
+        $site = $request->attributes->get('site');
+        abort_unless($this->community->enabled($site, 'events'), 404);
 
-        return view('community.new-event');
+        return view('community.new-event', ['canRequest' => $this->community->enabled($site, 'community')]);
     }
 
     public function store(Request $request)
     {
-        abort_unless($this->community->enabled($request->attributes->get('site'), 'events'), 404);
+        $site = $request->attributes->get('site');
+        abort_unless($this->community->enabled($site, 'events'), 404);
+        $message = $this->community->enabled($site, 'community')
+            ? 'Request an event listing from your approved discussion.'
+            : 'Event requests are unavailable on this site.';
         if ($request->expectsJson()) {
-            throw ValidationException::withMessages(['event' => 'Request an event listing from your approved discussion.']);
+            throw ValidationException::withMessages(['event' => $message]);
         }
 
-        return redirect('/events/new', 303)->with('status', 'Request an event listing from your approved discussion.');
+        return redirect('/events/new', 303)->with('status', $message);
     }
 }

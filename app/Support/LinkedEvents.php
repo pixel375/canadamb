@@ -110,6 +110,6 @@ final class LinkedEvents
     private static function publicMetadata(CommunityEvent $item): array
     {
         return array_intersect_key($item->getRawOriginal(), array_flip(['title', 'body', 'venue', 'organizer', 'category',
-            'starts_at', 'ends_at', 'thread_id', 'location_id']));
+            'starts_at', 'ends_at', 'event_url', 'thread_id', 'location_id']));
     }
 }

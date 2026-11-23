@@ -7,6 +7,8 @@ use App\Models\CommunityThread;
 use App\Models\Location;
 use App\Models\User;
 use App\Support\ModerationDecision;
+use App\Support\NetworkSettings;
+use App\Support\NotificationInbox;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -69,8 +71,9 @@ class DiscussionEventIntegrationTest extends TestCase
         $event = $this->event($thread);
         $review = self::MAIN."/admin/community/events/$event->id";
         $initial = $this->versions($event);
-        $this->actingAs($admin)->postJson($review, ['action' => 'approve', 'version' => $initial['version']])->assertUnprocessable();
-        $this->post($review, ['action' => 'approve'] + $initial)->assertRedirect();
+        $approval = ['action' => 'approve', 'reason' => 'Confirmed the schedule and venue.'];
+        $this->actingAs($admin)->postJson($review, $approval + ['version' => $initial['version']])->assertUnprocessable();
+        $this->post($review, $approval + $initial)->assertRedirect();
         $this->assertSame('approved', $event->fresh()->status);
         $this->assertDatabaseHas('notifications', ['user_id' => $owner->id, 'event' => 'event.approved', 'resource_id' => $event->id]);
 
@@ -83,13 +86,13 @@ class DiscussionEventIntegrationTest extends TestCase
         $this->get(self::CITY."/events/$event->id")->assertNotFound();
         $this->get(self::CITY.'/account/notifications')->assertOk()->assertSee('Event approved')->assertDontSee($thread->title)
             ->assertSee('Event awaiting review');
-        $this->actingAs($admin)->postJson($review, ['action' => 'approve'] + $old)->assertConflict();
-        $this->postJson($review, ['action' => 'approve'] + $this->versions($event))->assertConflict();
+        $this->actingAs($admin)->postJson($review, $approval + $old)->assertConflict();
+        $this->postJson($review, $approval + $this->versions($event))->assertConflict();
         $this->post(self::MAIN."/admin/community/threads/$thread->id", [
             'action' => 'approve', 'version' => ModerationDecision::version('thread', $thread->fresh()),
         ])->assertRedirect();
         $this->get(self::CITY."/events/$event->id")->assertNotFound();
-        $this->postJson($review, ['action' => 'approve'] + $this->versions($event))->assertRedirect();
+        $this->postJson($review, $approval + $this->versions($event))->assertRedirect();
         $this->assertSame('Changed public event topic', $event->fresh()->title);
         $this->get(self::CITY."/events/$event->id")->assertRedirect(self::CITY."/discussions/$thread->id");
         $this->assertSame(2, DB::table('notifications')->where(['event' => 'event.approved', 'resource_id' => $event->id])->count());
@@ -98,28 +101,86 @@ class DiscussionEventIntegrationTest extends TestCase
         ])->assertRedirect();
         $this->assertSame('pending', $event->fresh()->status);
         $this->get(self::CITY."/discussions/$thread->id")->assertOk()->assertDontSee('Hosted at the archive');
-        $this->postJson($review, ['action' => 'approve'] + $this->versions($event))->assertConflict();
+        $this->postJson($review, $approval + $this->versions($event))->assertConflict();
+    }
+
+    public function test_linked_approval_requires_a_reviewer_reason_on_both_endpoints(): void
+    {
+        $event = $this->event($this->thread(User::factory()->create(), 'brandon'));
+        $versioned = ['action' => 'approve'] + $this->versions($event);
+        $workbench = self::MAIN."/admin/moderation/items/event/$event->id";
+        $legacy = self::MAIN."/admin/community/events/$event->id";
+        $this->actingAs(User::factory()->create(['role' => 'network_admin']));
+        $this->postJson($workbench, $versioned)->assertUnprocessable()->assertJsonValidationErrors('reason');
+        $this->postJson($legacy, $versioned + ['reason' => '   '])->assertUnprocessable()->assertJsonValidationErrors('reason');
+        $this->assertDatabaseCount('moderation_decisions', 0);
+        $this->assertSame('pending', $event->fresh()->status);
+        $this->post($workbench, $versioned + ['reason' => 'Confirmed the event information.'])->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('moderation_decisions', ['type' => 'event', 'resource_id' => $event->id,
+            'action' => 'approve', 'reason' => 'Confirmed the event information.']);
+    }
+
+    public function test_event_notices_link_only_to_eligible_discussions_or_public_legacy_details(): void
+    {
+        $owner = User::factory()->create();
+        $thread = $this->thread($owner, 'brandon');
+        $event = $this->event($thread, 'rejected');
+        $legacy = $event->replicate()->forceFill(['thread_id' => null, 'status' => 'cancelled']);
+        $legacy->save();
+        NotificationInbox::record($owner->id, 'event.rejected', 8001, $event->id, [$event->location_id]);
+        NotificationInbox::record($owner->id, 'event.cancelled', 8002, $legacy->id, [$legacy->location_id]);
+        $notice = fn (int $source) => route('account.notifications.open', [
+            'storage' => 'unified', 'notification' => DB::table('notifications')->where('source_id', $source)->value('id'),
+        ], false);
+
+        $this->actingAs($owner)->get(self::CITY.$notice(8001))->assertRedirect(self::CITY."/discussions/$thread->id");
+        $this->get(self::CITY.$notice(8002))->assertRedirect(self::CITY."/events/$legacy->id");
+        $this->actingAs(User::factory()->create())->get(self::CITY.$notice(8001))->assertNotFound();
+        $this->actingAs($owner);
+        $thread->forceFill(['status' => 'withdrawn'])->save();
+        $this->get(self::CITY.$notice(8001))->assertNotFound();
+        $this->get(self::CITY.'/account/notifications')->assertOk()->assertSee('Event rejected')->assertDontSee($thread->title);
+
+        $thread->forceFill(['status' => 'approved'])->save();
+        $settings = app(NetworkSettings::class);
+        $settings->saveDraft($owner->id, function (array $draft): array {
+            $draft['modules']['community'] = false;
+
+            return $draft;
+        });
+        $settings->publish($owner->id);
+        $this->get(self::CITY.$notice(8001))->assertNotFound();
+        $this->get(self::CITY.$notice(8002))->assertRedirect(self::CITY."/events/$legacy->id");
+        $this->get(self::CITY.'/events/new')->assertOk()->assertSee('Event requests are unavailable on this site.')
+            ->assertDontSee('href="/discussions/new"', false);
+        $this->postJson(self::CITY.'/events')->assertUnprocessable()
+            ->assertJsonPath('errors.event.0', 'Event requests are unavailable on this site.');
     }
 
     public function test_workbench_edits_require_current_tokens_and_preserve_reported_details(): void
     {
         $event = $this->event($this->thread(User::factory()->create(), 'brandon'), 'approved');
+        $event->update(['event_url' => 'https://tickets.example.test/reported']);
         $reporter = User::factory()->create();
         $this->actingAs($reporter)->post(self::CITY."/reports/event/$event->id", ['reason' => 'Please check the venue.'])->assertRedirect();
         $report = DB::table('content_reports')->sole();
+        $reportUrl = self::MAIN."/admin/moderation/reports/event/$report->id";
+        $this->get($reportUrl)->assertForbidden();
         $admin = User::factory()->create(['role' => 'network_admin']);
         $path = self::MAIN."/admin/moderation/items/event/$event->id";
         $this->actingAs($admin)->get($path)->assertOk()->assertSee('Review source discussion')->assertSee('Edit event metadata');
         $input = ['action' => 'edit', 'reason' => 'The organizer moved the event.', 'venue' => 'The new hall',
-            'organizer' => 'Archive volunteers', 'category' => 'community',
+            'organizer' => 'Archive volunteers', 'category' => 'community', 'event_url' => 'https://tickets.example.test/replacement',
             'starts_at' => now('America/Winnipeg')->addDay()->format('Y-m-d\TH:i')];
         $versions = $this->versions($event);
         $this->postJson($path, $input + ['version' => $versions['version']])->assertUnprocessable();
         $this->post($path, $input + $versions)->assertSessionHasNoErrors()->assertRedirect();
         $this->postJson($path, $input + $versions)->assertConflict();
         $this->assertDatabaseHas('community_events', ['id' => $event->id, 'venue' => 'The new hall', 'status' => 'pending']);
-        $this->get(self::MAIN."/admin/moderation/reports/event/$report->id")->assertOk()->assertSee('Reported event details')
-            ->assertSee('Hosted at the archive')->assertDontSee('The new hall');
+        $this->get($reportUrl)->assertOk()->assertSee('Reported event details')
+            ->assertSee('Hosted at the archive')->assertDontSee('The new hall')
+            ->assertSee('https://tickets.example.test/reported')->assertDontSee('https://tickets.example.test/replacement')
+            ->assertDontSee('href="https://tickets.example.test/reported"', false);
         $this->assertDatabaseCount('content_reports', 1);
         $this->assertSame(1, DB::table('moderation_decisions')->where('action', 'edit')->count());
     }

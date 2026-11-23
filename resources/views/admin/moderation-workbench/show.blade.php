@@ -87,8 +87,8 @@
                 @csrf<input type="hidden" name="version" value="{{ $version }}">
                 @if($threadVersion)<input type="hidden" name="thread_version" value="{{ $threadVersion }}">@endif
                 @if(isset($actions['reject']) || isset($actions['remove']))
-                    <label>Reason shown to the submitter when rejected or removed
-                        <textarea name="reason" maxlength="{{ $type === 'listing' ? 240 : 300 }}" rows="2">{{ old('reason') }}</textarea>
+                    <label>{{ $threadVersion ? 'Decision reason (required). May be shared with the submitter.' : 'Reason shown to the submitter when rejected or removed' }}
+                        <textarea name="reason" maxlength="{{ $type === 'listing' ? 240 : 300 }}" rows="2" @required($threadVersion)>{{ old('reason') }}</textarea>
                     </label>
                 @endif
                 <label>Internal reviewer notes @if($notesRequired) (required) @endif

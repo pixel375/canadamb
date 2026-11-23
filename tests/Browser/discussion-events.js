@@ -50,6 +50,7 @@ async page => {
         await reviewer.getByRole('link', { name: title }).click();
         await fit(reviewer, 1280, 'light');
         await reviewer.getByRole('link', { name: 'Review source discussion' }).waitFor();
+        await reviewer.getByLabel('Decision reason', { exact: false }).fill('Confirmed the workshop schedule.');
         await reviewer.getByRole('button', { name: 'Approve', exact: true }).click();
         await reviewer.getByText('Moderation decision saved.').waitFor();
 

@@ -24,6 +24,9 @@
                     <p>{{ $eventEvidence['venue'] }} · {{ $eventEvidence['organizer'] }}</p>
                     <p>{{ \Illuminate\Support\Carbon::parse($eventEvidence['starts_at'], 'UTC')->setTimezone('America/Winnipeg')->format('M j, Y · g:i a T') }}</p>
                     <p class="prose-text">{{ $eventEvidence['body'] }}</p>
+                    @if($eventEvidence['event_url'] ?? null)
+                        <p class="break-all">Reported event URL · {{ $eventEvidence['event_url'] }}</p>
+                    @endif
                 </div>
             @endif
             @if($record->title !== null)

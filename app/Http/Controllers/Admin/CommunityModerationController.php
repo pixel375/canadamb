@@ -112,7 +112,10 @@ class CommunityModerationController extends Controller
             $thread = $item->thread;
             abort_if($request->attributes->get('bulk_moderation') && $thread !== null, 409, 'Review linked events individually.');
             if ($thread !== null) {
-                $source = $request->validate(['thread_version' => ModerationDecision::VERSION_RULES]);
+                $source = $request->validate([
+                    'thread_version' => ModerationDecision::VERSION_RULES,
+                    'reason' => 'required|string|max:300',
+                ]);
                 ModerationDecision::requireCurrent('thread', $thread, $source['thread_version']);
             }
             ModerationDecision::requireCurrent('event', $item, $data['version']);

@@ -43,25 +43,26 @@ class EventAgendaTest extends TestCase
 
     public function test_the_agenda_clips_overlaps_using_local_midnight_and_only_counts_public_matches(): void
     {
-        $this->travelTo(CarbonImmutable::parse('2026-10-25 12:00:00', 'UTC'));
-        $this->event('Clock change workshop', '2026-11-01 03:00:00', '2026-11-02 06:00:00');
-        $this->event('November midnight gathering', '2026-11-02 06:00:00');
-        $this->event('Cancelled legacy workshop', '2026-11-01 12:00:00', status: 'cancelled');
-        $this->event('Pending legacy workshop', '2026-11-01 12:00:00', status: 'pending');
-        $this->event('Winnipeg workshop', '2026-11-01 12:00:00', place: 'winnipeg');
+        $this->travelTo(CarbonImmutable::parse('2025-10-25 12:00:00', 'UTC'));
+        // The 2025 fall-back day was 25 hours long in Winnipeg.
+        $this->event('Clock change workshop', '2025-11-02 04:00:00', '2025-11-03 06:00:00');
+        $this->event('November midnight gathering', '2025-11-03 06:00:00');
+        $this->event('Cancelled legacy workshop', '2025-11-02 12:00:00', status: 'cancelled');
+        $this->event('Pending legacy workshop', '2025-11-02 12:00:00', status: 'pending');
+        $this->event('Winnipeg workshop', '2025-11-02 12:00:00', place: 'winnipeg');
 
-        $this->get('https://brandonmb.ca/events?month=2026-11&day=2026-11-01')
+        $this->get('https://brandonmb.ca/events?month=2025-11&day=2025-11-02')
             ->assertOk()->assertSee('1 event')->assertSee('Clock change workshop')
             ->assertDontSee('November midnight gathering')
             ->assertDontSee('Cancelled legacy workshop')
             ->assertDontSee('Pending legacy workshop')
             ->assertDontSee('Winnipeg workshop');
-        $this->get('https://brandonmb.ca/events?day=2026-11-02')
+        $this->get('https://brandonmb.ca/events?day=2025-11-03')
             ->assertOk()->assertSee('1 event')->assertSee('November midnight gathering')
             ->assertDontSee('Clock change workshop');
 
         $winnipeg = Location::where('slug', 'winnipeg')->sole()->id;
-        $this->get("https://canadamb.ca/events?month=2026-11&location=$winnipeg&category=community&q=workshop")
+        $this->get("https://canadamb.ca/events?month=2025-11&location=$winnipeg&category=community&q=workshop")
             ->assertOk()->assertSee('Winnipeg workshop')->assertSee('1 event')
             ->assertDontSee('Clock change workshop')
             ->assertSee("q=workshop&amp;category=community&amp;location=$winnipeg", false);

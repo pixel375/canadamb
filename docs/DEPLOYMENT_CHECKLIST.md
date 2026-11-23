@@ -4,6 +4,7 @@
 
 - [ ] Confirm exact-commit CI and the populated Pass 06 migration rehearsal with default denial, previewed SQL, preserved legacy events and read states, backup restore, and concurrent request and review evidence.
 - [ ] Review the nullable, unique event-to-discussion foreign key against the target MariaDB database. Obtain explicit production approval for the migration after prior passes are released in sequence. Retain database, private media and application key backups.
+- [ ] Verify both Hostinger PHP runtimes use the current America/Winnipeg rules. Spot-check a January 2027 event at UTC−05:00 on the candidate release.
 - [ ] Check event requests, author edits, re-review after a material source change, Manitoba day boundaries, city visibility and legacy bookmarks on allowlisted phones. [Events acceptance checklist](DISCUSSION_EVENTS.md)
 
 ## Pass 06 Discussions release checks

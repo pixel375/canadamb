@@ -64,7 +64,7 @@ if (isset($argv[3])) {
             $response = $app->make(OwnedDiscussionsController::class)->update($request, SOURCE, $policy);
         } else {
             $request = actionRequest($worker === 'first' ? 8503 : 8504, 'POST', "/admin/community/events/$id",
-                ['action' => 'approve', 'version' => $eventVersion] + $parent);
+                ['action' => 'approve', 'reason' => 'Confirmed in disposable rehearsal.', 'version' => $eventVersion] + $parent);
             $response = $app->make(CommunityModerationController::class)->events($request, (int) $id);
         }
         echo $response->getStatusCode();

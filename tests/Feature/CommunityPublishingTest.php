@@ -81,7 +81,7 @@ class CommunityPublishingTest extends TestCase
         $this->assertSame('2026-03-08 08:30:00', $event->getRawOriginal('starts_at'));
         $this->get('https://brandonmb.ca/events')->assertDontSee($input['title']);
         $this->actingAs($admin)->post("https://canadamb.ca/admin/community/events/$event->id", [
-            'action' => 'approve', 'version' => ModerationDecision::version('event', $event->fresh()),
+            'action' => 'approve', 'reason' => 'Confirmed the exchange schedule.', 'version' => ModerationDecision::version('event', $event->fresh()),
         ] + $parent)->assertRedirect();
         $this->get('https://brandonmb.ca/events?month=2026-03')->assertOk()->assertSee($input['title']);
         $this->get('https://canadamb.ca/events')->assertSee($input['title']);
@@ -115,7 +115,7 @@ class CommunityPublishingTest extends TestCase
         $id = $event->id;
         $this->actingAs(User::factory()->create(['role' => 'network_admin']))
             ->post("https://canadamb.ca/admin/community/events/$id", [
-                'action' => 'approve', 'version' => ModerationDecision::version('event', $event),
+                'action' => 'approve', 'reason' => 'Confirmed overnight dates.', 'version' => ModerationDecision::version('event', $event),
             ] + $parent)->assertRedirect();
         $this->get('https://brandonmb.ca/events?month=2027-04&day=2027-04-01')->assertOk()->assertSee('Overnight event');
         $this->get('https://brandonmb.ca/events?month=2027-04&day=2027-04-02')->assertOk()->assertDontSee('Overnight event');
