@@ -43,6 +43,10 @@ class BusinessTeamController extends Controller
             ->where('invitation.status', 'pending')
             ->where('invitation.expires_at', '>', now())
             ->where('business.status', 'active')
+            ->when($request->attributes->get('site')->location_id !== null, fn (Builder $query) => $query
+                ->whereExists(fn (Builder $branch) => $branch->selectRaw('1')->from('business_locations as scope')
+                    ->whereColumn('scope.business_id', 'business.id')
+                    ->where('scope.location_id', $request->attributes->get('site')->location_id)))
             ->whereExists(fn (Builder $owners) => $owners->selectRaw('1')
                 ->from('business_memberships as owner')->whereColumn('owner.business_id', 'business.id')
                 ->where('owner.role', 'owner'))
@@ -95,6 +99,9 @@ class BusinessTeamController extends Controller
             $initial = DB::table('business_team_invitations')->where('id', $invitation)
                 ->where('invited_user_id', $request->user()->id)->first() ?? abort(404);
             $business = Business::lockForUpdate()->findOrFail($initial->business_id);
+            $site = $request->attributes->get('site');
+            abort_if($site->location_id !== null && ! DB::table('business_locations')
+                ->where(['business_id' => $business->id, 'location_id' => $site->location_id])->exists(), 404);
             $item = DB::table('business_team_invitations')->where('id', $invitation)->lockForUpdate()->firstOrFail();
             abort_unless($item->invited_user_id === $request->user()->id && $item->status === 'pending', 409);
             abort_unless(now()->lt($item->expires_at) && $business->status === 'active', 409);
