@@ -38,7 +38,7 @@
                         <x-icon name="arrow" size="17"/>
                     </a>
                 @endif
-                @if(app(\\App\\Support\\BusinessDirectory::class)->enabled($site))
+                @if(app(\App\Support\BusinessDirectory::class)->enabled($site))
                     <a href="/businesses" class="home-explore-link">
                         <span class="home-explore-icon"><x-icon name="building" size="23"/></span>
                         <span><strong>Local businesses</strong><small>Shops and services nearby</small></span>
