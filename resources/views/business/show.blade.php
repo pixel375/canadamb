@@ -24,6 +24,9 @@
             </div>
             <x-content-report-form type="business" :target="$business->id" label="business profile"/>
         </article>
+        @if($claimed)
+            <section class="panel"><h2>Ownership concern?</h2><p>If this business is shown under the wrong owner, you can submit private evidence for independent review. Filing a report never transfers ownership.</p><a class="text-link" href="/businesses/{{ $business->slug }}/ownership-dispute">Report an ownership concern</a></section>
+        @endif
         @if(!$claimed)
             <section class="panel form-stack">
                 <h2>Own this business?</h2>
