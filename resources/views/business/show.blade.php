@@ -9,7 +9,9 @@
             <div class="form-stack mt-4">
                 @foreach($branches as $branch)
                     <div class="form-stack">
-                        <div><h2>{{ $branch->location->name }}</h2><p>{{ $branch->address }}</p></div>
+                        <div><h2>{{ $branch->location->name }}</h2><p>{{ $branch->address }}</p>
+                            @if($branch->operational_status !== 'open')<p class="field-note">Status: {{ ucfirst(str_replace('_', ' ', $branch->operational_status)) }}</p>@endif
+                        </div>
                         @if(in_array($branch->message_contact_user_id, $contactUsers, true) && $branch->message_contact_user_id !== auth()->id())
                             <div><x-message-contact-link :path="'/businesses/'.$business->slug.'/branches/'.$branch->id.'/contact'" label="Message business" :place="$branch->address.', '.$branch->location->name"/></div>
                         @endif
