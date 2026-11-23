@@ -137,6 +137,7 @@ final class BusinessImportPlan
             }
 
             $seenGroups = [];
+            $updatedWebsites = [];
             $created = $updated = $skipped = 0;
             foreach ($this->rows($id)->lazyById(200) as $row) {
                 if ($row->decision === 'skipped') {
@@ -152,10 +153,11 @@ final class BusinessImportPlan
                     if ($data['business_key'] !== null) {
                         $seenGroups[$row->group_key] = $business;
                     }
-                } elseif ($details['change_website']) {
+                } elseif ($details['change_website'] && ! isset($updatedWebsites[$business])) {
                     DB::table('businesses')->where('id', $business)->update([
                         'website' => $data['website'], 'imported_website_hash' => BusinessImportResolver::fact($data['website']), 'updated_at' => now(),
                     ]);
+                    $updatedWebsites[$business] = true;
                 }
 
                 if ($data['business_key'] !== null && ! $details['protected']) {

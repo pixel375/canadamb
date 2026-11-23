@@ -166,6 +166,23 @@ class ReviewedBusinessImportTest extends TestCase
         $this->assertDatabaseCount('business_locations', 2);
     }
 
+    public function test_separate_keys_cannot_write_conflicting_websites_to_one_existing_business(): void
+    {
+        $this->approve();
+        $first = 'one,Test Services,services,brandon,1 Test Street,https://old.example.test,';
+        $second = 'two,Test Services,services,elkhorn,2 Test Street,https://old.example.test,';
+        $this->apply($this->stage($first."group\n".$second."group\n"));
+        $bad = $this->stage(str_replace('old.example', 'west.example', $first)."\n"
+            .str_replace('old.example', 'east.example', $second)."\n");
+        $this->assertSame(1, $this->imports->counts($this->operator, $bad->id)['field_conflict'] ?? 0);
+        $this->expectRejected(fn () => $this->apply($bad), 'unresolved');
+        $this->assertSame('https://old.example.test', Business::sole()->website);
+
+        $agree = $this->stage(str_replace('old.example', 'new.example', $first."\n".$second."\n"));
+        $this->apply($agree);
+        $this->assertSame('https://new.example.test', Business::sole()->website);
+    }
+
     public function test_explicit_skip_cannot_mark_a_snapshot_complete_and_expired_plan_cannot_apply(): void
     {
         $this->approve();

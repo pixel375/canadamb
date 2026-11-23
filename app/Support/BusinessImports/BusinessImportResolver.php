@@ -23,12 +23,24 @@ final class BusinessImportResolver
         }
 
         $places = [];
+        $websites = [];
         $last = '';
         while (($keys = (clone $rows)->where('group_key', '>', $last)->select('group_key')->distinct()
             ->orderBy('group_key')->limit(200)->pluck('group_key'))->isNotEmpty()) {
             foreach ($keys as $key) {
                 $group = (clone $rows)->where('group_key', $key);
-                yield from $this->group($plan, $group, $rows, $key, $places, $lock);
+                foreach ($this->group($plan, $group, $rows, $key, $places, $lock) as [$row, $decision, $details]) {
+                    $proposal = $details['website_proposal'] ?? null;
+                    if ($proposal !== null && in_array($decision, self::ACTIONS, true)) {
+                        $business = $details['business'];
+                        $websites[$business] ??= $proposal;
+                        if ($websites[$business] !== $proposal) {
+                            $decision = 'field_conflict';
+                            $details['reason'] = 'Rows linked to the same business propose different websites. Reconcile them before applying.';
+                        }
+                    }
+                    yield [$row, $decision, $details];
+                }
             }
             $last = $keys->last();
         }
@@ -138,6 +150,7 @@ final class BusinessImportResolver
                 'reason' => $message, 'business' => $businessId, 'branch' => $branch?->id,
                 'location' => $location, 'address_key' => $addressKey,
                 'change_address' => $addressChange, 'change_website' => $websiteChange && $leader,
+                'website_proposal' => $business !== null && $business->website_source_id === $plan->source_id ? self::fact($payload['website']) : null,
                 'establish_address_baseline' => ! $protected && $branch !== null && $branch->imported_address_hash === null
                     && $branch->last_verified_at === null && $branch->location_status === 'imported_address',
                 'protected' => $protected, 'candidates' => array_values(array_unique([...$known, ...$collision, ...($physical === null ? [] : [$physical->business_id])])),
