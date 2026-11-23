@@ -18,6 +18,7 @@ class JobController extends Controller
 {
     public function __construct(private readonly JobBoard $jobs)
     {
+        // The board service is provided through constructor injection.
     }
 
     public function index(Request $request)
