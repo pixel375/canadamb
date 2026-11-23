@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\BusinessOwnershipReviewController;
 use App\Http\Controllers\Admin\BusinessReviewController;
 use App\Http\Controllers\Admin\CommunityController;
 use App\Http\Controllers\Admin\CommunityModerationController;
@@ -13,9 +14,8 @@ use App\Http\Controllers\Admin\TestAccountController;
 use App\Http\Controllers\Admin\ThemeController;
 use App\Http\Controllers\BusinessClaimController;
 use App\Http\Controllers\BusinessController;
-use App\Http\Controllers\BusinessTeamController;
 use App\Http\Controllers\BusinessOwnershipController;
-use App\Http\Controllers\Admin\BusinessOwnershipReviewController;
+use App\Http\Controllers\BusinessTeamController;
 use App\Http\Controllers\CommunityEventController;
 use App\Http\Controllers\CommunityForumController;
 use App\Http\Controllers\DiscussionEventController;
