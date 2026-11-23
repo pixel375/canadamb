@@ -60,3 +60,8 @@ The Pass 08 stack introduces licensed-source review, a dry run with identity con
 - No changes to production `.env`, APP_KEY, Passport keys, database content, or shared media as part of documentation/deployment script fixes.
 - For each phase: tests on SQLite and MariaDB, actual affected-host browser checks, security checks, one release at a time, and reversible UI changes. Use non-destructive migrations with a verified backup/restore strategy.
 - Avoid implementing new monetization or a broad redesign during the deployment-stabilization pass. Capture visual references separately.
+
+
+## Pass 09 backend continuation — source-controlled only
+
+Owner/manager/editor invitations with explicit acceptance; private ownership disputes and accepted successor transfers with independent administrator approval; branch additions, address correction, temporary closure, closure and reopening requests with independent verification were implemented in stacked draft [PR #27](https://github.com/pixel375/canadamb/pull/27). The business import foundation remains in [PR #26](https://github.com/pixel375/canadamb/pull/26). The branch status prevents new messages or job publications on closed locations while preserving historical records. **Neither PR is released.** Migration, real mobile/browser, live-IP and concurrency acceptance gates remain; do not mark Pass 09 a production milestone until those are complete. See [runbook](BUSINESS_OWNERSHIP.md).
