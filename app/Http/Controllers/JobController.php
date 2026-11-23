@@ -134,10 +134,11 @@ class JobController extends Controller
     {
         $site = $request->attributes->get('site');
         abort_unless($this->jobs->enabled($site), 404);
-        $employer = $this->managedBusiness($request, $business);
         $data = $request->validate(['enabled' => 'required|boolean']);
 
-        DB::transaction(function () use ($request, $employer, $job, $data, $site, $contacts): void {
+        DB::transaction(function () use ($request, $business, $job, $data, $site, $contacts): void {
+            // Recheck the representative after locking the same business as staff revocation.
+            $employer = $this->managedBusiness($request, $business, lock: true);
             $item = $this->managedJob($request, $employer->id, $job, lock: true);
             $enabled = (bool) $data['enabled'];
             abort_if($enabled && in_array($item->status, ['expired', 'withdrawn'], true), 409);
