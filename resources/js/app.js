@@ -226,6 +226,11 @@ if (desktopNavGroups.length) {
         }
     };
     for (const group of desktopNavGroups) {
+        // A native details "toggle" event fires asynchronously, so relying on
+        // it alone permits two menus to appear open for a frame (or longer in
+        // automated keyboard/navigation sequences). Close siblings on the
+        // summary activation itself, before the default details toggle.
+        group.querySelector('summary')?.addEventListener('click', () => closeOtherGroups(group));
         group.addEventListener('toggle', () => {
             if (group.open) closeOtherGroups(group);
         });
