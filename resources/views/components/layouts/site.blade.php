@@ -81,6 +81,7 @@
                     </select>
                 </label>
                 @auth
+                    <a class="sign-in header-inbox" href="/account/messages" @if(request()->is('account/messages*')) aria-current="page" @endif><x-icon name="messages" size="18"/> <span>Messages</span></a>
                     <a class="sign-in" href="/account/profile" aria-label="My profile"><x-icon name="person" size="18"/> <span>My account</span></a>
                 @else
                     <a class="sign-in" href="{{ $site->isNetwork() ? '/login' : '/auth/start' }}" aria-label="Sign in"><x-icon name="person" size="18"/> <span>Sign in</span></a>
