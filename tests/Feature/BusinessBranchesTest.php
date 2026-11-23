@@ -30,7 +30,8 @@ class BusinessBranchesTest extends TestCase
         $input = ['action' => 'add', 'location_id' => $elkhorn->id, 'proposed_address' => '400 Test Route',
             'evidence' => 'This second Manitoba branch is documented in a verifiable synthetic business record.'];
 
-        $this->actingAs($owner)->postJson(self::CITY."/account/businesses/$business->id/branches", $input)->assertNotFound();
+        $this->actingAs($owner)->postJson(self::CITY."/account/businesses/$business->id/branches", $input)
+            ->assertUnprocessable()->assertJsonValidationErrors('location_id');
         $this->post(self::MAIN."/account/businesses/$business->id/branches", $input)->assertRedirect();
         $change = DB::table('business_branch_requests')->sole();
         $this->assertDatabaseCount('business_locations', 1);
@@ -70,7 +71,10 @@ class BusinessBranchesTest extends TestCase
             'apply_url' => 'https://example.test/apply', 'closing_on' => now()->addMonth()->toDateString(),
             'status' => 'approved', 'published_at' => now(),
         ]);
-        $job->forceFill(['message_contact_user_id' => $owner->id])->save();
+        $job->forceFill([
+            'status' => 'approved', 'published_at' => now(),
+            'message_contact_user_id' => $owner->id,
+        ])->save();
         $customer = User::factory()->create();
         $conversation = Conversation::create([
             'context_type' => 'business', 'business_location_id' => $branch->id, 'location_id' => $branch->location_id,
