@@ -153,3 +153,8 @@ Migrations and dependencies are recorded in [database](DATABASE.md) and the pack
 Local verification covered 17 PHP tests with 203 assertions each on SQLite and MariaDB 11.4.14, Playwright in Chrome across two localhost origins, the HTTP smoke script, the Vite build, style and dependency checks, and a disposable MariaDB migration from a production-style configuration. The official Manitoba CSV imported 1,884 supported place records into a disposable database and preserved Brandon's existing location ID. Account-specific hosting validation remains pending.
 
 Run private Hostinger staging validation before connecting an application release to automatic Git deployment.
+
+
+## Pass 09 continuation — after Codex usage cap
+
+The independently reviewed Pass 08 business importer is in stacked PR #26. ChatGPT added a separate development branch `feature/pass-09-ownership-continuation` targeting that branch, with owner-controlled manager/editor invitations requiring explicit verified-member acceptance, private account pages, member revocation and linked message-contact cleanup. This is a first slice, **not completion** of business ownership disputes, owner transfer, branch lifecycle or all security/race acceptance criteria. No production deployment or schema authorization has occurred.
