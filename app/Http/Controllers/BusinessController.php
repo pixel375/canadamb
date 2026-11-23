@@ -200,8 +200,10 @@ class BusinessController extends Controller
             // Match the business-lock order used by membership revocation.
             $owner = $this->directory->visible($site)->managedBy($request->user()->id, MessageContact::ROLES)
                 ->lockForUpdate()->findOrFail($business);
+            BusinessOwnership::requireUncontested($owner->id);
             $item = $owner->locations()->when($site->location_id, fn ($query, $id) => $query->where('location_id', $id))
                 ->lockForUpdate()->findOrFail($branch);
+            abort_if((bool) $data['enabled'] && $item->operational_status !== 'open', 409);
             $contacts->setConsent($item, $owner->id, $request->user()->id, (bool) $data['enabled'], $site->id);
         }, attempts: 3);
 
@@ -221,7 +223,7 @@ class BusinessController extends Controller
             ]);
             $branch = $profile->locations()->lockForUpdate()->findOrFail($data['business_location_id']);
             $location = LocationScope::forPublication($site, $branch->location_id);
-            abort_unless($profile->status === 'active', 409);
+            abort_unless($profile->status === 'active' && $branch->operational_status === 'open', 409);
             if (DB::table('business_updates')->whereIn('business_location_id', $profile->locations()->select('id'))
                 ->where('created_at', '>=', now()->subDay())->count() >= 5) {
                 throw ValidationException::withMessages(['title' => 'This profile has reached its daily update limit.']);
