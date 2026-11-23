@@ -1,5 +1,6 @@
 <x-layouts.admin title="Business review">
     <div class="page-intro"><div><h1>Business review</h1><p>Review directory submissions, ownership claims and business updates.</p></div></div>
+    <section class="panel"><h2>Ownership transfers and disputes</h2><p>Independent reviews of accepted transfers, ownership concerns and confirmed holds.</p><a class="button button-outline" href="/admin/ownership-cases">Review ownership cases</a></section>
     <section class="panel">
         <h2>Profile submissions</h2>
         @forelse($businesses as $item)
