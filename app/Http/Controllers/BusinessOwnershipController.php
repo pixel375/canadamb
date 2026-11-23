@@ -56,7 +56,7 @@ class BusinessOwnershipController extends Controller
             abort_unless(DB::table('business_memberships')->where([
                 'business_id' => $business->id, 'role' => 'owner',
             ])->exists(), 409);
-            if (BusinessOwnership::onHold($business->id)) {
+            if (BusinessOwnership::inReview($business->id)) {
                 throw ValidationException::withMessages(['evidence' => 'A review is already in progress for this business.']);
             }
             $id = DB::table('business_ownership_cases')->insertGetId([
