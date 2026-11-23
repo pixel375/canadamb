@@ -1,12 +1,28 @@
 <x-layouts.site title="Marketplace">
+    @php
+        // Carry only a validated provincial location filter through category
+        // browsing, never arbitrary query parameters.
+        $marketLink = static function (array $params = []) use ($filters): string {
+            if (isset($filters['location'])) {
+                $params['location'] = $filters['location'];
+            }
+            $query = http_build_query($params, '', '&', PHP_QUERY_RFC3986);
+
+            return '/marketplace'.($query === '' ? '' : '?'.$query);
+        };
+        $marketPlace = isset($filters['location']) ? $locations->firstWhere('slug', $filters['location'])?->name : null;
+    @endphp
     <div class="container page-shell">
         <div class="page-intro">
-            <div><h1>Marketplace</h1><p>Browse listings in {{ request()->attributes->get('site')->location?->name ?? 'Manitoba' }}.</p></div>
+            <div><h1>Marketplace</h1><p>Browse listings in {{ $marketPlace ?? request()->attributes->get('site')->location?->name ?? 'Manitoba' }}.</p></div>
             <div class="inline-actions">
                 @auth<a class="button button-outline" href="/account/saved">Saved listings</a>@endauth
                 <a class="button button-primary" href="/marketplace/new"><x-icon name="plus" size="16"/> Post a listing</a>
             </div>
         </div>
+        @if($marketPlace)
+            <p class="field-note">Browsing <strong>{{ $marketPlace }}</strong> listings. <a class="text-link" href="/marketplace">See all Manitoba categories</a></p>
+        @endif
         @if($isDiscovery)
             <section class="market-discovery" aria-labelledby="market-discovery-heading">
                 <div class="market-discovery-head">
@@ -17,15 +33,16 @@
                     </div>
                     <div class="inline-actions">
                         @if($selectedGroup)
-                            <a class="button button-outline" href="/marketplace">All main categories</a>
-                            <a class="button button-primary" href="/marketplace?group={{ urlencode($selectedGroup) }}&amp;view=all">View all in {{ $categoryGroups[$selectedGroup]['name'] }}</a>
+                            <a class="button button-outline" href="{{ $marketLink() }}">All main categories</a>
+                            <a class="button button-primary" href="{{ $marketLink(['group' => $selectedGroup, 'view' => 'all']) }}">View all in {{ $categoryGroups[$selectedGroup]['name'] }}</a>
                         @else
-                            <a class="button button-primary" href="/marketplace?view=all">View all listings</a>
+                            <a class="button button-primary" href="{{ $marketLink(['view' => 'all']) }}">View all listings</a>
                         @endif
                     </div>
                 </div>
                 @unless($selectedGroup)
                     <form class="market-quick-search" action="/marketplace" method="get" role="search">
+                        @if($marketPlace)<input type="hidden" name="location" value="{{ $filters['location'] }}">@endif
                         <x-icon name="search" size="19"/>
                         <label class="sr-only" for="marketplace-quick-query">Search all classifieds</label>
                         <input id="marketplace-quick-query" type="search" name="q" placeholder="Search listings" maxlength="100">
@@ -35,7 +52,7 @@
                 @if($selectedGroup)
                     <div class="market-category-grid market-subcategory-grid">
                         @foreach($categoryGroups[$selectedGroup]['available'] as $slug => $name)
-                            <a class="market-category-card market-subcategory-card" href="/marketplace?category={{ urlencode($slug) }}">
+                            <a class="market-category-card market-subcategory-card" href="{{ $marketLink(['category' => $slug]) }}">
                                 <span class="market-category-name">{{ $name }}</span>
                                 <span class="market-category-link">Explore listings <span aria-hidden="true">→</span></span>
                             </a>
@@ -44,7 +61,7 @@
                 @else
                     <div class="market-category-grid">
                         @foreach($categoryGroups as $slug => $group)
-                            <a class="market-category-card" href="/marketplace?group={{ urlencode($slug) }}">
+                            <a class="market-category-card" href="{{ $marketLink(['group' => $slug]) }}">
                                 <span class="market-category-icon" aria-hidden="true">{{ $group['icon'] }}</span>
                                 <span class="market-category-name">{{ $group['name'] }}</span>
                                 <span class="market-category-description">{{ $group['subtitle'] }}</span>
@@ -63,15 +80,15 @@
         @else
             <div class="market-browse-context">
                 <div class="inline-actions">
-                    <a class="text-link" href="/marketplace">All categories</a>
+                    <a class="text-link" href="{{ $marketLink() }}">All categories</a>
                     @if($selectedGroup)
                         <span aria-hidden="true">/</span>
-                        <a class="text-link" href="/marketplace?group={{ urlencode($selectedGroup) }}">{{ $categoryGroups[$selectedGroup]['name'] }}</a>
+                        <a class="text-link" href="{{ $marketLink(['group' => $selectedGroup]) }}">{{ $categoryGroups[$selectedGroup]['name'] }}</a>
                     @elseif(isset($filters['category']))
                         @foreach($categoryGroups as $slug => $group)
                             @if(isset($group['available'][$filters['category']]))
                                 <span aria-hidden="true">/</span>
-                                <a class="text-link" href="/marketplace?group={{ urlencode($slug) }}">{{ $group['name'] }}</a>
+                                <a class="text-link" href="{{ $marketLink(['group' => $slug]) }}">{{ $group['name'] }}</a>
                                 @break
                             @endif
                         @endforeach
@@ -82,7 +99,7 @@
                     @endif
                 </div>
                 @if(!isset($filters['category']) && !$selectedGroup && !isset($filters['q']))
-                    <p class="field-note">Showing all current listings. <a class="text-link" href="/marketplace">Browse categories instead</a></p>
+                    <p class="field-note">Showing all current listings. <a class="text-link" href="{{ $marketLink() }}">Browse categories instead</a></p>
                 @endif
             </div>
         @endif

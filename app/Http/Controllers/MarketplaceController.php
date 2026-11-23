@@ -57,11 +57,12 @@ class MarketplaceController extends Controller
             unset($filters['group']);
         }
 
-        // Unfiltered visits start at the category chooser. Search, direct legacy
-        // category links and explicit "View all" still show listings immediately.
+        // Location is a browsing scope, not a search term. A location-only
+        // visit still starts with main categories; search, direct legacy leaf
+        // links and explicit "View all" show listing results immediately.
         $isDiscovery = ! $request->is('api/*')
             && ! isset($filters['category']) && ! isset($filters['view'])
-            && ! array_intersect_key($filters, array_flip(['q', 'condition', 'min_price', 'max_price', 'location', 'sort']));
+            && ! array_intersect_key($filters, array_flip(['q', 'condition', 'min_price', 'max_price', 'sort']));
         $selectedGroup = $filters['group'] ?? null;
         $query = $this->marketplace->visible($site)
             ->when($selectedGroup !== null && ! isset($filters['category']),
@@ -93,7 +94,7 @@ class MarketplaceController extends Controller
         return view('marketplace.index', [
             'items' => $items, 'filters' => $filters, 'categories' => $categories,
             'categoryGroups' => $categoryGroups, 'selectedGroup' => $selectedGroup, 'isDiscovery' => $isDiscovery,
-            'sortOptions' => self::SORT_OPTIONS, 'activeFilterCount' => count(array_diff_key($filters, ['sort' => true, 'view' => true])),
+            'sortOptions' => self::SORT_OPTIONS, 'activeFilterCount' => count(array_diff_key($filters, ['sort' => true, 'view' => true, 'group' => true])),
             'locations' => $site->isNetwork() ? Location::selectable()->orderBy('name')->get() : collect(),
         ]);
     }

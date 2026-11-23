@@ -62,6 +62,44 @@ class MarketplaceCategoryNavigationTest extends TestCase
             ->assertSee('Visible Manitoba sports car')->assertDontSee('Visible Manitoba loveseat');
     }
 
+    public function test_location_only_visit_remains_category_first_and_keeps_location_scope(): void
+    {
+        $seller = User::factory()->create();
+        $this->published($seller, 'Brandon family car', 'cars', 'brandon');
+        $this->published($seller, 'Elkhorn family car', 'cars', 'elkhorn');
+
+        $this->get(self::MAIN.'/marketplace?location=brandon')->assertOk()
+            ->assertSee('What are you looking for?')
+            ->assertSee('Browsing <strong>Brandon</strong> listings.', false)
+            ->assertSee('href="/marketplace?group=vehicles&amp;location=brandon"', false)
+            ->assertSee('href="/marketplace?view=all&amp;location=brandon"', false)
+            ->assertSee('type="hidden" name="location" value="brandon"', false)
+            ->assertDontSee('Brandon family car');
+
+        $this->get(self::MAIN.'/marketplace?group=vehicles&location=brandon')->assertOk()
+            ->assertSee('Cars &amp; Trucks', false)
+            ->assertSee('href="/marketplace?category=cars&amp;location=brandon"', false)
+            ->assertSee('href="/marketplace?group=vehicles&amp;view=all&amp;location=brandon"', false)
+            ->assertSee('href="/marketplace?location=brandon"', false)
+            ->assertDontSee('Brandon family car');
+
+        $this->get(self::MAIN.'/marketplace?category=cars&location=brandon')->assertOk()
+            ->assertSee('Brandon family car')
+            ->assertDontSee('Elkhorn family car')
+            ->assertSee('href="/marketplace?group=vehicles&amp;location=brandon"', false);
+
+        $this->get(self::MAIN.'/marketplace?view=all&location=brandon')->assertOk()
+            ->assertSee('Brandon family car')
+            ->assertDontSee('Elkhorn family car')
+            ->assertSee('href="/marketplace?location=brandon"', false);
+
+        // City portals enforce their own scope even when a visitor supplies
+        // another town in an unrecognized location query parameter.
+        $this->get(self::CITY.'/marketplace?location=elkhorn')->assertOk()
+            ->assertSee('What are you looking for?')
+            ->assertDontSee('href="/marketplace?group=vehicles&amp;location=elkhorn"', false);
+    }
+
     public function test_main_group_subcategory_direct_legacy_links_and_search_keep_city_permissions(): void
     {
         $seller = User::factory()->create();

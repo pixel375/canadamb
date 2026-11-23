@@ -74,5 +74,17 @@ async page => {
         await page.goto(host + '/marketplace?view=all');
         check(await page.getByText('Browse categories instead').isVisible(),
             'View all did not provide a category-navigation return link');
+
+        if (host.includes('canadamb.localhost')) {
+            await page.goto(host + '/marketplace?location=brandon');
+            check(await page.getByRole('heading', { name: 'What are you looking for?' }).isVisible(),
+                'Location-only visit bypassed category chooser');
+            check(await page.getByText('Browsing Brandon listings.').isVisible(),
+                'Selected location is not visible to shoppers');
+            await page.locator('a[href="/marketplace?group=vehicles&location=brandon"]').click();
+            await page.locator('a[href="/marketplace?category=cars&location=brandon"]').click();
+            check(new URL(page.url()).searchParams.get('location') === 'brandon',
+                'Category drill-down lost selected location');
+        }
     }
 };
