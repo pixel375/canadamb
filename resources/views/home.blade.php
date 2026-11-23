@@ -1,5 +1,6 @@
 @php
     $site = request()->attributes->get('site');
+    $homeModules = app(\App\Support\NetworkSettings::class)->forSite($site)['modules'];
     $enabled = app(\App\Support\Marketplace::class)->enabled($site);
     $place = $location->name ?? 'Manitoba';
     $scope = $site->isNetwork() && $location ? '?location='.$location->slug : '';
@@ -7,6 +8,7 @@
 @endphp
 <x-layouts.site :preview="$preview ?? false" :location="$location" main-class="home-main">
     <div class="container">
+        <div class="home-lead-grid">
         <section class="hero{{ $hero ? ' hero-photo' : '' }}" aria-labelledby="hero-title">
             @if($hero)<img class="hero-image hero-{{ $hero }}" src="/images/{{ $hero }}.webp" alt="" fetchpriority="high">@endif
             <div class="hero-content">
@@ -23,6 +25,64 @@
             </div>
             @if($hero)<a class="hero-credit" href="/photo-credits">{{ $hero === 'brandon' ? 'Brandon from North Hill' : 'Canola fields in Manitoba' }}</a>@endif
         </section>
+        <aside class="home-explore-panel" aria-labelledby="home-explore-title">
+            <div class="home-explore-heading">
+                <p class="section-label">Your local hub</p>
+                <h2 id="home-explore-title">Explore {{ $site->location?->name ?? 'Manitoba' }}</h2>
+                <p>Find people, places and opportunities near you.</p>
+            </div>
+            <div class="home-explore-links">
+                @if($enabled)
+                    <a href="/marketplace{{ $scope }}" class="home-explore-link">
+                        <span class="home-explore-icon"><x-icon name="marketplace" size="23"/></span>
+                        <span><strong>Marketplace</strong><small>Browse local classifieds</small></span>
+                        <x-icon name="arrow" size="17"/>
+                    </a>
+                @endif
+                @if(app(\App\Support\BusinessDirectory::class)->enabled($site))
+                    <a href="/businesses" class="home-explore-link">
+                        <span class="home-explore-icon"><x-icon name="building" size="23"/></span>
+                        <span><strong>Local businesses</strong><small>Shops and services nearby</small></span>
+                        <x-icon name="arrow" size="17"/>
+                    </a>
+                @endif
+                @if($homeModules['community'] ?? false)
+                    <a href="/community" class="home-explore-link">
+                        <span class="home-explore-icon"><x-icon name="discussions" size="23"/></span>
+                        <span><strong>Discussions</strong><small>Connect with your neighbours</small></span>
+                        <x-icon name="arrow" size="17"/>
+                    </a>
+                @endif
+                @if($homeModules['events'] ?? false)
+                    <a href="/events" class="home-explore-link">
+                        <span class="home-explore-icon"><x-icon name="calendar" size="23"/></span>
+                        <span><strong>Events</strong><small>See what's happening locally</small></span>
+                        <x-icon name="arrow" size="17"/>
+                    </a>
+                @endif
+                @if($homeModules['jobs'] ?? false)
+                    <a href="/jobs" class="home-explore-link">
+                        <span class="home-explore-icon"><x-icon name="briefcase" size="23"/></span>
+                        <span><strong>Jobs</strong><small>Find opportunities in your area</small></span>
+                        <x-icon name="arrow" size="17"/>
+                    </a>
+                @endif
+                @if($site->isNetwork())
+                    <a href="/communities" class="home-explore-link">
+                        <span class="home-explore-icon"><x-icon name="map" size="23"/></span>
+                        <span><strong>Communities</strong><small>Explore cities and towns</small></span>
+                        <x-icon name="arrow" size="17"/>
+                    </a>
+                @elseif($homeModules['news'] ?? false)
+                    <a href="/news" class="home-explore-link">
+                        <span class="home-explore-icon"><x-icon name="news" size="23"/></span>
+                        <span><strong>Local news</strong><small>What's happening nearby</small></span>
+                        <x-icon name="arrow" size="17"/>
+                    </a>
+                @endif
+            </div>
+        </aside>
+        </div>
 
         @unless($preview ?? false)
             @if($site->isNetwork())
@@ -51,6 +111,7 @@
             </section>
         @endif
 
+        <div class="home-content-grid">
         @if($enabled)
         <section class="homepage-section" aria-labelledby="market-title">
             <div class="section-heading">
@@ -85,6 +146,8 @@
                 </div>
             </section>
         @endif
+
+        </div>
 
         @if($recentDiscussions->isNotEmpty() || $upcomingEvents->isNotEmpty() || $latestJobs->isNotEmpty())
             <div class="community-activity">
