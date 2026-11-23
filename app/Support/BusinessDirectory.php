@@ -7,6 +7,7 @@ use App\Models\BusinessUpdate;
 use App\Models\Site;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
+use Normalizer;
 
 final class BusinessDirectory
 {
@@ -52,6 +53,16 @@ final class BusinessDirectory
         $normalize = static fn (string $value) => Str::of($value)->ascii()->lower()->replaceMatches('/[^a-z0-9]+/', ' ')->trim()->toString();
 
         return hash('sha256', $normalize($name).'|'.$normalize($address));
+    }
+
+    public static function normalizedText(string $value): string
+    {
+        return trim(preg_replace('/\p{Z}+/u', ' ', Normalizer::normalize($value, Normalizer::FORM_C)));
+    }
+
+    public static function identityNameKey(string $name): string
+    {
+        return hash('sha256', mb_convert_case(self::normalizedText($name), MB_CASE_FOLD, 'UTF-8'));
     }
 
     public static function slug(string $name): string
