@@ -30,7 +30,7 @@ class MarketplaceTest extends TestCase
         $this->get(self::CITY.'/marketplace')->assertDontSee('Oak table');
         $this->actingAs($admin)->post(self::MAIN."/admin/moderation/$item->id", ['status' => 'active'])->assertRedirect();
         $this->get(self::CITY.'/marketplace?q=Oak&category=furniture')->assertOk()->assertSee('Oak table');
-        $this->get(self::MAIN.'/marketplace')->assertOk()->assertSee('Oak table');
+        $this->get(self::MAIN.'/marketplace?view=all')->assertOk()->assertSee('Oak table');
         $this->get(self::CITY."/marketplace/$item->id")->assertOk()->assertSee('Oak table');
         $this->get(self::MAIN."/marketplace/$item->id")
             ->assertOk()->assertSee('Oak table')
@@ -46,8 +46,8 @@ class MarketplaceTest extends TestCase
         $this->actingAs($seller)->put(self::CITY."/account/listings/$item->id", $this->listing('Oak dining table'))->assertRedirect();
         $this->get(self::MAIN.'/marketplace')->assertDontSee('Oak table');
         $this->actingAs($admin)->post(self::MAIN."/admin/moderation/$item->id", ['status' => 'active'])->assertRedirect();
-        $this->get(self::MAIN.'/marketplace')->assertSee('Oak dining table');
-        $this->get(self::CITY.'/marketplace')->assertSee('Oak dining table');
+        $this->get(self::MAIN.'/marketplace?view=all')->assertSee('Oak dining table');
+        $this->get(self::CITY.'/marketplace?view=all')->assertSee('Oak dining table');
 
         $this->actingAs($seller)->post(self::CITY."/account/listings/$item->id/status", ['status' => 'removed'])->assertRedirect();
         $this->get(self::CITY.'/marketplace')->assertDontSee('Oak dining table');
@@ -65,7 +65,7 @@ class MarketplaceTest extends TestCase
         $item = Listing::sole();
         $this->actingAs(User::factory()->create(['role' => 'network_admin']))
             ->post(self::MAIN."/admin/moderation/$item->id", ['status' => 'active'])->assertRedirect();
-        $this->get(self::MAIN.'/marketplace?location=elkhorn')->assertSee('Elkhorn patio set');
+        $this->get(self::MAIN.'/marketplace?view=all&location=elkhorn')->assertSee('Elkhorn patio set');
         $this->get(self::MAIN.'/?location=elkhorn')->assertSee('Elkhorn patio set');
         $this->get(self::CITY.'/marketplace?location=elkhorn')->assertDontSee('Elkhorn patio set');
         $this->getJson(self::CITY.'/api/v1/marketplace?location=elkhorn')->assertJsonCount(0, 'data');
