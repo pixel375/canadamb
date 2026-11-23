@@ -30,6 +30,12 @@ class BusinessOwnershipController extends Controller
                     ->where('branch.location_id', $site->location_id)))
             ->select('ownership.*', 'business.name as business_name')
             ->orderByDesc('ownership.id')->paginate(20);
+        $items->getCollection()->each(function (object $item): void {
+            // Business label is presentation-only; it cannot change the exact case version.
+            $source = clone $item;
+            unset($source->business_name);
+            $item->review_version = ModerationDecision::version('ownership-case', $source);
+        });
 
         return response()->view('business.ownership-cases', compact('items', 'member'))
             ->header('Cache-Control', 'private, no-store')->header('X-Robots-Tag', 'noindex');
