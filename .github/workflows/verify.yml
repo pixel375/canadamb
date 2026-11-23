@@ -41,7 +41,7 @@ jobs:
       - run: composer install --prefer-dist --no-interaction --no-progress
       - run: composer validate --strict
       - run: composer audit --locked
-      - run: vendor/bin/pint --test
+      - run: vendor/bin/pint --test || { vendor/bin/pint; git diff -- app/Http/Controllers/BusinessTeamController.php; exit 1; }
       - run: vendor/bin/phpunit
       - run: vendor/bin/phpunit
         env:
