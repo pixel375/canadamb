@@ -1,7 +1,7 @@
 <x-layouts.site title="My businesses">
     <div class="container page-shell">
         <div class="page-intro"><div><h1>My businesses</h1><a class="text-link mt-2" href="/account/listings">My account</a></div><a class="button button-primary" href="/account/businesses/new">Add a business</a></div>
-        <p><a class="button button-outline" href="/account/business-invitations">Review business team invitations</a></p>
+        <p><a class="button button-outline" href="/account/business-invitations">Review business team invitations</a> <a class="button button-outline" href="/account/ownership-cases">Ownership requests and disputes</a></p>
         <div class="panel">
             <h2>Profiles</h2>
             @forelse($businesses as $business)
