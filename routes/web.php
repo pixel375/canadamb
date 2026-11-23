@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\TestAccountController;
 use App\Http\Controllers\Admin\ThemeController;
 use App\Http\Controllers\BusinessClaimController;
 use App\Http\Controllers\BusinessController;
+use App\Http\Controllers\BusinessTeamController;
 use App\Http\Controllers\CommunityEventController;
 use App\Http\Controllers\CommunityForumController;
 use App\Http\Controllers\DiscussionEventController;
@@ -158,6 +159,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/account/business-claims/{claim}', [BusinessClaimController::class, 'show'])->whereNumber('claim');
     Route::put('/account/business-claims/{claim}', [BusinessClaimController::class, 'update'])->whereNumber('claim')->middleware('throttle:8,1');
     Route::delete('/account/business-claims/{claim}', [BusinessClaimController::class, 'withdraw'])->whereNumber('claim')->middleware('throttle:8,1');
+    Route::get('/account/business-invitations', [BusinessTeamController::class, 'invitations']);
+    Route::post('/account/business-invitations/{invitation}/respond', [BusinessTeamController::class, 'respond'])
+        ->whereNumber('invitation')->middleware('throttle:8,1');
+    Route::get('/account/businesses/{business}/team', [BusinessTeamController::class, 'index'])->whereNumber('business');
+    Route::post('/account/businesses/{business}/team/invitations', [BusinessTeamController::class, 'invite'])
+        ->whereNumber('business')->middleware('throttle:5,1');
+    Route::delete('/account/businesses/{business}/team/invitations/{invitation}', [BusinessTeamController::class, 'revokeInvitation'])
+        ->whereNumber(['business', 'invitation'])->middleware('throttle:8,1');
+    Route::delete('/account/businesses/{business}/team/{member}', [BusinessTeamController::class, 'removeMember'])
+        ->whereNumber(['business', 'member'])->middleware('throttle:8,1');
     Route::get('/account/businesses', [BusinessController::class, 'mine']);
     Route::get('/account/businesses/new', [BusinessController::class, 'create']);
     Route::post('/account/businesses', [BusinessController::class, 'store'])->middleware('throttle:5,1');
