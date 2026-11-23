@@ -500,3 +500,93 @@ textarea { max-width: 100%; overflow-wrap: break-word; }
 .discussion-options-links a { display: flex; align-items: center; color: var(--link); padding: .45rem .65rem; min-height: 44px; }
 .discussion-options-links a:hover { background: var(--soft); }
 .linked-event-summary { margin-block: .8rem; padding: .8rem; border: 1px solid var(--border); border-radius: .65rem; overflow-wrap: anywhere; }
+
+
+/* Pass 10: let desktop disclosure menus escape the navigation strip.
+   overflow-x:auto creates a scroll container that clips absolutely-positioned
+   dropdowns even if their own overflow-y is visible. */
+@media (min-width: 1024px) {
+    .site-header { position: relative; z-index: 60; }
+    .navigation-wrap { position: relative; overflow: visible; z-index: 3; }
+    .navigation { gap: 18px; }
+    .navigation nav { overflow: visible; flex-wrap: wrap; align-content: stretch; column-gap: clamp(12px, 1.8vw, 28px); }
+    .navigation nav a { white-space: nowrap; }
+    .desktop-nav-group > summary { padding: 0 4px; min-height: 46px; border-bottom: 2px solid transparent; }
+    .desktop-nav-group > summary[aria-current], .desktop-nav-group[open] > summary { border-color: var(--primary); color: var(--link); }
+    .desktop-nav-submenu {
+        top: calc(100% + 3px); left: 0; min-width: 205px;
+        padding: 7px; border-radius: 11px; z-index: 80;
+        box-shadow: 0 16px 42px rgb(0 0 0 / .19);
+    }
+    .navigation nav .desktop-nav-submenu a { display: flex; align-items: center; min-height: 44px; padding: 10px 12px; }
+    .navigation nav .desktop-nav-submenu a:focus-visible { outline-offset: -2px; }
+    .header-actions { flex-wrap: nowrap; justify-content: flex-end; flex: 1 1 auto; min-width: 0; gap: clamp(9px, 1.1vw, 15px); }
+    .header-actions .header-inbox { position: relative; display: inline-flex; min-height: 42px; padding: 6px 8px; border-radius: 9px; }
+    .header-actions .header-inbox:hover, .header-actions .header-inbox[aria-current] { background: var(--soft); text-decoration: none; }
+    .header-actions .header-inbox .notification-badge { flex: 0 0 auto; }
+}
+@media (max-width: 1300px) and (min-width: 761px) {
+    .header-search { display: none; }
+}
+@media (max-width: 1120px) and (min-width: 761px) {
+    .header-actions .header-post { display: none; }
+    .masthead { gap: 12px; }
+}
+@media (min-width: 761px) and (max-width: 1023px) {
+    .navigation-wrap { display: none; }
+    .site-menu-trigger { display: inline-flex; }
+    .masthead { min-height: 72px; }
+    .header-actions { flex-wrap: nowrap; gap: 10px; }
+}
+@media (min-width: 761px) {
+    .header-actions .sign-in[aria-current] { color: var(--link); }
+}
+@media (max-width: 760px) {
+    .site-header { position: relative; }
+    .mobile-tab-bar a:has(.notification-badge) { position: relative; }
+    .mobile-tab-bar .notification-badge { position: absolute; top: .2rem; left: calc(50% + .25rem); }
+}
+
+/* Marketplace: parent-category chooser, then legacy leaf-subcategory browsing.
+   No invented property ads or migrations into real estate listings. */
+.market-discovery { margin: 0 0 22px; }
+.market-discovery-head { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 14px; margin: 4px 0 18px; }
+.market-discovery-head h2 { margin: 4px 0 6px; font-size: clamp(1.5rem, 3vw, 2rem); }
+.market-discovery-head p { max-width: 56ch; }
+.market-category-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.market-category-card {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 9px;
+    min-width: 0; min-height: 188px; padding: clamp(18px, 2vw, 23px);
+    color: var(--text); border: 1px solid var(--border); border-radius: 15px;
+    background: var(--card); box-shadow: 0 3px 12px rgb(0 0 0 / .025);
+    text-decoration: none; transition: border-color .14s ease, box-shadow .14s ease, transform .14s ease;
+}
+a.market-category-card:hover, a.market-category-card:focus-visible {
+    border-color: var(--primary); box-shadow: 0 9px 26px rgb(0 0 0 / .095); transform: translateY(-2px);
+}
+.market-category-icon { display: grid; place-items: center; width: 45px; height: 45px; font-size: 1.65rem; border-radius: 12px; background: var(--soft); }
+.market-category-name { font: 800 clamp(1.08rem, 1.5vw, 1.24rem)/1.25 var(--display); letter-spacing: -.02em; }
+.market-category-description { font-size: .9rem; color: var(--muted); line-height: 1.45; }
+.market-category-link { margin-top: auto; display: inline-flex; align-items: center; gap: 9px; font-size: .83rem; color: var(--link); font-weight: 750; }
+.market-category-upcoming { border-style: dashed; box-shadow: none; }
+.market-category-coming { margin-top: auto; display: inline-flex; color: var(--muted); background: var(--soft); padding: 4px 10px; border-radius: 999px; font-size: .77rem; font-weight: 750; }
+.market-subcategory-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.market-subcategory-card { min-height: 120px; justify-content: space-between; }
+.market-browse-context { margin: 2px 0 14px; color: var(--muted); font-size: .85rem; }
+.market-browse-context strong { color: var(--text); }
+.market-browse-context .field-note { margin: 7px 0 0; }
+@media (max-width: 1023px) {
+    .market-category-grid, .market-subcategory-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 600px) {
+    .market-category-grid, .market-subcategory-grid { grid-template-columns: 1fr; gap: 10px; }
+    .market-category-card { min-height: 132px; padding: 17px; gap: 7px; }
+    .market-category-icon { width: 39px; height: 39px; font-size: 1.4rem; }
+    .market-category-name { font-size: 1.1rem; }
+    .market-category-description { font-size: .85rem; }
+    .market-discovery-head .inline-actions { width: 100%; }
+    .market-discovery-head .inline-actions a { flex: 1 1 auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .market-category-card { transition: none; }
+}
