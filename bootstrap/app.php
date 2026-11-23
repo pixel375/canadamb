@@ -27,6 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
             : '/');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->dontFlash(['evidence', 'proof_reference']);
         $exceptions->render(function (AuthenticationException $error, Request $request) {
             if ($request->routeIs('passport.authorizations.authorize') && ! $request->expectsJson()
                 && ($ticket = Identity::rememberCentralAuthorization($request))) {

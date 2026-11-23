@@ -69,6 +69,8 @@ class BusinessDirectoryTest extends TestCase
         $this->put("https://brandonmb.ca/account/businesses/$business->id", ['description' => 'Repairs bicycles.'])->assertNotFound();
         $this->actingAs($admin)->post("https://canadamb.ca/admin/business-claims/$claimId", [
             'decision' => 'approved', 'notes' => 'Matched the registration and confirmed control of contact email.',
+            'proof_method' => 'official_authority', 'proof_reference' => 'Verified authorized representative in test registry.',
+            'authority_confirmed' => 'on',
             'version' => ModerationDecision::version('claim', DB::table('business_claims')->where('id', $claimId)->first()),
         ])->assertSessionHasNoErrors()->assertRedirect();
         $this->assertDatabaseHas('business_memberships', ['business_id' => $business->id, 'user_id' => $claimant->id, 'role' => 'owner']);

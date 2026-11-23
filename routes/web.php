@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\PropertyReviewController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\TestAccountController;
 use App\Http\Controllers\Admin\ThemeController;
+use App\Http\Controllers\BusinessClaimController;
 use App\Http\Controllers\BusinessController;
 use App\Http\Controllers\CommunityEventController;
 use App\Http\Controllers\CommunityForumController;
@@ -154,6 +155,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/account/messages/{conversation}/block', [MessagesController::class, 'block'])->whereNumber('conversation');
     Route::delete('/account/messages/{conversation}/block', [MessagesController::class, 'unblock'])->whereNumber('conversation');
     Route::post('/businesses/{slug}/claim', [BusinessController::class, 'claim'])->middleware('throttle:8,1');
+    Route::get('/account/business-claims/{claim}', [BusinessClaimController::class, 'show'])->whereNumber('claim');
+    Route::put('/account/business-claims/{claim}', [BusinessClaimController::class, 'update'])->whereNumber('claim')->middleware('throttle:8,1');
+    Route::delete('/account/business-claims/{claim}', [BusinessClaimController::class, 'withdraw'])->whereNumber('claim')->middleware('throttle:8,1');
     Route::get('/account/businesses', [BusinessController::class, 'mine']);
     Route::get('/account/businesses/new', [BusinessController::class, 'create']);
     Route::post('/account/businesses', [BusinessController::class, 'store'])->middleware('throttle:5,1');
@@ -195,7 +199,7 @@ Route::prefix('admin')->middleware(['auth', 'verified', 'can:manage-network'])->
         ->middleware('throttle:12,1')->name('moderation.bulk');
     Route::get('/business-review', [BusinessReviewController::class, 'index']);
     Route::post('/business-review/{business}', [BusinessReviewController::class, 'profile'])->whereNumber('business');
-    Route::post('/business-claims/{claim}', [BusinessReviewController::class, 'claim'])->whereNumber('claim');
+    Route::post('/business-claims/{claim}', [BusinessReviewController::class, 'claim'])->whereNumber('claim')->middleware('throttle:60,1');
     Route::post('/business-updates/{update}', [BusinessReviewController::class, 'update'])->whereNumber('update');
     Route::post('/moderation/{listing}', [NetworkController::class, 'moderate'])->whereNumber('listing');
     Route::post('/moderation/reports/{report}', [NetworkController::class, 'resolveReport'])->whereNumber('report');

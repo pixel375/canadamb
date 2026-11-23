@@ -64,6 +64,7 @@ jobs:
           php -l tests/Deployment/pass07-event-race.php
           bash -n tests/Deployment/pass08-import.sh
           php -l tests/Deployment/pass08-import-race.php
+          php -l tests/Deployment/pass08-claim-race.php
       - name: Ensure MariaDB dump client is installed for the update rehearsal
         run: |
           if ! command -v mariadb-dump >/dev/null; then

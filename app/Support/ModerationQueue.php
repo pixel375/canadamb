@@ -70,7 +70,7 @@ final class ModerationQueue
         [$actions, $key] = match ($type) {
             'listing' => [['listing.active', 'listing.rejected', 'listing.removed'], 'listing'],
             'business' => [['business.approved', 'business.rejected'], 'business'],
-            'claim' => [['business.claim-approved', 'business.claim-rejected'], 'claim'],
+            'claim' => [['business.claim-submitted', 'business.claim-revised', 'business.claim-withdrawn', 'business.claim-approved', 'business.claim-rejected'], 'claim'],
             'business-update' => [['business.update-approved', 'business.update-rejected'], 'update'],
             'job' => [['jobs.approve', 'jobs.reject'], 'job'],
             'thread' => [[

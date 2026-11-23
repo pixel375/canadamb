@@ -6,11 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Models\Business;
 use App\Models\BusinessLocation;
 use App\Models\BusinessUpdate;
+use App\Models\User;
 use App\Support\Audit;
+use App\Support\BusinessClaims;
 use App\Support\ModerationDecision;
 use App\Support\NotificationInbox;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class BusinessReviewController extends Controller
@@ -20,8 +23,8 @@ class BusinessReviewController extends Controller
         return view('admin.business-review', [
             'businesses' => Business::with('locations.location')->where('status', 'pending')->latest()->paginate(15),
             'claims' => DB::table('business_claims')->join('businesses', 'businesses.id', '=', 'business_claims.business_id')
-                ->join('users', 'users.id', '=', 'business_claims.user_id')->where('business_claims.status', 'pending')
-                ->latest('business_claims.id')->paginate(15, ['business_claims.*', 'businesses.name as business_name', 'users.email as account_email'], 'claims_page'),
+                ->where('business_claims.status', 'pending')
+                ->latest('business_claims.id')->paginate(15, ['business_claims.id', 'businesses.name as business_name'], 'claims_page'),
             'updates' => BusinessUpdate::with('branch.business')->where('status', 'pending')->latest()->paginate(15, ['*'], 'updates_page'),
             'imports' => DB::table('business_import_runs')->join('business_sources', 'business_sources.id', '=', 'business_import_runs.source_id')
                 ->latest('business_import_runs.id')->paginate(15, ['business_import_runs.*', 'business_sources.name'], 'imports_page'),
@@ -52,25 +55,36 @@ class BusinessReviewController extends Controller
     public function claim(Request $request, int $claim)
     {
         $data = $this->decision($request);
+        $data += $request->validate([
+            'proof_method' => ['required_if:decision,approved', 'nullable', Rule::in(array_keys(BusinessClaims::PROOF_METHODS))],
+            'proof_reference' => 'required_if:decision,approved|nullable|string|min:12|max:300',
+            'authority_confirmed' => 'accepted_if:decision,approved',
+        ]);
         DB::transaction(function () use ($claim, $request, $data) {
             $row = DB::table('business_claims')->where('id', $claim)->firstOrFail();
             $business = Business::lockForUpdate()->findOrFail($row->business_id);
             $row = DB::table('business_claims')->where('id', $claim)->lockForUpdate()->firstOrFail();
             ModerationDecision::requireCurrent('claim', $row, $data['version']);
             abort_unless($row->status === 'pending', 409);
+            $reviewer = $request->user()->id;
+            abort_if($row->user_id === $reviewer || $business->members()->whereKey($reviewer)->exists(), 403);
+            $context = ['claim' => $claim, 'business' => $business->id];
             if ($data['decision'] === 'approved') {
+                $claimant = User::whereKey($row->user_id)->lockForUpdate()->firstOrFail();
                 if ($business->status !== 'active' || $business->members()->wherePivot('role', 'owner')->lockForUpdate()->first(['users.id']) !== null
-                    || $row->user_id === $request->user()->id) {
-                    throw ValidationException::withMessages(['decision' => 'An independent reviewer can approve only unclaimed active profiles.']);
+                    || ! $claimant->hasVerifiedEmail()) {
+                    throw ValidationException::withMessages(['decision' => 'Approval requires an eligible verified claimant and unclaimed active profile.']);
                 }
 
                 $business->members()->syncWithoutDetaching([$row->user_id => ['role' => 'owner']]);
+                $context['proof_method'] = $data['proof_method'];
+                $context['proof_reference'] = BusinessClaims::seal($data['proof_reference']);
             }
             DB::table('business_claims')->where('id', $claim)->update([
                 'status' => $data['decision'], 'notes' => $data['notes'], 'reviewer_id' => $request->user()->id,
                 'reviewed_at' => now(), 'updated_at' => now(),
             ]);
-            $audit = Audit::record('business.claim-'.$data['decision'], $request->user()->id, context: ['claim' => $claim, 'business' => $business->id]);
+            $audit = Audit::record('business.claim-'.$data['decision'], $reviewer, context: $context);
             ModerationDecision::record('claim', $claim, $data['decision'], $audit, $data, $audit);
             NotificationInbox::record($row->user_id, 'claim.'.$data['decision'], $audit, $claim, $business->locations()->pluck('location_id')->all());
         }, attempts: 3);

@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Business;
 use App\Models\CommunityEvent;
 use App\Models\Listing;
 use App\Models\Location;
 use App\Models\User;
+use App\Support\Audit;
+use App\Support\BusinessClaims;
 use App\Support\JobBoard;
 use App\Support\Marketplace;
 use App\Support\ModerationDecision;
@@ -56,11 +59,18 @@ class ModerationWorkbenchController extends Controller
         ]);
     }
 
-    public function show(string $type, int $item, ModerationQueue $queue)
+    public function show(Request $request, string $type, int $item, ModerationQueue $queue)
     {
         $resource = ModerationQueue::find($type, $item);
         abort_unless($resource, 404);
         $row = $queue->items(['type' => $type])->where('id', $item)->firstOrFail();
+        $evidence = null;
+        if ($type === 'claim') {
+            $reviewer = $request->user()->id;
+            abort_if($resource->user_id === $reviewer || Business::managedBy($reviewer)->whereKey($resource->business_id)->exists(), 403);
+            $evidence = BusinessClaims::read($resource->evidence);
+            Audit::record('business.claim-evidence-viewed', $reviewer, context: ['claim' => $item, 'business' => $resource->business_id]);
+        }
         $ownerNames = $type === 'business' ? $resource->members()->wherePivot('role', 'owner')->pluck('users.name') : collect();
         $branches = match ($type) {
             'business' => $resource->locations,
@@ -69,13 +79,14 @@ class ModerationWorkbenchController extends Controller
             default => collect(),
         };
 
-        return view('admin.moderation-workbench.show', [
+        return response()->view('admin.moderation-workbench.show', [
             'row' => $row, 'resource' => $resource, 'type' => $type, 'label' => ModerationQueue::TYPES[$type],
             'title' => $this->reviewTitle($type, $resource) ?? $row->title,
             'version' => ModerationDecision::version($type, $resource), 'ownerNames' => $ownerNames, 'branches' => $branches,
             'claimAccount' => $type === 'claim' ? User::whereKey($resource->user_id)->value('email') : null,
+            'claimEvidence' => $evidence,
             'history' => $queue->history($type, $item)->paginate(15, pageName: 'history'),
-        ]);
+        ])->header('Cache-Control', 'private, no-store');
     }
 
     public function decide(Request $request, string $type, int $item)
@@ -89,6 +100,9 @@ class ModerationWorkbenchController extends Controller
         ]);
         if ($type === 'event' && $data['action'] === 'edit') {
             $data += $request->only(['category', 'organizer', 'venue', 'event_url', 'starts_at', 'ends_at']);
+        }
+        if ($type === 'claim' && $data['action'] === 'approve') {
+            $data += $request->only(['proof_method', 'proof_reference', 'authority_confirmed']);
         }
         $this->apply($request, $type, $item, $data);
 
@@ -213,7 +227,7 @@ class ModerationWorkbenchController extends Controller
     private function apply(Request $request, string $type, int $id, array $data, bool $bulk = false): void
     {
         $fields = array_intersect_key($data, array_flip(['action', 'version', 'notes', 'reason', 'thread_version',
-            'category', 'organizer', 'venue', 'event_url', 'starts_at', 'ends_at']));
+            'category', 'organizer', 'venue', 'event_url', 'starts_at', 'ends_at', 'proof_method', 'proof_reference', 'authority_confirmed']));
         $fields['decision'] = $data['action'] === 'approve' ? 'approved' : 'rejected';
         $fields['status'] = match ($data['action']) {
             'approve' => 'active',

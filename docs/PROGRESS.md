@@ -2,7 +2,7 @@
 
 ## Pass 08 reviewed business imports
 
-The stacked branch adds a private CSV preview, an operator-reviewed source registry, grouped branch identities, conflict resolution, atomic apply and stale flags. The additive migration preserves historic profile IDs, ownership, claims, jobs and messages. Exact candidate test and recovery evidence is tracked in the stacked PR. Ownership lifecycle development follows import verification. [Issue #25](https://github.com/pixel375/canadamb/issues/25) · [Operator runbook](BUSINESS_IMPORTS.md)
+The stacked branch adds a private CSV preview, an operator-reviewed source registry, grouped branch identities, conflict resolution, atomic apply and stale flags. The additive migration preserves historic profile IDs, ownership, claims, jobs and messages. The ownership checkpoint adds independently verified first claims and versioned evidence revision and withdrawal. Disputes, transfers, staff acceptance and branch lifecycle remain open. Exact candidate test and recovery evidence is tracked in the stacked PR. [Issue #25](https://github.com/pixel375/canadamb/issues/25) · [Operator runbook](BUSINESS_IMPORTS.md)
 
 ## Pass 07 discussion events
 

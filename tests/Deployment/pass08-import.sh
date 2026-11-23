@@ -83,3 +83,5 @@ echo 'Restored the exact populated Pass 07 database and private media in isolati
 
 mkdir "$site/import-race"
 php -d memory_limit=128M "$repo/tests/Deployment/pass08-import-race.php" "$app/releases/$target" "$site/import-race"
+mkdir "$site/claim-race"
+php "$repo/tests/Deployment/pass08-claim-race.php" "$app/releases/$target" "$site/claim-race"
