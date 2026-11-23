@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\BusinessBranchReviewController;
 use App\Http\Controllers\Admin\BusinessOwnershipReviewController;
 use App\Http\Controllers\Admin\BusinessReviewController;
 use App\Http\Controllers\Admin\CommunityController;
@@ -12,6 +13,7 @@ use App\Http\Controllers\Admin\PropertyReviewController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\TestAccountController;
 use App\Http\Controllers\Admin\ThemeController;
+use App\Http\Controllers\BusinessBranchController;
 use App\Http\Controllers\BusinessClaimController;
 use App\Http\Controllers\BusinessController;
 use App\Http\Controllers\BusinessOwnershipController;
@@ -168,6 +170,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->whereNumber('business')->middleware('throttle:3,60');
     Route::post('/account/ownership-cases/{case}/respond', [BusinessOwnershipController::class, 'respond'])
         ->whereNumber('case')->middleware('throttle:8,1');
+    Route::get('/account/businesses/{business}/branches', [BusinessBranchController::class, 'index'])->whereNumber('business');
+    Route::post('/account/businesses/{business}/branches', [BusinessBranchController::class, 'request'])
+        ->whereNumber('business')->middleware('throttle:6,1');
+    Route::delete('/account/businesses/{business}/branches/{change}', [BusinessBranchController::class, 'withdraw'])
+        ->whereNumber(['business', 'change'])->middleware('throttle:8,1');
     Route::get('/account/business-invitations', [BusinessTeamController::class, 'invitations']);
     Route::post('/account/business-invitations/{invitation}/respond', [BusinessTeamController::class, 'respond'])
         ->whereNumber('invitation')->middleware('throttle:8,1');
@@ -217,6 +224,11 @@ Route::prefix('admin')->middleware(['auth', 'verified', 'can:manage-network'])->
         ->middleware('throttle:20,1')->name('moderation.bulk.preview');
     Route::post('/moderation/bulk', [ModerationWorkbenchController::class, 'bulk'])
         ->middleware('throttle:12,1')->name('moderation.bulk');
+    Route::get('/business-branches', [BusinessBranchReviewController::class, 'index']);
+    Route::get('/business-branches/{change}', [BusinessBranchReviewController::class, 'show'])
+        ->whereNumber('change')->middleware('throttle:moderation-evidence');
+    Route::post('/business-branches/{change}', [BusinessBranchReviewController::class, 'decide'])
+        ->whereNumber('change')->middleware('throttle:12,1');
     Route::get('/ownership-cases', [BusinessOwnershipReviewController::class, 'index']);
     Route::get('/ownership-cases/{case}', [BusinessOwnershipReviewController::class, 'show'])->whereNumber('case')
         ->middleware('throttle:moderation-evidence');
