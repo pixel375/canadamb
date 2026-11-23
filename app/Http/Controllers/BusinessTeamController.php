@@ -6,6 +6,7 @@ use App\Models\Business;
 use App\Models\User;
 use App\Support\Audit;
 use App\Support\BusinessDirectory;
+use App\Support\BusinessOwnership;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -68,6 +69,7 @@ class BusinessTeamController extends Controller
         DB::transaction(function () use ($request, $business, $data): void {
             $item = $this->visibleBusiness($request, $business, true);
             $this->requireOwner($item->id, $request->user()->id);
+            BusinessOwnership::requireUncontested($item->id);
             $recipient = User::find($data['invited_user_id']);
             if ($recipient === null || ! $recipient->hasVerifiedEmail() || $recipient->id === $request->user()->id) {
                 throw ValidationException::withMessages(['invited_user_id' => 'Choose a different verified member account.']);
@@ -110,6 +112,7 @@ class BusinessTeamController extends Controller
             abort_unless($this->membership($business->id, $item->invited_by_id)->where('role', 'owner')->exists(), 409);
             abort_unless(in_array($item->role, self::STAFF, true), 409);
             if ($data['decision'] === 'accept') {
+                BusinessOwnership::requireUncontested($business->id);
                 DB::table('business_memberships')->insert([
                     'business_id' => $business->id, 'user_id' => $request->user()->id,
                     'role' => $item->role, 'created_at' => now(), 'updated_at' => now(),
@@ -133,6 +136,7 @@ class BusinessTeamController extends Controller
         DB::transaction(function () use ($request, $business, $invitation): void {
             $item = $this->visibleBusiness($request, $business, true);
             $this->requireOwner($item->id, $request->user()->id);
+            BusinessOwnership::requireUncontested($item->id);
             $invite = $this->pending($item->id)->where('id', $invitation)->lockForUpdate()->firstOrFail();
             DB::table('business_team_invitations')->where('id', $invite->id)->update([
                 'status' => 'revoked', 'responded_at' => now(), 'updated_at' => now(),
@@ -150,6 +154,7 @@ class BusinessTeamController extends Controller
         DB::transaction(function () use ($request, $business, $member, $data): void {
             $item = $this->visibleBusiness($request, $business, true);
             $this->requireOwner($item->id, $request->user()->id);
+            BusinessOwnership::requireUncontested($item->id);
             $current = $this->membership($item->id, $member)->lockForUpdate()->first();
             abort_unless($current !== null && $current->role === $data['expected_role'], 409);
             DB::table('business_memberships')->where(['business_id' => $item->id, 'user_id' => $member])->delete();
