@@ -8,6 +8,7 @@ use App\Models\ListingCategory;
 use App\Models\Location;
 use App\Support\ListingPhotos;
 use App\Support\Marketplace;
+use App\Support\MarketplaceCategories;
 use App\Support\NetworkUrl;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,24 +17,70 @@ use Throwable;
 
 class MarketplaceController extends Controller
 {
+    private const SORT_OPTIONS = [
+        'newest' => 'Newest',
+        'price_asc' => 'Price: low to high',
+        'price_desc' => 'Price: high to low',
+    ];
+
     public function __construct(private readonly Marketplace $marketplace) {}
 
     public function index(Request $request)
     {
         $site = $request->attributes->get('site');
         abort_unless($this->marketplace->enabled($site), 404);
-        $filters = $request->validate([
-            'q' => 'nullable|string|max:100', 'category' => 'nullable|string|exists:listing_categories,slug',
-            'location' => 'nullable|string|max:100', 'max_price' => 'nullable|numeric|between:0,9999999.99',
-            'condition' => ['nullable', Rule::in(array_keys(Marketplace::CONDITIONS))],
-        ]);
-        $items = $this->marketplace->visible($site)
-            ->when($filters['q'] ?? null, fn ($query, $q) => $query->where(fn ($match) => $match->whereLike('title', '%'.$q.'%')->orWhereLike('description', '%'.$q.'%')))
+        $categories = $this->categories();
+        $categoryGroups = MarketplaceCategories::grouped($categories->all());
+        $priceRules = ['bail', 'nullable', 'numeric', 'decimal:0,2', 'between:0,9999999.99'];
+        $rules = [
+            'q' => 'nullable|string|max:100',
+            'category' => 'bail|nullable|string|max:64|exists:listing_categories,slug',
+            'group' => ['nullable', 'string', Rule::in(array_keys($categoryGroups))],
+            'view' => 'nullable|in:all',
+            'condition' => ['nullable', 'string', Rule::in(array_keys(Marketplace::CONDITIONS))],
+            'min_price' => $priceRules,
+            'max_price' => [...$priceRules, Rule::when($request->filled('min_price'), 'gte:min_price')],
+            'sort' => ['nullable', 'string', Rule::in(array_keys(self::SORT_OPTIONS))],
+        ];
+        if ($site->isNetwork()) {
+            $rules['location'] = ['bail', 'nullable', 'string', 'max:100', Rule::exists(Location::class, 'slug')->where('province', 'MB')->where('selectable', true)];
+        }
+        $filters = array_filter($request->validate($rules), fn ($value) => $value !== null && $value !== '');
+        if (($filters['sort'] ?? null) === 'newest') {
+            unset($filters['sort']);
+        }
+        // A direct leaf-category link always defines its own navigation group.
+        // Stale URL/form parameters must not mislabel results with another parent.
+        if (isset($filters['category'])) {
+            unset($filters['group']);
+        }
+
+        // Location is a browsing scope, not a search term. A location-only
+        // visit still starts with main categories; search, direct legacy leaf
+        // links and explicit "View all" show listing results immediately.
+        $isDiscovery = ! $request->is('api/*')
+            && ! isset($filters['category']) && ! isset($filters['view'])
+            && ! array_intersect_key($filters, array_flip(['q', 'condition', 'min_price', 'max_price', 'sort']));
+        $selectedGroup = $filters['group'] ?? null;
+        $query = $this->marketplace->visible($site)
+            ->when($selectedGroup !== null && ! isset($filters['category']),
+                fn ($query) => $query->whereIn('category', MarketplaceCategories::childSlugs($selectedGroup, $categories->all())))
+            ->when(isset($filters['q']), function ($query) use ($filters) {
+                $term = '%'.strtr($filters['q'], ['!' => '!!', '%' => '!%', '_' => '!_']).'%';
+
+                return $query->where(fn ($match) => $match->whereRaw("title LIKE ? ESCAPE '!'", [$term])
+                    ->orWhereRaw("description LIKE ? ESCAPE '!'", [$term]));
+            })
             ->when($filters['category'] ?? null, fn ($query, $value) => $query->where('category', $value))
             ->when($filters['condition'] ?? null, fn ($query, $value) => $query->where('condition', $value))
-            ->when(isset($filters['max_price']), fn ($query) => $query->where('price_cents', '<=', round((float) $filters['max_price'] * 100)))
-            ->when($site->isNetwork() && isset($filters['location']), fn ($query) => $query->whereHas('location', fn ($location) => $location->where('slug', $filters['location'])))
-            ->latest('published_at')->orderByDesc('id')->paginate(18)->withQueryString();
+            ->when(isset($filters['min_price']), fn ($query) => $query->where('price_cents', '>=', (int) round((float) $filters['min_price'] * 100)))
+            ->when(isset($filters['max_price']), fn ($query) => $query->where('price_cents', '<=', (int) round((float) $filters['max_price'] * 100)))
+            ->when(isset($filters['location']), fn ($query) => $query->whereHas('location', fn ($location) => $location->selectable()->where('slug', $filters['location'])));
+        if (isset($filters['sort'])) {
+            $query->orderBy('price_cents', $filters['sort'] === 'price_asc' ? 'asc' : 'desc');
+        }
+        // The category chooser needs no listing query or count on large datasets.
+        $items = $isDiscovery ? null : $query->latest('published_at')->orderByDesc('id')->paginate(18)->appends($filters);
 
         if ($request->is('api/*')) {
             return response()->json([
@@ -43,7 +90,9 @@ class MarketplaceController extends Controller
         }
 
         return view('marketplace.index', [
-            'items' => $items, 'filters' => $filters, 'categories' => $this->categories(),
+            'items' => $items, 'filters' => $filters, 'categories' => $categories,
+            'categoryGroups' => $categoryGroups, 'selectedGroup' => $selectedGroup, 'isDiscovery' => $isDiscovery,
+            'sortOptions' => self::SORT_OPTIONS, 'activeFilterCount' => count(array_diff_key($filters, ['sort' => true, 'view' => true, 'group' => true])),
             'locations' => $site->isNetwork() ? Location::selectable()->orderBy('name')->get() : collect(),
         ]);
     }
