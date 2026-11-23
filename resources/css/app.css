@@ -377,3 +377,41 @@ textarea { max-width: 100%; overflow-wrap: break-word; }
     .masthead { gap: 6px; }
     .masthead .brand small { display: none; }
 }
+
+
+/* Independent prelaunch UI hotfix. No migrations or Pass 02+ dependencies.
+   A flex nav with overflow-x:auto clips absolutely positioned <details>
+   submenus, appearing as the broken scrollable panel seen on desktop. */
+@media (min-width: 1024px) {
+    .site-header { position: relative; z-index: 60; }
+    .navigation-wrap { position: relative; overflow: visible; }
+    .navigation { position: relative; }
+    .navigation nav { overflow: visible; flex-wrap: wrap; align-content: stretch; }
+    .navigation nav .desktop-nav-submenu {
+        z-index: 80; top: calc(100% + 3px); left: 0;
+        min-width: 205px; padding: 7px;
+        border: 1px solid var(--border); border-radius: 11px;
+        box-shadow: 0 16px 42px rgb(0 0 0 / .19);
+    }
+    .navigation nav .desktop-nav-submenu a { display: flex; min-height: 44px; align-items: center; padding: 10px 12px; }
+    .desktop-nav-group > summary { min-height: 46px; padding: 0 4px; }
+    .desktop-nav-group[open] > summary { color: var(--link); }
+    .header-actions { flex-wrap: nowrap; justify-content: flex-end; gap: clamp(9px, 1vw, 15px); min-width: 0; }
+    .header-actions .header-inbox { display: inline-flex; align-items: center; min-height: 42px; border-radius: 9px; padding: 6px 8px; }
+    .header-actions .header-inbox:hover, .header-actions .header-inbox[aria-current] { background: var(--soft); text-decoration: none; }
+}
+@media (min-width: 761px) and (max-width: 1023px) {
+    /* At tablet widths the hamburger is safer than a clipped desktop nav. */
+    .navigation-wrap { display: none; }
+    .site-menu-trigger { display: inline-flex; }
+    .masthead { min-height: 72px; gap: 12px; }
+    .header-search, .header-post { display: none; }
+    .header-actions { flex-wrap: nowrap; gap: 9px; }
+    .header-actions .header-inbox { display: inline-flex; align-items: center; min-height: 42px; }
+}
+@media (min-width: 761px) and (max-width: 1199px) {
+    .header-search { display: none; }
+}
+@media (max-width: 760px) {
+    .header-actions .header-inbox { display: none; }
+}
