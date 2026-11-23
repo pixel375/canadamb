@@ -49,8 +49,8 @@ async page => {
                 check(!(await menus.nth(1).evaluate(node => node.open)), 'Escape failed for desktop menu');
                 await menus.nth(1).locator('summary').click();
                 await page.locator('.brand').click();
-                check(!(await menus.nth(1).evaluate(node => node.open)).catch(() => true),
-                    'Desktop menu failed to dismiss before navigation');
+                check(!(await page.locator('.desktop-nav-group').nth(1).evaluate(node => node.open)),
+                    'Desktop menu failed to dismiss on navigation');
             }
         }
 
