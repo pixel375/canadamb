@@ -141,9 +141,7 @@ class BusinessOwnershipTest extends TestCase
         $request = ['proposed_owner_id' => $successor->id,
             'evidence' => 'I request a verified handover following proper independent administrative review.'];
         $this->actingAs($owner)->postJson(self::CITY."/account/businesses/$business->id/ownership-transfer", $request)->assertNotFound();
-        $this->postJson(self::MAIN."/account/businesses/$business->id/ownership-transfer", $request + [
-            'proposed_owner_id' => $unverified->id,
-        ])->assertUnprocessable();
+        $this->postJson(self::MAIN."/account/businesses/$business->id/ownership-transfer", [...$request, 'proposed_owner_id' => $unverified->id])->assertUnprocessable();
         $this->post(self::MAIN."/account/businesses/$business->id/ownership-transfer", $request)->assertRedirect();
         $this->postJson(self::MAIN."/account/businesses/$business->id/ownership-transfer", $request)->assertUnprocessable();
         $case = DB::table('business_ownership_cases')->sole();
