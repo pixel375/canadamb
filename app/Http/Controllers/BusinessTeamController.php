@@ -30,6 +30,7 @@ class BusinessTeamController extends Controller
         $invitations = $this->pending($item->id)->join('users as recipient', 'recipient.id', '=', 'business_team_invitations.invited_user_id')
             ->orderByDesc('business_team_invitations.id')
             ->get(['business_team_invitations.id', 'business_team_invitations.role', 'business_team_invitations.expires_at', 'recipient.name']);
+
         return response()->view('business.team', compact('item', 'members', 'invitations'))
             ->header('Cache-Control', 'private, no-store')->header('X-Robots-Tag', 'noindex');
     }
@@ -47,6 +48,7 @@ class BusinessTeamController extends Controller
                 ->where('owner.role', 'owner'))
             ->orderByDesc('invitation.id')
             ->get(['invitation.id', 'invitation.role', 'invitation.expires_at', 'business.name']);
+
         return response()->view('business.invitations', compact('items'))
             ->header('Cache-Control', 'private, no-store')->header('X-Robots-Tag', 'noindex');
     }
@@ -159,6 +161,7 @@ class BusinessTeamController extends Controller
     private function visibleBusiness(Request $request, int $business, bool $lock = false): Business
     {
         $site = $request->attributes->get('site');
+
         return Business::whereKey($business)->where('status', 'active')
             ->when($site->location_id !== null, fn ($query) => $query->whereHas('locations',
                 fn ($locations) => $locations->where('location_id', $site->location_id)))
