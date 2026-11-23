@@ -537,6 +537,11 @@ textarea { max-width: 100%; overflow-wrap: break-word; }
     .site-menu-trigger { display: inline-flex; }
     .masthead { min-height: 72px; }
     .header-actions { flex-wrap: nowrap; gap: 10px; }
+    /* Tablet keeps visible icon entry points without packing four text labels
+       into a single narrow masthead row. */
+    .header-actions .sign-in { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 44px; min-width: 44px; height: 44px; padding: 0; border-radius: 10px; }
+    .header-actions .sign-in > span:not(.notification-badge) { display: none; }
+    .header-actions .header-inbox .notification-badge { position: absolute; top: -1px; right: -4px; }
 }
 @media (min-width: 761px) {
     .header-actions .sign-in[aria-current] { color: var(--link); }
