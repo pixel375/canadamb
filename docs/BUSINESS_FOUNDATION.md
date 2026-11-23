@@ -21,3 +21,14 @@ Work through the central moderation workbench. Check an independent source for t
 Continue from the final head of [PR #26](https://github.com/pixel375/canadamb/pull/26). Use Issue #25 for the remaining scope. Before adding any forms, define versioned dispute, transfer, staff acceptance and branch-change transitions that take the business lock before writing child records. Keep existing claim IDs and membership rows. Any transfer should require a verified successor and independent review and must preserve at least one authorized owner.
 
 When those transitions exist, exercise them against the existing `ConversationAccess`, `MessageContact` and `JobBoard` paths. Test immediate revocation, historical thread isolation, explicit consent for new message contacts and conservative handling of jobs and updates at closed branches. Run the populated upgrade and recovery rehearsal on the revised exact SHA before requesting separate schema review. Wider Jobs and Messaging redesign is outside this pass.
+
+
+## Staff membership continuation (review branch)
+
+Pass 09 continuation adds a private, consent-based staff invitation workflow. An existing verified **owner** can nominate an existing verified account ID as `manager` or `editor`; invitations expire after seven days and require the recipient to accept while signed in. No external email is sent. Ownership itself cannot be invited or transferred using this workflow. Rejected, expired and revoked invitations retain an audit trail.
+
+Owners manage staff at `/account/businesses/{id}/team`; recipients review invitations at `/account/business-invitations`. A city portal displays only invitations from businesses with a local branch. All mutation endpoints require verified sessions and CSRF; current ownership and business state are rechecked while holding the business row lock.
+
+Removing a manager or editor preserves business IDs, source records, existing jobs, private conversations and their historical sender/recipient identity. Membership-based access disappears immediately for the removed representative, and their branch/job message-contact designation is cleared in the same transaction. Another owner does **not** inherit the former representative's conversation history. A future separately approved transfer/dispute process will handle actual ownership.
+
+Migration `2026_11_23_000001_create_business_team_invitations.php` adds one table, without changing existing membership rows. Its rollback refuses to erase invitation history. This is unmerged review work and requires explicit schema approval in release order.
