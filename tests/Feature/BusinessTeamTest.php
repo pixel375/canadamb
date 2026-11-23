@@ -92,6 +92,9 @@ class BusinessTeamTest extends TestCase
             ->assertUnprocessable();
         $this->post(self::MAIN.$path.'/invitations', ['invited_user_id' => $member->id, 'role' => 'editor'])->assertRedirect();
         $id = DB::table('business_team_invitations')->value('id');
+        $this->actingAs($member)->get(self::CITY.'/account/business-invitations')->assertOk()->assertDontSee($business->name);
+        $this->postJson(self::CITY."/account/business-invitations/$id/respond", ['decision' => 'accept'])->assertNotFound();
+        $this->actingAs($owner);
         DB::table('business_team_invitations')->where('id', $id)->update(['expires_at' => now()->subDay()]);
         $this->actingAs($member)->postJson(self::MAIN."/account/business-invitations/$id/respond", ['decision' => 'accept'])->assertConflict();
         $this->assertDatabaseMissing('business_memberships', ['business_id' => $business->id, 'user_id' => $member->id]);
