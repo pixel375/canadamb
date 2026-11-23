@@ -1,5 +1,6 @@
 @php
     $site = request()->attributes->get('site');
+    $homeModules = app(\App\Support\NetworkSettings::class)->forSite($site)['modules'];
     $enabled = app(\App\Support\Marketplace::class)->enabled($site);
     $place = $location->name ?? 'Manitoba';
     $scope = $site->isNetwork() && $location ? '?location='.$location->slug : '';
@@ -45,24 +46,37 @@
                         <x-icon name="arrow" size="17"/>
                     </a>
                 @endif
-                @if($networkSettings['modules']['community'] ?? false)
+                @if($homeModules['community'] ?? false)
                     <a href="/discussions" class="home-explore-link">
                         <span class="home-explore-icon"><x-icon name="discussions" size="23"/></span>
                         <span><strong>Discussions</strong><small>Connect with your neighbours</small></span>
                         <x-icon name="arrow" size="17"/>
                     </a>
                 @endif
-                @if($networkSettings['modules']['events'] ?? false)
+                @if($homeModules['events'] ?? false)
                     <a href="/events" class="home-explore-link">
                         <span class="home-explore-icon"><x-icon name="calendar" size="23"/></span>
                         <span><strong>Events</strong><small>See what's happening locally</small></span>
                         <x-icon name="arrow" size="17"/>
                     </a>
                 @endif
-                @if($networkSettings['modules']['jobs'] ?? false)
+                @if($homeModules['jobs'] ?? false)
                     <a href="/jobs" class="home-explore-link">
                         <span class="home-explore-icon"><x-icon name="briefcase" size="23"/></span>
                         <span><strong>Jobs</strong><small>Find opportunities in your area</small></span>
+                        <x-icon name="arrow" size="17"/>
+                    </a>
+                @endif
+                @if($site->isNetwork())
+                    <a href="/communities" class="home-explore-link">
+                        <span class="home-explore-icon"><x-icon name="map" size="23"/></span>
+                        <span><strong>Communities</strong><small>Explore cities and towns</small></span>
+                        <x-icon name="arrow" size="17"/>
+                    </a>
+                @elseif($homeModules['news'] ?? false)
+                    <a href="/news" class="home-explore-link">
+                        <span class="home-explore-icon"><x-icon name="news" size="23"/></span>
+                        <span><strong>Local news</strong><small>What's happening nearby</small></span>
                         <x-icon name="arrow" size="17"/>
                     </a>
                 @endif
