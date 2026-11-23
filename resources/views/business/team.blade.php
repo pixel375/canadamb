@@ -17,6 +17,19 @@
                 <button class="button button-primary" type="submit">Send account invitation</button>
             </form>
         </section>
+        <section class="panel form-stack">
+            <h2>Propose a new owner</h2>
+            <p>Only someone who already owns this business can propose a transfer. The verified successor must accept it and a separate network reviewer must confirm independent proof. Your existing private conversations are never handed over automatically.</p>
+            <form method="post" action="/account/businesses/{{ $item->id }}/ownership-transfer" class="form-stack">
+                @csrf
+                <label>Successor's verified member account ID<input type="number" min="1" name="proposed_owner_id" required value="{{ old('proposed_owner_id') }}"></label>
+                <label>Evidence you can provide for independent authorization
+                    <textarea name="evidence" minlength="30" maxlength="2400" rows="4" required>{{ old('evidence') }}</textarea>
+                </label>
+                <button class="button button-outline">Request reviewed ownership transfer</button>
+            </form>
+            <p><a class="text-link" href="/account/ownership-cases">Review ownership request statuses</a></p>
+        </section>
         <section class="panel">
             <h2>Current representatives</h2>
             @foreach($members as $member)
