@@ -78,6 +78,7 @@ class JobController extends Controller
             BusinessOwnership::requireUncontested($employer->id);
             $data = $this->postingData($request);
             $branch = $employer->locations()->lockForUpdate()->findOrFail($data['business_location_id']);
+            abort_unless($branch->operational_status === 'open', 409);
             $location = LocationScope::forPublication($site, $branch->location_id);
             $author = $request->user()->id;
             $item = new JobPosting($data + ['author_id' => $author]);
@@ -149,7 +150,8 @@ class JobController extends Controller
             BusinessOwnership::requireUncontested($employer->id);
             $item = $this->managedJob($request, $employer->id, $job, lock: true);
             $enabled = (bool) $data['enabled'];
-            abort_if($enabled && in_array($item->status, ['expired', 'withdrawn'], true), 409);
+            abort_if($enabled && (in_array($item->status, ['expired', 'withdrawn'], true)
+                || $item->branch->operational_status !== 'open'), 409);
             $contacts->setConsent($item, $employer->id, $request->user()->id, $enabled, $site->id);
         }, attempts: 3);
 
