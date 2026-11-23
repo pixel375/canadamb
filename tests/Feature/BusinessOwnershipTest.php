@@ -9,6 +9,7 @@ use App\Models\Location;
 use App\Models\User;
 use App\Support\ModerationDecision;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
@@ -134,6 +135,9 @@ class BusinessOwnershipTest extends TestCase
 
     public function test_wrong_city_duplicate_transfer_unverified_successor_and_stale_token_fail_closed(): void
     {
+        // Multiple adversarial requests in one test intentionally bypass the independent
+        // per-IP throttle; authorization and conflict checks must still deny them.
+        $this->withoutMiddleware(ThrottleRequests::class);
         [$business, $branch, $owner] = $this->business('elkhorn');
         $successor = User::factory()->create();
         $unverified = User::factory()->unverified()->create();
