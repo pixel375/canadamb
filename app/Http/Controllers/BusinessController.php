@@ -6,6 +6,8 @@ use App\Models\Business;
 use App\Models\BusinessUpdate;
 use App\Models\Location;
 use App\Support\ApprovalPolicy;
+use App\Support\Audit;
+use App\Support\BusinessClaims;
 use App\Support\BusinessDirectory;
 use App\Support\LocationScope;
 use App\Support\MessageContact;
@@ -82,7 +84,7 @@ class BusinessController extends Controller
     {
         $site = $request->attributes->get('site');
         abort_unless($this->directory->enabled($site), 404);
-        $data = $request->validate(['contact_email' => 'required|email|max:254', 'evidence' => 'required|string|min:30|max:2400']);
+        $data = $request->validate(BusinessClaims::EVIDENCE_RULES);
         DB::transaction(function () use ($site, $slug, $request, $data) {
             $business = $this->directory->visible($site)->where('slug', $slug)->lockForUpdate()->firstOrFail();
             if ($business->members()->wherePivot('role', 'owner')->exists()) {
@@ -93,10 +95,12 @@ class BusinessController extends Controller
             ])->exists()) {
                 throw ValidationException::withMessages(['claim' => 'You already have a claim waiting for review.']);
             }
-            DB::table('business_claims')->insert($data + [
+            $data['evidence'] = BusinessClaims::seal($data['evidence']);
+            $claim = DB::table('business_claims')->insertGetId($data + [
                 'business_id' => $business->id, 'user_id' => $request->user()->id, 'status' => 'pending', 'created_at' => now(), 'updated_at' => now(),
             ]);
-        });
+            Audit::record('business.claim-submitted', $request->user()->id, $site->id, ['claim' => $claim, 'business' => $business->id]);
+        }, attempts: 3);
 
         return redirect('/account/businesses')->with('status', 'Your claim was submitted for manual verification.');
     }
@@ -104,10 +108,11 @@ class BusinessController extends Controller
     public function mine(Request $request)
     {
         $user = $request->user()->id;
+        $site = $request->attributes->get('site');
         $businesses = Business::whereHas('members', fn ($query) => $query->whereKey($user))->orderBy('name')->paginate(20);
-        $claims = DB::table('business_claims')->join('businesses', 'businesses.id', '=', 'business_claims.business_id')
-            ->where('business_claims.user_id', $user)->latest('business_claims.id')->take(15)
-            ->get(['businesses.name', 'business_claims.status', 'business_claims.created_at']);
+        $claims = BusinessClaims::forApplicant($site, $user)->join('businesses', 'businesses.id', '=', 'business_claims.business_id')
+            ->latest('business_claims.id')->take(15)
+            ->get(['businesses.name', 'business_claims.id', 'business_claims.status', 'business_claims.created_at']);
 
         return view('business.mine', compact('businesses', 'claims'));
     }

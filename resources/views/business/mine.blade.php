@@ -10,7 +10,8 @@
         </div>
         @if($claims->isNotEmpty())
         <div class="panel"><h2>Claim requests</h2>
-            @foreach($claims as $claim)<div class="item-row"><h3>{{ $claim->name }}</h3><p>{{ ucfirst($claim->status) }}</p></div>@endforeach
+            @foreach($claims as $claim)<div class="item-row"><div><h3>{{ $claim->name }}</h3><p>{{ ucfirst($claim->status) }}</p></div>
+                <a class="button button-outline" href="/account/business-claims/{{ $claim->id }}">View claim</a></div>@endforeach
         </div>
         @endif
     </div>

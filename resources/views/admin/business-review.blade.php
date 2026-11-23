@@ -13,10 +13,8 @@
     <section class="panel">
         <h2>Ownership claims</h2>
         @forelse($claims as $claim)
-            <article class="form-stack border-b border-gray-300 py-4"><div><h3>{{ $claim->business_name }}</h3><p>Account email · {{ $claim->account_email }}</p><p>Business contact · {{ $claim->contact_email }}</p></div>
-                <p class="prose-text">{{ $claim->evidence }}</p>
-                <p>Confirm ownership independently before approving.</p>
-                <x-review-decision :action="'/admin/business-claims/'.$claim->id" :version="\App\Support\ModerationDecision::version('claim', (object) \Illuminate\Support\Arr::except((array) $claim, ['business_name', 'account_email']))"/>
+            <article class="form-stack border-b border-gray-300 py-4"><h3>{{ $claim->business_name }}</h3>
+                <a class="text-link" href="{{ route('moderation.items.show', ['type' => 'claim', 'item' => $claim->id]) }}">Review ownership evidence</a>
             </article>
         @empty<p>No claims waiting for review.</p>@endforelse
         {{ $claims->links() }}

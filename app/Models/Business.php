@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\BusinessDirectory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -11,6 +12,15 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable(['slug', 'name', 'category', 'description', 'website', 'public_email', 'phone', 'hours', 'status'])]
 class Business extends Model
 {
+    protected static function booted(): void
+    {
+        static::saving(function (Business $business): void {
+            if ($business->isDirty('name')) {
+                $business->import_name_key = BusinessDirectory::identityNameKey($business->name);
+            }
+        });
+    }
+
     public function locations(): HasMany
     {
         return $this->hasMany(BusinessLocation::class);

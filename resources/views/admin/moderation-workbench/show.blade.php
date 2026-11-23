@@ -26,7 +26,7 @@
             <h2>Private ownership evidence</h2>
             <p>Account email · {{ $claimAccount }}</p>
             <p>Business contact · {{ $resource->contact_email }}</p>
-            <p class="prose-text">{{ $resource->evidence }}</p>
+            <p class="prose-text">{{ $claimEvidence }}</p>
             <p>Confirm ownership independently before approving.</p>
         @else
             <p class="prose-text">{{ ($type === 'event' ? $resource->thread?->body : null) ?? $resource->description ?? $resource->body ?? '' }}</p>
@@ -94,6 +94,21 @@
                 <label>Internal reviewer notes @if($notesRequired) (required) @endif
                     <textarea name="notes" maxlength="1200" rows="2" @if($notesRequired) required minlength="8" @endif>{{ old('notes') }}</textarea>
                 </label>
+                @if($type === 'claim' && isset($actions['approve']))
+                    <fieldset class="form-stack">
+                        <legend>Independent verification (required for approval)</legend>
+                        <label>Verification method
+                            <select name="proof_method">
+                                <option value="">Choose a method</option>
+                                @foreach(\App\Support\BusinessClaims::PROOF_METHODS as $method => $description)
+                                    <option value="{{ $method }}" @selected(old('proof_method') === $method)>{{ $description }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+                        <label>Private verification reference<input name="proof_reference" minlength="12" maxlength="300"></label>
+                        <label class="checkbox"><input type="checkbox" name="authority_confirmed"> I independently verified both the business identity and this claimant’s authority to represent it.</label>
+                    </fieldset>
+                @endif
                 <div class="inline-actions">
                     @foreach($actions as $action => $label)
                         <button class="button {{ $action === 'approve' ? 'button-primary' : 'button-outline' }}" name="action" value="{{ $action }}">{{ $label }}</button>
@@ -134,6 +149,7 @@
                 @endif
                 @if($decision->reason ?? $context['reason'] ?? null)<p class="prose-text">Reason · {{ $decision->reason ?? $context['reason'] }}</p>@endif
                 @if($decision->notes ?? $context['notes'] ?? null)<p class="prose-text">Internal notes · {{ $decision->notes ?? $context['notes'] }}</p>@endif
+                @if(isset($context['proof_method']))<p class="field-note">{{ \App\Support\BusinessClaims::PROOF_METHODS[$context['proof_method']] ?? 'Independent verification' }}</p>@endif
             </article>
         @empty<p>No moderation decisions recorded for this submission.</p>@endforelse
         {{ $history->links() }}

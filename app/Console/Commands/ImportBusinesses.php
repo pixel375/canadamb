@@ -2,107 +2,177 @@
 
 namespace App\Console\Commands;
 
-use App\Models\Business;
-use App\Models\BusinessLocation;
-use App\Models\Location;
-use App\Support\BusinessDirectory;
+use App\Models\User;
+use App\Support\BusinessImports\BusinessImportOperator;
+use App\Support\BusinessImports\BusinessImportPlan;
+use App\Support\BusinessImports\BusinessSources;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rule;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use RuntimeException;
 use Throwable;
 
 class ImportBusinesses extends Command
 {
-    protected $signature = 'businesses:import {file} {--source=} {--license=} {--url=}';
+    protected $signature = 'businesses:import {file?} {--source=} {--license=} {--url=} {--source-id=} {--actor=}
+        {--full-snapshot} {--review=} {--apply=} {--resolve=} {--token=} {--line=} {--action=} {--business=} {--reason=}
+        {--decision=} {--export} {--purge}';
 
-    protected $description = 'Import pre-reviewed licensed business branches from a private UTF-8 CSV';
+    protected $description = 'Preview, resolve and apply a reviewed business CSV import';
 
-    public function handle(): int
+    public function handle(BusinessImportPlan $import, BusinessSources $sources): int
     {
-        $meta = Validator::make([
-            'name' => $this->option('source'), 'license' => $this->option('license'), 'url' => $this->option('url'),
-        ], ['name' => 'required|string|max:255', 'license' => 'required|string|max:255', 'url' => 'required|url:https|max:255'])->validate();
-        $path = $this->argument('file');
-        if (! is_file($path) || ! is_readable($path) || filesize($path) > 1_500_000) {
-            $this->error('Select a readable local CSV file under 1.5 MB.');
-
-            return self::FAILURE;
-        }
-
-        $source = DB::transaction(function () use ($meta) {
-            DB::table('business_sources')->insertOrIgnore($meta + ['created_at' => now(), 'updated_at' => now()]);
-            $source = DB::table('business_sources')->where('name', $meta['name'])->lockForUpdate()->firstOrFail();
-            if ($source->url !== $meta['url'] || $source->license !== $meta['license']) {
-                throw new RuntimeException('The source URL and license must match the existing source entry.');
-            }
-
-            return $source;
-        });
-        $run = DB::table('business_import_runs')->insertGetId(['source_id' => $source->id, 'status' => 'running', 'created_at' => now(), 'updated_at' => now()]);
-        $line = 1;
-        $stream = fopen($path, 'rb');
         try {
-            $header = fgetcsv($stream, separator: ',', enclosure: '"', escape: '');
-            $columns = ['external_key', 'name', 'category', 'location', 'address', 'website'];
-            if ($header !== $columns) {
-                throw new RuntimeException('CSV header does not match the import format.');
+            $actor = BusinessImportOperator::authenticate($this);
+            $operations = array_filter([
+                $this->argument('file'), $this->option('review'), $this->option('resolve'), $this->option('apply'), $this->option('purge'),
+            ], fn ($value) => $value !== null && $value !== false);
+            if (count($operations) !== 1) {
+                throw new RuntimeException('Select one CSV preview, --review, --resolve, --apply or --purge operation.');
             }
-            [$created, $skipped] = DB::transaction(function () use ($stream, $source, $columns, &$line) {
-                DB::table('business_sources')->where('id', $source->id)->lockForUpdate()->first();
-                $created = $skipped = 0;
-                while (($record = fgetcsv($stream, separator: ',', enclosure: '"', escape: '')) !== false) {
-                    $line++;
-                    if ($record === [null]) {
-                        continue;
-                    }
-                    if ($line > 1001 || count($record) !== count($columns)) {
-                        throw new RuntimeException('Invalid columns or too many rows.');
-                    }
-                    $row = Validator::make(array_combine($columns, array_map(trim(...), $record)), [
-                        'external_key' => 'required|string|max:100', 'name' => 'required|string|max:140',
-                        'category' => ['required', Rule::in(array_keys(BusinessDirectory::CATEGORIES))],
-                        'location' => 'required|string|max:100', 'address' => 'required|string|max:255', 'website' => 'nullable|url:http,https|max:255',
-                    ])->validate();
-                    $location = Location::selectable()->where('slug', $row['location'])->firstOrFail();
-                    $distinct = BusinessDirectory::addressKey($row['name'], $row['address']);
-                    if (BusinessLocation::where(['source_id' => $source->id, 'external_key' => $row['external_key']])->exists()
-                        || BusinessLocation::where(['location_id' => $location->id, 'address_key' => $distinct])->exists()) {
-                        $skipped++;
+            if ($this->option('apply') !== null) {
+                $counts = $import->apply($actor, BusinessImportOperator::id($this->option('apply')), $this->token(), $this->reason());
+                $this->info('Applied import. '.json_encode($counts, JSON_THROW_ON_ERROR));
 
-                        continue;
-                    }
-                    $business = Business::create([
-                        'slug' => BusinessDirectory::slug($row['name']), 'name' => $row['name'], 'category' => $row['category'],
-                        'website' => $row['website'] ?: null, 'status' => 'active',
-                    ]);
-                    $business->locations()->create([
-                        'location_id' => $location->id, 'address' => $row['address'], 'address_key' => $distinct,
-                        'external_key' => $row['external_key'], 'source_id' => $source->id,
-                        'location_status' => 'imported_address', 'imported_at' => now(),
-                    ]);
-                    $created++;
-                }
+                return self::SUCCESS;
+            }
+            if ($this->option('purge')) {
+                $this->info('Expired private payloads purged: '.$import->purge($actor));
 
-                return [$created, $skipped];
-            });
-        } catch (Throwable $exception) {
-            DB::table('business_import_runs')->where('id', $run)->update([
-                'status' => 'failed', 'error' => "Row $line: ".$exception::class, 'updated_at' => now(),
-            ]);
-            $this->error("Import failed on row $line. No business changes were committed.");
+                return self::SUCCESS;
+            }
+            if ($this->option('resolve') !== null) {
+                $id = BusinessImportOperator::id($this->option('resolve'));
+                $import->resolve($actor, $id, $this->token(), BusinessImportOperator::id($this->option('line')),
+                    (string) $this->option('action'),
+                    $this->option('business') === null ? null : BusinessImportOperator::id($this->option('business')), $this->reason());
+            } elseif ($this->option('review') !== null) {
+                $id = BusinessImportOperator::id($this->option('review'));
+            } else {
+                $id = $this->preview($import, $sources, $actor);
+            }
+            $this->review($import, $actor, $id);
+
+            return self::SUCCESS;
+        } catch (QueryException) {
+            $this->error('The database operation failed. The import transaction was rolled back.');
 
             return self::FAILURE;
+        } catch (AuthorizationException|ValidationException|RuntimeException $error) {
+            $this->error($error->getMessage());
+
+            return self::FAILURE;
+        }
+    }
+
+    private function preview(BusinessImportPlan $import, BusinessSources $sources, User $actor): int
+    {
+        $file = $this->argument('file');
+        $path = realpath($file);
+        if ($path === false || ! is_file($path) || ! is_readable($path) || ! str_ends_with(strtolower($file), '.csv')
+            || preg_match('~(?:^|[/\\\\])\.\.(?:[/\\\\]|$)~', $file)) {
+            throw new RuntimeException('Select a readable, local .csv file without parent-path segments.');
+        }
+        $source = $this->option('source-id') !== null ? BusinessImportOperator::id($this->option('source-id'))
+            : $sources->register($actor, (string) $this->option('source'), (string) $this->option('url'), (string) $this->option('license'), null, null);
+        $stream = fopen($path, 'rb');
+        if ($stream === false) {
+            throw new RuntimeException('The CSV could not be opened.');
+        }
+        try {
+            return $import->stage($actor, $source, $stream, $this->option('full-snapshot'))->id;
         } finally {
-            if (is_resource($stream)) {
-                fclose($stream);
-            }
+            fclose($stream);
+        }
+    }
+
+    private function review(BusinessImportPlan $import, User $actor, int $id): void
+    {
+        $plan = $import->inspect($actor, $id);
+        $rows = $import->listRows($actor, $id, $this->option('decision'));
+        $headings = ['Line', 'Decision', 'Why', 'Candidate IDs', 'Business ID', 'Branch ID'];
+        if ($this->option('export')) {
+            $this->writeExport($id, $headings, $rows);
+
+            return;
         }
 
-        DB::table('business_import_runs')->where('id', $run)->update(compact('created', 'skipped') + ['status' => 'succeeded', 'updated_at' => now()]);
-        $this->info("Created $created branches. Skipped $skipped duplicates.");
+        $this->line("Plan $id: $plan->status. Source $plan->source_id revision $plan->source_revision. Expires $plan->expires_at.");
+        $this->line("Input SHA-256 $plan->input_sha256");
+        $this->line("Review token $plan->review_token");
+        $this->line(json_encode($import->counts($actor, $id), JSON_THROW_ON_ERROR));
+        $table = [];
+        foreach ($rows as $row) {
+            $table[] = $this->reviewRow($row);
+            if (count($table) === 25) {
+                break;
+            }
+        }
+        $this->table($headings, $table);
+        $this->comment('Use --review with --decision or --export to inspect the complete plan.');
+    }
 
-        return self::SUCCESS;
+    private function writeExport(int $id, array $headings, iterable $rows): void
+    {
+        $folder = storage_path('app/.business-imports');
+        File::ensureDirectoryExists($folder, 0700);
+        $path = $folder.'/review-'.$id.'-'.Str::uuid().'.csv';
+        $output = fopen($path, 'xb');
+        if ($output === false) {
+            throw new RuntimeException('Could not open a private review export.');
+        }
+        try {
+            try {
+                $write = function (array $cells) use ($output): void {
+                    if (fputcsv($output, array_map(self::safeCell(...), $cells), escape: '') === false) {
+                        throw new RuntimeException('Could not finish writing the private review export.');
+                    }
+                };
+                $write($headings);
+                foreach ($rows as $row) {
+                    $write($this->reviewRow($row));
+                }
+            } finally {
+                fclose($output);
+            }
+        } catch (Throwable $error) {
+            File::delete($path);
+            throw $error;
+        }
+        $this->line('Private CSV: '.$path);
+    }
+
+    private function reviewRow(object $row): array
+    {
+        $details = json_decode($row->details, true, flags: JSON_THROW_ON_ERROR);
+
+        return [$row->row_number, $row->decision, $details['reason'] ?? '',
+            implode(', ', $details['candidates'] ?? []),
+            $row->result_business_id ?? $details['business'] ?? null, $row->result_branch_id ?? $details['branch'] ?? null];
+    }
+
+    private static function safeCell(mixed $value): string
+    {
+        $text = (string) $value;
+
+        return preg_match('/\A\s*[=+\-@]/', $text) ? "'".$text : $text;
+    }
+
+    private function token(): string
+    {
+        $token = (string) $this->option('token');
+        if (! preg_match('/\A[a-f0-9]{64}\z/', $token)) {
+            throw new RuntimeException('Enter the exact --token shown on the current review plan.');
+        }
+
+        return $token;
+    }
+
+    private function reason(): string
+    {
+        return (string) ($this->option('reason') ?? $this->ask('Review reference or reason'));
     }
 }
