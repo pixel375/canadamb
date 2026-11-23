@@ -9,6 +9,7 @@ use App\Support\ApprovalPolicy;
 use App\Support\Audit;
 use App\Support\BusinessClaims;
 use App\Support\BusinessDirectory;
+use App\Support\BusinessOwnership;
 use App\Support\LocationScope;
 use App\Support\MessageContact;
 use App\Support\NetworkUrl;
@@ -175,6 +176,7 @@ class BusinessController extends Controller
         DB::transaction(function () use ($request, $business): void {
             // Serialize with staff revocation before rechecking the current membership.
             $item = $this->managed($request, $business, lock: true);
+            BusinessOwnership::requireUncontested($item->id);
             $isOwner = $item->members()->whereKey($request->user()->id)->wherePivot('role', 'owner')->exists();
             $data = $request->validate($this->profileRules(includePublicContact: $isOwner));
             $item->fill($data);
