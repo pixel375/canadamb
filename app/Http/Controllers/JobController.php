@@ -5,8 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Business;
 use App\Models\JobPosting;
 use App\Support\ApprovalPolicy;
-use App\Support\JobBoard;
 use App\Support\BusinessOwnership;
+use App\Support\JobBoard;
 use App\Support\LocationScope;
 use App\Support\MessageContact;
 use App\Support\NetworkUrl;
@@ -16,7 +16,9 @@ use Illuminate\Validation\Rule;
 
 class JobController extends Controller
 {
-    public function __construct(private readonly JobBoard $jobs) {}
+    public function __construct(private readonly JobBoard $jobs)
+    {
+    }
 
     public function index(Request $request)
     {
