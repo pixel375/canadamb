@@ -77,6 +77,8 @@ class BusinessOwnershipReviewController extends Controller
                 if ($data['decision'] === 'approved') {
                     abort_unless($item->accepted_at !== null && $business->status === 'active', 409);
                     BusinessOwnership::requireUncontested($business->id);
+                    abort_if(BusinessOwnership::inReview($business->id), 409,
+                        'An ownership concern is awaiting independent review. Resolve it before approving a transfer.');
                     $old = User::whereKey($item->outgoing_owner_id)->lockForUpdate()->firstOrFail();
                     $next = User::whereKey($item->proposed_owner_id)->lockForUpdate()->firstOrFail();
                     abort_unless($old->hasVerifiedEmail() && $next->hasVerifiedEmail() && $old->id !== $next->id, 409);
@@ -126,6 +128,7 @@ class BusinessOwnershipReviewController extends Controller
             ]);
             $audit = Audit::record('business.ownership-'.$data['decision'], $request->user()->id, context: [
                 'case' => $case, 'business' => $business->id, 'type' => $item->type,
+                'sealed_proof_reference' => $positive ? BusinessClaims::seal($data['proof_reference']) : null,
             ]);
             ModerationDecision::record('ownership-case', $case, $data['decision'], $audit,
                 ['reason' => $data['reason'] ?? null], $audit);
