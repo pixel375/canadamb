@@ -23,12 +23,14 @@ final class MessageContact
 
     public function forBranch(BusinessLocation $branch): ?int
     {
-        return $this->designatedMember($branch->business_id, $branch->message_contact_user_id);
+        return $branch->operational_status === 'open'
+            ? $this->designatedMember($branch->business_id, $branch->message_contact_user_id) : null;
     }
 
     public function forJob(JobPosting $job): ?int
     {
-        return $this->designatedMember($job->branch->business_id, $job->message_contact_user_id);
+        return $job->branch?->operational_status === 'open'
+            ? $this->designatedMember($job->branch->business_id, $job->message_contact_user_id) : null;
     }
 
     private function designatedMember(int $business, ?int $user): ?int
