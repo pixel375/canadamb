@@ -14,6 +14,8 @@ use App\Http\Controllers\Admin\ThemeController;
 use App\Http\Controllers\BusinessClaimController;
 use App\Http\Controllers\BusinessController;
 use App\Http\Controllers\BusinessTeamController;
+use App\Http\Controllers\BusinessOwnershipController;
+use App\Http\Controllers\Admin\BusinessOwnershipReviewController;
 use App\Http\Controllers\CommunityEventController;
 use App\Http\Controllers\CommunityForumController;
 use App\Http\Controllers\DiscussionEventController;
@@ -159,6 +161,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/account/business-claims/{claim}', [BusinessClaimController::class, 'show'])->whereNumber('claim');
     Route::put('/account/business-claims/{claim}', [BusinessClaimController::class, 'update'])->whereNumber('claim')->middleware('throttle:8,1');
     Route::delete('/account/business-claims/{claim}', [BusinessClaimController::class, 'withdraw'])->whereNumber('claim')->middleware('throttle:8,1');
+    Route::get('/account/ownership-cases', [BusinessOwnershipController::class, 'index']);
+    Route::get('/businesses/{slug}/ownership-dispute', [BusinessOwnershipController::class, 'disputeForm']);
+    Route::post('/businesses/{slug}/ownership-dispute', [BusinessOwnershipController::class, 'dispute'])->middleware('throttle:3,60');
+    Route::post('/account/businesses/{business}/ownership-transfer', [BusinessOwnershipController::class, 'transfer'])
+        ->whereNumber('business')->middleware('throttle:3,60');
+    Route::post('/account/ownership-cases/{case}/respond', [BusinessOwnershipController::class, 'respond'])
+        ->whereNumber('case')->middleware('throttle:8,1');
     Route::get('/account/business-invitations', [BusinessTeamController::class, 'invitations']);
     Route::post('/account/business-invitations/{invitation}/respond', [BusinessTeamController::class, 'respond'])
         ->whereNumber('invitation')->middleware('throttle:8,1');
@@ -208,6 +217,11 @@ Route::prefix('admin')->middleware(['auth', 'verified', 'can:manage-network'])->
         ->middleware('throttle:20,1')->name('moderation.bulk.preview');
     Route::post('/moderation/bulk', [ModerationWorkbenchController::class, 'bulk'])
         ->middleware('throttle:12,1')->name('moderation.bulk');
+    Route::get('/ownership-cases', [BusinessOwnershipReviewController::class, 'index']);
+    Route::get('/ownership-cases/{case}', [BusinessOwnershipReviewController::class, 'show'])->whereNumber('case')
+        ->middleware('throttle:moderation-evidence');
+    Route::post('/ownership-cases/{case}', [BusinessOwnershipReviewController::class, 'decide'])
+        ->whereNumber('case')->middleware('throttle:12,1');
     Route::get('/business-review', [BusinessReviewController::class, 'index']);
     Route::post('/business-review/{business}', [BusinessReviewController::class, 'profile'])->whereNumber('business');
     Route::post('/business-claims/{claim}', [BusinessReviewController::class, 'claim'])->whereNumber('claim')->middleware('throttle:60,1');
