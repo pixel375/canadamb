@@ -738,3 +738,34 @@ a.market-category-card:hover, a.market-category-card:focus-visible {
 @media (prefers-reduced-motion: reduce) {
     .home-explore-link { transition: none; }
 }
+
+/* Pass 11 mobile screenshot corrections: keep empty states readable with CTAs,
+   and let the future property card explain itself without wasting half a row. */
+@media (max-width: 760px) {
+    .home-content-grid .empty-state {
+        display: grid; grid-template-columns: 46px minmax(0, 1fr);
+        align-items: start; column-gap: 11px; row-gap: 12px;
+        padding: 16px;
+    }
+    .home-content-grid .empty-state > .empty-icon { grid-column: 1; grid-row: 1 / span 2; }
+    .home-content-grid .empty-state > div { grid-column: 2; min-width: 0; }
+    .home-content-grid .empty-state > .button { grid-column: 2; justify-self: start; min-width: 0; }
+    .home-content-grid .empty-state h3 { font-size: 1.01rem; line-height: 1.25; }
+    .home-content-grid .empty-state p { margin-top: 4px; line-height: 1.44; }
+    .network-strip { display: grid; grid-template-columns: 46px minmax(0,1fr); gap: 9px 12px; }
+    .network-strip > .location-icon { grid-column: 1; grid-row: 1 / span 2; }
+    .network-strip > div { grid-column: 2; min-width: 0; }
+    .network-strip > .text-link { grid-column: 2; justify-self: start; }
+    .market-category-grid > .market-category-upcoming {
+        grid-column: 1 / -1; display: grid; grid-template-columns: 42px minmax(0,1fr);
+        grid-template-rows: auto auto auto; align-items: center; column-gap: 11px;
+        row-gap: 3px; min-height: 100px; padding: 13px;
+    }
+    .market-category-upcoming .market-category-icon { grid-column: 1; grid-row: 1 / span 3; }
+    .market-category-upcoming .market-category-name,
+    .market-category-upcoming .market-category-description,
+    .market-category-upcoming .market-category-coming { grid-column: 2; margin: 0; }
+    .market-category-upcoming .market-category-name { grid-row: 1; }
+    .market-category-upcoming .market-category-description { grid-row: 2; font-size: .76rem; }
+    .market-category-upcoming .market-category-coming { grid-row: 3; justify-self: start; }
+}
