@@ -107,9 +107,9 @@ class JobController extends Controller
     {
         $site = $request->attributes->get('site');
         abort_unless($this->jobs->enabled($site), 404);
-        $employer = $this->managedBusiness($request, $business);
         $data = $this->postingData($request, needsBranch: false);
-        DB::transaction(function () use ($request, $employer, $job, $data) {
+        DB::transaction(function () use ($request, $business, $job, $data) {
+            $employer = $this->managedBusiness($request, $business, lock: true);
             $item = $this->managedJob($request, $employer->id, $job, lock: true);
             abort_unless(in_array($item->status, ['pending', 'approved', 'rejected'], true), 409);
             $item->fill($data)->forceFill(['status' => 'pending'])->save();
@@ -120,8 +120,8 @@ class JobController extends Controller
 
     public function withdraw(Request $request, int $business, int $job)
     {
-        $employer = $this->managedBusiness($request, $business);
-        DB::transaction(function () use ($request, $employer, $job) {
+        DB::transaction(function () use ($request, $business, $job) {
+            $employer = $this->managedBusiness($request, $business, lock: true);
             $item = $this->managedJob($request, $employer->id, $job, lock: true);
             abort_unless(in_array($item->status, ['pending', 'approved'], true), 409);
             $item->forceFill(['status' => 'withdrawn'])->save();
