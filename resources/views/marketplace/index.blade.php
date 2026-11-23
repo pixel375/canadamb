@@ -24,6 +24,14 @@
                         @endif
                     </div>
                 </div>
+                @unless($selectedGroup)
+                    <form class="market-quick-search" action="/marketplace" method="get" role="search">
+                        <x-icon name="search" size="19"/>
+                        <label class="sr-only" for="marketplace-quick-query">Search all classifieds</label>
+                        <input id="marketplace-quick-query" type="search" name="q" placeholder="Search listings" maxlength="100">
+                        <button type="submit" class="button button-primary">Search listings</button>
+                    </form>
+                @endunless
                 @if($selectedGroup)
                     <div class="market-category-grid market-subcategory-grid">
                         @foreach($categoryGroups[$selectedGroup]['available'] as $slug => $name)
@@ -46,7 +54,7 @@
                         <div class="market-category-card market-category-upcoming" aria-label="Real Estate, coming later">
                             <span class="market-category-icon" aria-hidden="true">🏡</span>
                             <span class="market-category-name">Real Estate</span>
-                            <span class="market-category-description">Homes, rentals and land. Public listings aren't available yet; private property drafts require separate authorization.</span>
+                            <span class="market-category-description">Homes, rentals and land — a dedicated section is planned for a future launch.</span>
                             <span class="market-category-coming">Coming later</span>
                         </div>
                     </div>

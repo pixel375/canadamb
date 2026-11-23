@@ -45,6 +45,7 @@ jobs:
           php artisan key:generate --force
           touch database/database.sqlite
           php artisan migrate:fresh --seed --force
+          php tests/Browser/navigation-fixture.php
           git rev-parse HEAD > public/build/source-commit
       - name: Start isolated local website
         run: |
