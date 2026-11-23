@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 
 final class BusinessImportResolver
 {
-    public const ACTIONS = ['create_business', 'create_branch', 'update_facts', 'unchanged', 'skipped'];
+    public const ACTIONS = ['create_business', 'create_branch', 'update_facts', 'unchanged', 'duplicate_exact', 'skipped'];
 
     /**
      * Work through groups in key order. Buffer at most a chunk of rows plus one
@@ -24,12 +24,13 @@ final class BusinessImportResolver
 
         $places = [];
         $websites = [];
+        $repeatedKeys = [];
         $last = '';
         while (($keys = (clone $rows)->where('group_key', '>', $last)->select('group_key')->distinct()
             ->orderBy('group_key')->limit(200)->pluck('group_key'))->isNotEmpty()) {
             foreach ($keys as $key) {
                 $group = (clone $rows)->where('group_key', $key);
-                foreach ($this->group($plan, $group, $rows, $key, $places, $lock) as [$row, $decision, $details]) {
+                foreach ($this->group($plan, $group, $rows, $key, $places, $repeatedKeys, $lock) as [$row, $decision, $details]) {
                     $proposal = $details['website_proposal'] ?? null;
                     if ($proposal !== null && in_array($decision, self::ACTIONS, true)) {
                         $business = $details['business'];
@@ -46,7 +47,7 @@ final class BusinessImportResolver
         }
     }
 
-    private function group(object $plan, Builder $group, Builder $rows, string $key, array &$places, bool $lock): iterable
+    private function group(object $plan, Builder $group, Builder $rows, string $key, array &$places, array &$repeatedKeys, bool $lock): iterable
     {
         $candidates = (clone $group)->where(fn ($query) => $query->whereNull('review')->orWhere('review->action', '!=', 'skip'));
         $first = (clone $candidates)->oldest('id')->first();
@@ -107,9 +108,13 @@ final class BusinessImportResolver
                     ->when($lock, fn ($query) => $query->sharedLock())->value('id');
             }
             $location = $places[$payload['location']];
-            $sameKey = (clone $rows)->where('branch_key', $row->branch_key)->where('id', '!=', $row->id)
-                ->where(fn ($query) => $query->whereNull('review')->orWhere('review->action', '!=', 'skip'))->exists();
-            $sameAddress = (clone $rows)->where('physical_key', $row->physical_key)->where('id', '!=', $row->id)
+            $sameKey = $this->branchRepetitions($rows, $row, $repeatedKeys);
+            if (! $sameKey['conflict'] && $sameKey['first'] !== $row->id) {
+                yield [$row, 'duplicate_exact', ['reason' => 'Same normalized input as an earlier row.', 'repeat_of' => $sameKey['first']]];
+
+                continue;
+            }
+            $sameAddress = (clone $rows)->where('physical_key', $row->physical_key)->where('branch_key', '!=', $row->branch_key)
                 ->where(fn ($query) => $query->whereNull('review')->orWhere('review->action', '!=', 'skip'))->exists();
             $sameLegacyName = ! $resolvedDistinct && $business === null && (clone $rows)->where('name_key', $row->name_key)
                 ->where('group_key', '!=', $key)->where(fn ($query) => $query->whereNull('review')->orWhere('review->action', '!=', 'skip'))
@@ -128,7 +133,7 @@ final class BusinessImportResolver
 
             [$decision, $message] = match (true) {
                 $location === null => ['invalid', 'Use a selectable Manitoba location slug.'],
-                $sameKey || $branches->count() > 1 => ['duplicate_key', 'The source branch key is repeated.'],
+                $sameKey['conflict'] || $branches->count() > 1 => ['duplicate_key', 'The source branch key has conflicting records.'],
                 $sameAddress => ['physical_conflict', 'Another row has this name and physical address.'],
                 $groupError !== null => ['identity_conflict', $groupError],
                 $inconsistent => ['identity_conflict', 'Every row in a group must agree on organization name, category and website.'],
@@ -163,6 +168,22 @@ final class BusinessImportResolver
     public static function fact(mixed $value): string
     {
         return hash('sha256', json_encode($value, JSON_THROW_ON_ERROR));
+    }
+
+    private function branchRepetitions(Builder $rows, object $row, array &$cache): array
+    {
+        if (isset($cache[$row->branch_key])) {
+            return $cache[$row->branch_key];
+        }
+        $others = (clone $rows)->where('branch_key', $row->branch_key)
+            ->where(fn ($query) => $query->whereNull('review')->orWhere('review->action', '!=', 'skip'));
+        if (! (clone $others)->where('id', '!=', $row->id)->exists()) {
+            return ['first' => $row->id, 'conflict' => false];
+        }
+        // HEX provides the same byte-exact comparison under SQLite and MariaDB collations.
+        $summary = $others->selectRaw('MIN(id) AS first_id, MIN(HEX(payload)) <> MAX(HEX(payload)) AS differing')->first();
+
+        return $cache[$row->branch_key] = ['first' => (int) $summary->first_id, 'conflict' => (bool) $summary->differing];
     }
 
     private function protectedRecord(string $table, int $business, bool $lock, ?string $status = null): bool

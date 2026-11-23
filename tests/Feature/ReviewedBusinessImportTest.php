@@ -140,6 +140,18 @@ class ReviewedBusinessImportTest extends TestCase
         $this->assertDatabaseCount('businesses', 0);
     }
 
+    public function test_identical_rows_share_one_applied_branch_and_retain_line_provenance(): void
+    {
+        $this->approve();
+        $row = "one,Test Services,services,brandon,1 Test Street,,group\n";
+        $plan = $this->stage($row.$row.$row);
+        $this->assertSame(['create_business' => 1, 'duplicate_exact' => 2], $this->imports->counts($this->operator, $plan->id));
+        $this->apply($plan);
+        $branch = Business::sole()->locations()->sole();
+        $this->assertSame(3, DB::table('business_import_rows')->where('result_branch_id', $branch->id)->count());
+        $this->assertSame(2, DB::table('business_import_runs')->find($plan->id)->skipped);
+    }
+
     public function test_import_rejects_tampering_and_rolls_back_a_failed_write_before_retry(): void
     {
         $this->approve();

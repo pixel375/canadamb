@@ -147,6 +147,16 @@ final class BusinessImportPlan
                 }
                 $data = json_decode($row->payload, true, flags: JSON_THROW_ON_ERROR);
                 $details = json_decode($row->details, true, flags: JSON_THROW_ON_ERROR);
+                if ($row->decision === 'duplicate_exact') {
+                    $first = $this->rows($id)->where('id', $details['repeat_of'])->first(['result_business_id', 'result_branch_id']);
+                    if ($first?->result_branch_id === null) {
+                        throw new RuntimeException('The duplicate references a row without an applied branch.');
+                    }
+                    $this->rows($id)->where('id', $row->id)->update((array) $first);
+                    $skipped++;
+
+                    continue;
+                }
                 $business = $details['business'] ?? $seenGroups[$row->group_key] ?? null;
                 if ($row->decision === 'create_business') {
                     $business = $this->createBusiness($plan, $data);
