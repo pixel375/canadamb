@@ -22,7 +22,11 @@ The CanadaMB workbench handles existing submission types and abuse reports, incl
 
 ## Pass 06 — Discussions
 
-`/discussions` is the public forum path. Same-host compatibility covers old bookmarks and submitted forms. Members can manage their discussions and edit or withdraw eligible posts through the existing review rules. The stacked PR targets corrected Pass 05 and adds no migrations. Pass 07 will handle the agenda and event requests from existing discussions. [Issue #21](https://github.com/pixel375/canadamb/issues/21) · [Routes and author workflow](DISCUSSIONS.md)
+`/discussions` is the public forum path. Same-host compatibility covers old bookmarks and submitted forms. Members can manage their discussions and edit or withdraw eligible posts through the existing review rules. The stacked PR targets corrected Pass 05 and adds no migrations. [Issue #21](https://github.com/pixel375/canadamb/issues/21) · [Routes and author workflow](DISCUSSIONS.md)
+
+## Pass 07 — Discussion-linked events and calendar
+
+The stacked branch adds event requests from approved discussions, shared event review and a vertical Manitoba agenda. Legacy event URLs remain available. The additive link migration has its own production approval and backup gate. [Issue #23](https://github.com/pixel375/canadamb/issues/23) · [Events and recovery](DISCUSSION_EVENTS.md)
 
 **Current release process.** The protected implementation branch uses guarded GitHub CI-to-Hostinger automation. Its checks include an exact verified commit and a default denial for pending unreviewed migrations. Feature-branch pushes and stacked pull requests are review-only. The Phase 0 and Phase 1 checkpoints below describe earlier rollout procedures. [Deployment automation](DEPLOYMENT_AUTOMATION.md)
 

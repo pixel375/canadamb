@@ -46,6 +46,13 @@
                     @endif
                 </div>
             @endif
+            @if($event)
+                <p><a class="text-link" href="/account/events">Manage event request</a> · {{ $event->status === 'pending' ? 'Pending review' : ucfirst($event->status) }}</p>
+            @elseif($canRequestEvent)
+                <p><a class="text-link" href="/discussions/{{ $item->id }}/event">Request event listing</a></p>
+            @elseif($item->status === 'pending')
+                <p class="field-note">An event listing can be requested once this discussion is approved.</p>
+            @endif
         </article>
     </div>
 </x-layouts.site>

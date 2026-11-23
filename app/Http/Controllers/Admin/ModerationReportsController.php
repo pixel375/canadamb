@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Location;
 use App\Support\Audit;
 use App\Support\DiscussionReportEvidence;
+use App\Support\LinkedEvents;
 use App\Support\ModerationReports;
 use Illuminate\Database\RecordNotFoundException;
 use Illuminate\Http\RedirectResponse;
@@ -66,15 +67,18 @@ class ModerationReportsController extends Controller
         }
         $reason = null;
         $discussionEvidence = null;
+        $eventEvidence = null;
         if ($type !== 'conversation') {
             Audit::record('moderation.report-viewed', $request->user()->id, context: ['type' => $type, 'report' => $report]);
             $reason = $source->reason;
             if ($type === 'thread') {
                 $discussionEvidence = DiscussionReportEvidence::forReport($source->source_id, $report);
+            } elseif ($type === 'event') {
+                $eventEvidence = LinkedEvents::reportedMetadata($source->source_id, $report);
             }
         }
 
-        return view('admin.moderation-reports.show', compact('record', 'location', 'version', 'decision', 'reason', 'discussionEvidence'));
+        return view('admin.moderation-reports.show', compact('record', 'location', 'version', 'decision', 'reason', 'discussionEvidence', 'eventEvidence'));
     }
 
     public function decide(Request $request, string $type, int $report): RedirectResponse

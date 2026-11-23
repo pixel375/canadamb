@@ -7,6 +7,9 @@ use App\Models\CommunityEvent;
 use App\Models\CommunityReply;
 use App\Models\CommunityThread;
 use App\Support\Audit;
+use App\Support\Community;
+use App\Support\EventMetadata;
+use App\Support\LinkedEvents;
 use App\Support\ModerationDecision;
 use App\Support\NotificationInbox;
 use Illuminate\Http\Request;
@@ -21,7 +24,7 @@ class CommunityModerationController extends Controller
                 ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")->latest('id')->paginate(15, pageName: 'threads'),
             'replies' => CommunityReply::whereIn('status', ['pending', 'approved'])->whereHas('thread', fn ($query) => $query->where('status', 'approved'))
                 ->with(['thread', 'author'])->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")->latest('id')->paginate(15, pageName: 'replies'),
-            'events' => CommunityEvent::whereIn('status', ['pending', 'approved', 'cancelled'])->with('location')
+            'events' => CommunityEvent::whereIn('status', ['pending', 'approved', 'cancelled'])->with(['location', 'thread'])
                 ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")->latest('id')->paginate(15, pageName: 'events'),
         ]);
     }
@@ -52,6 +55,9 @@ class CommunityModerationController extends Controller
                 'lock', 'unlock' => $item->status === 'approved' && $item->locked !== $changes['locked'],
             }, 409);
             $item->forceFill($changes)->save();
+            if (in_array($action, ['reject', 'lock'], true)) {
+                LinkedEvents::requeue($item, $request->user()->id);
+            }
             $audit = Audit::record('community.thread.'.$action, $request->user()->id, context: ['thread' => $thread]);
             ModerationDecision::record('thread', $thread, $action, $audit, $data, isset($changes['status']) ? $audit : null);
             if ($item->author_id !== null && isset($changes['status'])) {
@@ -95,23 +101,56 @@ class CommunityModerationController extends Controller
 
     public function events(Request $request, int $event)
     {
-        $data = $this->decision($request);
+        $data = $request->validate([
+            'action' => 'required|in:approve,reject,edit,cancel',
+            'reason' => 'required_if:action,reject,cancel,edit|nullable|string|max:300',
+            'version' => ModerationDecision::VERSION_RULES,
+            'notes' => 'nullable|string|max:1200',
+        ]);
         DB::transaction(function () use ($request, $event, $data) {
-            $item = CommunityEvent::lockForUpdate()->findOrFail($event);
+            $item = LinkedEvents::lock($event);
+            $thread = $item->thread;
+            abort_if($request->attributes->get('bulk_moderation') && $thread !== null, 409, 'Review linked events individually.');
+            if ($thread !== null) {
+                $source = $request->validate(['thread_version' => ModerationDecision::VERSION_RULES]);
+                ModerationDecision::requireCurrent('thread', $thread, $source['thread_version']);
+            }
             ModerationDecision::requireCurrent('event', $item, $data['version']);
             abort_if($request->attributes->get('bulk_moderation') && $item->status !== 'pending', 409);
-            if ($data['action'] === 'approve') {
-                abort_unless($item->status === 'pending', 409);
+            $action = $data['action'];
+            $before = $item->status;
+            abort_unless(match ($action) {
+                'approve' => $before === 'pending',
+                'reject' => in_array($before, ['pending', 'approved', 'cancelled'], true),
+                'edit' => in_array($before, ['pending', 'approved'], true),
+                'cancel' => in_array($before, ['pending', 'approved'], true),
+            }, 409);
+            if (in_array($action, ['approve', 'edit'], true)) {
+                abort_if($thread !== null && ! LinkedEvents::matches($item, $thread), 409, 'The source discussion is ineligible.');
+            }
+            if ($action === 'approve') {
                 abort_if(($item->localEnd() ?? $item->localStart())->isPast(), 409, 'This event has already ended.');
-            } else {
-                abort_unless(in_array($item->status, ['pending', 'approved', 'cancelled'], true), 409);
+                if ($thread !== null) {
+                    $item->fill(['title' => $thread->title, 'body' => $thread->body]);
+                }
+            } elseif ($action === 'edit') {
+                $item->fill(EventMetadata::validated($request, app(Community::class)));
+                if (! $item->isDirty()) {
+                    return;
+                }
+            } elseif ($action === 'cancel') {
+                $item->forceFill(['cancelled_at' => now()]);
             }
-            $item->forceFill(['status' => $data['action'] === 'approve' ? 'approved' : 'rejected'])->save();
-            $audit = Audit::record('community.event.'.$data['action'], $request->user()->id, context: ['event' => $event]);
-            ModerationDecision::record('event', $event, $data['action'], $audit, $data, $audit);
-            if ($item->author_id !== null) {
-                NotificationInbox::record($item->author_id, 'event.'.$item->status, $audit, $event, [$item->location_id]);
+            if (in_array($action, ['approve', 'edit'], true) && $item->isDirty()) {
+                LinkedEvents::preserveReportedMetadata($item);
             }
+            $item->forceFill(['status' => match ($action) {
+                'approve' => 'approved',
+                'reject' => 'rejected',
+                'edit' => 'pending',
+                'cancel' => $before === 'approved' ? 'cancelled' : 'withdrawn',
+            }])->save();
+            LinkedEvents::record($item, $action, $request->user()->id, $before, $data);
         }, attempts: 3);
 
         return $this->done();

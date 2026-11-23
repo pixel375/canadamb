@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Community;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -15,6 +16,29 @@ class CommunityEvent extends Model
     public function location(): BelongsTo
     {
         return $this->belongsTo(Location::class);
+    }
+
+    public function thread(): BelongsTo
+    {
+        return $this->belongsTo(CommunityThread::class);
+    }
+
+    public function publicPath(): string
+    {
+        return $this->thread_id === null ? '/events/'.$this->id : Community::DISCUSSIONS_PATH.'/'.$this->thread_id;
+    }
+
+    public function structuredData(string $canonical): array
+    {
+        return [
+            '@context' => 'https://schema.org', '@type' => 'Event', 'name' => $this->title,
+            'startDate' => $this->localStart()->toAtomString(), 'endDate' => $this->localEnd()?->toAtomString(),
+            'description' => $this->body, 'url' => $canonical, 'eventStatus' => 'https://schema.org/EventScheduled',
+            'location' => ['@type' => 'Place', 'name' => $this->venue, 'address' => [
+                '@type' => 'PostalAddress', 'addressLocality' => $this->location->name, 'addressRegion' => 'MB', 'addressCountry' => 'CA',
+            ]],
+            'organizer' => ['@type' => 'Organization', 'name' => $this->organizer],
+        ];
     }
 
     public function localStart(): CarbonImmutable

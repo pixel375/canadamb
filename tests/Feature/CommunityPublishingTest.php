@@ -71,46 +71,59 @@ class CommunityPublishingTest extends TestCase
         ];
         $organizer = User::factory()->create();
         $admin = User::factory()->create(['role' => 'network_admin']);
-        $this->actingAs($organizer)->post('https://brandonmb.ca/events', $input)->assertSessionHasErrors('starts_at');
+        $source = $this->eventDiscussion($organizer, $input['title'], $input['body']);
+        $requestUrl = "https://brandonmb.ca/discussions/$source->id/event";
+        $parent = ['thread_version' => ModerationDecision::version('thread', $source)];
+        $this->actingAs($organizer)->post($requestUrl, $input + $parent)->assertSessionHasErrors('starts_at');
         $input['starts_at'] = '2026-03-08T03:30';
-        $this->post('https://brandonmb.ca/events', $input)->assertSessionHasNoErrors()->assertRedirect();
+        $this->post($requestUrl, $input + $parent)->assertSessionHasNoErrors()->assertRedirect();
         $event = CommunityEvent::sole();
         $this->assertSame('2026-03-08 08:30:00', $event->getRawOriginal('starts_at'));
         $this->get('https://brandonmb.ca/events')->assertDontSee($input['title']);
         $this->actingAs($admin)->post("https://canadamb.ca/admin/community/events/$event->id", [
             'action' => 'approve', 'version' => ModerationDecision::version('event', $event->fresh()),
-        ])->assertRedirect();
+        ] + $parent)->assertRedirect();
         $this->get('https://brandonmb.ca/events?month=2026-03')->assertOk()->assertSee($input['title']);
         $this->get('https://canadamb.ca/events')->assertSee($input['title']);
         $this->get('https://canadamb.ca/')->assertSee($input['title']);
-        $this->get("https://canadamb.ca/events/$event->id")->assertRedirect("https://brandonmb.ca/events/$event->id");
-        $this->get("https://brandonmb.ca/events/$event->id")->assertSee('3:30 am');
+        $this->get("https://canadamb.ca/events/$event->id")->assertRedirect("https://canadamb.ca/discussions/$source->id");
+        $this->get("https://brandonmb.ca/discussions/$source->id")->assertSee('3:30 am');
 
         $this->actingAs(User::factory()->create())->post("https://brandonmb.ca/account/events/$event->id/cancel")->assertNotFound();
-        $this->actingAs($organizer)->post("https://brandonmb.ca/account/events/$event->id/cancel", ['cancellation_note' => 'Organizer-only cancellation note'])->assertRedirect();
-        $this->get('https://brandonmb.ca/events')->assertDontSee($input['title']);
-        $this->get("https://brandonmb.ca/events/$event->id")->assertSee('Cancelled')->assertDontSee('Organizer-only cancellation note');
+        $this->actingAs($organizer)->post("https://brandonmb.ca/account/events/$event->id/cancel", [
+            'cancellation_note' => 'Organizer-only cancellation note', 'version' => ModerationDecision::version('event', $event->fresh()),
+        ] + $parent)->assertRedirect();
+        $this->get('https://brandonmb.ca/events')->assertSee('Cancelled');
+        $this->get("https://brandonmb.ca/discussions/$source->id")->assertSee('Cancelled')->assertDontSee('Organizer-only cancellation note');
         $this->actingAs($admin)->post("https://canadamb.ca/admin/community/events/$event->id", [
             'action' => 'reject', 'reason' => 'Event detail withdrawn.', 'version' => ModerationDecision::version('event', $event->fresh()),
-        ])->assertRedirect();
+        ] + $parent)->assertRedirect();
         $this->get("https://brandonmb.ca/events/$event->id")->assertNotFound();
     }
 
     public function test_an_event_that_overlaps_two_months_is_listed_on_its_later_local_day(): void
     {
         $this->travelTo('2027-03-15 12:00:00');
-        $this->actingAs(User::factory()->create())->post('https://brandonmb.ca/events', [
-            'title' => 'Overnight event', 'body' => 'A community event that continues into the next day.',
+        $organizer = User::factory()->create();
+        $source = $this->eventDiscussion($organizer, 'Overnight event', 'A community event that continues into the next day.');
+        $parent = ['thread_version' => ModerationDecision::version('thread', $source)];
+        $this->actingAs($organizer)->post("https://brandonmb.ca/discussions/$source->id/event", [
             'starts_at' => '2027-03-31T21:00', 'ends_at' => '2027-04-01T02:00',
             'category' => 'community', 'venue' => 'Hall', 'organizer' => 'Local club',
-        ])->assertSessionHasNoErrors();
+        ] + $parent)->assertSessionHasNoErrors();
         $event = CommunityEvent::sole();
         $id = $event->id;
         $this->actingAs(User::factory()->create(['role' => 'network_admin']))
             ->post("https://canadamb.ca/admin/community/events/$id", [
                 'action' => 'approve', 'version' => ModerationDecision::version('event', $event),
-            ])->assertRedirect();
+            ] + $parent)->assertRedirect();
         $this->get('https://brandonmb.ca/events?month=2027-04&day=2027-04-01')->assertOk()->assertSee('Overnight event');
         $this->get('https://brandonmb.ca/events?month=2027-04&day=2027-04-02')->assertOk()->assertDontSee('Overnight event');
+    }
+
+    private function eventDiscussion(User $organizer, string $title, string $body): CommunityThread
+    {
+        return CommunityThread::forceCreate(['author_id' => $organizer->id, 'title' => $title, 'body' => $body,
+            'category' => 'general', 'status' => 'approved', 'location_id' => Location::where('slug', 'brandon')->sole()->id])->fresh();
     }
 }

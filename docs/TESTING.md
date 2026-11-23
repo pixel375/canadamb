@@ -52,3 +52,9 @@ The script tests buyer, seller, employer and administrator boundaries, the three
 Run `php vendor/bin/phpunit --filter 'DiscussionsRoutesTest|OwnedDiscussionsTest|CommunityPublishingTest|ApprovalPolicyTest|NotificationInboxTest'` for targeted coverage. Verify runs the full suite on SQLite and MariaDB. The `production-pass-06` rehearsal upgrades a populated corrected Pass 05 release using the existing schema, compares persisted data, restores backups and verifies the author-edit and moderator-review conflict.
 
 For browser automation, use a fresh disposable seeded SQLite database with development hosts enabled and Passport test keys. Run `php tests/Browser/discussions-fixture.php`, serve both local hostnames, open `canadamb.localhost` in Playwright, and run `tests/Browser/discussions.js`. It covers posting, approval, central sign-in from Brandon, follow, replies, reports, editing and rejection. Owner device acceptance is tracked in the [Discussions runbook](DISCUSSIONS.md).
+
+## Discussion events
+
+Run `php vendor/bin/phpunit --filter 'DiscussionEvent|EventAgenda|EventDiscussionMigration|CommunityPublishingTest|ApprovalPolicyTest'`. Verify runs the full suites plus `production-pass-07` from the exact populated Pass 06 release. That rehearsal checks default migration denial, SQL preview, legacy event preservation, SQL and private media restore, and competing requests, reviews and source edits.
+
+For Chromium acceptance, start a fresh disposable SQLite instance with local development hosts and test Passport keys. Seed `php tests/Browser/events-fixture.php` and run `tests/Browser/discussion-events.js` from the CanadaMB local origin. Run the separate physical checks after release authorization. [Events and acceptance](DISCUSSION_EVENTS.md)

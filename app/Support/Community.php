@@ -47,6 +47,17 @@ class Community
         return CommunityEvent::with('location')->when($location, fn (Builder $query, int $id) => $query->where('location_id', $id));
     }
 
+    public function publicEvents(Site $site, ?int $location = null): Builder
+    {
+        $discussions = $this->enabled($site, 'community');
+        $source = LinkedEvents::visibleSourceSql('community_events', 'event_thread', $discussions, $site->location_id !== null);
+
+        return $this->events($site->location_id ?? $location)->whereIn('status', ['approved', 'cancelled'])
+            ->where(fn (Builder $events) => $events->whereNull('thread_id')->orWhereExists(fn ($thread) => $thread
+                ->selectRaw('1')->from('community_threads as event_thread')->whereColumn('event_thread.id', 'community_events.thread_id')
+                ->whereRaw($source)));
+    }
+
     public function upcoming(Builder $events): Builder
     {
         $now = now('UTC')->format('Y-m-d H:i:s');

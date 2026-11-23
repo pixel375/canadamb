@@ -28,4 +28,4 @@ When a discussion with reports is edited, the prior public text is sealed in the
 
 Pass 06 uses the existing schema and adds no migrations. Run the populated Pass 05 rehearsal and verify the preserved records, SQL and private-storage restore, and competing author/moderator updates. The unmerged migrations in the earlier passes still require separate authorization. Keep the public launch, registration, mail, and published approval settings under the existing controls.
 
-On authorized Android and iOS devices, verify My Discussions, pending/rejected preview, city sign-in continuation, keyboard and touch reply controls, old bookmarks and the installed PWA. Keep the existing Events submenu and `/events` routes through this pass. Discussion-originated event requests and the new agenda belong to Pass 07.
+On authorized Android and iOS devices, verify My Discussions, pending/rejected preview, city sign-in continuation, keyboard and touch reply controls, old bookmarks and the installed PWA. The Events submenu and legacy `/events` routes remain available in Pass 07, which adds [event requests and the agenda](DISCUSSION_EVENTS.md).

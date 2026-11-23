@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\CommunityEvent;
 use App\Models\CommunityReply;
 use App\Models\JobPosting;
 use App\Models\Listing;
@@ -37,6 +38,9 @@ final class ModerationDecision
                 ->latest('id')->when($lock, fn ($query) => $query->lockForUpdate())->value('id');
 
             $version[] = $context;
+        }
+        if ($item instanceof CommunityEvent && $item->thread_id !== null) {
+            $version[] = self::version('thread', $item->thread, $lock);
         }
 
         return hash('sha256', json_encode($version, JSON_THROW_ON_ERROR));

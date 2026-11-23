@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CommunityEvent;
 use App\Models\CommunityThread;
 use App\Support\ApprovalPolicy;
 use App\Support\Audit;
 use App\Support\Community;
 use App\Support\DiscussionReportEvidence;
+use App\Support\LinkedEvents;
 use App\Support\ModerationDecision;
 use App\Support\NotificationInbox;
 use Illuminate\Database\Eloquent\Builder;
@@ -45,7 +47,11 @@ class OwnedDiscussionsController extends Controller
         $canRestore = ! $item->locked && $item->status === 'withdrawn';
         $version = $canWithdraw || $canRestore ? ModerationDecision::version('thread', $item) : null;
 
-        return view('community.preview-discussion', compact('item', 'reason', 'canEdit', 'canWithdraw', 'canRestore', 'version'));
+        $event = CommunityEvent::where('thread_id', $item->id)->first(['id', 'status']);
+        $canRequestEvent = $event === null && LinkedEvents::eligible($item)
+            && $this->community->enabled($request->attributes->get('site'), 'events');
+
+        return view('community.preview-discussion', compact('item', 'reason', 'canEdit', 'canWithdraw', 'canRestore', 'version', 'event', 'canRequestEvent'));
     }
 
     public function edit(Request $request, int $thread): View
@@ -101,6 +107,7 @@ class OwnedDiscussionsController extends Controller
             DiscussionReportEvidence::preserve($item, $item->author_id);
             $item->fill(['title' => $data['title'], 'body' => $body, 'category' => $data['category']]);
             $item->forceFill($revision === null ? ['status' => 'pending'] : ['status' => 'approved', 'last_activity_at' => now()])->save();
+            LinkedEvents::requeue($item, $item->author_id);
             $approvalNotice = $revision === null ? null
                 : $policy->recordAutomaticApproval('thread', $thread, $item->author_id, $site, $revision, $item->location_id);
             $this->recordChange($request, $item, 'author-edit', $previous, $approvalNotice);
@@ -148,6 +155,9 @@ class OwnedDiscussionsController extends Controller
             abort_unless(! $item->locked && in_array($item->status, $allowed, true), 409, 'This discussion cannot be changed in its current state.');
             $previous = $item->status;
             $item->forceFill(['status' => $status])->save();
+            if ($status === 'withdrawn') {
+                LinkedEvents::requeue($item, $item->author_id);
+            }
             $this->recordChange($request, $item, $action, $previous);
         }, attempts: 3);
     }

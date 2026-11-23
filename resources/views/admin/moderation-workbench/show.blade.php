@@ -29,7 +29,7 @@
             <p class="prose-text">{{ $resource->evidence }}</p>
             <p>Confirm ownership independently before approving.</p>
         @else
-            <p class="prose-text">{{ $resource->description ?? $resource->body ?? '' }}</p>
+            <p class="prose-text">{{ ($type === 'event' ? $resource->thread?->body : null) ?? $resource->description ?? $resource->body ?? '' }}</p>
         @endif
         @foreach($branches as $branch)<p>{{ $branch->address }}</p>@endforeach
         @if($type === 'listing')
@@ -40,6 +40,12 @@
             <p>{{ $resource->payLabel() }}</p>
             <a class="text-link" href="{{ $resource->apply_url }}" rel="noreferrer noopener">View application link</a>
         @elseif($type === 'event')
+            @if($resource->thread)
+                <p>Source discussion · {{ ucfirst($resource->thread->status) }} @if($resource->thread->locked) · Locked @endif</p>
+                <a class="text-link" href="{{ route('moderation.items.show', ['type' => 'thread', 'item' => $resource->thread_id]) }}">Review source discussion</a>
+            @else
+                <p>Legacy standalone event</p>
+            @endif
             <p>{{ $resource->venue }} · {{ $resource->organizer }} · {{ $resource->localStart()->format('M j, Y · g:i a T') }}</p>
             @if($resource->localEnd())<p>Ends {{ $resource->localEnd()->format('M j, Y · g:i a T') }}</p>@endif
             @if($resource->event_url)<a class="text-link" rel="noreferrer noopener" href="{{ $resource->event_url }}">View event link</a>@endif
@@ -66,12 +72,20 @@
             default => [],
         };
         $notesRequired = in_array($type, ['business', 'claim', 'business-update'], true);
+        $threadVersion = $type === 'event' && $resource->thread ? \App\Support\ModerationDecision::version('thread', $resource->thread) : null;
+        if ($type === 'event' && in_array($resource->status, ['pending', 'approved'], true)) {
+            $actions['cancel'] = 'Cancel event';
+            if ($resource->thread && !\App\Support\LinkedEvents::matches($resource, $resource->thread)) {
+                unset($actions['approve']);
+            }
+        }
     @endphp
     @if($actions)
         <section class="panel form-stack" aria-labelledby="moderation-decision">
             <h2 id="moderation-decision">Review decision</h2>
             <form method="post" action="{{ route('moderation.items.decide', ['type' => $type, 'item' => $row->id]) }}" class="form-stack">
                 @csrf<input type="hidden" name="version" value="{{ $version }}">
+                @if($threadVersion)<input type="hidden" name="thread_version" value="{{ $threadVersion }}">@endif
                 @if(isset($actions['reject']) || isset($actions['remove']))
                     <label>Reason shown to the submitter when rejected or removed
                         <textarea name="reason" maxlength="{{ $type === 'listing' ? 240 : 300 }}" rows="2">{{ old('reason') }}</textarea>
@@ -87,6 +101,21 @@
                 </div>
             </form>
         </section>
+    @endif
+    @if($type === 'event' && in_array($resource->status, ['pending', 'approved'], true)
+        && (!$resource->thread || \App\Support\LinkedEvents::matches($resource, $resource->thread)))
+        <details class="panel">
+            <summary>Edit event metadata</summary>
+            <form method="post" action="{{ route('moderation.items.decide', ['type' => 'event', 'item' => $resource->id]) }}" class="form-stack">
+                @csrf
+                <input type="hidden" name="version" value="{{ $version }}">
+                @if($threadVersion)<input type="hidden" name="thread_version" value="{{ $threadVersion }}">@endif
+                <x-event-metadata :item="$resource"/>
+                <label>Reason for changing the event<input name="reason" required maxlength="300"></label>
+                <label>Internal reviewer notes<textarea name="notes" maxlength="1200"></textarea></label>
+                <div><button class="button button-outline" name="action" value="edit">Save for review</button></div>
+            </form>
+        </details>
     @endif
     <section class="panel form-stack" aria-labelledby="moderation-history">
         <h2 id="moderation-history">Decision history</h2>

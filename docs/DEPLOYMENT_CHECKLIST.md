@@ -1,5 +1,11 @@
 # Hostinger production prelaunch acceptance
 
+## Pass 07 discussion events release checks
+
+- [ ] Confirm exact-commit CI and the populated Pass 06 migration rehearsal with default denial, previewed SQL, preserved legacy events and read states, backup restore, and concurrent request and review evidence.
+- [ ] Review the nullable, unique event-to-discussion foreign key against the target MariaDB database. Obtain explicit production approval for the migration after prior passes are released in sequence. Retain database, private media and application key backups.
+- [ ] Check event requests, author edits, re-review after a material source change, Manitoba day boundaries, city visibility and legacy bookmarks on allowlisted phones. [Events acceptance checklist](DISCUSSION_EVENTS.md)
+
 ## Pass 06 Discussions release checks
 
 - [ ] Confirm exact-commit CI and the populated Pass 05 to Pass 06 rehearsal. Verify unchanged schema and data, private storage restoration, and a single winner in the competing author and moderator requests.

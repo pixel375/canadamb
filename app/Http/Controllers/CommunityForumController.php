@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CommunityEvent;
 use App\Models\CommunityReply;
 use App\Models\CommunityThread;
 use App\Models\Location;
 use App\Models\Site;
 use App\Support\ApprovalPolicy;
 use App\Support\Community;
+use App\Support\LinkedEvents;
 use App\Support\LocationScope;
 use App\Support\NetworkUrl;
 use App\Support\NotificationInbox;
@@ -42,12 +44,21 @@ class CommunityForumController extends Controller
     public function thread(Request $request, int $thread)
     {
         $item = $this->visible($request)->findOrFail($thread);
-        $canonical = NetworkUrl::to($this->community->canonicalSite($item, 'community'), Community::DISCUSSIONS_PATH.'/'.$item->id);
+        $site = $request->attributes->get('site');
+        $canonicalSite = $this->community->canonicalSite($item, 'community');
+        $canonical = NetworkUrl::to($canonicalSite, Community::DISCUSSIONS_PATH.'/'.$item->id);
         $replies = $item->replies()->where('status', 'approved')->with('author')->oldest('id')->paginate(Community::REPLIES_PER_PAGE);
         $following = $request->user() && DB::table('community_thread_follows')
             ->where(['thread_id' => $thread, 'user_id' => $request->user()->id])->exists();
+        $owner = $request->user()?->hasVerifiedEmail() && $request->user()->id === $item->author_id;
+        $eventsEnabled = $this->community->enabled($site, 'events');
+        $linkedEvent = $eventsEnabled ? $this->community->publicEvents($site)->where('thread_id', $item->id)->first() : null;
+        $ownedEvent = $owner ? CommunityEvent::where('thread_id', $item->id)->first(['id', 'status']) : null;
+        $canRequestEvent = $owner && $eventsEnabled && $ownedEvent === null && LinkedEvents::eligible($item);
+        $eventData = $linkedEvent?->status === 'approved' && $site->id === $canonicalSite->id
+            ? array_filter($linkedEvent->structuredData($canonical)) : null;
 
-        return view('community.thread', compact('item', 'canonical', 'replies', 'following'));
+        return view('community.thread', compact('item', 'canonical', 'replies', 'following', 'linkedEvent', 'ownedEvent', 'canRequestEvent', 'owner', 'eventData'));
     }
 
     public function showReply(Request $request, int $reply)
