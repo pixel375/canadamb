@@ -73,7 +73,13 @@ class BusinessTeamTest extends TestCase
         $this->actingAs($member)->get(self::CITY."/account/messages/$chat->id")->assertNotFound();
         $this->putJson(self::CITY."/account/businesses/$business->id", ['description' => 'Unauthorized edit.'])->assertNotFound();
         $this->putJson(self::CITY."/account/businesses/$business->id/branches/$branch->id/message-contact", ['enabled' => true])->assertNotFound();
-        $this->putJson(self::CITY."/account/businesses/$business->id/jobs/$job->id", ['title' => 'Unauthorized edit.'])->assertNotFound();
+        $this->putJson(self::CITY."/account/businesses/$business->id/jobs/$job->id", [
+            'title' => 'Unauthorized edit.',
+            'description' => 'A valid post body that a former member cannot change.',
+            'employment_type' => 'part-time', 'workplace' => 'on-site',
+            'apply_url' => 'https://example.test/apply',
+            'closing_on' => now()->addMonth()->toDateString(),
+        ])->assertNotFound();
         $this->postJson(self::CITY."/account/businesses/$business->id/jobs/$job->id/withdraw")->assertNotFound();
         $this->putJson(self::CITY."/account/businesses/$business->id/jobs/$job->id/message-contact", ['enabled' => true])->assertNotFound();
         $this->actingAs($owner)->get(self::CITY."/account/messages/$chat->id")->assertNotFound();
