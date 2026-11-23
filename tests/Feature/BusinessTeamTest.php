@@ -71,6 +71,11 @@ class BusinessTeamTest extends TestCase
         $this->assertNull($job->fresh()->message_contact_user_id);
         $this->assertDatabaseHas('conversations', ['id' => $chat->id, 'seller_id' => $member->id]);
         $this->actingAs($member)->get(self::CITY."/account/messages/$chat->id")->assertNotFound();
+        $this->putJson(self::CITY."/account/businesses/$business->id", ['description' => 'Unauthorized edit.'])->assertNotFound();
+        $this->putJson(self::CITY."/account/businesses/$business->id/branches/$branch->id/message-contact", ['enabled' => true])->assertNotFound();
+        $this->putJson(self::CITY."/account/businesses/$business->id/jobs/$job->id", ['title' => 'Unauthorized edit.'])->assertNotFound();
+        $this->postJson(self::CITY."/account/businesses/$business->id/jobs/$job->id/withdraw")->assertNotFound();
+        $this->putJson(self::CITY."/account/businesses/$business->id/jobs/$job->id/message-contact", ['enabled' => true])->assertNotFound();
         $this->actingAs($owner)->get(self::CITY."/account/messages/$chat->id")->assertNotFound();
         $this->actingAs($customer)->get(self::CITY."/account/messages/$chat->id")->assertOk();
         $this->actingAs($owner)->deleteJson(self::CITY.$path, ['expected_role' => 'manager'])->assertConflict();
