@@ -43,7 +43,7 @@ class MarketplaceDiscoveryLifecycleTest extends TestCase
         $this->getJson(self::CITY.'/api/v1/marketplace?location[]=elkhorn&max_price=0')
             ->assertOk()->assertJsonPath('meta.total', 1)->assertJsonPath('data.0.id', $free->id);
         $this->getJson(self::MAIN.'/api/v1/marketplace?q=0')->assertOk()->assertJsonPath('meta.total', 5);
-        $this->get(self::CITY.'/marketplace')->assertOk()->assertSee('Table &lt;script&gt;fixture&lt;/script&gt;', false)
+        $this->get(self::CITY.'/marketplace?view=all')->assertOk()->assertSee('Table &lt;script&gt;fixture&lt;/script&gt;', false)
             ->assertDontSee('<script>fixture</script>', false);
     }
 

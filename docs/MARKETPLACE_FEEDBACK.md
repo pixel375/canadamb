@@ -56,3 +56,12 @@ The earlier rows document owner-reported defects at the live UX checkpoint. A **
 - Confirm uploads of single and multiple photos survive deployments; source files and private storage never enter `public_html`.
 - Confirm public listing visibility, moderation states, current-site navigation, owned vs third-party CTA, read-only guest pages, canonical tags, cross-domain SSO and duplicate indexing policy.
 - Capture before/after screenshots and performance metrics. No production CSS/UI update is included in this note.
+
+
+## 2026-11-23 owner feedback — navigation, categories and Real Estate
+
+The owner reports that the current live desktop navigation dropdowns (Businesses/Discussions) appear inside a broken scrolling box, desktop Messages/Notifications lack intentional header placement, the desktop visual system is too rudimentary, and mobile layout also needs refinement. Marketplace should start with **main categories**, then **subcategories**, or an obvious **View all listings** action. Real Estate is absent and needs a clearly planned public module.
+
+Track the entire redesign in [Issue #28](https://github.com/pixel375/canadamb/issues/28). [Draft PR #29](https://github.com/pixel375/canadamb/pull/29) is an **early, unmerged correctness/navigation slice**, not the full professional redesign: desktop dropdowns now escape the prior horizontal scroll container, tablet drawer responds up to 1023px, signed-in header contains Messages/Notifications, and Marketplace has a parent/leaf discovery flow without changing any existing leaf category slug. A **Real Estate · Coming later** tile is informative only; property publishing and public property categories are still gated. The primary visual redesign remains separate and requires actual browser screenshots and owner acceptance.
+
+Code QA must validate both hosts, keyboard Escape/Tab/focus, 320/390/768/1024/1280/1440px, light/dark, site-specific listing access, accurate unread counts, existing posting category slugs and empty states. The new `tests/Browser/navigation-marketplace-discovery.js` records those acceptance steps but is **not evidence a live browser has been run**.

@@ -5,6 +5,7 @@
 
         return is_scalar($value) || $value === null ? $value : $fallback;
     };
+    $categoryGroups = \App\Support\MarketplaceCategories::grouped($categories->all());
     $selectedCategory = $field('category', $item->category ?? '');
     $submittedVersion = $field('photo_version', null);
     $editVersion = is_string($submittedVersion) && preg_match('/\A[a-f0-9]{64}\z/', $submittedVersion)
@@ -22,7 +23,13 @@
             <label>Title<input name="title" value="{{ $field('title', $item->title) }}" required maxlength="120"></label>
             <label>Description<textarea name="description" rows="5" required maxlength="5000">{{ $field('description', $item->description) }}</textarea></label>
             <div class="form-grid">
-                <label>Category<select name="category" x-model="category" required><option value="">Choose a category</option>@foreach($categories as $key => $label)<option value="{{ $key }}" @selected($selectedCategory === $key)>{{ $label }}</option>@endforeach</select></label>
+                <label>Category<select name="category" x-model="category" required><option value="">Choose a category</option>
+                    @foreach($categoryGroups as $group)
+                        <optgroup label="{{ $group['name'] }}">
+                            @foreach($group['available'] as $key => $label)<option value="{{ $key }}" @selected($selectedCategory === $key)>{{ $label }}</option>@endforeach
+                        </optgroup>
+                    @endforeach
+                </select><small class="field-note">Choose the most specific subcategory. Public real estate listings are not yet available.</small></label>
                 <label>Condition<select name="condition" required><option value="">Choose a condition</option>@foreach($conditions as $key => $label)<option value="{{ $key }}" @selected($field('condition', $item->condition) === $key)>{{ $label }}</option>@endforeach</select></label>
             </div>
             @foreach($fields as $category => $attributes)

@@ -10,6 +10,7 @@ use App\Http\Responses\PasswordResetRequested;
 use App\Http\Responses\RegistrationResponse;
 use App\Models\CommunityOAuthClient;
 use App\Models\User;
+use App\Support\ConversationAccess;
 use App\Support\Identity;
 use App\Support\NetworkSettings;
 use App\Support\NotificationFeed;
@@ -65,6 +66,13 @@ class AppServiceProvider extends ServiceProvider
                     'site' => $site,
                     'networkSettings' => app(NetworkSettings::class)->forSite($site),
                     'unreadNotifications' => $viewer?->hasVerifiedEmail() ? app(NotificationFeed::class)->unread($site, $viewer->id) : 0,
+                    'unreadMessages' => $viewer?->hasVerifiedEmail()
+                        ? ConversationAccess::forMember($site, $viewer->id)
+                            ->join('messages', 'messages.conversation_id', '=', 'conversations.id')
+                            ->where('messages.sender_id', '!=', $viewer->id)
+                            ->whereRaw(ConversationAccess::unreadSql('conversations', 'messages', '?', '?'), [$viewer->id, $viewer->id])
+                            ->whereRaw(ConversationAccess::unblockedSql('conversations'))->count('messages.id')
+                        : 0,
                 ]);
             }
         });

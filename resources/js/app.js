@@ -216,6 +216,42 @@ if (discussionReply && discussionQuoteStatus) {
     discussionReply.addEventListener('input', () => { discussionQuoteStatus.textContent = ''; });
 }
 
+// Desktop dropdowns stay anchored, never in a horizontally scrolling nav
+// container. Native <details> allows keyboard Enter/Space and no-JS fallback.
+const desktopNavGroups = Array.from(document.querySelectorAll('.desktop-nav-group'));
+if (desktopNavGroups.length) {
+    const closeOtherGroups = except => {
+        for (const group of desktopNavGroups) {
+            if (group !== except) group.open = false;
+        }
+    };
+    for (const group of desktopNavGroups) {
+        // A native details "toggle" event fires asynchronously, so relying on
+        // it alone permits two menus to appear open for a frame (or longer in
+        // automated keyboard/navigation sequences). Close siblings on the
+        // summary activation itself, before the default details toggle.
+        group.querySelector('summary')?.addEventListener('click', () => closeOtherGroups(group));
+        group.addEventListener('toggle', () => {
+            if (group.open) closeOtherGroups(group);
+        });
+    }
+    document.addEventListener('pointerdown', event => {
+        if (!event.target.closest('.desktop-nav-group')) closeOtherGroups(null);
+    });
+    document.addEventListener('focusin', event => {
+        if (!event.target.closest('.desktop-nav-group')) closeOtherGroups(null);
+    });
+    document.addEventListener('keydown', event => {
+        if (event.key !== 'Escape') return;
+        const open = desktopNavGroups.find(group => group.open);
+        if (open) {
+            event.preventDefault();
+            open.open = false;
+            open.querySelector('summary')?.focus();
+        }
+    });
+}
+
 // Native modal drawer traps focus and supports Escape without custom key handling.
 const siteDrawer = document.getElementById('site-drawer');
 const siteMenuOpen = document.getElementById('site-menu-open');
@@ -234,7 +270,7 @@ if (siteDrawer && siteMenuOpen && typeof siteDrawer.showModal === 'function') {
         document.documentElement.classList.remove('site-menu-open');
         siteMenuOpen.focus();
     });
-    window.matchMedia('(min-width: 761px)').addEventListener('change', event => {
+    window.matchMedia('(min-width: 1024px)').addEventListener('change', event => {
         if (event.matches && siteDrawer.open) siteDrawer.close();
     });
 }

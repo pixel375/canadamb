@@ -5,3 +5,8 @@ Enable CANADAMB_PROPERTY_DRAFTS_ENABLED only in an environment authorized to col
 Submitting a draft allows network administrators to request changes or mark it reviewed. Every decision remains private. Property records and photos are outside public pages, public storage, and sitemaps. A change to Marketplace media storage has no effect on the private property disk.
 
 Before enabling any public property advertising, review the intended publishing, verification, consent, and payment flows against current Manitoba law and record the applicable approvals. Paid property promotions and agent subscriptions have no implementation in this release. [Manitoba Real Estate Services Act](https://web2.gov.mb.ca/laws/statutes/ccsm/_pdf.php?cap=R21)
+
+
+## Public Marketplace discovery does not publish real estate
+
+The category chooser in stacked [draft PR #29](https://github.com/pixel375/canadamb/pull/29) shows a non-clickable **Real Estate — Coming later** card so visitors can understand the planned offering. This is **not** a `listing_categories` row, public posting form option, public property listing, saved search, property promotion or change to `CANADAMB_PROPERTY_DRAFTS_ENABLED`. Historic ordinary Marketplace slugs retain their meaning. Property sale/rental listings and agent-related monetization still require a separate compliance, permissions, marketing, moderation and launch review. Do not imply that test-only private property drafts can be viewed or posted publicly.
