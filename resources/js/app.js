@@ -159,6 +159,38 @@ for (const gallery of document.querySelectorAll('[data-listing-gallery]')) {
 
 
 
+// Keep sibling desktop <details> menus exclusive, even during rapid clicks.
+// Close on outside click, focus loss or Escape; native details still works
+// with mouse, keyboard and with scripting unavailable.
+const desktopMenus = [...document.querySelectorAll('.desktop-nav-group')];
+if (desktopMenus.length) {
+    const closeOthers = except => {
+        for (const group of desktopMenus) {
+            if (group !== except) group.open = false;
+        }
+    };
+    for (const group of desktopMenus) {
+        group.querySelector('summary')?.addEventListener('click', () => closeOthers(group));
+        group.addEventListener('toggle', () => {
+            if (group.open) closeOthers(group);
+        });
+    }
+    document.addEventListener('pointerdown', event => {
+        if (!event.target.closest('.desktop-nav-group')) closeOthers(null);
+    });
+    document.addEventListener('focusin', event => {
+        if (!event.target.closest('.desktop-nav-group')) closeOthers(null);
+    });
+    document.addEventListener('keydown', event => {
+        if (event.key !== 'Escape') return;
+        const opened = desktopMenus.find(group => group.open);
+        if (!opened) return;
+        event.preventDefault();
+        opened.open = false;
+        opened.querySelector('summary')?.focus();
+    });
+}
+
 // Native modal drawer traps focus and supports Escape without custom key handling.
 const siteDrawer = document.getElementById('site-drawer');
 const siteMenuOpen = document.getElementById('site-menu-open');
@@ -177,7 +209,7 @@ if (siteDrawer && siteMenuOpen && typeof siteDrawer.showModal === 'function') {
         document.documentElement.classList.remove('site-menu-open');
         siteMenuOpen.focus();
     });
-    window.matchMedia('(min-width: 761px)').addEventListener('change', event => {
+    window.matchMedia('(min-width: 1024px)').addEventListener('change', event => {
         if (event.matches && siteDrawer.open) siteDrawer.close();
     });
 }
