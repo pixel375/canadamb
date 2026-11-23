@@ -67,7 +67,7 @@ class MarketplaceTest extends TestCase
         $item = Listing::sole();
         $this->actingAs(User::factory()->create(['role' => 'network_admin']))
             ->post(self::MAIN."/admin/moderation/$item->id", ['status' => 'active', 'version' => ListingPhotoOrder::version($item->fresh())])->assertRedirect();
-        $this->get(self::MAIN.'/marketplace?location=elkhorn')->assertSee('Elkhorn patio set');
+        $this->get(self::MAIN.'/marketplace?view=all&location=elkhorn')->assertSee('Elkhorn patio set');
         $this->get(self::MAIN.'/?location=elkhorn')->assertSee('Elkhorn patio set');
         $this->get(self::CITY.'/marketplace?location=elkhorn')->assertDontSee('Elkhorn patio set');
         $this->getJson(self::CITY.'/api/v1/marketplace?location=elkhorn')->assertJsonCount(0, 'data');
