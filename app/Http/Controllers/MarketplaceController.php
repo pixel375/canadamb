@@ -51,6 +51,11 @@ class MarketplaceController extends Controller
         if (($filters['sort'] ?? null) === 'newest') {
             unset($filters['sort']);
         }
+        // A direct leaf-category link always defines its own navigation group.
+        // Stale URL/form parameters must not mislabel results with another parent.
+        if (isset($filters['category'])) {
+            unset($filters['group']);
+        }
 
         // Unfiltered visits start at the category chooser. Search, direct legacy
         // category links and explicit "View all" still show listings immediately.
@@ -75,7 +80,8 @@ class MarketplaceController extends Controller
         if (isset($filters['sort'])) {
             $query->orderBy('price_cents', $filters['sort'] === 'price_asc' ? 'asc' : 'desc');
         }
-        $items = $query->latest('published_at')->orderByDesc('id')->paginate(18)->appends($filters);
+        // The category chooser needs no listing query or count on large datasets.
+        $items = $isDiscovery ? null : $query->latest('published_at')->orderByDesc('id')->paginate(18)->appends($filters);
 
         if ($request->is('api/*')) {
             return response()->json([
