@@ -1,8 +1,17 @@
 #!/usr/bin/env bash
 
 [[ $scenario == production-pass-08 && $database == canadamb_ci_pass08 ]]
-test "$(git -C "$repo" diff --name-status --no-renames "$commit" "$target" -- database/migrations database/seeders)" \
-    = "$(printf 'A\tdatabase/migrations/%s.php' "$business_import_migration")"
+expected_schema_diff=$(printf 'A\tdatabase/migrations/%s.php' "$business_import_migration")
+if git -C "$repo" cat-file -e "$target:database/migrations/$team_migration.php" 2>/dev/null; then
+    expected_schema_diff=$(printf 'A\tdatabase/migrations/%s.php\nA\tdatabase/migrations/%s.php' "$business_import_migration" "$team_migration")
+fi
+if git -C "$repo" cat-file -e "$target:database/migrations/$ownership_migration.php" 2>/dev/null; then
+    expected_schema_diff=$(printf 'A\tdatabase/migrations/%s.php\nA\tdatabase/migrations/%s.php\nA\tdatabase/migrations/%s.php' "$business_import_migration" "$team_migration" "$ownership_migration")
+fi
+if git -C "$repo" cat-file -e "$target:database/migrations/$branch_migration.php" 2>/dev/null; then
+    expected_schema_diff=$(printf 'A\tdatabase/migrations/%s.php\nA\tdatabase/migrations/%s.php\nA\tdatabase/migrations/%s.php\nA\tdatabase/migrations/%s.php' "$business_import_migration" "$team_migration" "$ownership_migration" "$branch_migration")
+fi
+test "$(git -C "$repo" diff --name-status --no-renames "$commit" "$target" -- database/migrations database/seeders)" = "$expected_schema_diff"
 
 source "$repo/tests/Deployment/pass05-legacy-fixture.sh"
 database_sql < "$repo/tests/Deployment/pass06-discussions.sql"
@@ -31,6 +40,10 @@ migrations=$(database_sql -e 'SELECT migration,batch FROM migrations ORDER BY id
 root_inode=$(stat -c '%i' "$site/public_html")
 (cd "$app/shared/storage" && sha256sum oauth-private.key oauth-public.key "${media[@]/#/app/private/}") > "$site/pass08-media.sha256"
 table_check="SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='business_import_rows'"
+team_table_check="SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='business_team_invitations'"
+ownership_table_check="SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='business_ownership_cases'"
+branch_table_check="SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='business_branch_requests'"
+operational_column_check="SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='business_locations' AND COLUMN_NAME='operational_status'"
 
 export CANADAMB_PHP_BIN="$(command -v php)"
 export CANADAMB_COMPOSER_BIN="$(command -v composer)"
@@ -39,13 +52,31 @@ expect_rejection "${upgrade[@]}" false > "$site/pass08-denied.log" 2>&1
 grep -F 'Database migrations or seeders differ.' "$site/pass08-denied.log"
 test "$(readlink -f "$app/current")" = "$release"
 test "$(database_sql -e "$table_check")" = 0
+test "$(database_sql -e "$team_table_check")" = 0
+test "$(database_sql -e "$ownership_table_check")" = 0
+test "$(database_sql -e "$branch_table_check")" = 0
+test "$(database_sql -e "$operational_column_check")" = 0
 test ! -e "$app/releases/$target"
 echo 'Default migration guard refused the reviewed business import migration.'
 
 mkdir "$site/pending-migrations"
-git -C "$app/source" archive "$target" "database/migrations/$business_import_migration.php" | tar -x -C "$site/pending-migrations"
+migration_paths=("database/migrations/$business_import_migration.php")
+if git -C "$repo" cat-file -e "$target:database/migrations/$team_migration.php" 2>/dev/null; then
+    migration_paths+=("database/migrations/$team_migration.php")
+fi
+if git -C "$repo" cat-file -e "$target:database/migrations/$ownership_migration.php" 2>/dev/null; then
+    migration_paths+=("database/migrations/$ownership_migration.php")
+fi
+if git -C "$repo" cat-file -e "$target:database/migrations/$branch_migration.php" 2>/dev/null; then
+    migration_paths+=("database/migrations/$branch_migration.php")
+fi
+git -C "$app/source" archive "$target" "${migration_paths[@]}" | tar -x -C "$site/pending-migrations"
 php "$release/artisan" migrate --pretend --force --no-ansi --realpath --path="$site/pending-migrations/database/migrations"
 test "$(database_sql -e "$table_check")" = 0
+test "$(database_sql -e "$team_table_check")" = 0
+test "$(database_sql -e "$ownership_table_check")" = 0
+test "$(database_sql -e "$branch_table_check")" = 0
+test "$(database_sql -e "$operational_column_check")" = 0
 test "$(database_sql -e 'SHOW CREATE TABLE businesses')" = "$before_ddl"
 database_sql < "$site/pass08-snapshot.sql" > "$site/pass08-pretend.txt"
 cmp "$site/pass08-before.txt" "$site/pass08-pretend.txt"
@@ -58,6 +89,20 @@ test ! -e "$app/update.pause"
 test -s "$app/releases/$target/.last-preflight"
 test "$(database_sql -e "$table_check")" = 1
 test "$(database_sql -e "SELECT COUNT(*) FROM migrations WHERE migration='$business_import_migration'")" = 1
+if git -C "$repo" cat-file -e "$target:database/migrations/$team_migration.php" 2>/dev/null; then
+    test "$(database_sql -e "$team_table_check")" = 1
+    test "$(database_sql -e "SELECT COUNT(*) FROM migrations WHERE migration='$team_migration'")" = 1
+fi
+if git -C "$repo" cat-file -e "$target:database/migrations/$ownership_migration.php" 2>/dev/null; then
+    test "$(database_sql -e "$ownership_table_check")" = 1
+    test "$(database_sql -e "SELECT COUNT(*) FROM migrations WHERE migration='$ownership_migration'")" = 1
+fi
+if git -C "$repo" cat-file -e "$target:database/migrations/$branch_migration.php" 2>/dev/null; then
+    test "$(database_sql -e "$branch_table_check")" = 1
+    test "$(database_sql -e "$operational_column_check")" = 1
+    test "$(database_sql -e "SELECT COUNT(*) FROM migrations WHERE migration='$branch_migration'")" = 1
+    test "$(database_sql -e "SELECT COUNT(*) FROM business_locations WHERE operational_status='open'")" = "$(database_sql -e 'SELECT COUNT(*) FROM business_locations')"
+fi
 test "$(database_sql -e 'SELECT import_name_key FROM businesses WHERE id=8501')" = "$(database_sql -e "SELECT SHA2('legacy business',256)")"
 test "$(database_sql -e 'SELECT import_key FROM business_locations WHERE id=8501')" = "$(database_sql -e "SELECT SHA2('old-key',256)")"
 test "$(database_sql -e 'SELECT COUNT(*) FROM business_sources WHERE approved_revision IS NOT NULL')" = 0
@@ -75,6 +120,10 @@ restore_database=canadamb_ci_pass08_restore
 restore_sql -e "CREATE DATABASE $restore_database"
 restore_sql "$restore_database" < "$backup/$database.sql"
 test "$(restore_sql "$restore_database" -e "$table_check")" = 0
+test "$(restore_sql "$restore_database" -e "$team_table_check")" = 0
+test "$(restore_sql "$restore_database" -e "$ownership_table_check")" = 0
+test "$(restore_sql "$restore_database" -e "$branch_table_check")" = 0
+test "$(restore_sql "$restore_database" -e "$operational_column_check")" = 0
 test "$(restore_sql "$restore_database" -e 'SHOW CREATE TABLE businesses')" = "$before_ddl"
 test "$(restore_sql "$restore_database" -e 'SELECT migration,batch FROM migrations ORDER BY id')" = "$migrations"
 restore_sql "$restore_database" < "$site/pass08-snapshot.sql" > "$site/pass08-restore.txt"

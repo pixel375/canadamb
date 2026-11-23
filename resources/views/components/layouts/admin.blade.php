@@ -19,6 +19,8 @@
                 <a href="/admin/jobs" @if(request()->is('admin/jobs')) aria-current="page" @endif>Job moderation</a>
                 @if(config('network.property_drafts'))<a href="/admin/properties" @if(request()->is('admin/properties*')) aria-current="page" @endif>Private property review</a>@endif
                 <a href="/admin/business-review" @if(request()->is('admin/business-review')) aria-current="page" @endif>Business review</a>
+                <a href="/admin/ownership-cases" @if(request()->is('admin/ownership-cases*')) aria-current="page" @endif>Ownership disputes</a>
+                <a href="/admin/business-branches" @if(request()->is('admin/business-branches*')) aria-current="page" @endif>Business location reviews</a>
                 <a href="/admin/audit" @if(request()->is('admin/audit')) aria-current="page" @endif>Audit log</a>
                 @endcan
                 @can('manage-news')<a href="/admin/news" @if(request()->is('admin/news*')) aria-current="page" @endif>News editorial</a>@endcan

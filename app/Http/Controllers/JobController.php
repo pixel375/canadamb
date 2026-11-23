@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Business;
 use App\Models\JobPosting;
 use App\Support\ApprovalPolicy;
+use App\Support\BusinessOwnership;
 use App\Support\JobBoard;
 use App\Support\LocationScope;
 use App\Support\MessageContact;
@@ -15,7 +16,10 @@ use Illuminate\Validation\Rule;
 
 class JobController extends Controller
 {
-    public function __construct(private readonly JobBoard $jobs) {}
+    public function __construct(private readonly JobBoard $jobs)
+    {
+        // The board service is provided through constructor injection.
+    }
 
     public function index(Request $request)
     {
@@ -71,8 +75,10 @@ class JobController extends Controller
         abort_unless($this->jobs->enabled($site), 404);
         $approved = DB::transaction(function () use ($request, $site, $business, $policy) {
             $employer = $this->managedBusiness($request, $business, lock: true);
+            BusinessOwnership::requireUncontested($employer->id);
             $data = $this->postingData($request);
             $branch = $employer->locations()->lockForUpdate()->findOrFail($data['business_location_id']);
+            abort_unless($branch->operational_status === 'open', 409);
             $location = LocationScope::forPublication($site, $branch->location_id);
             $author = $request->user()->id;
             $item = new JobPosting($data + ['author_id' => $author]);
@@ -107,9 +113,10 @@ class JobController extends Controller
     {
         $site = $request->attributes->get('site');
         abort_unless($this->jobs->enabled($site), 404);
-        $employer = $this->managedBusiness($request, $business);
         $data = $this->postingData($request, needsBranch: false);
-        DB::transaction(function () use ($request, $employer, $job, $data) {
+        DB::transaction(function () use ($request, $business, $job, $data) {
+            $employer = $this->managedBusiness($request, $business, lock: true);
+            BusinessOwnership::requireUncontested($employer->id);
             $item = $this->managedJob($request, $employer->id, $job, lock: true);
             abort_unless(in_array($item->status, ['pending', 'approved', 'rejected'], true), 409);
             $item->fill($data)->forceFill(['status' => 'pending'])->save();
@@ -120,8 +127,9 @@ class JobController extends Controller
 
     public function withdraw(Request $request, int $business, int $job)
     {
-        $employer = $this->managedBusiness($request, $business);
-        DB::transaction(function () use ($request, $employer, $job) {
+        DB::transaction(function () use ($request, $business, $job) {
+            $employer = $this->managedBusiness($request, $business, lock: true);
+            BusinessOwnership::requireUncontested($employer->id);
             $item = $this->managedJob($request, $employer->id, $job, lock: true);
             abort_unless(in_array($item->status, ['pending', 'approved'], true), 409);
             $item->forceFill(['status' => 'withdrawn'])->save();
@@ -134,13 +142,16 @@ class JobController extends Controller
     {
         $site = $request->attributes->get('site');
         abort_unless($this->jobs->enabled($site), 404);
-        $employer = $this->managedBusiness($request, $business);
         $data = $request->validate(['enabled' => 'required|boolean']);
 
-        DB::transaction(function () use ($request, $employer, $job, $data, $site, $contacts): void {
+        DB::transaction(function () use ($request, $business, $job, $data, $site, $contacts): void {
+            // Recheck the representative after locking the same business as staff revocation.
+            $employer = $this->managedBusiness($request, $business, lock: true);
+            BusinessOwnership::requireUncontested($employer->id);
             $item = $this->managedJob($request, $employer->id, $job, lock: true);
             $enabled = (bool) $data['enabled'];
-            abort_if($enabled && in_array($item->status, ['expired', 'withdrawn'], true), 409);
+            abort_if($enabled && (in_array($item->status, ['expired', 'withdrawn'], true)
+                || $item->branch->operational_status !== 'open'), 409);
             $contacts->setConsent($item, $employer->id, $request->user()->id, $enabled, $site->id);
         }, attempts: 3);
 

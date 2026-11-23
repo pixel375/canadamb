@@ -96,3 +96,14 @@ Record the reviewed SHA, operator, timestamp, result and evidence for each step.
 - [ ] Verify `.env`, `.git`, private storage and framework source remain inaccessible from both domains, and application failures return generic errors while private logs record details.
 - [x] Owner hPanel cron executes and consumes a controlled queued marker job without manual worker invocation; Laravel reported no failed jobs (run 44642175328). Keep live feed discovery disabled and application mail isolated. Payments and public real estate publication remain unavailable.
 - [ ] Before public launch, remove test data, agree on mail delivery, and explicitly approve disabling prelaunch. Recheck both portals and the resulting registration behavior.
+
+
+## Pass 09 owner/staff/location continuation — hold for explicit schema approval
+
+- [ ] Check exact PR #26 then draft PR #27 SHA and the full dependency stack; no independent cherry-picks, deployment or automatic migration approval.
+- [ ] Review the three new additive migrations `2026_11_23_000001_create_business_team_invitations.php`, `2026_11_23_000002_create_business_ownership_cases.php`, `2026_11_23_000003_create_business_branch_requests.php` (the last adds `business_locations.operational_status`, default `open`). Existing Pass 02/04/05/07/08 approvals remain separate.
+- [ ] Prove default upgrade denies schema changes. Review SQL, indexes, FK restrictions, MariaDB DDL locks, and roll-forward/backup options. Restore populated SQL and private files in isolated MariaDB; preserve encryption/OAuth keys, business IDs and private evidence.
+- [ ] Validate real-site moderator independence, legal rights/provenance, successor identity and acceptance, two-reviewer hold release, legitimate address/closure evidence, wrong-city rejections and no automatic staff/contact restoration on reopen.
+- [ ] Verify old private message attachments remain accessible only to original authorized members; revoked owners/staff cannot use existing message threads, and new staff cannot see old customer conversations.
+- [ ] Confirm reopening changes no historical job statuses, source import IDs, canonical host coverage or prelaunch allowlist. Ensure closed branches do not initiate new business/job messages or publish new branch jobs.
+- [ ] No production SQL or SMTP, app install prompt changes, public registration, merges or public launch from this review. Keep exact owner authorization as a distinct later gate. See [operations runbook](BUSINESS_OWNERSHIP.md).

@@ -9,7 +9,9 @@
             <div class="form-stack mt-4">
                 @foreach($branches as $branch)
                     <div class="form-stack">
-                        <div><h2>{{ $branch->location->name }}</h2><p>{{ $branch->address }}</p></div>
+                        <div><h2>{{ $branch->location->name }}</h2><p>{{ $branch->address }}</p>
+                            @if($branch->operational_status !== 'open')<p class="field-note">Status: {{ ucfirst(str_replace('_', ' ', $branch->operational_status)) }}</p>@endif
+                        </div>
                         @if(in_array($branch->message_contact_user_id, $contactUsers, true) && $branch->message_contact_user_id !== auth()->id())
                             <div><x-message-contact-link :path="'/businesses/'.$business->slug.'/branches/'.$branch->id.'/contact'" label="Message business" :place="$branch->address.', '.$branch->location->name"/></div>
                         @endif
@@ -24,6 +26,9 @@
             </div>
             <x-content-report-form type="business" :target="$business->id" label="business profile"/>
         </article>
+        @if($claimed)
+            <section class="panel"><h2>Ownership concern?</h2><p>If this business is shown under the wrong owner, you can submit private evidence for independent review. Filing a report never transfers ownership.</p><a class="text-link" href="/businesses/{{ $business->slug }}/ownership-dispute">Report an ownership concern</a></section>
+        @endif
         @if(!$claimed)
             <section class="panel form-stack">
                 <h2>Own this business?</h2>

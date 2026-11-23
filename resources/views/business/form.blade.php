@@ -24,6 +24,9 @@
             @endif
             <div><button class="button button-primary">{{ $business->exists ? 'Save profile' : 'Submit for review' }}</button></div>
         </form>
+        @if($business->exists && $mayEditPublicContact && $business->status === 'active')
+            <div class="panel"><a href="/account/businesses/{{ $business->id }}/team" class="button button-outline">Manage staff and invitations</a> <a href="/account/businesses/{{ $business->id }}/branches" class="button button-outline">Manage business locations</a></div>
+        @endif
         @if($business->status === 'active' && $mayManageMessages && app(\App\Support\JobBoard::class)->enabled($site))
             <div class="panel"><a href="/account/businesses/{{ $business->id }}/jobs" class="button button-outline">Manage job postings</a></div>
         @endif
