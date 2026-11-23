@@ -18,6 +18,7 @@ class BusinessTeamTest extends TestCase
     protected $seed = true;
 
     private const CITY = 'https://brandonmb.ca';
+
     private const MAIN = 'https://canadamb.ca';
 
     public function test_invitation_requires_owner_and_explicit_verified_member_acceptance(): void
