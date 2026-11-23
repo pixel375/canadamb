@@ -172,10 +172,19 @@ class BusinessController extends Controller
 
     public function update(Request $request, int $business)
     {
-        $item = $this->managed($request, $business);
-        $isOwner = $item->members()->whereKey($request->user()->id)->wherePivot('role', 'owner')->exists();
-        $data = $request->validate($this->profileRules(includePublicContact: $isOwner));
-        $item->update($data);
+        DB::transaction(function () use ($request, $business): void {
+            // Serialize with staff revocation before rechecking the current membership.
+            $item = $this->managed($request, $business, lock: true);
+            $isOwner = $item->members()->whereKey($request->user()->id)->wherePivot('role', 'owner')->exists();
+            $data = $request->validate($this->profileRules(includePublicContact: $isOwner));
+            $item->fill($data);
+            if ($item->isDirty()) {
+                $item->save();
+                Audit::record('business.profile-updated', $request->user()->id, $request->attributes->get('site')->id, [
+                    'business' => $item->id, 'fields' => array_keys($data),
+                ]);
+            }
+        }, attempts: 3);
 
         return redirect('/account/businesses/'.$business)->with('status', 'Business profile saved.');
     }
@@ -185,9 +194,10 @@ class BusinessController extends Controller
         $site = $request->attributes->get('site');
         abort_unless($this->directory->enabled($site), 404);
         $data = $request->validate(['enabled' => 'required|boolean']);
-        $owner = $this->directory->visible($site)->managedBy($request->user()->id, MessageContact::ROLES)->findOrFail($business);
-
-        DB::transaction(function () use ($owner, $branch, $site, $request, $data, $contacts): void {
+        DB::transaction(function () use ($business, $branch, $site, $request, $data, $contacts): void {
+            // Match the business-lock order used by membership revocation.
+            $owner = $this->directory->visible($site)->managedBy($request->user()->id, MessageContact::ROLES)
+                ->lockForUpdate()->findOrFail($business);
             $item = $owner->locations()->when($site->location_id, fn ($query, $id) => $query->where('location_id', $id))
                 ->lockForUpdate()->findOrFail($branch);
             $contacts->setConsent($item, $owner->id, $request->user()->id, (bool) $data['enabled'], $site->id);
