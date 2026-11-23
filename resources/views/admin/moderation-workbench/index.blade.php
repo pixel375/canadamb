@@ -3,6 +3,7 @@
     <div class="inline-actions">
         <a class="button button-outline" href="{{ route('moderation.reports.index') }}">Reports · {{ $openReports }} open</a>
         <a class="text-link" href="/admin/moderation/marketplace">Marketplace review with photo previews</a>
+        <a class="button button-outline" href="/admin/ownership-cases">Private ownership transfers and disputes</a>
     </div>
     <form method="get" action="{{ route('moderation.index') }}" class="panel form-stack">
         <div class="moderation-filters">
