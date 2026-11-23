@@ -78,7 +78,7 @@
                 @endif
             </div>
         @endif
-        <details class="search-disclosure" @if($filters || $errors->any()) open @endif>
+        <details class="search-disclosure" @if(array_diff_key($filters, ['group' => true, 'view' => true]) || $errors->any()) open @endif>
             <summary>
                 <x-icon name="search" size="18"/>
                 <span>Search Marketplace @if($activeFilterCount) <small>({{ $activeFilterCount }} active {{ \Illuminate\Support\Str::plural('filter', $activeFilterCount) }})</small> @endif</span>
