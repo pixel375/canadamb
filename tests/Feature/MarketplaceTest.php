@@ -28,10 +28,10 @@ class MarketplaceTest extends TestCase
         $this->post(self::CITY.'/marketplace', $this->listing('Oak table'))->assertSessionHasNoErrors()->assertRedirect('/account/listings');
         $item = Listing::sole();
         $this->assertSame('brandon', $item->location->slug);
-        $this->get(self::CITY.'/marketplace')->assertDontSee('Oak table');
+        $this->get(self::CITY.'/marketplace?view=all')->assertDontSee('Oak table');
         $this->actingAs($admin)->post(self::MAIN."/admin/moderation/$item->id", ['status' => 'active', 'version' => ListingPhotoOrder::version($item->fresh())])->assertRedirect();
         $this->get(self::CITY.'/marketplace?q=Oak&category=furniture')->assertOk()->assertSee('Oak table');
-        $this->get(self::MAIN.'/marketplace')->assertOk()->assertSee('Oak table');
+        $this->get(self::MAIN.'/marketplace?view=all')->assertOk()->assertSee('Oak table');
         $this->get(self::CITY."/marketplace/$item->id")->assertOk()->assertSee('Oak table');
         $this->get(self::MAIN."/marketplace/$item->id")
             ->assertOk()->assertSee('Oak table')
@@ -46,14 +46,14 @@ class MarketplaceTest extends TestCase
         $revision = ['photo_version' => ListingPhotoOrder::version($item->fresh())];
         $this->actingAs(User::factory()->create())->put(self::CITY."/account/listings/$item->id", $this->listing('Changed by outsider') + $revision)->assertNotFound();
         $this->actingAs($seller)->put(self::CITY."/account/listings/$item->id", $this->listing('Oak dining table') + $revision)->assertRedirect();
-        $this->get(self::MAIN.'/marketplace')->assertDontSee('Oak table');
+        $this->get(self::MAIN.'/marketplace?view=all')->assertDontSee('Oak table');
         $this->actingAs($admin)->post(self::MAIN."/admin/moderation/$item->id", ['status' => 'active', 'version' => ListingPhotoOrder::version($item->fresh())])->assertRedirect();
-        $this->get(self::MAIN.'/marketplace')->assertSee('Oak dining table');
-        $this->get(self::CITY.'/marketplace')->assertSee('Oak dining table');
+        $this->get(self::MAIN.'/marketplace?view=all')->assertSee('Oak dining table');
+        $this->get(self::CITY.'/marketplace?view=all')->assertSee('Oak dining table');
 
         $this->actingAs($seller)->post(self::CITY."/account/listings/$item->id/status", ['status' => 'removed'])->assertRedirect();
-        $this->get(self::CITY.'/marketplace')->assertDontSee('Oak dining table');
-        $this->get(self::MAIN.'/marketplace')->assertDontSee('Oak dining table');
+        $this->get(self::CITY.'/marketplace?view=all')->assertDontSee('Oak dining table');
+        $this->get(self::MAIN.'/marketplace?view=all')->assertDontSee('Oak dining table');
         $this->get(self::CITY."/marketplace/$item->id")->assertNotFound();
         $this->assertDatabaseCount('listings', 1);
         $this->assertDatabaseHas('listing_status_history', ['listing_id' => $item->id, 'status' => 'removed']);
