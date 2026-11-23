@@ -44,7 +44,7 @@ class MarketplaceEngagementTest extends TestCase
             ->assertSee('data-gallery-dialog', false)
             ->assertSee('src="'.$path.'"', false)
             ->assertSee('href="'.$path.'"', false);
-        $this->get('https://canadamb.ca/marketplace')
+        $this->get('https://canadamb.ca/marketplace?view=all')
             ->assertOk()
             ->assertSee('aria-label="View Rural patio set"', false)
             ->assertSee('href="/marketplace/'.$item->id.'"', false);
