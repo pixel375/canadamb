@@ -28,7 +28,7 @@
                     <form class="market-quick-search" action="/marketplace" method="get" role="search">
                         <x-icon name="search" size="19"/>
                         <label class="sr-only" for="marketplace-quick-query">Search all classifieds</label>
-                        <input id="marketplace-quick-query" type="search" name="q" placeholder="Search vehicles, furniture, electronics and more" maxlength="100">
+                        <input id="marketplace-quick-query" type="search" name="q" placeholder="Search listings" maxlength="100">
                         <button type="submit" class="button button-primary">Search listings</button>
                     </form>
                 @endunless
