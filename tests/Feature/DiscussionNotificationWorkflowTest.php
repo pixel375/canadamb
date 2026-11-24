@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\CommunityReply;
 use App\Models\CommunityThread;
 use App\Models\Location;
 use App\Models\User;
