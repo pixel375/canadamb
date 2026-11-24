@@ -37,7 +37,7 @@ class DiscussionThreadExperienceTest extends TestCase
             ->assertOk()
             ->assertSee('aria-label="Discussion navigation"', false)
             ->assertSee('class="discussion-thread-layout"', false)
-            ->assertSee('class="discussion-original"', false)
+            ->assertSee('class="panel discussion-original"', false)
             ->assertSee('id="discussion-replies"', false)
             ->assertSee('id="reply-'.$approved->id.'"', false)
             ->assertSee('Neighbour Garden Club')
