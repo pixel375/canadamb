@@ -350,7 +350,8 @@ for (const input of document.querySelectorAll('[data-listing-photos]')) {
         preview.replaceChildren();
         preview.hidden = true;
     };
-    input.addEventListener('change', () => {
+
+    const render = () => {
         clear();
         input.setCustomValidity('');
         const files = [...input.files];
@@ -360,10 +361,19 @@ for (const input of document.querySelectorAll('[data-listing-photos]')) {
             invalid ? 'Use JPEG, PNG or WebP photos no larger than 4 MB each.' : '';
         input.setCustomValidity(error);
         feedback.textContent = error || (files.length ? files.length + ' of 5 photos selected.' : '');
-        if (error) {
-            input.reportValidity();
-            return;
-        }
+        if (error) return;
+        const editable = typeof DataTransfer === 'function';
+        const apply = updated => {
+            try {
+                const transfer = new DataTransfer();
+                for (const file of updated) transfer.items.add(file);
+                input.files = transfer.files;
+            } catch {
+                feedback.textContent = 'This browser cannot reorder selected files. Choose them again using the file picker.';
+                return;
+            }
+            render();
+        };
         for (const [index, file] of files.entries()) {
             const url = URL.createObjectURL(file);
             urls.push(url);
@@ -374,9 +384,35 @@ for (const input of document.querySelectorAll('[data-listing-photos]')) {
             const caption = document.createElement('figcaption');
             caption.textContent = index === 0 ? 'Cover photo' : 'Photo ' + (index + 1);
             figure.append(image, caption);
+            if (editable) {
+                const actions = document.createElement('div');
+                actions.className = 'listing-photo-actions';
+                const button = (label, accessible, action) => {
+                    const control = document.createElement('button');
+                    control.type = 'button';
+                    control.className = 'button button-outline';
+                    control.textContent = label;
+                    control.setAttribute('aria-label', accessible);
+                    control.addEventListener('click', action);
+                    actions.append(control);
+                };
+                if (index > 0) button('Make cover', 'Make photo ' + (index + 1) + ' the cover', () => {
+                    const updated = [...files];
+                    updated.unshift(updated.splice(index, 1)[0]);
+                    apply(updated);
+                });
+                button('Remove', 'Remove photo ' + (index + 1), () => {
+                    apply(files.filter((_, position) => position !== index));
+                });
+                figure.append(actions);
+            }
             preview.append(figure);
         }
         preview.hidden = files.length === 0;
+    };
+    input.addEventListener('change', () => {
+        render();
+        if (!input.validity.valid) input.reportValidity();
     });
 }
 
