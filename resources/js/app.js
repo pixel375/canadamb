@@ -334,3 +334,46 @@ if (adminMenu) {
 }
 
 Alpine.start();
+
+
+// Preview only locally selected listing photos; never upload before submission.
+for (const input of document.querySelectorAll('[data-listing-photos]')) {
+    const form = input.closest('form');
+    const preview = form.querySelector('[data-photo-preview]');
+    const feedback = form.querySelector('[data-photo-feedback]');
+    let urls = [];
+    const clear = () => {
+        for (const url of urls) URL.revokeObjectURL(url);
+        urls = [];
+        preview.replaceChildren();
+        preview.hidden = true;
+    };
+    input.addEventListener('change', () => {
+        clear();
+        input.setCustomValidity('');
+        const files = [...input.files];
+        const invalid = files.some(file => file.size > 4 * 1024 * 1024 ||
+            !['image/jpeg', 'image/png', 'image/webp'].includes(file.type));
+        const error = files.length > 5 ? 'Choose no more than five photos.' :
+            invalid ? 'Use JPEG, PNG or WebP photos no larger than 4 MB each.' : '';
+        input.setCustomValidity(error);
+        feedback.textContent = error || (files.length ? files.length + ' of 5 photos selected.' : '');
+        if (error) {
+            input.reportValidity();
+            return;
+        }
+        for (const [index, file] of files.entries()) {
+            const url = URL.createObjectURL(file);
+            urls.push(url);
+            const figure = document.createElement('figure');
+            const image = document.createElement('img');
+            image.src = url;
+            image.alt = 'Selected photo ' + (index + 1);
+            const caption = document.createElement('figcaption');
+            caption.textContent = index === 0 ? 'Cover photo' : 'Photo ' + (index + 1);
+            figure.append(image, caption);
+            preview.append(figure);
+        }
+        preview.hidden = files.length === 0;
+    });
+}
