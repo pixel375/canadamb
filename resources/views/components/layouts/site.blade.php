@@ -57,7 +57,7 @@
     $browsePaths = ['/', 'marketplace', 'real-estate', 'businesses', 'business-updates', 'community', 'jobs', 'events', 'news'];
     $browsePlace = $location ?? (in_array(request()->path(), $browsePaths, true)
         ? \App\Support\LocationScope::forBrowsing($site, request()->query('location'), request()->is('jobs'))
-        : $site->location);
+        : ($site->location ?? \App\Support\LocationScope::preferred($site, request()->cookie(\App\Support\LocationScope::PREFERENCE_COOKIE))));
     $browseLink = fn (string $path) => \App\Support\LocationScope::browseUrl($site, $path, $browsePlace);
 ?>
 <?php $registerLink = !config('network.prelaunch') || ($networkSettings['prelaunch_test_registration_enabled'] ?? false) === true ? ($site->isNetwork() ? '/register' : \App\Support\NetworkUrl::to(\App\Support\NetworkUrl::main(), '/register?community='.$site->id)) : null; ?>
