@@ -164,6 +164,8 @@ const fs = require('node:fs');
                     'Events timeline is not integrated into Discussions');
                 check(await page.locator('.discussion-empty-actions a[href="/community/new"]').count() > 0,
                     'Empty discussions have no useful first-post action');
+                check(await page.locator('.discussion-category-nav a').count() >= 6,
+                    'Discussion topics are missing their browse categories');
                 check(await page.locator('a[href="/community/new?type=event"]').count() > 0,
                     'No event-request entry point from Discussions');
                 check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),

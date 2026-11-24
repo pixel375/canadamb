@@ -59,7 +59,16 @@
                                     @endif
                                 </div>
                                 <h3><a href="/community/{{ $thread->id }}">{{ $thread->title }}</a></h3>
+                                <p class="discussion-topic-excerpt">{{ \Illuminate\Support\Str::limit($thread->body, 150) }}</p>
                                 <div class="discussion-topic-footer">
+                                    <span class="discussion-topic-author">
+                                        <span class="discussion-mini-avatar" aria-hidden="true">{{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($thread->author?->name ?? 'M', 0, 1)) }}</span>
+                                        @if($thread->author)
+                                            <a href="/users/{{ $thread->author->id }}">{{ $thread->author->name }}</a>
+                                        @else
+                                            Former member
+                                        @endif
+                                    </span>
                                     <span><x-icon name="messages" size="15"/> {{ $thread->replies_count }} {{ \Illuminate\Support\Str::plural('reply', $thread->replies_count) }}</span>
                                     <span><x-icon name="clock" size="15"/> Active {{ $thread->last_activity_at?->diffForHumans() ?? 'recently' }}</span>
                                     @if($thread->locked)<span class="discussion-topic-locked">Locked</span>@endif
