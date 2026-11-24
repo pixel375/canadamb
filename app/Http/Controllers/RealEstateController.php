@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Location;
 use App\Models\PropertyListing;
 use App\Models\Site;
+use App\Support\KeywordSearch;
 use App\Support\Marketplace;
 use App\Support\NetworkUrl;
 use Illuminate\Database\Eloquent\Builder;
@@ -38,10 +39,7 @@ class RealEstateController extends Controller
 
         $query = $this->visible($request)
             ->when($selectedLocation, fn (Builder $query, Location $place) => $query->where('location_id', $place->id))
-            ->when($filters['q'] ?? null, fn (Builder $query, string $term) => $query->where(
-                fn (Builder $search) => $search->whereLike('title', '%'.$term.'%')
-                    ->orWhereLike('description', '%'.$term.'%'),
-            ))
+            ->when($filters['q'] ?? null, fn (Builder $query, string $term) => KeywordSearch::apply($query, $term, ['title', 'description']))
             ->when($filters['transaction'] ?? null, fn (Builder $query, string $value) => $query->where('transaction', $value))
             ->when($filters['property_type'] ?? null, fn (Builder $query, string $value) => $query->where('property_type', $value))
             ->when(isset($filters['min_price']), fn (Builder $query) => $query->where('price_cents', '>=', (int) round($filters['min_price'] * 100)))
