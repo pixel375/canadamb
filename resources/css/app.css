@@ -1404,3 +1404,40 @@ a.market-category-card:hover, a.market-category-card:focus-visible {
 @media (max-width: 1023px) {
     .browse-workspace > .browse-sidebar { margin-bottom: 18px; }
 }
+
+
+/* Member dashboard and focused listing-management surfaces. */
+.member-profile-heading { align-items: center; }
+.member-profile-identity { display: flex; align-items: center; gap: 16px; min-width: 0; }
+.member-profile-identity > div { min-width: 0; overflow-wrap: anywhere; }
+.member-profile-avatar { display: grid; place-items: center; flex: 0 0 68px; width: 68px; height: 68px; border: 1px solid var(--border); border-radius: 20px; background: var(--soft); color: var(--link); }
+.account-shortcuts { margin-block: 24px; }
+.account-shortcuts h2 { margin-bottom: 12px; }
+.account-shortcut-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; }
+.account-shortcut { display: flex; align-items: center; gap: 12px; min-width: 0; min-height: 83px; padding: 14px; border: 1px solid var(--border); border-radius: 13px; background: var(--card); }
+.account-shortcut:hover, .account-shortcut:focus-visible, .account-shortcut[aria-current=page] { border-color: var(--primary); background: var(--soft); }
+.account-shortcut-icon { display: grid; place-items: center; width: 42px; height: 42px; flex: 0 0 42px; color: var(--link); background: var(--soft); border-radius: 10px; }
+.account-shortcut-copy { display: grid; gap: 4px; flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.account-shortcut-copy strong { font-size: .94rem; }
+.account-shortcut-copy small { font-size: .78rem; color: var(--muted); }
+.account-shortcut > svg { flex-shrink: 0; color: var(--muted); }
+.account-private-details { max-width: 100%; overflow-wrap: anywhere; }
+.account-private-details summary { font-weight: 750; cursor: pointer; }
+.member-listing-manager .item-row { align-items: center; }
+.member-listing-info { display: grid; justify-items: start; gap: 5px; flex: 1 1 220px; }
+.member-listing-status { display: inline-flex; align-items: center; padding: 3px 9px; border: 1px solid var(--border); background: var(--soft); border-radius: 999px; font-size: .72rem; font-weight: 750; }
+.member-listing-status[data-status=active] { color: var(--link); border-color: var(--primary); }
+.member-listing-manager .market-results-empty { border: 0; }
+@media (max-width: 900px) { .account-shortcut-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media (max-width: 580px) {
+    .member-profile-heading { align-items: stretch; }
+    .member-profile-identity { gap: 10px; }
+    .member-profile-avatar { flex-basis: 54px; width: 54px; height: 54px; border-radius: 14px; }
+    .member-profile-heading > .button { align-self: start; }
+    .account-shortcut-grid { grid-template-columns: minmax(0,1fr); gap: 8px; }
+    .account-shortcut { min-height: 66px; padding: 10px 12px; }
+    .account-shortcut-icon { flex-basis: 38px; width: 38px; height: 38px; }
+    .member-listing-manager .item-row { align-items: stretch; flex-direction: column; }
+    .member-listing-info { flex-basis: auto; }
+    .member-listing-manager .item-row > .inline-actions { gap: 7px; }
+}
