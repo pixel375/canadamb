@@ -836,3 +836,81 @@ a.market-category-card:hover, a.market-category-card:focus-visible {
   .property-private-actions { justify-items: stretch; }
   .property-attestation button { width: 100%; }
 }
+
+
+/* Navigation v3: ordered desktop workspaces, compact account actions, accessible dropdown. */
+.header-profile-mobile { display: none; }
+.header-account-menu { position: relative; flex: 0 0 auto; }
+.header-account-menu > summary {
+    display: inline-flex; justify-content: center; align-items: center; gap: 8px;
+    min-height: 43px; padding: 4px 9px 4px 5px; border: 1px solid transparent;
+    border-radius: 11px; font-size: .86rem; font-weight: 750; color: var(--text);
+    list-style: none; white-space: nowrap;
+}
+.header-account-menu > summary::-webkit-details-marker { display: none; }
+.header-account-menu > summary:hover, .header-account-menu[open] > summary {
+    border-color: var(--border); background: var(--soft);
+}
+.header-account-avatar { display: inline-grid; place-items: center; flex: 0 0 34px;
+    width: 34px; height: 34px; border-radius: 10px; background: var(--soft);
+    border: 1px solid var(--border); color: var(--link); }
+.header-account-menu[open] > summary .header-account-chevron { transform: rotate(180deg); }
+.header-account-dropdown {
+    position: absolute; top: calc(100% + 9px); right: 0; z-index: 85;
+    display: grid; min-width: 234px; padding: 7px; gap: 1px;
+    border: 1px solid var(--border); border-radius: 13px; background: var(--card);
+    box-shadow: 0 18px 48px rgb(0 0 0 / .17);
+}
+.header-account-intro { display: grid; gap: 2px; min-width: 0; padding: 10px 12px 13px;
+    margin-bottom: 4px; border-bottom: 1px solid var(--border); }
+.header-account-intro strong { overflow-wrap: anywhere; line-height: 1.3; }
+.header-account-intro small { color: var(--muted); font-size: .75rem; }
+.header-account-dropdown a, .header-account-dropdown button {
+    display: flex; width: 100%; align-items: center; text-align: left; gap: 10px;
+    border: 0; min-height: 40px; padding: 9px 11px; border-radius: 8px;
+    background: transparent; color: var(--text); font-size: .86rem; font-weight: 700;
+}
+.header-account-dropdown a:hover, .header-account-dropdown button:hover,
+.header-account-dropdown a:focus-visible, .header-account-dropdown button:focus-visible { background: var(--soft); color: var(--link); }
+.header-account-dropdown form { border-top: 1px solid var(--border); margin-top: 4px; padding-top: 4px; }
+.header-inbox .header-action-label { font-size: .83rem; }
+@media (min-width: 1024px) {
+    .masthead { gap: 18px; }
+    .header-actions { margin-left: auto; gap: clamp(5px, .8vw, 12px); }
+    .header-search { width: clamp(225px, 23vw, 345px); min-height: 44px;
+        padding-inline: 14px; border-radius: 11px; background: var(--page); }
+    .header-search:focus-within { border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary), transparent 86%); }
+    .header-search input { width: 100%; min-width: 0; font-size: .87rem; }
+    .header-actions .header-inbox { position: relative; justify-content: center;
+        flex: 0 0 43px; width: 43px; height: 43px; padding: 0;
+        border: 1px solid transparent; border-radius: 11px; color: var(--text); }
+    .header-actions .header-inbox:hover, .header-actions .header-inbox[aria-current] { background: var(--soft); border-color: var(--border); }
+    .header-actions .header-inbox svg { width: 20px; height: 20px; }
+    .header-actions .header-inbox .header-action-label { position: absolute; width: 1px; height: 1px;
+        padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    .header-actions .header-inbox .nav-count { position: absolute; top: -3px; right: -5px; margin: 0; }
+    .header-post { white-space: nowrap; border-radius: 10px; }
+    .navigation nav { gap: clamp(13px, 1.6vw, 24px); }
+    .navigation nav > a, .desktop-nav-group > summary { font-size: .86rem; }
+    .navigation .scope-link { max-width: 190px; flex-shrink: 0; }
+}
+@media (min-width: 1024px) and (max-width: 1230px) {
+    .header-post { display: none; }
+    .header-account-title { display: none; }
+    .header-account-menu > summary { padding: 4px; gap: 3px; }
+    .header-account-chevron { display: none; }
+    .navigation nav { column-gap: 13px; }
+    .navigation .scope-link { font-size: .78rem; }
+}
+@media (max-width: 1023px) {
+    .header-account-menu { display: none; }
+    .header-profile-mobile { display: inline-flex; }
+}
+@media (min-width: 761px) and (max-width: 1023px) {
+    .header-actions .header-profile-mobile { width: 43px; height: 43px; justify-content: center;
+        border-radius: 10px; background: var(--soft); }
+    .header-actions .header-profile-mobile span { display: none; }
+}
+@media (max-width: 760px) {
+    .header-actions .header-profile-mobile { display: inline-flex; }
+}

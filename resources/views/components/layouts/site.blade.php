@@ -83,7 +83,32 @@
                 @auth
                     <a class="sign-in header-inbox" href="/account/messages" @if(request()->is('account/messages*')) aria-current="page" @endif><x-icon name="messages" size="18"/> <span class="header-action-label">Messages</span><x-nav-count :count="$navCounts['messages']" label="messages"/></a>
                     <a class="sign-in header-inbox" href="/account/notifications" @if(request()->is('account/notifications*', 'account/community-notifications*')) aria-current="page" @endif><x-icon name="bell" size="18"/> <span class="header-action-label">Notifications</span><x-nav-count :count="$navCounts['notifications']" label="notifications"/></a>
-                    <a class="sign-in" href="/account/profile" aria-label="My profile"><x-icon name="person" size="18"/> <span>My account</span></a>
+                    <details class="header-account-menu">
+                        <summary aria-label="Account menu" aria-haspopup="menu">
+                            <span class="header-account-avatar" aria-hidden="true"><x-icon name="person" size="19"/></span>
+                            <span class="header-account-title">Account</span>
+                            <x-icon class="header-account-chevron" name="chevron-down" size="15"/>
+                        </summary>
+                        <div class="header-account-dropdown" role="group" aria-label="Account actions">
+                            <div class="header-account-intro">
+                                <strong>{{ auth()->user()->name }}</strong>
+                                <small>Your CanadaMB account</small>
+                            </div>
+                            <a href="/account/profile" aria-label="My profile"><x-icon name="person" size="17"/> My profile</a>
+                            <a href="/account/settings"><x-icon name="settings" size="17"/> Settings</a>
+                            @if($marketEnabled)
+                                <a href="/account/saved"><x-icon name="tag" size="17"/> Saved listings</a>
+                            @endif
+                            @can('manage-network')
+                                <a href="{{ \App\Support\NetworkUrl::to(\App\Support\NetworkUrl::main(), '/admin') }}"><x-icon name="shield" size="17"/> Administration</a>
+                            @endcan
+                            <form method="post" action="/account/logout">
+                                @csrf
+                                <button type="submit"><x-icon name="close" size="17"/> Sign out</button>
+                            </form>
+                        </div>
+                    </details>
+                    <a class="sign-in header-profile-mobile" href="/account/profile" aria-label="My profile"><x-icon name="person" size="19"/></a>
                 @else
                     <a class="sign-in" href="{{ $site->isNetwork() ? '/login' : '/auth/start' }}" aria-label="Sign in"><x-icon name="person" size="18"/> <span>Sign in</span></a>
                     @if($registerLink)<a class="text-link header-register" href="{{ $registerLink }}">Create account</a>@endif
@@ -96,7 +121,10 @@
         <div class="container navigation">
             <nav aria-label="Primary navigation">
                 <a @if(request()->is('/')) aria-current="page" @endif href="/">Home</a>
-                @if($marketEnabled)<a @if(request()->is('marketplace*')) aria-current="page" @endif href="/marketplace">Marketplace</a>@endif
+                @if($marketEnabled)
+                    <a @if(request()->is('marketplace*')) aria-current="page" @endif href="/marketplace">Marketplace</a>
+                    <a class="desktop-real-estate" @if(request()->is('real-estate*')) aria-current="page" @endif href="/real-estate">Real Estate</a>
+                @endif
                 @if($networkSettings['modules']['news'] ?? false)<a @if(request()->is('news*')) aria-current="page" @endif href="/news">News</a>@endif
                 @if(($networkSettings['modules']['businesses'] ?? false) || ($networkSettings['modules']['jobs'] ?? false))
                     <details class="desktop-nav-group">
@@ -191,7 +219,7 @@
 </dialog>
 <nav class="mobile-tab-bar" aria-label="Quick navigation">
     <a href="/" @if(request()->is('/')) aria-current="page" @endif><x-icon name="home" size="22"/><span>Home</span></a>
-    <a href="/marketplace" @if(request()->is('marketplace*')) aria-current="page" @endif><x-icon name="marketplace" size="22"/><span>Marketplace</span></a>
+    <a href="/marketplace" @if(request()->is('marketplace*', 'real-estate*')) aria-current="page" @endif><x-icon name="marketplace" size="22"/><span>Marketplace</span></a>
     <a href="/account/messages" @if(request()->is('account/messages*')) aria-current="page" @endif><x-icon name="messages" size="22"/><span>Messages</span><x-nav-count :count="$navCounts['messages']" label="messages"/></a>
     <a href="/account/notifications" @if(request()->is('account/notifications*', 'account/community-notifications*')) aria-current="page" @endif><x-icon name="bell" size="22"/><span>Notifications</span><x-nav-count :count="$navCounts['notifications']" label="notifications"/></a>
 </nav>

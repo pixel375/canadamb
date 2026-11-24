@@ -191,6 +191,30 @@ if (desktopMenus.length) {
     });
 }
 
+// Account disclosure is a separate native <details>; never leave it over other
+// desktop dropdowns, and return keyboard focus after an Escape dismissal.
+const accountMenu = document.querySelector('.header-account-menu');
+if (accountMenu) {
+    const summary = accountMenu.querySelector('summary');
+    accountMenu.addEventListener('toggle', () => {
+        if (accountMenu.open) {
+            for (const menu of desktopMenus) menu.open = false;
+        }
+    });
+    document.addEventListener('pointerdown', event => {
+        if (!accountMenu.contains(event.target)) accountMenu.open = false;
+    });
+    document.addEventListener('focusin', event => {
+        if (!accountMenu.contains(event.target)) accountMenu.open = false;
+    });
+    document.addEventListener('keydown', event => {
+        if (event.key !== 'Escape' || !accountMenu.open) return;
+        event.preventDefault();
+        accountMenu.open = false;
+        summary?.focus();
+    });
+}
+
 // Native modal drawer traps focus and supports Escape without custom key handling.
 const siteDrawer = document.getElementById('site-drawer');
 const siteMenuOpen = document.getElementById('site-menu-open');

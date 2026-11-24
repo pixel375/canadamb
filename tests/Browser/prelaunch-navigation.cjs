@@ -26,6 +26,19 @@ const fs = require('node:fs');
                 } else {
                     const groups = page.locator('.desktop-nav-group');
                     check(await groups.count() === 2, 'Expected Businesses and Discussions desktop menus');
+                    check(await page.locator('.navigation a.desktop-real-estate').isVisible(),
+                        'Real Estate missing in primary desktop navigation');
+                    const top = await page.evaluate(() => {
+                        const actions = document.querySelector('.masthead .header-actions').getBoundingClientRect();
+                        const brand = document.querySelector('.masthead .brand').getBoundingClientRect();
+                        const search = document.querySelector('.header-search').getBoundingClientRect();
+                        return { brandRight: brand.right, actionsLeft: actions.left, searchWidth: search.width,
+                            actionsRight: actions.right, viewport: innerWidth };
+                    });
+                    check(top.brandRight <= top.actionsLeft && top.actionsRight <= top.viewport + 1,
+                        'Masthead action controls overlap or extend past desktop viewport: ' + JSON.stringify(top));
+                    if (width >= 1280) check(top.searchWidth >= 225,
+                        'Desktop search is still too narrow: ' + JSON.stringify(top));
                     await groups.first().locator('summary').click();
                     check(await groups.first().evaluate(node => node.open), 'Business dropdown failed to open');
                     const layout = await page.evaluate(() => {
