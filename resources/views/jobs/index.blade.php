@@ -51,8 +51,10 @@
                     </div>
                 </div>
             @else
-                <div class="panel">
-                    @foreach($items as $item)<x-job-result :item="$item"/>@endforeach
+                <div class="browse-feed">
+                    @foreach($items as $item)
+                        <div class="panel"><x-job-result :item="$item" :show-description="true"/></div>
+                    @endforeach
                 </div>
                 {{ $items->links() }}
             @endif
