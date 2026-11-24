@@ -142,6 +142,28 @@ class HomeDiscoveryNavigationTest extends TestCase
             ->assertDontSee('name="location" value="brandon"', false);
     }
 
+    public function test_remembered_community_is_explicit_and_never_overrides_city_portal(): void
+    {
+        $this->post('https://canadamb.ca/communities/preference', ['location' => 'brandon'])
+            ->assertRedirect('/?location=brandon')->assertCookie('canadamb_community', 'brandon');
+        $this->withCookie('canadamb_community', 'brandon')
+            ->get('https://canadamb.ca/')->assertRedirect('/?location=brandon');
+        $this->get('https://canadamb.ca/?location=')->assertOk()->assertSee('Explore Manitoba');
+        $this->get('https://canadamb.ca/?location=winnipeg')->assertOk()->assertSee('Explore Winnipeg');
+        $this->get('https://canadamb.ca/communities?q=Brandon')->assertOk()
+            ->assertSee('Your preferred community: Brandon');
+        $this->get('https://canadamb.ca/marketplace')->assertOk();
+
+        $this->withCookie('canadamb_community', 'winnipeg')
+            ->get('https://brandonmb.ca/')->assertOk()->assertSee('Explore Brandon');
+        $this->post('https://brandonmb.ca/communities/preference', ['location' => 'winnipeg'])->assertNotFound();
+
+        $this->postJson('https://canadamb.ca/communities/preference', ['location' => 'not-a-real-community'])
+            ->assertUnprocessable()->assertJsonValidationErrors('location');
+        $this->post('https://canadamb.ca/communities/preference', ['location' => ''])
+            ->assertRedirect('/')->assertCookieExpired('canadamb_community');
+    }
+
     public function test_category_discovery_search_is_real_submission_not_a_dummy_button(): void
     {
         $this->get('https://canadamb.ca/marketplace')->assertOk()
