@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AccountNotificationsController;
 use App\Http\Controllers\Admin\BusinessReviewController;
 use App\Http\Controllers\Admin\CommunityController;
 use App\Http\Controllers\Admin\CommunityModerationController;
@@ -10,7 +11,6 @@ use App\Http\Controllers\Admin\PropertyReviewController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\TestAccountController;
 use App\Http\Controllers\Admin\ThemeController;
-use App\Http\Controllers\AccountNotificationsController;
 use App\Http\Controllers\BusinessController;
 use App\Http\Controllers\CommunityEventController;
 use App\Http\Controllers\CommunityForumController;
