@@ -1,7 +1,7 @@
 <x-layouts.site :title="$thread->listing->title.' | Messages'">
     <div class="container page-shell message-workspace">
         <a class="text-link mb-4" href="/account/messages"><x-icon name="messages" size="18"/> All messages</a>
-        <div class="panel chat-panel">
+        <div class="panel chat-panel" @if($messages->onFirstPage()) data-chat-sync="/account/messages/{{ $thread->id }}/sync" data-chat-cursor="{{ $messages->first()?->id ?? 0 }}" data-chat-token="{{ csrf_token() }}" @endif>
             <header class="chat-heading">
                 <span class="message-avatar" aria-hidden="true"><x-icon name="person" size="26"/></span>
                 <div class="chat-heading-copy">
@@ -22,9 +22,9 @@
                 @if($messages->hasMorePages())<a class="text-link" href="{{ $messages->nextPageUrl() }}">Older messages</a>@endif
                 @if(!$messages->onFirstPage())<a class="text-link" href="{{ $messages->previousPageUrl() }}">Newer messages</a><a class="text-link" href="/account/messages/{{ $thread->id }}">Latest messages</a>@endif
             </nav>
-            <div class="chat-history" aria-label="Messages in chronological order">
+            <div class="chat-history" aria-label="Messages in chronological order" data-chat-history>
                 @foreach($messages->reverse() as $message)
-                    <article class="chat-message {{ $message->sender_id === auth()->id() ? 'is-own' : 'is-other' }}">
+                    <article data-message-id="{{ $message->id }}" class="chat-message {{ $message->sender_id === auth()->id() ? 'is-own' : 'is-other' }}">
                         <div class="chat-message-meta">
                             <strong>{{ $message->sender_id === auth()->id() ? 'You' : $message->sender->name }}</strong>
                             <time datetime="{{ $message->created_at->toIso8601String() }}" title="{{ $message->created_at->timezone('America/Winnipeg')->format('M j, Y · g:i a') }}">{{ $message->created_at->diffForHumans() }}</time>
@@ -33,10 +33,11 @@
                     </article>
                 @endforeach
             </div>
+            @if($messages->onFirstPage())<p class="chat-sync-status field-note" data-chat-status role="status" aria-live="polite">Messages refresh automatically while this conversation is open.</p>@endif
             @if(!$blocked)
                 <form method="post" action="/account/messages/{{ $thread->id }}" class="chat-composer form-stack">@csrf
                     <label>Reply<textarea name="body" maxlength="2000" rows="3" required placeholder="Write a message…">{{ old('body') }}</textarea></label>
-                    <div class="chat-composer-footer"><small class="field-note">Keep personal and payment information private.</small><button class="button button-primary">Send reply <x-icon name="arrow" size="17"/></button></div>
+                    <div class="chat-composer-footer"><small class="field-note">Keep personal and payment information private.</small><button class="button button-primary" data-chat-send>Send reply <x-icon name="arrow" size="17"/></button></div>
                 </form>
             @else
                 <p class="notice">New messages are blocked for this conversation.</p>
