@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CommunityEvent;
 use App\Models\CommunityThread;
 use App\Models\Location;
 use App\Support\Community;
@@ -26,7 +27,21 @@ class CommunityForumController extends Controller
             ->when($filters['category'] ?? null, fn ($query, $category) => $query->where('category', $category))
             ->orderByDesc('pinned')->orderByDesc('last_activity_at')->orderByDesc('id')->paginate(18)->withQueryString();
 
-        return view('community.forum', compact('threads', 'filters'));
+        // The Discussions hub includes an optional, day-grouped event timeline.
+        // No hidden or out-of-scope events are exposed.
+        $eventsEnabled = $this->community->enabled($site, 'events');
+        $eventDays = collect();
+        if ($eventsEnabled) {
+            $start = now('UTC')->format('Y-m-d H:i:s');
+            $until = now('America/Winnipeg')->addDays(60)->endOfDay()->utc()->format('Y-m-d H:i:s');
+            $events = $this->community->events($site->location_id)
+                ->where('status', 'approved')
+                ->whereBetween('starts_at', [$start, $until])
+                ->orderBy('starts_at')->orderBy('id')->limit(60)->get();
+            $eventDays = $events->groupBy(fn (CommunityEvent $event) => $event->localStart()->toDateString());
+        }
+
+        return view('community.forum', compact('threads', 'filters', 'eventDays', 'eventsEnabled'));
     }
 
     public function thread(Request $request, int $thread)
@@ -50,8 +65,14 @@ class CommunityForumController extends Controller
         $site = $request->attributes->get('site');
         abort_unless($this->community->enabled($site, 'community'), 404);
 
+        $eventsEnabled = $this->community->enabled($site, 'events');
+        $postType = $request->query('type') === 'event' ? 'event' : 'discussion';
+        abort_if($postType === 'event' && ! $eventsEnabled, 404);
+
         return view('community.new-thread', [
             'places' => $site->isNetwork() ? Location::selectable()->orderBy('name')->get() : collect(),
+            'eventsEnabled' => $eventsEnabled,
+            'postType' => $postType,
         ]);
     }
 
