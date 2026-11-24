@@ -44,13 +44,21 @@
                 </details>
                 <div class="panel discussion-topics">
                     @if($threads->isEmpty())
+                        @php
+                            $activeFilters = array_filter($filters, fn ($value) => $value !== null && $value !== '');
+                            $scope = array_intersect_key($activeFilters, ['location' => true]);
+                            $wideFilters = array_diff_key($activeFilters, ['location' => true]);
+                        @endphp
                         <div class="discussion-empty">
                             <span class="discussion-empty-icon"><x-icon name="discussions" size="28"/></span>
-                            <h3>{{ empty($filters) ? 'Start the conversation' : 'No discussions match these filters' }}</h3>
-                            <p>{{ empty($filters) ? 'Have a question, a local tip, or something to share? Start the first discussion in your community.' : 'Try another category, or clear your filters to see more conversations.' }}</p>
+                            <h3>{{ empty($activeFilters) ? 'Start the conversation' : 'No discussions match these filters' }}</h3>
+                            <p>{{ empty($activeFilters) ? 'Have a question, a local tip, or something to share? Start the first discussion in your community.' : 'Try another category, or clear your filters to see more conversations.' }}</p>
                             <div class="discussion-empty-actions">
-                                @if(!empty($filters))
-                                    <a class="button button-outline" href="/community">All topics</a>
+                                @if($wideFilters)
+                                    <a class="button button-outline" href="{{ '/community'.($scope ? '?'.http_build_query($scope) : '') }}">Clear search filters</a>
+                                @endif
+                                @if($scope)
+                                    <a class="button button-outline" href="{{ '/community'.($wideFilters ? '?'.http_build_query($wideFilters) : '') }}">Search all Manitoba</a>
                                 @endif
                                 <a class="button button-primary" href="/community/new"><x-icon name="plus" size="16"/> Start a discussion</a>
                             </div>
