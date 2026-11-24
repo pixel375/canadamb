@@ -129,6 +129,28 @@ const fs = require('node:fs');
             }
         }
         console.log('PASS: four scoped empty-result recovery paths on mobile and desktop');
+        await page.setViewportSize({ width: 1440, height: 900 });
+        for (const [section, location] of [
+            ['', 'brandon'], ['marketplace', 'brandon'], ['businesses', 'brandon'],
+            ['community', 'brandon'], ['jobs', 'Brandon'], ['news', 'brandon'],
+            ['events', 'brandon'], ['business-updates', 'brandon'], ['real-estate', 'brandon'],
+        ]) {
+            await page.goto(host + '/' + section + '?' + new URLSearchParams({ location }));
+            const nav = page.getByRole('navigation', { name: 'Primary navigation' });
+            const home = new URL(await nav.getByRole('link', { name: 'Home', exact: true }).getAttribute('href'), host);
+            const market = new URL(await nav.getByRole('link', { name: 'Marketplace', exact: true }).getAttribute('href'), host);
+            check(home.searchParams.get('location') === 'brandon' &&
+                market.searchParams.get('location') === 'brandon',
+                'Primary navigation lost browsing location on ' + section);
+            const mobile = page.locator('.mobile-tab-bar a').first();
+            check(new URL(await mobile.getAttribute('href'), host).searchParams.get('location') === 'brandon',
+                'Mobile navigation lost community on ' + section);
+        }
+        await page.goto(host + '/');
+        check(!(new URL(await page.getByRole('navigation', { name: 'Primary navigation' }).getByRole('link', { name: 'Marketplace', exact: true }).getAttribute('href'), host)).searchParams.has('location'),
+            'All Manitoba browsing unexpectedly retained a location');
+        console.log('PASS: explicit community scope survives nine public browse sections and clears at provincial home');
+
 
 
         console.log('PASS: authenticated notification hub, unread filters and followed conversations at five widths');
