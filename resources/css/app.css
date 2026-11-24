@@ -1441,3 +1441,26 @@ a.market-category-card:hover, a.market-category-card:focus-visible {
     .member-listing-info { flex-basis: auto; }
     .member-listing-manager .item-row > .inline-actions { gap: 7px; }
 }
+
+/* Listing editor: grouped touch-friendly controls and local image previews. */
+.listing-editor { width: min(100% - 48px, 790px); }
+.listing-editor-form { gap: 16px; }
+.listing-editor-section { padding: clamp(16px, 2.5vw, 26px); gap: 15px; }
+.listing-editor-section h2 { font-size: 1.15rem; margin: 0 0 3px; }
+.listing-editor-section input:not([type=checkbox]), .listing-editor-section select { min-height: 45px; }
+.listing-editor-section textarea { resize: vertical; }
+.listing-photo-preview:not([hidden]) { display: grid; grid-template-columns: repeat(auto-fill,minmax(min(100%,110px),1fr)); gap: 10px; }
+.listing-photo-preview figure { min-width: 0; margin: 0; border: 1px solid var(--border); background: var(--soft); border-radius: 9px; overflow: hidden; }
+.listing-photo-preview img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: contain; }
+.listing-photo-preview figcaption { padding: 6px; font-size: .75rem; text-align: center; }
+.listing-editor-submit { display: flex; gap: 16px; align-items: center; justify-content: space-between; }
+.listing-editor-submit p { font-size: .85rem; color: var(--muted); max-width: 40ch; }
+.listing-editor-submit .button { flex-shrink: 0; }
+@media (max-width: 580px) {
+    .listing-editor { width: calc(100% - 28px); }
+    .listing-editor-form { gap: 12px; }
+    .listing-editor-section { padding: 15px; }
+    .listing-editor-section .form-grid { grid-template-columns: minmax(0,1fr); }
+    .listing-editor-section input:not([type=checkbox]), .listing-editor-section select, .listing-editor-section textarea { font-size: 16px; }
+    .listing-editor-submit { flex-direction: column; align-items: stretch; gap: 12px; }
+}
