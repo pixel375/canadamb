@@ -379,6 +379,25 @@ for (const input of document.querySelectorAll('[data-listing-photos]')) {
 }
 
 
+const updateActivityCounts = counts => {
+    for (const [name, path] of [['messages', '/account/messages'], ['notifications', '/account/notifications']]) {
+        const count = Math.max(0, Number(counts[name]) || 0);
+        for (const link of document.querySelectorAll('.site-header a, .site-drawer a, .mobile-tab-bar a, .account-shortcut')) {
+            if (link.getAttribute('href') !== path) continue;
+            let badge = link.querySelector('.nav-count');
+            if (!count) { badge?.remove(); continue; }
+            if (!badge) {
+                badge = document.createElement('span');
+                badge.className = 'nav-count';
+                link.append(badge);
+            }
+            badge.textContent = count > 99 ? '99+' : String(count);
+            badge.setAttribute('aria-label', count + ' unread ' + name);
+            badge.title = count + ' unread ' + name;
+        }
+    }
+};
+
 // Incremental, same-origin conversation refresh. Do not replace the composer
 // or reload the page; only acknowledge messages after they are visible.
 const chatPanel = document.querySelector('[data-chat-sync]');
@@ -398,24 +417,6 @@ if (chatPanel) {
         if (!last) return 0;
         const rect = last.getBoundingClientRect();
         return rect.bottom <= innerHeight && rect.bottom > 0 ? Number(last.dataset.messageId) : 0;
-    };
-    const updateCounts = counts => {
-        for (const [name, path] of [['messages', '/account/messages'], ['notifications', '/account/notifications']]) {
-            const count = Math.max(0, Number(counts[name]) || 0);
-            for (const link of document.querySelectorAll('.site-header a, .site-drawer a, .mobile-tab-bar a')) {
-                if (link.getAttribute('href') !== path) continue;
-                let badge = link.querySelector('.nav-count');
-                if (!count) { badge?.remove(); continue; }
-                if (!badge) {
-                    badge = document.createElement('span');
-                    badge.className = 'nav-count';
-                    link.append(badge);
-                }
-                badge.textContent = count > 99 ? '99+' : String(count);
-                badge.setAttribute('aria-label', count + ' unread ' + name);
-                badge.title = count + ' unread ' + name;
-            }
-        }
     };
     const append = item => {
         if (item.id <= cursor) return;
@@ -460,7 +461,7 @@ if (chatPanel) {
             if (!response.ok) throw new Error('Refresh failed');
             const data = await response.json();
             for (const item of data.messages) append(item);
-            updateCounts(data.counts);
+            updateActivityCounts(data.counts);
             if (send) send.disabled = Boolean(data.blocked);
             if (data.blocked) status.textContent = 'New messages are blocked for this conversation.';
             else if (data.messages.length) status.textContent = data.messages.length + ' new message(s) received.';
@@ -472,6 +473,47 @@ if (chatPanel) {
             delay = Math.min(delay * 2, 120000);
         } finally {
             pending = false;
+            schedule();
+        }
+    }
+    document.addEventListener('visibilitychange', () => {
+        clearTimeout(timer);
+        if (!document.hidden) refresh();
+    });
+    schedule();
+}
+
+
+// Refresh counts, not message contents, while browsing other signed-in pages.
+// The open chat already includes counts in its own sync response.
+const activityEndpoint = document.body.dataset.activityCounts;
+if (activityEndpoint && !chatPanel) {
+    let running = false;
+    let stopped = false;
+    let timer;
+    let delay = 45000;
+    const schedule = () => {
+        clearTimeout(timer);
+        if (!document.hidden && !stopped) timer = setTimeout(refresh, delay);
+    };
+    async function refresh() {
+        if (running || stopped || document.hidden) return;
+        running = true;
+        try {
+            const response = await fetch(activityEndpoint, {
+                credentials: 'same-origin', cache: 'no-store', headers: { Accept: 'application/json' },
+            });
+            if (response.redirected || [401, 403, 404, 419].includes(response.status)) {
+                stopped = true;
+                return;
+            }
+            if (!response.ok) throw new Error('Activity refresh failed');
+            updateActivityCounts(await response.json());
+            delay = 45000;
+        } catch {
+            delay = Math.min(delay * 2, 180000);
+        } finally {
+            running = false;
             schedule();
         }
     }
