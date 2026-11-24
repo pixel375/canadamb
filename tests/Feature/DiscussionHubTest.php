@@ -123,6 +123,25 @@ class DiscussionHubTest extends TestCase
             ->assertSee('href="/community/new?type=event"', false);
     }
 
+    public function test_discussion_owner_dashboard_is_private_and_composer_preserves_scope(): void
+    {
+        $member = User::factory()->create();
+        $other = User::factory()->create();
+        $place = Location::where('slug', 'brandon')->sole();
+        foreach ([$member, $other] as $author) {
+            CommunityThread::create(['author_id' => $author->id, 'location_id' => $place->id,
+                'title' => $author->is($member) ? 'My pending topic' : 'Other private topic',
+                'category' => 'help', 'body' => 'A useful local community question.']);
+        }
+        $this->get('https://canadamb.ca/account/discussions')->assertRedirect();
+        $this->actingAs($member)->get('https://canadamb.ca/account/discussions?status=pending')
+            ->assertOk()->assertSee('My pending topic')->assertDontSee('Other private topic');
+        $this->get('https://canadamb.ca/community?location=brandon&sort=replies')->assertOk()
+            ->assertDontSee('My pending topic')->assertDontSee('Other private topic');
+        $this->get('https://canadamb.ca/community/new?location=brandon&category=help')->assertOk()
+            ->assertSee('value="'.$place->id.'" selected', false)->assertSee('value="help" selected', false);
+    }
+
     private function event(int $locationId, string $title, string $startsAt, string $status = 'approved'): CommunityEvent
     {
         $event = CommunityEvent::create([

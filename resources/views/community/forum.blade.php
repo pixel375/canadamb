@@ -1,4 +1,11 @@
-<x-layouts.site title="Discussions">
+<?php
+    $forumSite = request()->attributes->get('site');
+    $forumPlace = \App\Support\LocationScope::forBrowsing($forumSite, $filters['location'] ?? null);
+    $postParams = array_filter(['location' => $forumSite->isNetwork() ? $forumPlace?->slug : null, 'category' => $filters['category'] ?? null]);
+    $postUrl = '/community/new'.($postParams ? '?'.http_build_query($postParams) : '');
+    $eventUrl = '/community/new?'.http_build_query(['type' => 'event'] + array_intersect_key($postParams, ['location' => true]));
+?>
+<x-layouts.site title="Discussions" :location="$forumPlace">
     <div class="container page-shell">
         <div class="page-intro discussion-intro">
             <div>
@@ -9,26 +16,28 @@
             <div class="discussion-intro-actions">
                 @auth
                     @if(auth()->user()->hasVerifiedEmail())
+                        <a class="button button-outline" href="/account/discussions">My discussions</a>
                         <a class="button button-outline" href="/account/followed-discussions"><x-icon name="bell" size="17"/> Following</a>
                     @endif
                 @endauth
-                <a class="button button-primary" href="/community/new"><x-icon name="plus" size="17"/> Start a discussion</a>
+                <a class="button button-primary" href="{{ $postUrl }}"><x-icon name="plus" size="17"/> Start a discussion</a>
                 @if($eventsEnabled)
-                    <a class="button button-outline" href="/community/new?type=event"><x-icon name="calendar" size="17"/> Submit an event</a>
+                    <a class="button button-outline" href="{{ $eventUrl }}"><x-icon name="calendar" size="17"/> Submit an event</a>
                 @endif
             </div>
         </div>
 
         <div class="discussion-hub">
+            @if($eventsEnabled)<nav class="discussion-mobile-jumps" aria-label="Jump to discussion sections"><a class="button button-outline" href="#discussion-feed-title">Topics</a><a class="button button-outline" href="#discussion-events-title"><x-icon name="calendar" size="16"/> Upcoming events</a></nav>@endif
             <section class="discussion-feed" aria-labelledby="discussion-feed-title">
                 <div class="discussion-section-heading">
                     <div><p class="section-label">Local conversations</p><h2 id="discussion-feed-title">Browse discussions</h2></div>
                     <span class="discussion-count">{{ $threads->total() }} {{ \Illuminate\Support\Str::plural('topic', $threads->total()) }}</span>
                 </div>
                 <nav class="discussion-category-nav" aria-label="Discussion categories">
-                    <a class="discussion-filter-chip" href="/community{{ array_filter(['q' => $filters['q'] ?? null, 'location' => $filters['location'] ?? null]) ? '?'.http_build_query(array_filter(['q' => $filters['q'] ?? null, 'location' => $filters['location'] ?? null])) : '' }}" aria-current="{{ isset($filters['category']) ? 'false' : 'page' }}">All topics</a>
+                    <a class="discussion-filter-chip" href="/community{{ array_filter(['q' => $filters['q'] ?? null, 'location' => $filters['location'] ?? null, 'sort' => $filters['sort'] ?? null]) ? '?'.http_build_query(array_filter(['q' => $filters['q'] ?? null, 'location' => $filters['location'] ?? null, 'sort' => $filters['sort'] ?? null])) : '' }}" aria-current="{{ isset($filters['category']) ? 'false' : 'page' }}">All topics <small>{{ $categoryCounts->sum() }}</small></a>
                     @foreach(\App\Support\Community::FORUMS as $key => $label)
-                        <a class="discussion-filter-chip" href="/community?{{ http_build_query(array_filter(['category' => $key, 'q' => $filters['q'] ?? null, 'location' => $filters['location'] ?? null])) }}" aria-current="{{ ($filters['category'] ?? null) === $key ? 'page' : 'false' }}">{{ $label }}</a>
+                        <a class="discussion-filter-chip" href="/community?{{ http_build_query(array_filter(['category' => $key, 'q' => $filters['q'] ?? null, 'location' => $filters['location'] ?? null, 'sort' => $filters['sort'] ?? null])) }}" aria-current="{{ ($filters['category'] ?? null) === $key ? 'page' : 'false' }}">{{ $label }} <small>{{ $categoryCounts[$key] ?? 0 }}</small></a>
                     @endforeach
                 </nav>
                 <details class="search-disclosure" {{ !empty($filters) ? 'open' : '' }}>
@@ -39,6 +48,7 @@
                         @if(request()->attributes->get('site')->isNetwork())
                             <label>Location<select name="location"><option value="">All Manitoba</option>@foreach($places as $place)<option value="{{ $place->slug }}" @selected(($filters['location'] ?? null) === $place->slug)>{{ $place->name }}</option>@endforeach</select></label>
                         @endif
+                        <label>Sort by<select name="sort">@foreach(['recent' => 'Recent activity', 'newest' => 'Newest topics', 'replies' => 'Most replies'] as $key => $label)<option value="{{ $key }}" @selected(($filters['sort'] ?? 'recent') === $key)>{{ $label }}</option>@endforeach</select></label>
                         <button class="button button-primary" type="submit">Search</button>
                     </form>
                 </details>
@@ -60,7 +70,7 @@
                                 @if($scope)
                                     <a class="button button-outline" href="{{ '/community'.($wideFilters ? '?'.http_build_query($wideFilters) : '') }}">Search all Manitoba</a>
                                 @endif
-                                <a class="button button-primary" href="/community/new"><x-icon name="plus" size="16"/> Start a discussion</a>
+                                <a class="button button-primary" href="{{ $postUrl }}"><x-icon name="plus" size="16"/> Start a discussion</a>
                             </div>
                         </div>
                     @else
@@ -111,7 +121,7 @@
                             <div class="discussion-events-empty">
                                 <x-icon name="calendar" size="27"/>
                                 <p>No upcoming events posted yet.</p>
-                                <a class="text-link" href="/community/new?type=event">Submit an event</a>
+                                <a class="text-link" href="{{ $eventUrl }}">Submit an event</a>
                             </div>
                         @else
                             @foreach($eventDays as $date => $dayEvents)
@@ -125,7 +135,7 @@
                                     <div class="discussion-day-events">
                                         @foreach($dayEvents as $event)
                                             <article class="discussion-event">
-                                                <time datetime="{{ $event->localStart()->toAtomString() }}">{{ $event->localStart()->format('g:i a') }}</time>
+                                                <time datetime="{{ $event->localStart()->toAtomString() }}">{{ $event->localStart()->toDateString() < $date ? 'Ongoing' : $event->localStart()->format('g:i a') }}</time>
                                                 <h3><a href="/events/{{ $event->id }}">{{ $event->title }}</a></h3>
                                                 <p>{{ $event->venue }} · {{ $event->location->name }}</p>
                                             </article>
@@ -137,7 +147,7 @@
                     </div>
                     <div class="discussion-events-footer">
                         <a class="text-link" href="{{ \App\Support\LocationScope::browseUrl(request()->attributes->get('site'), '/events', \App\Support\LocationScope::forBrowsing(request()->attributes->get('site'), $filters['location'] ?? null)) }}">Full events calendar <x-icon name="arrow" size="16"/></a>
-                        <a class="text-link" href="/community/new?type=event">Suggest an event</a>
+                        <a class="text-link" href="{{ $eventUrl }}">Suggest an event</a>
                     </div>
                 </aside>
             @endif

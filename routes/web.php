@@ -95,6 +95,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/community/{thread}/replies', [CommunityForumController::class, 'reply'])->whereNumber('thread')->middleware('throttle:12,1');
     Route::post('/community/{thread}/follow', [CommunityForumController::class, 'follow'])->whereNumber('thread')->middleware('throttle:30,1');
     Route::delete('/community/{thread}/follow', [CommunityForumController::class, 'unfollow'])->whereNumber('thread')->middleware('throttle:30,1');
+    Route::get('/account/discussions', [CommunityForumController::class, 'owned']);
     Route::get('/account/community-notifications', [CommunityForumController::class, 'notifications']);
     Route::post('/account/community-notifications/read-all', [CommunityForumController::class, 'readAllNotifications'])->middleware('throttle:12,1');
     Route::post('/account/community-notifications/{notification}/read', [CommunityForumController::class, 'readNotification'])->whereNumber('notification');

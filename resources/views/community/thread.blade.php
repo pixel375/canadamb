@@ -1,11 +1,11 @@
 @php($currentSite = request()->attributes->get('site'))
 @php($canParticipate = auth()->check() && auth()->user()->hasVerifiedEmail())
-<x-layouts.site :title="$item->title.' | Discussions'" :description="\Illuminate\Support\Str::limit($item->body, 155)" :canonical="$canonical">
+<x-layouts.site :title="$item->title.' | Discussions'" :description="\Illuminate\Support\Str::limit($item->body, 155)" :canonical="$canonical" :location="$item->location">
     <div class="container page-shell discussion-thread-shell">
         <nav class="discussion-breadcrumb" aria-label="Discussion navigation">
-            <a class="text-link" href="/community">Discussions</a>
+            <a class="text-link" href="{{ \App\Support\LocationScope::browseUrl($currentSite, '/community', $item->location) }}">Discussions</a>
             <x-icon name="chevron" size="14"/>
-            <a class="text-link" href="/community?category={{ rawurlencode($item->category) }}">{{ \App\Support\Community::FORUMS[$item->category] }}</a>
+            <a class="text-link" href="/community?{{ http_build_query(array_filter(['category' => $item->category, 'location' => $currentSite->isNetwork() ? $item->location?->slug : null])) }}">{{ \App\Support\Community::FORUMS[$item->category] }}</a>
         </nav>
 
         <div class="discussion-thread-layout">
@@ -77,7 +77,10 @@
                         <a class="text-link discussion-followed-link" href="/account/followed-discussions">My followed discussions <x-icon name="arrow" size="15"/></a>
                     @endif
                 </section>
-                <a class="discussion-thread-all" href="/community"><x-icon name="arrow" size="16"/> Browse more discussions</a>
+                @if($related->isNotEmpty())
+                    <section class="panel discussion-related"><h2>Related discussions</h2>@foreach($related as $topic)<div><a class="text-link" href="/community/{{ $topic->id }}">{{ $topic->title }}</a><p class="field-note">{{ $topic->replies_count }} {{ \Illuminate\Support\Str::plural('reply', $topic->replies_count) }}</p></div>@endforeach</section>
+                @endif
+                <a class="discussion-thread-all" href="{{ \App\Support\LocationScope::browseUrl($currentSite, '/community', $item->location) }}"><x-icon name="arrow" size="16"/> Browse more discussions</a>
             </aside>
 
             <section id="discussion-replies" class="panel discussion-replies" aria-labelledby="discussion-replies-heading">
@@ -103,6 +106,7 @@
                                 <time datetime="{{ $reply->created_at->toIso8601String() }}">{{ $reply->created_at->timezone('America/Winnipeg')->format('M j, Y · g:i a T') }}</time>
                             </div>
                             <p class="prose-text">{{ $reply->body }}</p>
+                            <a class="text-link reply-permalink" href="/community/{{ $item->id }}/replies/{{ $reply->id }}">Link to this reply</a>
                         </div>
                     </article>
                 @empty
@@ -129,7 +133,7 @@
                         <p>Keep your reply helpful and respectful. Replies appear after moderation.</p>
                     </div>
                     <label for="discussion-reply-body">Your reply
-                        <textarea id="discussion-reply-body" name="body" required minlength="5" maxlength="3000" rows="5" placeholder="Share your thoughts with the community...">{{ old('body') }}</textarea>
+                        <textarea id="discussion-reply-body" data-character-count name="body" required minlength="5" maxlength="3000" rows="5" placeholder="Share your thoughts with the community...">{{ old('body') }}</textarea><small class="field-note" data-character-feedback></small>
                     </label>
                     <div class="discussion-reply-submit">
                         <span>5–3,000 characters · Reviewed before publication</span>

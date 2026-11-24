@@ -693,7 +693,7 @@ a.market-category-card:hover, a.market-category-card:focus-visible {
 .discussion-category-nav { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; margin-bottom: 18px; }
 .discussion-filter-chip { border: 1px solid var(--border); color: var(--muted); background: var(--card); padding: 8px 12px; border-radius: 999px; font-size: .79rem; font-weight: 750; line-height: 1.2; transition: background .15s, border-color .15s; }
 .discussion-filter-chip:hover { color: var(--link); background: var(--soft); text-decoration: none; }
-.discussion-filter-chip[aria-current] { background: var(--soft); border-color: var(--primary); color: var(--link); }
+.discussion-filter-chip[aria-current=page] { background: var(--soft); border-color: var(--primary); color: var(--link); }
 .discussion-topics { padding-block: 1px; }
 .discussion-topic { padding: 19px 0; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
 .discussion-topic:last-child { border-bottom: 0; }
@@ -1650,3 +1650,16 @@ a.market-category-card:hover, a.market-category-card:focus-visible {
 .business-update-heading > .member-listing-status { flex-shrink:0; }
 .business-update-card h3 { font-size:1.12rem; }
 @media(max-width:580px) { .business-update-heading > .member-listing-status { font-size:.7rem; } }
+
+.discussion-filter-chip small { font-size:.7rem; color:var(--muted); padding-left:3px; }
+.discussion-mobile-jumps { display:none; }
+.discussion-related { display:grid; gap:12px; }
+.discussion-related > div { padding-top:8px; border-top:1px solid var(--border); overflow-wrap:anywhere; }
+.reply-permalink { display:inline-block; font-size:.75rem; margin-top:7px; }
+.event-discovery-card { display:flex; gap:14px; align-items:flex-start; min-width:0; }
+.event-discovery-card > div:last-child { flex:1; min-width:0; overflow-wrap:anywhere; }
+.event-date-tile { display:grid; justify-items:center; place-content:center; flex:0 0 60px; height:68px; border-radius:10px; background:var(--soft); color:var(--link); border:1px solid var(--border); }
+.event-date-tile strong { font-size:1.55rem; line-height:1.1; }
+.event-date-tile span { font-size:.8rem; }
+@media(max-width:960px) { .discussion-mobile-jumps { display:flex; gap:8px; flex-wrap:wrap; } }
+@media(max-width:580px) { .event-date-tile { flex-basis:49px; height:58px; } .event-discovery-card { gap:10px; } }

@@ -1,6 +1,10 @@
 <x-layouts.site title="Events in Discussions" :location="$place">
     <div class="container page-shell browse-page">
         <div class="page-intro"><div><h1>Community events</h1><p>Find upcoming events in {{ $place?->name ?? 'Manitoba' }}.</p></div><a class="button button-primary" href="{{ app(\App\Support\Community::class)->enabled(request()->attributes->get('site'), 'community') ? '/community/new?type=event' : '/events/new' }}">Submit an event</a></div>
+        <div class="inline-actions mb-4">
+            <a class="button button-outline" href="{{ \App\Support\LocationScope::browseUrl(request()->attributes->get('site'), '/community', $place) }}"><x-icon name="discussions" size="17"/> Discussions</a>
+            @auth<a class="button button-outline" href="/account/events">My events</a>@endauth
+        </div>
         <div class="browse-workspace">
         <details class="search-disclosure browse-sidebar" @if(!empty($filters)) open @endif>
             <summary><x-icon name="search" size="18"/> Event filters <x-icon class="disclosure-arrow" name="chevron-down" size="17"/></summary>
@@ -34,14 +38,14 @@
                 @if(isset($filters['day']))<a class="text-link mt-3" href="{{ $calendarUrl(['month' => $currentMonth]) }}">Show the whole month</a>@endif
             </section>
         @else<a class="button button-outline mb-4" href="/events?{{ http_build_query(array_filter($filters) + ['month' => now('America/Winnipeg')->format('Y-m')]) }}">Open this month’s calendar</a>@endif
-        <div class="panel">
+        <div class="browse-feed">
             @forelse($items as $item)
-                <article class="item-row"><div>
+                <article class="panel event-discovery-card"><div class="event-date-tile"><strong>{{ $item->localStart()->format('j') }}</strong><span>{{ $item->localStart()->format('M') }}</span></div><div>
                     <p class="section-label">{{ $item->localStart()->format('M j · g:i a T') }} · {{ $item->location->name }}</p>
                     <h2><a href="/events/{{ $item->id }}">{{ $item->title }}</a></h2>
-                    <p>{{ $item->venue }} · {{ \App\Support\Community::EVENTS[$item->category] }}</p>
+                    <p>{{ $item->venue }} · {{ \App\Support\Community::EVENTS[$item->category] }}</p><p class="field-note">{{ \Illuminate\Support\Str::limit(\Illuminate\Support\Str::squish($item->body), 160) }}</p><a class="text-link" href="/events/{{ $item->id }}">Event details <x-icon name="arrow" size="16"/></a>
                 </div></article>
-            @empty<p>No upcoming events match these filters.</p>@endforelse
+            @empty<div class="panel market-results-empty"><h3>No upcoming events match these filters.</h3><a class="button button-outline" href="{{ \App\Support\LocationScope::browseUrl(request()->attributes->get('site'), '/events', $place) }}">Clear filters</a></div>@endforelse
         </div>
         {{ $items->links() }}
         </div>

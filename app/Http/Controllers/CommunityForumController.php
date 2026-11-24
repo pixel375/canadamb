@@ -22,16 +22,23 @@ class CommunityForumController extends Controller
     {
         $site = $request->attributes->get('site');
         abort_unless($this->community->enabled($site, 'community'), 404);
-        $rules = ['q' => 'nullable|string|max:100', 'category' => ['nullable', Rule::in(array_keys(Community::FORUMS))]];
+        $rules = ['q' => 'nullable|string|max:100', 'category' => ['nullable', Rule::in(array_keys(Community::FORUMS))], 'sort' => 'nullable|in:recent,newest,replies'];
         if ($site->isNetwork()) {
             $rules['location'] = ['nullable', 'string', 'max:100', Rule::exists('locations', 'slug')->where('province', 'MB')->where('selectable', true)];
         }
         $filters = $request->validate($rules);
-        $threads = $this->community->threads($site->location_id)
+        $matching = $this->community->threads($site->location_id)
             ->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'body']))
-            ->when($filters['category'] ?? null, fn ($query, $category) => $query->where('category', $category))
-            ->when($filters['location'] ?? null, fn ($query, $slug) => $query->whereHas('location', fn ($place) => $place->where('slug', $slug)))
-            ->orderByDesc('pinned')->orderByDesc('last_activity_at')->orderByDesc('id')->paginate(18)->withQueryString();
+            ->when($filters['location'] ?? null, fn ($query, $slug) => $query->whereHas('location', fn ($place) => $place->where('slug', $slug)));
+        $categoryCounts = (clone $matching)->toBase()->select('category')->selectRaw('COUNT(*) as total')->groupBy('category')->pluck('total', 'category');
+        $threads = $matching->when($filters['category'] ?? null, fn ($query, $category) => $query->where('category', $category))
+            ->orderByDesc('pinned');
+        match ($filters['sort'] ?? 'recent') {
+            'newest' => $threads->latest('created_at'),
+            'replies' => $threads->orderByDesc('replies_count')->orderByDesc('last_activity_at'),
+            default => $threads->orderByDesc('last_activity_at'),
+        };
+        $threads = $threads->orderByDesc('id')->paginate(18)->withQueryString();
 
         // The Discussions hub includes an optional, day-grouped event timeline.
         // No hidden or out-of-scope events are exposed.
@@ -42,15 +49,16 @@ class CommunityForumController extends Controller
             $until = now('America/Winnipeg')->addDays(60)->endOfDay()->utc()->format('Y-m-d H:i:s');
             $eventPlace = LocationScope::forBrowsing($site, $filters['location'] ?? null);
             $events = $this->community->events($eventPlace?->id)
-                ->where('status', 'approved')
-                ->whereBetween('starts_at', [$start, $until])
+                ->where('status', 'approved')->where('starts_at', '<=', $until)
+                ->where(fn ($query) => $query->where('starts_at', '>=', $start)->orWhere('ends_at', '>=', $start))
                 ->orderBy('starts_at')->orderBy('id')->limit(60)->get();
-            $eventDays = $events->groupBy(fn (CommunityEvent $event) => $event->localStart()->toDateString());
+            $today = now('America/Winnipeg')->toDateString();
+            $eventDays = $events->groupBy(fn (CommunityEvent $event) => max($today, $event->localStart()->toDateString()));
         }
 
         $places = $site->isNetwork() ? Location::selectable()->orderBy('name')->get() : collect();
 
-        return view('community.forum', compact('threads', 'filters', 'eventDays', 'eventsEnabled', 'places'));
+        return view('community.forum', compact('threads', 'filters', 'eventDays', 'eventsEnabled', 'places', 'categoryCounts'));
     }
 
     public function thread(Request $request, int $thread)
@@ -66,7 +74,29 @@ class CommunityForumController extends Controller
         $following = $request->user() && DB::table('community_thread_follows')
             ->where(['thread_id' => $thread, 'user_id' => $request->user()->id])->exists();
 
-        return view('community.thread', compact('item', 'canonical', 'replies', 'following'));
+        $related = $this->community->threads($site->location_id)->whereKeyNot($item->id)
+            ->where('category', $item->category)
+            ->when($item->location_id, fn ($query, $id) => $query->where('location_id', $id))
+            ->orderByDesc('last_activity_at')->latest('id')->limit(3)->get();
+
+        return view('community.thread', compact('item', 'canonical', 'replies', 'following', 'related'));
+    }
+
+    public function owned(Request $request)
+    {
+        $site = $request->attributes->get('site');
+        abort_unless($this->community->enabled($site, 'community'), 404);
+        $statuses = ['pending', 'approved', 'rejected'];
+        $filters = $request->validate(['status' => ['nullable', Rule::in($statuses)], 'q' => 'nullable|string|max:100']);
+        $owned = CommunityThread::where('author_id', $request->user()->id)
+            ->when($site->location_id, fn ($query, $id) => $query->where('location_id', $id));
+        $counts = (clone $owned)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
+        $items = $owned->with('location')->withCount(['replies' => fn ($query) => $query->where('status', 'approved')])
+            ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
+            ->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'body']))
+            ->latest('id')->paginate(18)->withQueryString();
+
+        return view('community.owned', compact('items', 'counts', 'statuses', 'filters'));
     }
 
     public function followed(Request $request)
@@ -108,6 +138,8 @@ class CommunityForumController extends Controller
             'places' => $site->isNetwork() ? Location::selectable()->orderBy('name')->get() : collect(),
             'eventsEnabled' => $eventsEnabled,
             'postType' => $postType,
+            'suggestedLocation' => LocationScope::forBrowsing($site, $request->query('location', $request->cookie(LocationScope::PREFERENCE_COOKIE))),
+            'suggestedCategory' => array_key_exists((string) $request->query('category', ''), Community::FORUMS) ? $request->query('category') : null,
         ]);
     }
 

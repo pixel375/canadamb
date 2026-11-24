@@ -8,6 +8,7 @@
         ['path' => '/account/saved', 'icon' => 'tag', 'label' => 'Saved listings', 'note' => 'Items you bookmarked', 'enabled' => $networkSettings['modules']['marketplace'] ?? false],
         ['path' => '/account/messages', 'icon' => 'messages', 'label' => 'Messages', 'note' => 'Private conversations', 'enabled' => true, 'count' => $navCounts['messages'] ?? 0],
         ['path' => '/account/notifications', 'icon' => 'bell', 'label' => 'Notifications', 'note' => 'Recent account activity', 'enabled' => true, 'count' => $navCounts['notifications'] ?? 0],
+        ['path' => '/account/discussions', 'icon' => 'discussions', 'label' => 'My discussions', 'note' => 'Review your submitted discussions', 'enabled' => $networkSettings['modules']['community'] ?? false],
         ['path' => '/account/followed-discussions', 'icon' => 'discussions', 'label' => 'Following discussions', 'note' => 'Conversations you follow', 'enabled' => $networkSettings['modules']['community'] ?? false],
         ['path' => '/account/events', 'icon' => 'calendar', 'label' => 'My events', 'note' => 'Submitted community events', 'enabled' => $networkSettings['modules']['events'] ?? false],
         ['path' => '/account/saved-jobs', 'icon' => 'briefcase', 'label' => 'Saved jobs', 'note' => 'Employment opportunities', 'enabled' => $networkSettings['modules']['jobs'] ?? false],
