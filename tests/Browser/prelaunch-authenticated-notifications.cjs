@@ -150,6 +150,14 @@ const fs = require('node:fs');
         check(!(new URL(await page.getByRole('navigation', { name: 'Primary navigation' }).getByRole('link', { name: 'Marketplace', exact: true }).getAttribute('href'), host)).searchParams.has('location'),
             'All Manitoba browsing unexpectedly retained a location');
         console.log('PASS: explicit community scope survives nine public browse sections and clears at provincial home');
+        await page.goto(host + '/community?q=NEIGHBOURS%20garden');
+        check(await page.getByRole('link', { name: 'Community garden neighbours', exact: true }).isVisible(),
+            'Reversed, mixed-case discussion keywords did not match');
+        await page.goto(host + '/community?q=garden%20zzcanadambnoresults2026zz');
+        check(await page.getByRole('link', { name: 'Community garden neighbours', exact: true }).count() === 0,
+            'Discussion search should require all words');
+        console.log('PASS: discussion keywords are case insensitive, unordered and conjunctive');
+
 
 
 
