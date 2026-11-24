@@ -53,6 +53,9 @@ class MarketplaceCategoryNavigationTest extends TestCase
                 ->assertSee('href="/marketplace?group=vehicles"', false)
                 ->assertSee('Real Estate')
                 ->assertSee('Coming later')
+                ->assertSee('class="market-category-icon"', false)
+                ->assertDontSee('🚗')
+                ->assertDontSee('🧸')
                 ->assertDontSee('Visible Manitoba sports car');
         }
         $this->get(self::MAIN.'/marketplace?view=all')->assertOk()

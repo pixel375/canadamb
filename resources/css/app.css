@@ -665,3 +665,11 @@ a.market-category-card:hover, a.market-category-card:focus-visible {
     .activity-card { padding: 15px; }
     .activity-panel .item-row { flex-wrap: wrap; gap: 9px; }
 }
+
+/* Unified vector category artwork replaces inconsistent platform emoji. */
+.market-category-icon { color: var(--link); }
+.market-category-icon svg { display: block; width: 25px; height: 25px; stroke-width: 1.85; }
+.market-category-upcoming .market-category-icon { color: var(--muted); }
+@media (max-width: 760px) {
+    .market-category-icon svg { width: 23px; height: 23px; }
+}

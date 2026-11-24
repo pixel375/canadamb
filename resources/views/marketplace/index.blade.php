@@ -62,14 +62,14 @@
                     <div class="market-category-grid">
                         @foreach($categoryGroups as $slug => $group)
                             <a class="market-category-card" href="{{ $marketLink(['group' => $slug]) }}">
-                                <span class="market-category-icon" aria-hidden="true">{{ $group['icon'] }}</span>
+                                <span class="market-category-icon" aria-hidden="true"><x-icon :name="$group['icon']" size="25"/></span>
                                 <span class="market-category-name">{{ $group['name'] }}</span>
                                 <span class="market-category-description">{{ $group['subtitle'] }}</span>
                                 <span class="market-category-link">{{ count($group['available']) }} {{ \Illuminate\Support\Str::plural('subcategory', count($group['available'])) }} <span aria-hidden="true">→</span></span>
                             </a>
                         @endforeach
                         <div class="market-category-card market-category-upcoming" aria-label="Real Estate, coming later">
-                            <span class="market-category-icon" aria-hidden="true">🏡</span>
+                            <span class="market-category-icon" aria-hidden="true"><x-icon name="house" size="25"/></span>
                             <span class="market-category-name">Real Estate</span>
                             <span class="market-category-description">Homes, rentals and land — a dedicated section is planned for a future launch.</span>
                             <span class="market-category-coming">Coming later</span>

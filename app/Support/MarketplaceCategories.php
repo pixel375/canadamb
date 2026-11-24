@@ -12,37 +12,37 @@ final class MarketplaceCategories
         'vehicles' => [
             'name' => 'Vehicles & Motors',
             'subtitle' => 'Cars, RVs, trailers, parts and powersports',
-            'icon' => '🚗',
+            'icon' => 'car-front',
             'children' => ['cars', 'powersports', 'rvs', 'trailers', 'auto-parts'],
         ],
         'home' => [
             'name' => 'Home & Living',
             'subtitle' => 'Furniture, appliances, tools and garden',
-            'icon' => '🏠',
+            'icon' => 'sofa',
             'children' => ['furniture', 'appliances', 'home', 'tools'],
         ],
         'tech' => [
             'name' => 'Electronics & Tech',
             'subtitle' => 'Computers, phones, games and electronics',
-            'icon' => '💻',
+            'icon' => 'laptop',
             'children' => ['electronics', 'computers', 'phones', 'gaming'],
         ],
         'farm-outdoors' => [
             'name' => 'Farm & Outdoors',
             'subtitle' => 'Agricultural equipment and outdoor gear',
-            'icon' => '🚜',
+            'icon' => 'tractor',
             'children' => ['farm', 'outdoor'],
         ],
         'lifestyle' => [
             'name' => 'Lifestyle & Family',
             'subtitle' => 'Sports, fashion, children, pets and collectibles',
-            'icon' => '🧸',
+            'icon' => 'shopping-bag',
             'children' => ['sports', 'clothing', 'collectibles', 'pets', 'kids'],
         ],
         'miscellaneous' => [
             'name' => 'Other Listings',
             'subtitle' => 'Everything else you might be looking for',
-            'icon' => '📦',
+            'icon' => 'package',
             'children' => ['other'],
         ],
     ];
@@ -73,7 +73,7 @@ final class MarketplaceCategories
             $result['additional'] = [
                 'name' => 'More categories',
                 'subtitle' => 'Additional classified listing categories',
-                'icon' => '🗂️',
+                'icon' => 'layers',
                 'children' => array_keys($unmapped),
                 'available' => $unmapped,
             ];
