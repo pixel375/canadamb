@@ -1,9 +1,18 @@
 @php($site = request()->attributes->get('site'))
 <x-layouts.site :title="$business->exists ? 'Manage '.$business->name : 'Add a business'">
-    <div class="container page-shell narrow">
+    <div class="container page-shell listing-editor">
         <div class="page-intro"><div><h1>{{ $business->exists ? $business->name : 'Add a business' }}</h1><a class="text-link mt-2" href="/account/businesses">My businesses</a></div></div>
+        @if($business->exists)
+            <section class="panel form-stack" aria-label="Business overview">
+                <div class="inline-actions"><span class="member-listing-status" data-status="{{ $business->status }}">{{ ucfirst($business->status) }}</span><span class="field-note">{{ $business->status === 'active' ? 'Your profile has been approved.' : 'This profile is not currently public.' }}</span></div>
+                <h2>Branches on this portal</h2>
+                @forelse($branches as $branch)<div><strong>{{ $branch->location->name }}</strong><p>{{ $branch->address }}</p></div>@empty<p>No branches on this portal. Manage other locations on CanadaMB.ca.</p>@endforelse
+                @if($business->status === 'active' && app(\App\Support\BusinessDirectory::class)->enabled($site) && $branches->isNotEmpty())<a class="text-link" href="/businesses/{{ $business->slug }}">View public profile <x-icon name="arrow" size="16"/></a>@endif
+            </section>
+        @endif
         <form class="panel form-stack" method="post" action="{{ $business->exists ? '/account/businesses/'.$business->id : '/account/businesses' }}">
             @csrf
+            <h2>{{ $business->exists ? 'Profile information' : 'Business information' }}</h2>
             @if($business->exists)@method('PUT')
             @else
                 <label>Business name<input name="name" value="{{ old('name') }}" required maxlength="140"></label>
@@ -18,6 +27,7 @@
             <label>Description<textarea name="description" rows="5" maxlength="2500">{{ old('description', $business->description) }}</textarea></label>
             <label>Hours<textarea name="hours" rows="3" maxlength="1000">{{ old('hours', $business->hours) }}</textarea></label>
             <label>Website<input type="url" name="website" maxlength="255" value="{{ old('website', $business->website) }}"></label>
+            <p class="field-note">The following contact details will appear on the public directory profile. Do not enter private contact information.</p>
             <label>Public contact email<input type="email" name="public_email" maxlength="254" value="{{ old('public_email', $business->public_email) }}"></label>
             <label>Public phone<input type="tel" name="phone" maxlength="32" value="{{ old('phone', $business->phone) }}"></label>
             <div><button class="button button-primary">{{ $business->exists ? 'Save profile' : 'Submit for review' }}</button></div>
@@ -35,6 +45,11 @@
                 <label>Update<textarea name="body" rows="5" maxlength="3000" required>{{ old('body') }}</textarea></label>
                 <div><button class="button button-primary">Submit update for review</button></div>
             </form>
+        @endif
+        @if($business->exists && ($recentUpdates ?? collect())->isNotEmpty())
+            <section class="panel mt-4"><h2>Recent business updates</h2><p class="field-note">Only approved updates are visible publicly.</p>
+                @foreach($recentUpdates as $update)<article class="item-row"><div><h3>{{ $update->title }}</h3><p>{{ ucfirst($update->type) }} · {{ \Illuminate\Support\Carbon::parse($update->created_at)->format('M j, Y') }}</p></div><span class="member-listing-status" data-status="{{ $update->status }}">{{ ucfirst($update->status) }}</span></article>@endforeach
+            </section>
         @endif
     </div>
 </x-layouts.site>
