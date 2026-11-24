@@ -137,12 +137,22 @@ class MarketplaceEngagementTest extends TestCase
         $this->get($inbox.'?q=%25')->assertOk()->assertDontSee('Are the chairs included?');
         $url = "https://brandonmb.ca/account/messages/$thread->id";
         $this->actingAs($stranger)->get($url)->assertNotFound();
+        $this->postJson($url.'/sync', ['after' => 0])->assertNotFound();
+        $first = $thread->messages()->sole();
+        $this->actingAs($seller)->postJson($url.'/sync', ['after' => 0])->assertOk()
+            ->assertJsonPath('messages.0.body', 'Are the chairs included?')
+            ->assertJsonPath('messages.0.own', false)
+            ->assertJsonPath('counts.messages', 1);
+        $this->postJson($url.'/sync', ['after' => $first->id, 'seen' => $first->id])->assertOk()
+            ->assertJsonCount(0, 'messages')->assertJsonPath('counts.messages', 0);
+        $this->postJson($url.'/sync', ['after' => -1])->assertUnprocessable();
         $this->actingAs($seller)->get($url)->assertOk()->assertSee('Are the chairs included?');
         $this->get($inbox.'?view=unread')->assertOk()->assertDontSee('Are the chairs included?');
         $this->post($url, ['body' => 'Yes, all four are included.'])->assertRedirect();
         $this->actingAs($buyer)->get($url)->assertSee('Yes, all four are included.');
         $this->post("$url/block")->assertRedirect();
         $this->actingAs($seller)->post($url, ['body' => 'Can you still see this message?'])->assertForbidden();
+        $this->postJson($url.'/sync', ['after' => $first->id])->assertOk()->assertJsonPath('blocked', true);
         $this->assertDatabaseCount('messages', 2);
     }
 }
