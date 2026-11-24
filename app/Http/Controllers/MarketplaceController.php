@@ -155,10 +155,22 @@ class MarketplaceController extends Controller
     {
         $site = $request->attributes->get('site');
 
-        return view('marketplace.mine', ['items' => Listing::with('location')
-            ->where('user_id', $request->user()->id)->where('status', '!=', 'removed')
-            ->when($site->location_id, fn ($query, $id) => $query->where('location_id', $id))
-            ->latest()->paginate(18)]);
+        abort_unless($this->marketplace->enabled($site), 404);
+        $statuses = ['active', 'pending', 'expired', 'rejected', 'sold'];
+        $filters = $request->validate([
+            'status' => ['nullable', Rule::in($statuses)],
+            'q' => ['nullable', 'string', 'max:100'],
+        ]);
+        $owned = Listing::query()->where('user_id', $request->user()->id)
+            ->whereIn('status', $statuses)
+            ->when($site->location_id, fn ($query, $id) => $query->where('location_id', $id));
+        $counts = (clone $owned)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
+        $items = $owned->with(['location', 'media'])
+            ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
+            ->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'description']))
+            ->latest()->latest('id')->paginate(18)->withQueryString();
+
+        return view('marketplace.mine', compact('items', 'counts', 'statuses', 'filters'));
     }
 
     public function edit(Request $request, int $listing)
