@@ -24,7 +24,10 @@
                         @endif
                     </p>
                     @if($discussionsEnabled)
-                        <a class="text-link" href="/account/community-notifications">All discussion notifications <x-icon name="arrow" size="16"/></a>
+                        <div class="activity-card-links">
+                            <a class="text-link" href="/account/community-notifications">All discussion notifications <x-icon name="arrow" size="16"/></a>
+                            <a class="text-link" href="/account/followed-discussions">Following discussions <x-icon name="arrow" size="16"/></a>
+                        </div>
                     @endif
                 </div>
             </section>
@@ -42,7 +45,7 @@
                         @foreach($recent as $notification)
                         <div class="item-row">
                             <div>
-                                <h3><a class="text-link" href="/community/{{ $notification->thread_id }}">{{ $notification->title }}</a></h3>
+                                <h3><a class="text-link" href="/community/{{ $notification->thread_id }}/replies/{{ $notification->reply_id }}">{{ $notification->title }}</a></h3>
                                 <p>{{ \Illuminate\Support\Carbon::parse($notification->created_at)->diffForHumans() }}{{ $notification->read_at ? '' : ' · Unread' }}</p>
                             </div>
                             @if(! $notification->read_at)

@@ -60,6 +60,32 @@ class CommunityForumController extends Controller
         return view('community.thread', compact('item', 'canonical', 'replies', 'following'));
     }
 
+    public function followed(Request $request)
+    {
+        $site = $request->attributes->get('site');
+        abort_unless($this->community->enabled($site, 'community'), 404);
+
+        $threads = $this->community->threads($site->location_id)
+            ->whereIn('community_threads.id', DB::table('community_thread_follows')
+                ->select('thread_id')->where('user_id', $request->user()->id))
+            ->orderByDesc('last_activity_at')->orderByDesc('id')
+            ->paginate(18);
+
+        return view('community.followed', compact('threads'));
+    }
+
+    public function replyPermalink(Request $request, int $thread, int $reply)
+    {
+        $item = $this->visible($request)->findOrFail($thread);
+        $approved = $item->replies()->where('status', 'approved')->findOrFail($reply);
+        $position = $item->replies()->where('status', 'approved')->where('id', '<=', $approved->id)->count();
+        $page = (int) ceil($position / 25);
+        $canonical = NetworkUrl::to($this->community->canonicalSite($item, 'community'), '/community/'.$item->id);
+
+        return redirect()->away($canonical.($page > 1 ? '?page='.$page : '').'#reply-'.$approved->id,
+            302, ['Cache-Control' => 'no-store']);
+    }
+
     public function create(Request $request)
     {
         $site = $request->attributes->get('site');
@@ -120,10 +146,16 @@ class CommunityForumController extends Controller
 
     public function notifications(Request $request)
     {
+        $view = $request->validate(['view' => 'sometimes|in:all,unread'])['view'] ?? 'all';
+        $unreadCount = $this->visibleNotifications($request)->whereNull('notifications.read_at')->count();
         $notifications = $this->visibleNotifications($request)
-            ->orderByDesc('notifications.id')->paginate(20, ['notifications.id', 'notifications.read_at', 'notifications.created_at', 'threads.id as thread_id', 'threads.title']);
+            ->when($view === 'unread', fn (Builder $query) => $query->whereNull('notifications.read_at'))
+            ->orderByRaw('CASE WHEN notifications.read_at IS NULL THEN 0 ELSE 1 END')
+            ->orderByDesc('notifications.id')
+            ->paginate(20, ['notifications.id', 'notifications.reply_id', 'notifications.read_at', 'notifications.created_at', 'threads.id as thread_id', 'threads.title'])
+            ->withQueryString();
 
-        return view('community.notifications', compact('notifications'));
+        return view('community.notifications', compact('notifications', 'view', 'unreadCount'));
     }
 
     public function readNotification(Request $request, int $notification)
@@ -132,7 +164,28 @@ class CommunityForumController extends Controller
         DB::table('community_notifications')->where(['id' => $notification, 'user_id' => $request->user()->id])
             ->whereNull('read_at')->update(['read_at' => now()]);
 
-        return redirect('/account/notifications');
+        $returnTo = $request->input('return_to');
+
+        return in_array($returnTo, ['all', 'unread'], true)
+            ? redirect('/account/community-notifications'.($returnTo === 'unread' ? '?view=unread' : ''))
+                ->with('status', 'Notification marked as read.')
+            : redirect('/account/notifications');
+    }
+
+    public function readAllNotifications(Request $request)
+    {
+        // Only mark the current user's approved, visible replies on this portal.
+        // Use bounded updates to avoid large SQL parameter lists.
+        $ids = $this->visibleNotifications($request)->whereNull('notifications.read_at')
+            ->pluck('notifications.id');
+        foreach ($ids->chunk(250) as $chunk) {
+            DB::table('community_notifications')->where('user_id', $request->user()->id)
+                ->whereIn('id', $chunk->all())->whereNull('read_at')
+                ->update(['read_at' => now()]);
+        }
+
+        return redirect('/account/community-notifications')
+            ->with('status', 'All visible discussion notifications marked as read.');
     }
 
     private function visibleNotifications(Request $request): Builder

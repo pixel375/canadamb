@@ -74,6 +74,7 @@
                             </button>
                         </form>
                         <p class="discussion-follow-hint">{{ $following ? 'You will no longer receive new reply notifications after unfollowing.' : 'Get notifications when approved replies are posted.' }}</p>
+                        <a class="text-link discussion-followed-link" href="/account/followed-discussions">My followed discussions <x-icon name="arrow" size="15"/></a>
                     @endif
                 </section>
                 <a class="discussion-thread-all" href="/community"><x-icon name="arrow" size="16"/> Browse more discussions</a>

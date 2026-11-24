@@ -1137,3 +1137,60 @@ a.market-category-card:hover, a.market-category-card:focus-visible {
     .discussion-reply-submit .button { width: 100%; }
     .discussion-reply-notice { padding: 17px; }
 }
+
+
+/* Private discussion activity: scannable notifications and followed conversations. */
+.discussion-notification-shell, .discussion-followed-shell { max-width: 1010px; }
+.discussion-notifications-intro, .discussion-followed-intro { align-items: center; }
+.discussion-notification-tools { display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between;
+    gap: 12px; margin: 22px 0 13px; }
+.discussion-notification-filters { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.discussion-notification-filters a { display: inline-flex; align-items: center; gap: 7px; min-height: 40px; padding: 9px 14px;
+    border: 1px solid var(--border); border-radius: 999px; color: var(--muted); background: var(--card);
+    font-size: .83rem; font-weight: 750; }
+.discussion-notification-filters a:hover, .discussion-notification-filters a[aria-current] {
+    color: var(--link); border-color: var(--primary); background: var(--soft); }
+.discussion-notification-filters a span { font-variant-numeric: tabular-nums; font-size: .73rem;
+    border-radius: 999px; background: var(--soft); padding: 2px 7px; }
+.discussion-notification-list, .discussion-followed-list { padding-block: 0; }
+.discussion-notification-row { display: grid; grid-template-columns: 8px minmax(0,1fr) auto;
+    align-items: center; gap: 14px; padding: 20px 0; border-bottom: 1px solid var(--border); }
+.discussion-notification-row:last-child { border-bottom: 0; }
+.discussion-notification-indicator { display: block; width: 7px; height: 7px; border-radius: 50%; background: var(--border); }
+.discussion-notification-row.is-unread .discussion-notification-indicator { background: var(--primary); }
+.discussion-notification-body { min-width: 0; }
+.discussion-notification-body .section-label { margin-bottom: 4px; }
+.discussion-notification-body h2 { font-size: 1.06rem; line-height: 1.4; overflow-wrap: anywhere; }
+.discussion-notification-body h2 a:hover { color: var(--link); text-decoration: underline; text-underline-offset: 3px; }
+.discussion-notification-body > p:last-child { display: flex; align-items: center; gap: 6px; margin-top: 7px;
+    font-size: .77rem; color: var(--muted); }
+.discussion-notification-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
+.discussion-notification-actions .button { min-height: 39px; font-size: .78rem; white-space: nowrap; }
+.discussion-notification-row.is-unread .discussion-notification-body h2 { font-weight: 800; }
+.discussion-notifications-empty { display: grid; justify-items: center; gap: 9px; padding: 37px 15px; text-align: center; }
+.discussion-notifications-empty > svg { color: var(--link); margin-bottom: 5px; }
+.discussion-notifications-empty h2 { font-size: 1.18rem; }
+.discussion-notifications-empty p { max-width: 46ch; font-size: .87rem; }
+.discussion-notifications-empty .button { margin-top: 8px; }
+.discussion-followed-heading { display: flex; justify-content: space-between; align-items: center;
+    gap: 12px; margin: 19px 0 13px; }
+.discussion-followed-heading h2 { font-size: 1.25rem; }
+.discussion-followed-list .discussion-topic:last-child { border-bottom: 0; }
+.discussion-followed-link { margin-top: 13px; }
+.activity-card-links { display: grid; justify-items: start; gap: 8px; margin-top: 11px; }
+.activity-card-links .text-link { margin: 0; }
+@media (max-width: 760px) {
+    .discussion-notification-row { grid-template-columns: 7px minmax(0,1fr); gap: 9px 12px; }
+    .discussion-notification-actions { grid-column: 2; justify-content: flex-start; }
+    .discussion-notification-actions .button { min-height: 38px; }
+    .discussion-notification-tools > form .button { min-height: 38px; font-size: .77rem; }
+    .discussion-notification-filters a { padding: 8px 11px; font-size: .77rem; }
+    .discussion-notifications-intro, .discussion-followed-intro { align-items: flex-start; flex-wrap: wrap; }
+    .discussion-notifications-intro > .button, .discussion-followed-intro > .button { font-size: .8rem; }
+}
+@media (max-width: 420px) {
+    .discussion-notification-tools { align-items: flex-start; flex-direction: column; }
+    .discussion-notification-list { padding-inline: 14px; }
+    .discussion-notification-actions { gap: 6px; }
+    .discussion-notification-actions .button { padding-inline: 11px; }
+}

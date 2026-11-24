@@ -7,6 +7,11 @@
                 <p>Ask questions, share recommendations, and see what's happening nearby.</p>
             </div>
             <div class="discussion-intro-actions">
+                @auth
+                    @if(auth()->user()->hasVerifiedEmail())
+                        <a class="button button-outline" href="/account/followed-discussions"><x-icon name="bell" size="17"/> Following</a>
+                    @endif
+                @endauth
                 <a class="button button-primary" href="/community/new"><x-icon name="plus" size="17"/> Start a discussion</a>
                 @if($eventsEnabled)
                     <a class="button button-outline" href="/community/new?type=event"><x-icon name="calendar" size="17"/> Submit an event</a>
