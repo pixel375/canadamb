@@ -84,6 +84,27 @@ const fs = require('node:fs');
                 await page.locator('a[href="/marketplace?category=cars"]').click();
                 check(new URL(page.url()).searchParams.get('category') === 'cars',
                     'Subcategory did not preserve legacy listing URL');
+                // Discussion hub and its vertical, expandable events calendar
+                // must remain usable at the same six responsive widths.
+                await page.goto(host + '/community');
+                check(await page.getByRole('heading', { name: 'Discussions', exact: true }).isVisible(),
+                    'Discussions hub missing at ' + host + ' ' + width);
+                check(await page.locator('.discussion-hub').isVisible(),
+                    'Responsive discussion layout is missing');
+                check(await page.locator('.discussion-events').isVisible(),
+                    'Events timeline is not integrated into Discussions');
+                check(await page.locator('a[href="/community/new?type=event"]').count() > 0,
+                    'No event-request entry point from Discussions');
+                check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+                    'Discussions overflow at ' + host + ' ' + width);
+                if (width === 390 || width === 1440) {
+                    await page.screenshot({
+                        path: 'test-results/' + (host.includes('brandon') ? 'brandon' : 'province') +
+                            '-discussions-' + width + '.png',
+                        fullPage: true,
+                        animations: 'disabled',
+                    });
+                }
                 if (host.includes('canadamb') && width === 390) {
                     await page.goto(host + '/marketplace?location=brandon');
                     check(await page.getByRole('heading', { name: 'What are you looking for?' }).isVisible(),
@@ -95,7 +116,7 @@ const fs = require('node:fs');
                 }
             }
         }
-        console.log('PASS: desktop navigation and category-first Marketplace on both hosts at six widths');
+        console.log('PASS: desktop menus, Marketplace and Discussions/Events on both hosts at six widths');
     } catch (error) {
         try { await page.screenshot({ path: 'test-results/prelaunch-nav-failure.png', fullPage: true }); } catch {}
         console.error(error?.stack || error);
