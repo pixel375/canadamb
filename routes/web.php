@@ -41,6 +41,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/account/settings', [UserProfileController::class, 'update'])->middleware('throttle:8,1');
 });
 Route::get('/communities', [PublicController::class, 'communities']);
+Route::post('/communities/preference', [PublicController::class, 'rememberCommunity'])->middleware('throttle:12,1');
 Route::get('/sitemap.xml', [PublicController::class, 'sitemap']);
 Route::get('/robots.txt', [PublicController::class, 'robots']);
 Route::get('/real-estate', [RealEstateController::class, 'index']);
