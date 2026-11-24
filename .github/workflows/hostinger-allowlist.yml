@@ -19,7 +19,8 @@ concurrency:
 
 jobs:
   update:
-    if: github.event_name == 'workflow_dispatch' || github.event.head_commit.message == 'ops: apply requested November 24 prelaunch access addition'
+    if: >-
+      github.event_name == 'workflow_dispatch' || github.event.head_commit.message == 'Apply requested November 24 prelaunch access addition'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: hostinger-prelaunch
