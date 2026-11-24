@@ -55,9 +55,23 @@
             <form action="/real-estate" method="get" class="panel filter-bar" role="search">
                 <label>Keywords<input type="search" name="q" maxlength="100" value="{{ $filters['q'] ?? '' }}" placeholder="Search homes and land"></label>
                 <label>Listing type<select name="transaction"><option value="">Sale or rent</option><option value="sale" @selected(($filters['transaction'] ?? '') === 'sale')>For sale</option><option value="rent" @selected(($filters['transaction'] ?? '') === 'rent')>For rent</option></select></label>
-                <label>Property type<select name="property_type"><option value="">All types</option>@foreach(\App\Models\PropertyListing::TYPES as $key => $label)<option value="{{ $key }}" @selected(($filters['property_type'] ?? '') === $key)>{{ $label }}</option>@endforeach</select></label>
+                <label>Property type
+                    <select name="property_type">
+                        <option value="">All types</option>
+                        @foreach(\App\Models\PropertyListing::TYPES as $key => $label)
+                            <option value="{{ $key }}" @selected(($filters['property_type'] ?? '') === $key)>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </label>
                 @if($site->isNetwork())
-                    <label>Community<select name="location"><option value="">All Manitoba</option>@foreach($locations as $place)<option value="{{ $place->slug }}" @selected(($filters['location'] ?? '') === $place->slug)>{{ $place->name }}</option>@endforeach</select></label>
+                    <label>Community
+                        <select name="location">
+                            <option value="">All Manitoba</option>
+                            @foreach($locations as $place)
+                                <option value="{{ $place->slug }}" @selected(($filters['location'] ?? '') === $place->slug)>{{ $place->name }}</option>
+                            @endforeach
+                        </select>
+                    </label>
                 @endif
                 <label>Minimum price (CAD)<input type="number" name="min_price" min="0" max="1000000000" step=".01" value="{{ $filters['min_price'] ?? '' }}" placeholder="No minimum"></label>
                 <label>Maximum price (CAD)<input type="number" name="max_price" min="0" max="1000000000" step=".01" value="{{ $filters['max_price'] ?? '' }}" placeholder="No maximum"></label>
@@ -73,7 +87,9 @@
         <section aria-labelledby="property-results-heading">
             <div class="property-section-heading">
                 <div><p class="section-label">Available property listings</p><h2 id="property-results-heading">Browse properties</h2></div>
-                @if($publicEnabled)<span class="discussion-count">{{ $items->total() }} results</span>@endif
+                @if($publicEnabled)
+                    <span class="discussion-count">{{ $items->total() }} results</span>
+                @endif
             </div>
             @if(! $publicEnabled)
                 <div class="property-empty">
@@ -104,7 +120,11 @@
                                 <p class="section-label">{{ $item->transaction === 'rent' ? 'For rent' : 'For sale' }} · {{ $item->location->name }}</p>
                                 <h3><a href="/real-estate/{{ $item->id }}">{{ $item->title }}</a></h3>
                                 <strong class="property-result-price">${{ number_format($item->price_cents / 100) }}{{ $item->transaction === 'rent' ? ' / month' : '' }}</strong>
-                                <p class="property-result-meta">{{ \App\Models\PropertyListing::TYPES[$item->property_type] }}@if($item->bedrooms !== null) · {{ $item->bedrooms }} bed@endif @if($item->bathrooms !== null) · {{ $item->bathrooms }} bath@endif</p>
+                                <p class="property-result-meta">
+                                    {{ \App\Models\PropertyListing::TYPES[$item->property_type] }}
+                                    {{ $item->bedrooms === null ? '' : ' · '.$item->bedrooms.' bed' }}
+                                    {{ $item->bathrooms === null ? '' : ' · '.$item->bathrooms.' bath' }}
+                                </p>
                             </div>
                         </article>
                     @endforeach
