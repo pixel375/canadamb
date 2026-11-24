@@ -1522,3 +1522,7 @@ a.market-category-card:hover, a.market-category-card:focus-visible {
     .chat-composer-footer { flex-wrap: wrap; }
     .chat-composer-footer .button { width: 100%; }
 }
+
+.chat-sync-status { padding: 0 20px 12px; min-height: 1.5em; }
+.chat-composer button:disabled { opacity: .55; cursor: not-allowed; }
+@media (max-width: 580px) { .chat-sync-status { padding-inline: 13px; } }
