@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\PropertyReviewController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\TestAccountController;
 use App\Http\Controllers\Admin\ThemeController;
+use App\Http\Controllers\AccountNotificationsController;
 use App\Http\Controllers\BusinessController;
 use App\Http\Controllers\CommunityEventController;
 use App\Http\Controllers\CommunityForumController;
@@ -63,6 +64,7 @@ Route::get('/marketplace/{listing}/photo/{photo}', [ListingEngagementController:
 Route::get('/marketplace/{listing}/thumbnail/{photo}', [ListingEngagementController::class, 'photo'])
     ->whereNumber(['listing', 'photo'])->defaults('thumbnail', true);
 Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/account/notifications', [AccountNotificationsController::class, 'index']);
     Route::get('/account/properties', [PropertyDraftController::class, 'index']);
     Route::get('/account/properties/new', [PropertyDraftController::class, 'create']);
     Route::post('/account/properties', [PropertyDraftController::class, 'store'])->middleware('throttle:6,1');

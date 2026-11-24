@@ -111,7 +111,7 @@ class CommunityForumController extends Controller
         DB::table('community_notifications')->where(['id' => $notification, 'user_id' => $request->user()->id])
             ->whereNull('read_at')->update(['read_at' => now()]);
 
-        return redirect('/account/community-notifications');
+        return redirect('/account/notifications');
     }
 
     private function visibleNotifications(Request $request): Builder

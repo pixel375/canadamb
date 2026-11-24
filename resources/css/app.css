@@ -634,3 +634,34 @@ a.market-category-card:hover, a.market-category-card:focus-visible {
     .market-category-upcoming .market-category-description { grid-row: 2; font-size: .76rem; }
     .market-category-upcoming .market-category-coming { grid-row: 3; justify-self: start; }
 }
+
+
+/* Account activity navigation: unread indicators with no background polling. */
+.nav-count { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px; background: var(--button); color: var(--button-text); font-size: .7rem; font-weight: 850; line-height: 1; font-variant-numeric: tabular-nums; text-decoration: none; }
+.site-drawer-nav > a .nav-count { margin-left: auto; }
+.header-actions .header-inbox { position: relative; }
+.header-actions .header-inbox .nav-count { margin-left: 1px; }
+.mobile-tab-bar a { position: relative; }
+.mobile-tab-bar .nav-count { position: absolute; top: 0; left: calc(50% + 8px); min-width: 18px; height: 18px; padding-inline: 4px; font-size: .65rem; box-shadow: 0 0 0 2px var(--header); }
+@media (min-width: 761px) and (max-width: 1220px) {
+    .header-actions .header-inbox { width: 43px; min-width: 43px; height: 43px; padding: 0; justify-content: center; }
+    .header-actions .header-inbox .header-action-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    .header-actions .header-inbox .nav-count { position: absolute; top: -3px; right: -5px; margin: 0; }
+}
+@media (max-width: 760px) { .header-actions .header-inbox { display: none; } }
+.activity-overview { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 20px 0 26px; }
+.activity-card { display: flex; gap: 14px; align-items: flex-start; padding: 19px; border: 1px solid var(--border); border-radius: 13px; background: var(--card); min-width: 0; }
+.activity-card .activity-icon { display: grid; place-items: center; flex: 0 0 43px; width: 43px; height: 43px; border-radius: 12px; background: var(--soft); color: var(--link); }
+.activity-card h2 { font-size: 1.1rem; margin-bottom: 5px; }
+.activity-card p { font-size: .84rem; line-height: 1.45; }
+.activity-card .text-link { margin-top: 11px; }
+.activity-card-body { min-width: 0; }
+.activity-panel .item-row { align-items: flex-start; }
+.activity-panel .item-row > div { min-width: 0; flex: 1 1 auto; }
+.activity-panel .item-row p { font-size: .82rem; margin-top: 4px; }
+.activity-panel .item-row .button { flex-shrink: 0; white-space: nowrap; }
+@media (max-width: 620px) {
+    .activity-overview { grid-template-columns: 1fr; gap: 10px; }
+    .activity-card { padding: 15px; }
+    .activity-panel .item-row { flex-wrap: wrap; gap: 9px; }
+}

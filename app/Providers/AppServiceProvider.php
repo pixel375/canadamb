@@ -10,6 +10,7 @@ use App\Http\Responses\PasswordResetRequested;
 use App\Http\Responses\RegistrationResponse;
 use App\Models\CommunityOAuthClient;
 use App\Models\User;
+use App\Support\AccountActivity;
 use App\Support\Identity;
 use App\Support\NetworkSettings;
 use Illuminate\Auth\Events\Login;
@@ -57,7 +58,12 @@ class AppServiceProvider extends ServiceProvider
         View::composer('components.layouts.site', function ($view) {
             $site = request()->attributes->get('site');
             if ($site) {
-                $view->with(['site' => $site, 'networkSettings' => app(NetworkSettings::class)->forSite($site)]);
+                $settings = app(NetworkSettings::class)->forSite($site);
+                $user = request()->user();
+                $navCounts = $user && $user->hasVerifiedEmail()
+                    ? app(AccountActivity::class)->counts($user, $site)
+                    : ['messages' => 0, 'notifications' => 0];
+                $view->with(['site' => $site, 'networkSettings' => $settings, 'navCounts' => $navCounts]);
             }
         });
 
