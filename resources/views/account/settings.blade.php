@@ -10,6 +10,12 @@
         </form>
         <section class="panel form-stack" aria-labelledby="device-preferences-heading">
             <h2 id="device-preferences-heading">Device preferences</h2>
+            <div class="device-community-setting">
+                <?php $settingsSite = request()->attributes->get("site"); $savedCommunity = \App\Support\LocationScope::preferred($settingsSite, request()->cookie(\App\Support\LocationScope::PREFERENCE_COOKIE)); ?>
+                <strong>Preferred community</strong>
+                <p>{{ $settingsSite->isNetwork() ? ($savedCommunity?->name ?? "All Manitoba") : $settingsSite->location?->name }}</p>
+                <a class="text-link" href="{{ $settingsSite->isNetwork() ? '/communities' : \App\Support\NetworkUrl::to(\App\Support\NetworkUrl::main(), '/communities') }}">Manage preferred community <x-icon name="arrow" size="16"/></a>
+            </div>
             <label>Appearance
                 <select id="theme-choice-settings">
                     <option value="system">Match system</option>
