@@ -33,7 +33,16 @@
             </section>
             <section class="panel form-stack listing-editor-section" aria-labelledby="listing-photos-heading">
                 <h2 id="listing-photos-heading">3. Photos</h2>
-            <label>Photos<input data-listing-photos type="file" name="photos[]" accept="image/jpeg,image/png,image/webp" multiple><small class="field-note">Up to five JPEG, PNG or WebP photos, 4 MB each. {{ $item->exists ? 'Selecting new photos replaces the current set.' : '' }}</small></label>
+            <label>Photos<input data-listing-photos type="file" name="photos[]" accept="image/jpeg,image/png,image/webp" multiple><small class="field-note">Up to five JPEG, PNG or WebP photos, 4 MB each. Choose a cover photo or remove unwanted selections before submitting. {{ $item->exists ? 'Selecting new photos replaces the current set.' : '' }}</small></label>
+            @if($item->exists && $item->media->isNotEmpty())
+                <div><h3>Current photos</h3><p class="field-note">Leave the file picker empty to keep these photos.</p>
+                    <div class="listing-photo-preview">
+                        @foreach($item->media as $photo)
+                            <figure><img src="/marketplace/{{ $item->id }}/thumbnail/{{ $photo->id }}" alt="Current photo {{ $loop->iteration }}" loading="lazy"><figcaption>{{ $loop->first ? 'Current cover' : 'Photo '.$loop->iteration }}</figcaption></figure>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
             <p class="field-note" data-photo-feedback role="status" aria-live="polite"></p>
             <div class="listing-photo-preview" data-photo-preview hidden></div>
             </section>
