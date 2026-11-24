@@ -50,17 +50,17 @@
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
-@php($isPreview = $preview ?? false)
-@php($marketEnabled = $networkSettings['modules']['marketplace'] ?? false)
-@php($localLabel = $site->location?->name ?? 'Manitoba')
-@php
+<?php $isPreview = $preview ?? false; ?>
+<?php $marketEnabled = $networkSettings['modules']['marketplace'] ?? false; ?>
+<?php $localLabel = $site->location?->name ?? 'Manitoba'; ?>
+<?php
     $browsePaths = ['/', 'marketplace', 'real-estate', 'businesses', 'business-updates', 'community', 'jobs', 'events', 'news'];
     $browsePlace = $location ?? (in_array(request()->path(), $browsePaths, true)
         ? \App\Support\LocationScope::forBrowsing($site, request()->query('location'), request()->is('jobs'))
         : $site->location);
     $browseLink = fn (string $path) => \App\Support\LocationScope::browseUrl($site, $path, $browsePlace);
-@endphp
-@php($registerLink = !config('network.prelaunch') || ($networkSettings['prelaunch_test_registration_enabled'] ?? false) === true ? ($site->isNetwork() ? '/register' : \App\Support\NetworkUrl::to(\App\Support\NetworkUrl::main(), '/register?community='.$site->id)) : null)
+?>
+<?php $registerLink = !config('network.prelaunch') || ($networkSettings['prelaunch_test_registration_enabled'] ?? false) === true ? ($site->isNetwork() ? '/register' : \App\Support\NetworkUrl::to(\App\Support\NetworkUrl::main(), '/register?community='.$site->id)) : null; ?>
 @if($isPreview)<aside class="preview-notice">Preview of {{ $site->name }} <a href="/admin/communities/{{ $site->id }}">Return to community settings</a></aside>@endif
 <header class="site-header">
     <div class="container masthead">
@@ -260,7 +260,7 @@
         </ul></div></div>
     @endif
     @unless($isPreview)
-        @php
+        <?php
             $searchSections = array_filter([
                 'marketplace' => $marketEnabled ? 'Marketplace' : null,
                 'businesses' => app(\App\Support\BusinessDirectory::class)->enabled($site) ? 'Businesses' : null,
@@ -272,9 +272,9 @@
             ]);
             $searchSection = request()->path();
             $searchTerm = request()->query('q');
-        @endphp
+        ?>
         @if(isset($searchSections[$searchSection]) && is_string($searchTerm) && trim($searchTerm) !== '' && count($searchSections) > 1)
-            @php
+            <?php
                 $searchLocation = request()->query('location');
                 $searchPlace = null;
                 if ($site->isNetwork() && is_string($searchLocation) && trim($searchLocation) !== '') {
@@ -282,7 +282,7 @@
                         ->where($searchSection === 'jobs' ? 'name' : 'slug', $searchLocation)->first();
                 }
                 $searchScopeUnknown = $site->isNetwork() && is_string($searchLocation) && trim($searchLocation) !== '' && ! $searchPlace;
-            @endphp
+            ?>
             <div class="container search-results-context">
                 <nav class="panel search-results-navigation" aria-label="Search other sections">
                     <p class="section-label">Search across sections</p>
@@ -292,12 +292,12 @@
                             @if($section === $searchSection)
                                 <span class="button button-primary" aria-current="page">{{ $label }}</span>
                             @else
-                                @php
+                                <?php
                                     $searchParams = ['q' => $searchTerm];
                                     if ($searchPlace) {
                                         $searchParams['location'] = $section === 'jobs' ? $searchPlace->name : $searchPlace->slug;
                                     }
-                                @endphp
+                                ?>
                                 <a class="button button-outline" href="{{ '/'.$section.'?'.http_build_query($searchParams, '', '&', PHP_QUERY_RFC3986) }}">{{ $label }}</a>
                             @endif
                         @endforeach
