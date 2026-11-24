@@ -211,8 +211,16 @@ jobs:
         run: |
           set -Eeuo pipefail
           for host in canadamb.ca brandonmb.ca; do
-            code=$(curl --silent --show-error --max-time 20 --output /dev/null \
-                 --write-out '%{http_code}' "https://$host/")
+            for attempt in 1 2 3 4 5 6; do
+              code=$(curl --silent --show-error --max-time 20 --output /dev/null \
+                   --write-out '%{http_code}' "https://$host/")
+              [[ "$code" == 403 ]] && break
+              # A just-ended maintenance window can briefly return 503.
+              # Never retry or accept 2xx, redirects, or other gate failures.
+              [[ "$code" == 503 && "$attempt" != 6 ]] || break
+              echo "$host still returning HTTP 503 after activation; rechecking in 5 seconds."
+              sleep 5
+            done
             [[ "$code" == 403 ]] || {
               echo "::warning::$host returned HTTP $code to an external runner; review prelaunch gate immediately."
               exit 1
