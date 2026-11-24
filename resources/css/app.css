@@ -1314,3 +1314,52 @@ a.market-category-card:hover, a.market-category-card:focus-visible {
     .home-search-form > svg { display: none; }
     .home-search-form .button { padding-inline: 8px; }
 }
+
+
+/* Desktop shell: distinct brand, search and account zones, with non-clipping
+   navigation. Keep the existing mobile drawer and bottom-tab layout. */
+@media (min-width: 1024px) {
+    .site-header { overflow: visible; }
+    .masthead { display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr) auto; gap: clamp(12px, 1.6vw, 24px); min-height: 83px; position: relative; z-index: 2; }
+    .masthead .brand { min-width: 0; max-width: 260px; margin: 0; }
+    .masthead .brand > span:last-child { min-width: 0; }
+    .masthead .brand strong, .masthead .brand small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .masthead .brand img, .masthead .brand-mark { flex: 0 0 42px; }
+    .masthead > .header-search { display: flex; width: 100%; max-width: 430px; min-width: 0; justify-self: center; gap: 9px; min-height: 46px; padding: 0 8px 0 13px; }
+    .header-search > svg { flex-shrink: 0; }
+    .header-search input[type=search] { flex: 1; min-width: 0; width: auto; }
+    .header-search-submit { display: grid; place-items: center; flex: 0 0 32px; width: 32px; height: 32px; border-radius: 7px; color: var(--link); background: var(--soft); }
+    .header-search-submit:hover { color: var(--button-text); background: var(--button); }
+    .masthead .header-actions { grid-column: 3; justify-self: end; margin: 0; gap: 7px; }
+    .header-actions .header-inbox { border-color: var(--border); background: var(--card); }
+    .header-actions .theme-control { padding-inline: 5px; }
+    .header-actions .header-post { display: inline-flex; align-items: center; min-height: 43px; }
+    .header-account-dropdown { z-index: 100; width: 250px; max-width: calc(100vw - 32px); }
+    .navigation-wrap { isolation: auto; position: relative; z-index: 1; overflow: visible; background: var(--header); }
+    .navigation { align-items: center; gap: 12px; min-height: 57px; overflow: visible; }
+    .navigation nav { flex: 1; flex-wrap: wrap; align-items: center; gap: 3px 5px; overflow: visible; padding-block: 5px; }
+    .navigation nav > a, .desktop-nav-group > summary { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 10px; min-height: 44px; border: 1px solid transparent; border-radius: 8px; font-size: .84rem; white-space: nowrap; }
+    .navigation nav > a:hover, .desktop-nav-group > summary:hover { background: var(--soft); text-decoration: none; }
+    .navigation nav > a[aria-current=page], .desktop-nav-group > summary[aria-current=page], .desktop-nav-group[open] > summary { background: var(--soft); border-color: var(--border); color: var(--link); }
+    .desktop-nav-group[open] > summary svg:not(.nav-group-chevron) { transform: none; }
+    .navigation nav .desktop-nav-submenu { top: calc(100% + 5px); min-width: 224px; border-radius: 12px; padding: 6px; z-index: 90; }
+    .navigation nav .desktop-nav-submenu a { gap: 10px; min-height: 43px; padding: 10px 12px; color: var(--text); }
+    .navigation nav .desktop-nav-submenu a svg { color: var(--link); flex-shrink: 0; }
+    .navigation .scope-link { display: inline-flex; align-items: center; min-width: 0; max-width: 190px; padding: 8px 11px; border: 1px solid var(--border); border-radius: 9px; background: var(--card); }
+    .scope-link svg { flex-shrink: 0; }
+    .scope-link span { overflow: hidden; text-overflow: ellipsis; }
+}
+@media (min-width: 1024px) and (max-width: 1199px) {
+    .navigation nav > a, .desktop-nav-group > summary { padding-inline: 7px; gap: 5px; font-size: .8rem; }
+    .navigation nav > a > svg, .desktop-nav-group > summary > svg:not(.nav-group-chevron) { display: none; }
+    .navigation .scope-link { max-width: 145px; padding-inline: 8px; }
+    .header-actions .header-post { padding-inline: 10px; }
+}
+@media (min-width: 1280px) {
+    .header-actions .header-inbox { flex: 0 0 auto; width: auto; gap: 6px; padding-inline: 10px; }
+    .header-actions .header-inbox .header-action-label { position: static; width: auto; height: auto; clip-path: none; overflow: visible; }
+    .header-actions .header-inbox .nav-count { top: -4px; right: -4px; }
+}
+@media (max-width: 1023px) {
+    .masthead > .header-search { display: none; }
+}
