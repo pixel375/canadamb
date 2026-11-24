@@ -79,6 +79,26 @@ class MarketplaceTest extends TestCase
         $this->assertDatabaseHas('listings', ['id' => $item->id, 'status' => 'expired']);
     }
 
+    public function test_keyword_search_combines_public_fields_and_preserves_visibility(): void
+    {
+        $seller = User::factory()->create();
+        $admin = User::factory()->create(['role' => 'network_admin']);
+        $rural = Location::where('slug', 'elkhorn')->sole();
+
+        $this->actingAs($seller)->postJson(self::MAIN.'/api/v1/marketplace',
+            $this->listing('Oak dining set') + ['location_id' => $rural->id])->assertCreated();
+        $item = Listing::sole();
+        $this->getJson(self::MAIN.'/api/v1/marketplace?q=chairs%20OAK')->assertJsonCount(0, 'data');
+
+        $this->actingAs($admin)->post(self::MAIN."/admin/moderation/$item->id", ['status' => 'active'])->assertRedirect();
+        $this->getJson(self::MAIN.'/api/v1/marketplace?q=chairs%20OAK')->assertOk()->assertJsonCount(1, 'data');
+        $this->getJson(self::MAIN.'/api/v1/marketplace?q=oak%20missingword')->assertOk()->assertJsonCount(0, 'data');
+        $this->getJson(self::MAIN.'/api/v1/marketplace?q=%25')->assertOk()->assertJsonCount(0, 'data');
+        $this->getJson(self::MAIN.'/api/v1/marketplace?q=_')->assertOk()->assertJsonCount(0, 'data');
+        $this->getJson(self::MAIN.'/api/v1/marketplace?q=chairs%20OAK&location=brandon')->assertOk()->assertJsonCount(0, 'data');
+        $this->getJson(self::CITY.'/api/v1/marketplace?q=chairs%20OAK')->assertOk()->assertJsonCount(0, 'data');
+    }
+
     private function listing(string $title): array
     {
         return ['title' => $title, 'description' => 'Includes the table and chairs.', 'category' => 'furniture',
