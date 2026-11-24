@@ -110,6 +110,7 @@
                             <a href="/account/profile" aria-label="My profile"><x-icon name="person" size="17"/> My profile</a>
                             <a href="/account/settings"><x-icon name="settings" size="17"/> Settings</a>
                             @if($marketEnabled)
+                                <a href="/account/listings"><x-icon name="marketplace" size="17"/> My listings</a>
                                 <a href="/account/saved"><x-icon name="tag" size="17"/> Saved listings</a>
                             @endif
                             @can('manage-network')
