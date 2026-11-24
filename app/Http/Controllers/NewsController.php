@@ -13,12 +13,17 @@ class NewsController extends Controller
     {
         $site = $request->attributes->get('site');
         abort_unless($news->enabled($site), 404);
-        $filter = $request->validate(['category' => ['nullable', Rule::in(array_keys(News::CATEGORIES))]]);
-        $items = $news->visible($site->location_id)
+        $filter = $request->validate([
+            'category' => ['nullable', Rule::in(array_keys(News::CATEGORIES))],
+            'location' => ['nullable', 'string', 'max:100', Rule::exists('locations', 'slug')->where('province', 'MB')->where('selectable', true)],
+        ]);
+        $place = \App\Support\LocationScope::forBrowsing($site, $filter['location'] ?? null);
+        $places = $site->isNetwork() ? \App\Models\Location::selectable()->orderBy('name')->get() : collect();
+        $items = $news->visible($place?->id)
             ->when($filter['category'] ?? null, fn ($query, $category) => $query->where('category', $category))
             ->paginate(18)->withQueryString();
 
-        return view('news.index', compact('items', 'filter'));
+        return view('news.index', compact('items', 'filter', 'place', 'places'));
     }
 
     public function show(Request $request, int $article, News $news)
