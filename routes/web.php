@@ -22,8 +22,8 @@ use App\Http\Controllers\MessagesController;
 use App\Http\Controllers\NewsController;
 use App\Http\Controllers\PropertyDraftController;
 use App\Http\Controllers\PublicController;
-use App\Http\Controllers\RealEstateController;
 use App\Http\Controllers\PwaController;
+use App\Http\Controllers\RealEstateController;
 use App\Http\Controllers\UserProfileController;
 use Illuminate\Support\Facades\Route;
 
