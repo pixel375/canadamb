@@ -236,6 +236,26 @@ const fs = require('node:fs');
             'Marketplace category discovery should remain full width');
         console.log('PASS: desktop filter sidebars and mobile disclosure behavior across six browse pages');
 
+        for (const width of [320, 390, 1024, 1440]) {
+            await page.setViewportSize({ width, height: 900 });
+            const directoryResponse = await page.goto(host + '/businesses?location=brandon');
+            check(directoryResponse.ok(), 'Business category discovery failed');
+            check(await page.locator('.business-category-tile').count() === 8, 'Expected all business categories');
+            const service = page.locator('.business-category-tile').filter({ hasText: 'Professional & local services' });
+            await service.click();
+            const url = new URL(page.url());
+            check(url.searchParams.get('category') === 'services' && url.searchParams.get('location') === 'brandon',
+                'Business category link lost its community');
+            check(await page.locator('.business-category-tile[aria-current="page"]').count() === 1, 'Category selection missing');
+            check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Business category overflow at ' + width);
+            const updatesResponse = await page.goto(host + '/business-updates?location=brandon&type=promotion&q=test');
+            check(updatesResponse.ok(), 'Filtered business activity failed');
+            check(await page.locator('select[name="type"]').inputValue() === 'promotion', 'Business update filter lost its type');
+            check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Business activity overflow at ' + width);
+        }
+        console.log('PASS: business category discovery and activity filters at four widths');
+
+
         for (const width of [320, 390, 1440]) {
             await page.setViewportSize({ width, height: 900 });
             const profileResponse = await page.goto(host + '/account/profile');
