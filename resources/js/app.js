@@ -377,3 +377,107 @@ for (const input of document.querySelectorAll('[data-listing-photos]')) {
         preview.hidden = files.length === 0;
     });
 }
+
+
+// Incremental, same-origin conversation refresh. Do not replace the composer
+// or reload the page; only acknowledge messages after they are visible.
+const chatPanel = document.querySelector('[data-chat-sync]');
+if (chatPanel) {
+    const history = chatPanel.querySelector('[data-chat-history]');
+    const status = chatPanel.querySelector('[data-chat-status]');
+    const send = chatPanel.querySelector('[data-chat-send]');
+    let cursor = Number(chatPanel.dataset.chatCursor);
+    let pending = false;
+    let stopped = false;
+    let delay = 15000;
+    let timer;
+    const defaultStatus = 'Messages refresh automatically while this conversation is open.';
+    const latestVisible = () => {
+        if (document.hidden || !document.hasFocus()) return 0;
+        const last = history.lastElementChild;
+        if (!last) return 0;
+        const rect = last.getBoundingClientRect();
+        return rect.bottom <= innerHeight && rect.bottom > 0 ? Number(last.dataset.messageId) : 0;
+    };
+    const updateCounts = counts => {
+        for (const [name, path] of [['messages', '/account/messages'], ['notifications', '/account/notifications']]) {
+            const count = Math.max(0, Number(counts[name]) || 0);
+            for (const link of document.querySelectorAll('.site-header a, .site-drawer a, .mobile-tab-bar a')) {
+                if (link.getAttribute('href') !== path) continue;
+                let badge = link.querySelector('.nav-count');
+                if (!count) { badge?.remove(); continue; }
+                if (!badge) {
+                    badge = document.createElement('span');
+                    badge.className = 'nav-count';
+                    link.append(badge);
+                }
+                badge.textContent = count > 99 ? '99+' : String(count);
+                badge.setAttribute('aria-label', count + ' unread ' + name);
+                badge.title = count + ' unread ' + name;
+            }
+        }
+    };
+    const append = item => {
+        if (item.id <= cursor) return;
+        const article = document.createElement('article');
+        article.className = 'chat-message ' + (item.own ? 'is-own' : 'is-other');
+        article.dataset.messageId = String(item.id);
+        const meta = document.createElement('div');
+        meta.className = 'chat-message-meta';
+        const sender = document.createElement('strong');
+        sender.textContent = item.sender;
+        const time = document.createElement('time');
+        time.dateTime = item.created_at;
+        time.textContent = item.time_label;
+        const body = document.createElement('p');
+        body.className = 'chat-bubble';
+        body.textContent = item.body;
+        meta.append(sender, time);
+        article.append(meta, body);
+        history.append(article);
+        cursor = item.id;
+    };
+    const schedule = () => {
+        clearTimeout(timer);
+        if (!stopped && !document.hidden) timer = setTimeout(refresh, delay);
+    };
+    async function refresh() {
+        if (pending || stopped || document.hidden) return;
+        pending = true;
+        const seen = latestVisible();
+        try {
+            const response = await fetch(chatPanel.dataset.chatSync, {
+                method: 'POST', credentials: 'same-origin', cache: 'no-store',
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json',
+                    'X-CSRF-TOKEN': chatPanel.dataset.chatToken },
+                body: JSON.stringify({ after: cursor, seen }),
+            });
+            if ([401, 403, 404, 419].includes(response.status) || response.redirected) {
+                stopped = true;
+                status.textContent = 'Refresh paused. Reload this page to reconnect.';
+                return;
+            }
+            if (!response.ok) throw new Error('Refresh failed');
+            const data = await response.json();
+            for (const item of data.messages) append(item);
+            updateCounts(data.counts);
+            if (send) send.disabled = Boolean(data.blocked);
+            if (data.blocked) status.textContent = 'New messages are blocked for this conversation.';
+            else if (data.messages.length) status.textContent = data.messages.length + ' new message(s) received.';
+            else if (!send) status.textContent = 'Messaging availability changed. Reload to reply.';
+            else status.textContent = defaultStatus;
+            delay = 15000;
+        } catch {
+            status.textContent = 'Could not refresh messages. Retrying automatically.';
+            delay = Math.min(delay * 2, 120000);
+        } finally {
+            pending = false;
+            schedule();
+        }
+    }
+    document.addEventListener('visibilitychange', () => {
+        clearTimeout(timer);
+        if (!document.hidden) refresh();
+    });
+    schedule();
+}
