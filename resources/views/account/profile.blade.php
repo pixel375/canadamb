@@ -1,22 +1,19 @@
 <x-layouts.site :title="$member->name.' | Member profile'">
     <div class="container page-shell">
-        <div class="page-intro">
-            <div><p class="section-label">CanadaMB member</p><h1>{{ $member->name }}</h1>
+        <div class="page-intro member-profile-heading">
+            <div class="member-profile-identity"><span class="member-profile-avatar"><x-icon name="person" size="30"/></span><div><p class="section-label">CanadaMB member</p><h1>{{ $member->name }}</h1>
                 <p>Member since <time datetime="{{ $member->created_at->toDateString() }}">{{ $member->created_at->format('F Y') }}</time></p>
-            </div>
+            </div></div>
             @if($isOwn)<a class="button button-outline" href="/account/settings">Edit my profile</a>@endif
         </div>
         @if($isOwn)
-            <section class="panel narrow">
-                <h2>Private account details</h2>
-                <p>Your email address is not shown on your public profile.</p>
+            <x-account-shortcuts/>
+            <details class="panel account-private-details">
+                <summary>Private account details</summary>
+                <p class="mt-2">Your email address is not shown on your public profile.</p>
                 <p class="mt-2">{{ $member->email }}</p>
-                <div class="inline-actions mt-3">
-                    <a class="text-link" href="/account/listings">My Marketplace listings</a>
-                    <a class="text-link" href="/account/messages">Messages</a>
-                    <a class="text-link" href="/account/community-notifications">Notifications</a>
-                </div>
-            </section>
+                <a class="text-link mt-2" href="/account/settings">Manage account settings</a>
+            </details>
         @endif
         <section class="homepage-section" aria-labelledby="member-listings-heading">
             <div class="section-heading"><h2 id="member-listings-heading">Public Marketplace listings</h2></div>
