@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\KeywordSearch;
 use App\Support\NetworkUrl;
 use App\Support\News;
 use Illuminate\Http\Request;
@@ -14,12 +15,14 @@ class NewsController extends Controller
         $site = $request->attributes->get('site');
         abort_unless($news->enabled($site), 404);
         $filter = $request->validate([
+            'q' => 'nullable|string|max:100',
             'category' => ['nullable', Rule::in(array_keys(News::CATEGORIES))],
             'location' => ['nullable', 'string', 'max:100', Rule::exists('locations', 'slug')->where('province', 'MB')->where('selectable', true)],
         ]);
         $place = \App\Support\LocationScope::forBrowsing($site, $filter['location'] ?? null);
         $places = $site->isNetwork() ? \App\Models\Location::selectable()->orderBy('name')->get() : collect();
         $items = $news->visible($place?->id)
+            ->when($filter['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'body']))
             ->when($filter['category'] ?? null, fn ($query, $category) => $query->where('category', $category))
             ->paginate(18)->withQueryString();
 
