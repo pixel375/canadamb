@@ -19,8 +19,8 @@
             ['key' => 'commercial', 'name' => 'Commercial', 'subtitle' => 'Business property', 'icon' => 'building'],
         ];
     @endphp
-    <div class="container page-shell">
-        <a class="text-link mb-4" href="/marketplace">Marketplace categories</a>
+    <div class="container page-shell browse-page">
+        <a class="text-link mb-4" href="{{ \App\Support\LocationScope::browseUrl($site, '/marketplace', $selectedLocation) }}">Marketplace categories</a>
         <section class="property-hero" aria-labelledby="property-heading">
             <div>
                 <p class="section-label"><x-icon name="pin" size="16"/> {{ $selectedLocation?->name ?? $site->location?->name ?? 'Manitoba' }} · Homes and rentals</p>
@@ -50,7 +50,8 @@
             </div>
         </section>
 
-        <details class="property-search-panel" {{ count($filters) > 0 ? 'open' : '' }}>
+        <div class="browse-workspace">
+        <details class="property-search-panel browse-sidebar" {{ count($filters) > 0 ? 'open' : '' }}>
             <summary><x-icon name="search" size="18"/> Search and filter Real Estate <x-icon name="chevron-down" size="17"/></summary>
             <form action="/real-estate" method="get" class="panel filter-bar" role="search">
                 <label>Keywords<input type="search" name="q" maxlength="100" value="{{ $filters['q'] ?? '' }}" placeholder="Search homes and land"></label>
@@ -79,10 +80,11 @@
                 <label>Sort by<select name="sort"><option value="newest" @selected(($filters['sort'] ?? 'newest') === 'newest')>Newest</option><option value="price_asc" @selected(($filters['sort'] ?? '') === 'price_asc')>Lowest price</option><option value="price_desc" @selected(($filters['sort'] ?? '') === 'price_desc')>Highest price</option><option value="largest" @selected(($filters['sort'] ?? '') === 'largest')>Largest floor area</option></select></label>
                 <div class="inline-actions">
                     <button type="submit" class="button button-primary"><x-icon name="search" size="17"/> Apply filters</button>
-                    <a class="text-link" href="/real-estate">Clear filters</a>
+                    <a class="text-link" href="{{ $browseLink() }}">Clear filters</a>
                 </div>
             </form>
         </details>
+        <div class="browse-results-column">
 
         <section aria-labelledby="property-results-heading">
             <div class="property-section-heading">
@@ -97,13 +99,13 @@
                     <div>
                         <h3>Property listings are being prepared</h3>
                         <p>Browse the available categories and filters while we prepare the advertising and verification process. No properties are being advertised here yet.</p>
-                        <a class="text-link" href="/marketplace">Browse other Marketplace listings <x-icon name="arrow" size="16"/></a>
+                        <a class="text-link" href="{{ \App\Support\LocationScope::browseUrl($site, '/marketplace', $selectedLocation) }}">Browse other Marketplace listings <x-icon name="arrow" size="16"/></a>
                     </div>
                 </div>
             @elseif($items->isEmpty())
                 <div class="property-empty">
                     <span aria-hidden="true"><x-icon name="search" size="24"/></span>
-                    <div><h3>No properties match these filters</h3><p>Try a different property type, location, or price range.</p><a class="text-link" href="/real-estate">Clear all filters</a></div>
+                    <div><h3>No properties match these filters</h3><p>Try a different property type, location, or price range.</p><a class="text-link" href="{{ $browseLink() }}">Clear all filters</a></div>
                 </div>
             @else
                 <div class="property-result-grid">
@@ -132,5 +134,7 @@
                 {{ $items->links() }}
             @endif
         </section>
+        </div>
+        </div>
     </div>
 </x-layouts.site>
