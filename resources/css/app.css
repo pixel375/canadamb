@@ -1363,3 +1363,44 @@ a.market-category-card:hover, a.market-category-card:focus-visible {
 @media (max-width: 1023px) {
     .masthead > .header-search { display: none; }
 }
+
+
+/* Browse workspaces: dedicated filters beside the content on desktop; a
+   single readable column and native disclosures on smaller screens. */
+.browse-workspace, .browse-results-column { min-width: 0; }
+.browse-workspace > .browse-results-column > :first-child { margin-top: 0; }
+.browse-results-column .panel, .browse-results-column .market-results { min-width: 0; }
+.browse-results-column .listing-card, .browse-results-column .property-result-card { min-width: 0; }
+.browse-results-column .listing-content, .browse-results-column .property-result-body { overflow-wrap: anywhere; }
+.browse-results-column .business-result-card { min-height: 185px; }
+.browse-results-column .item-row > div { flex: 1 1 0; min-width: 0; }
+.browse-results-column .item-row h2 { font-size: clamp(1rem, 1.4vw, 1.25rem); margin: 5px 0; }
+.browse-results-column .item-row p { line-height: 1.55; }
+.browse-feed { display: grid; gap: 12px; }
+.browse-feed .panel { margin: 0; }
+.browse-feed .item-row { border: 0; padding: 0; }
+.browse-feed .item-row h2 a { color: var(--text); }
+.browse-feed .item-row h2 a:hover { color: var(--link); }
+.browse-feed .job-result-description { margin-top: 8px; }
+@media (min-width: 1024px) {
+    .browse-page { width: min(100% - 48px, 1280px); }
+    .browse-workspace { display: grid; grid-template-columns: minmax(220px, 258px) minmax(0, 1fr); align-items: start; gap: clamp(18px, 2vw, 28px); }
+    .browse-workspace > .browse-sidebar { min-width: 0; margin: 0; border: 1px solid var(--border); border-radius: 13px; background: var(--card); }
+    .browse-sidebar > summary { min-height: 50px; padding: 14px 15px; border: 0; border-radius: 12px; }
+    .browse-sidebar[open] > summary { border-bottom: 1px solid var(--border); border-radius: 12px 12px 0 0; }
+    .browse-sidebar > form.filter-bar { display: grid; grid-template-columns: minmax(0, 1fr); gap: 15px; border: 0; margin: 0; padding: 16px; background: transparent; }
+    .browse-sidebar .filter-bar label { font-size: .83rem; }
+    .browse-sidebar .filter-bar input, .browse-sidebar .filter-bar select { min-height: 40px; font-size: .88rem; }
+    .browse-sidebar .filter-bar .button { width: 100%; }
+    .browse-sidebar .filter-bar .inline-actions { display: grid; gap: 9px; justify-items: stretch; }
+    .browse-sidebar .filter-bar .inline-actions .text-link { justify-self: center; }
+    .browse-results-column .listing-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 195px), 1fr)); gap: 14px; }
+    .browse-results-column .place-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); }
+    .browse-results-column .property-result-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); }
+    .browse-results-column .market-results-heading { margin-top: 0; }
+    .browse-results-column .market-results-empty { min-height: 260px; align-content: center; }
+    .browse-feed .panel { padding: 20px 22px; }
+}
+@media (max-width: 1023px) {
+    .browse-workspace > .browse-sidebar { margin-bottom: 18px; }
+}
