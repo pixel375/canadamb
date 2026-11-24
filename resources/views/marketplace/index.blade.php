@@ -12,7 +12,7 @@
         };
         $marketPlace = isset($filters['location']) ? $locations->firstWhere('slug', $filters['location'])?->name : null;
     @endphp
-    <div class="container page-shell">
+    <div class="container page-shell browse-page">
         <div class="page-intro">
             <div><h1>Marketplace</h1><p>Browse listings in {{ $marketPlace ?? request()->attributes->get('site')->location?->name ?? 'Manitoba' }}.</p></div>
             <div class="inline-actions">
@@ -116,7 +116,8 @@
                 @endif
             </div>
         @endif
-        <details class="search-disclosure" @if(array_diff_key($filters, ['group' => true, 'view' => true]) || $errors->any()) open @endif>
+        <div @class(['browse-workspace' => !$isDiscovery])>
+        <details @class(['search-disclosure', 'browse-sidebar' => !$isDiscovery]) @if(array_diff_key($filters, ['group' => true, 'view' => true]) || $errors->any()) open @endif>
             <summary>
                 <x-icon name="search" size="18"/>
                 <span>Search Marketplace @if($activeFilterCount) <small>({{ $activeFilterCount }} active {{ \Illuminate\Support\Str::plural('filter', $activeFilterCount) }})</small> @endif</span>
@@ -144,10 +145,11 @@
                 </label>
                 <div class="inline-actions">
                     <button class="button button-primary" type="submit"><x-icon name="search" size="16"/> Search</button>
-                    @if($filters)<a class="text-link" href="/marketplace">Clear filters</a>@endif
+                    @if($filters)<a class="text-link" href="{{ $marketLink(['view' => 'all']) }}">Clear filters</a>@endif
                 </div>
             </form>
         </details>
+        <div class="browse-results-column">
         @unless($isDiscovery)
             <section class="market-results" aria-labelledby="market-results-title">
                 <div class="market-results-heading">
@@ -185,5 +187,7 @@
                 @endif
             </section>
         @endunless
+        </div>
+        </div>
     </div>
 </x-layouts.site>
