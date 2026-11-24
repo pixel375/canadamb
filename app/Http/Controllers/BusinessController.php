@@ -72,11 +72,17 @@ class BusinessController extends Controller
 
         $filters = $request->validate([
             'location' => ['nullable', 'string', 'max:100', Rule::exists('locations', 'slug')->where('province', 'MB')->where('selectable', true)],
+            'q' => 'nullable|string|max:100',
+            'type' => 'nullable|in:announcement,promotion,update',
         ]);
         $place = LocationScope::forBrowsing($site, $filters['location'] ?? null);
+        $updates = $this->directory->updates($place?->id)
+            ->when($filters['type'] ?? null, fn ($query, $type) => $query->where('type', $type))
+            ->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'body']))
+            ->paginate(18)->withQueryString();
 
         return view('business.updates', [
-            'updates' => $this->directory->updates($place?->id)->paginate(18)->withQueryString(),
+            'updates' => $updates,
             'place' => $place,
             'places' => $site->isNetwork() ? Location::selectable()->orderBy('name')->get() : collect(),
             'filters' => $filters,
