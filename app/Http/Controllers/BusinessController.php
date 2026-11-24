@@ -100,7 +100,8 @@ class BusinessController extends Controller
     public function mine(Request $request)
     {
         $user = $request->user()->id;
-        $businesses = Business::whereHas('members', fn ($query) => $query->whereKey($user))->orderBy('name')->paginate(20);
+        $businesses = Business::managedBy($user)->with(['locations.location', 'members' => fn ($query) => $query->whereKey($user)])
+            ->orderBy('name')->paginate(20);
         $claims = DB::table('business_claims')->join('businesses', 'businesses.id', '=', 'business_claims.business_id')
             ->where('business_claims.user_id', $user)->latest('business_claims.id')->take(15)
             ->get(['businesses.name', 'business_claims.status', 'business_claims.created_at']);
@@ -153,7 +154,10 @@ class BusinessController extends Controller
         $site = $request->attributes->get('site');
         $branches = $item->locations()->with('location')->when($site->location_id, fn ($query, $id) => $query->where('location_id', $id))->get();
 
-        return view('business.form', ['business' => $item, 'branches' => $branches]);
+        $recentUpdates = DB::table('business_updates')->whereIn('business_location_id', $branches->pluck('id'))
+            ->latest('id')->limit(10)->get(['id', 'title', 'type', 'status', 'created_at']);
+
+        return view('business.form', ['business' => $item, 'branches' => $branches, 'recentUpdates' => $recentUpdates]);
     }
 
     public function update(Request $request, int $business)
