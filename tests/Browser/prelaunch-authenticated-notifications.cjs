@@ -75,6 +75,38 @@ const fs = require('node:fs');
             }
         }
 
+        // Cross-section search uses real GET navigation and preserves the
+        // location despite Jobs using a community name rather than a slug.
+        for (const width of [320, 390, 768, 1024, 1440]) {
+            await page.setViewportSize({ width, height: 900 });
+            await page.goto(host + '/marketplace?q=community%20garden&location=brandon');
+            const nav = page.getByRole('navigation', { name: 'Search other sections' });
+            check(await nav.isVisible(), 'Search navigation missing at ' + width);
+            check(await nav.locator('[aria-current="page"]').innerText() === 'Marketplace',
+                'Marketplace search tab not active');
+            const jobs = nav.getByRole('link', { name: 'Jobs', exact: true });
+            const jobUrl = new URL(await jobs.getAttribute('href'), host);
+            check(jobUrl.searchParams.get('q') === 'community garden' &&
+                jobUrl.searchParams.get('location') === 'Brandon',
+                'Search keyword or community lost when switching to Jobs');
+            check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+                'Search results navigation overflows at ' + width);
+            await jobs.click();
+            await page.waitForURL(url => url.pathname === '/jobs');
+            check(await nav.locator('[aria-current="page"]').innerText() === 'Jobs',
+                'Jobs search tab not active');
+            const discussionUrl = new URL(await nav.getByRole('link', { name: 'Discussions', exact: true }).getAttribute('href'), host);
+            check(discussionUrl.searchParams.get('q') === 'community garden' &&
+                discussionUrl.searchParams.get('location') === 'brandon',
+                'Jobs-to-discussions search lost the original community slug');
+            check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+                'Jobs search results navigation overflows at ' + width);
+        }
+        await page.goto(host + '/marketplace');
+        check(await page.getByRole('navigation', { name: 'Search other sections' }).count() === 0,
+            'Search navigation should not appear on category discovery');
+        console.log('PASS: cross-section search query and community retention at five widths');
+
         console.log('PASS: authenticated notification hub, unread filters and followed conversations at five widths');
     } catch (error) {
         try {
