@@ -263,6 +263,25 @@ const fs = require('node:fs');
         }
         console.log('PASS: account dashboard and listing editor photo preview at three widths');
 
+        await page.goto(host + '/account/settings');
+        check(await page.locator('body[data-activity-counts="/account/activity-counts"]').count() === 1,
+            'Verified account missing activity count endpoint');
+        const activitySetting = page.locator('#activity-refresh-setting');
+        await activitySetting.uncheck();
+        check(await page.evaluate(() => localStorage.getItem('canadamb-activity-refresh')) === 'off',
+            'Activity preference was not saved');
+        await page.locator('#theme-choice-settings').selectOption('dark');
+        check(await page.evaluate(() => document.documentElement.dataset.theme) === 'dark',
+            'Settings appearance did not update the page');
+        await page.reload();
+        check(!(await activitySetting.isChecked()), 'Activity preference did not persist');
+        check(await page.locator('#theme-choice-settings').inputValue() === 'dark',
+            'Appearance preference did not persist');
+        await activitySetting.check();
+        await page.locator('#theme-choice-settings').selectOption('system');
+        console.log('PASS: account device preferences persist and activity polling is restricted to verified pages');
+
+
 
 
 
