@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Location;
 use App\Support\KeywordSearch;
+use App\Support\LocationScope;
 use App\Support\NetworkUrl;
 use App\Support\News;
 use Illuminate\Http\Request;
@@ -19,8 +21,8 @@ class NewsController extends Controller
             'category' => ['nullable', Rule::in(array_keys(News::CATEGORIES))],
             'location' => ['nullable', 'string', 'max:100', Rule::exists('locations', 'slug')->where('province', 'MB')->where('selectable', true)],
         ]);
-        $place = \App\Support\LocationScope::forBrowsing($site, $filter['location'] ?? null);
-        $places = $site->isNetwork() ? \App\Models\Location::selectable()->orderBy('name')->get() : collect();
+        $place = LocationScope::forBrowsing($site, $filter['location'] ?? null);
+        $places = $site->isNetwork() ? Location::selectable()->orderBy('name')->get() : collect();
         $items = $news->visible($place?->id)
             ->when($filter['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'body']))
             ->when($filter['category'] ?? null, fn ($query, $category) => $query->where('category', $category))
