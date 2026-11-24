@@ -1,0 +1,102 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\CommunityEvent;
+use App\Models\Location;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class DiscussionHubTest extends TestCase
+{
+    use RefreshDatabase;
+
+    protected $seed = true;
+
+    public function test_discussions_show_only_approved_local_upcoming_events_grouped_by_day(): void
+    {
+        $this->travelTo('2026-11-23 12:00:00');
+        $brandon = Location::where('slug', 'brandon')->sole()->id;
+        $winnipeg = Location::where('slug', 'winnipeg')->sole()->id;
+
+        $first = $this->event($brandon, 'Brandon winter market', '2026-12-04 19:00:00');
+        $this->event($brandon, 'Brandon evening concert', '2026-12-04 22:00:00');
+        $this->event($winnipeg, 'Winnipeg music night', '2026-12-05 19:00:00');
+        $this->event($brandon, 'Event awaiting moderation', '2026-12-04 20:00:00', 'pending');
+        $this->event($brandon, 'Brandon event outside 60-day window', '2027-03-01 18:00:00');
+        $this->event($brandon, 'Brandon past event', '2026-11-20 18:00:00');
+
+        $this->get('https://canadamb.ca/community')
+            ->assertOk()
+            ->assertSee('Browse discussions')
+            ->assertSee('Upcoming events')
+            ->assertSee('2 events')
+            ->assertSee('Brandon winter market')
+            ->assertSee('Winnipeg music night')
+            ->assertSee('href="/events/'.$first->id.'"', false)
+            ->assertDontSee('Event awaiting moderation')
+            ->assertDontSee('Brandon past event')
+            ->assertDontSee('Brandon event outside 60-day window');
+
+        $this->get('https://brandonmb.ca/community')
+            ->assertOk()
+            ->assertSee('Brandon winter market')
+            ->assertSee('Brandon evening concert')
+            ->assertDontSee('Winnipeg music night')
+            ->assertSee('href="/community/new?type=event"', false);
+    }
+
+    public function test_discussion_filter_links_and_empty_calendar_remain_usable(): void
+    {
+        $this->get('https://canadamb.ca/community?category=help')
+            ->assertOk()
+            ->assertSee('aria-label="Discussion categories"', false)
+            ->assertSee('href="/community?category=help" aria-current="page"', false)
+            ->assertSee('No upcoming events posted yet.')
+            ->assertSee('class="search-disclosure" open', false);
+
+        $this->get('https://brandonmb.ca/community')
+            ->assertOk()
+            ->assertSee('Full events calendar')
+            ->assertSee('No discussions found');
+    }
+
+    public function test_shared_post_composer_uses_existing_moderated_discussion_and_event_endpoints(): void
+    {
+        $this->get('https://canadamb.ca/community/new?type=event')->assertRedirect();
+        $this->actingAs(User::factory()->create());
+        $this->get('https://canadamb.ca/community/new')
+            ->assertOk()
+            ->assertSee('Choose post type')
+            ->assertSee('action="/community"', false)
+            ->assertDontSee('name="starts_at"', false);
+        $this->get('https://canadamb.ca/community/new?type=event')
+            ->assertOk()
+            ->assertSee('Submit an event')
+            ->assertSee('action="/events"', false)
+            ->assertSee('name="starts_at"', false)
+            ->assertSee('name="organizer"', false)
+            ->assertSee('name="event_url"', false);
+        $this->get('https://brandonmb.ca/community/new?type=event')
+            ->assertOk()->assertSee('Event request');
+        $this->get('https://canadamb.ca/events/new')->assertOk()->assertSee('Submit an event');
+    }
+
+    private function event(int $locationId, string $title, string $startsAt, string $status = 'approved'): CommunityEvent
+    {
+        $event = CommunityEvent::create([
+            'author_id' => User::factory()->create()->id,
+            'location_id' => $locationId,
+            'title' => $title,
+            'body' => 'All community members are welcome to attend this local event.',
+            'category' => 'community',
+            'organizer' => 'Community volunteers',
+            'venue' => 'Local community hall',
+            'starts_at' => $startsAt,
+        ]);
+        $event->forceFill(['status' => $status])->save();
+
+        return $event;
+    }
+}
