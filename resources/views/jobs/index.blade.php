@@ -15,9 +15,45 @@
             <button type="submit" class="button button-primary">Filter jobs</button>
         </form>
         </details>
-        <div class="panel">
-            @forelse($items as $item)<x-job-result :item="$item"/>@empty<p>No active jobs match these filters.</p>@endforelse
-        </div>
-        {{ $items->links() }}
+        @php
+            $activeFilters = array_filter($filters, fn ($value) => $value !== null && $value !== '');
+            $localSite = request()->attributes->get('site')->location;
+            $scope = !$localSite && filled($activeFilters['location'] ?? null) ? ['location' => $activeFilters['location']] : [];
+            $clearUrl = '/jobs'.($scope ? '?'.http_build_query($scope) : '');
+            $wideFilters = array_diff_key($activeFilters, ['location' => true]);
+            $wideUrl = '/jobs'.($wideFilters ? '?'.http_build_query($wideFilters) : '');
+        @endphp
+        <section class="market-results" aria-labelledby="jobs-results-title">
+            <div class="market-results-heading">
+                <div>
+                    <p class="section-label">Employment opportunities</p>
+                    <h2 id="jobs-results-title">Jobs in {{ $localSite?->name ?? ($scope['location'] ?? 'Manitoba') }}</h2>
+                </div>
+                <span class="discussion-count">{{ $items->total() }} {{ \Illuminate\Support\Str::plural('result', $items->total()) }}</span>
+            </div>
+            @if($items->isEmpty())
+                <div class="market-results-empty">
+                    <span class="empty-icon" aria-hidden="true"><x-icon name="search" size="23"/></span>
+                    <h3>{{ $activeFilters ? 'No active jobs match these filters.' : 'No active jobs posted yet' }}</h3>
+                    <p>{{ $activeFilters ? 'Try another keyword or fewer filters to find more opportunities.' : 'Check back for new opportunities from Manitoba employers.' }}</p>
+                    <div class="market-empty-actions">
+                        @if(array_diff_key($activeFilters, ['location' => true]))
+                            <a class="button button-outline" href="{{ $clearUrl }}">Clear search filters</a>
+                        @endif
+                        @if($scope)
+                            <a class="button button-outline" href="{{ $wideUrl }}">Search all Manitoba</a>
+                        @endif
+                        @if(app(\App\Support\BusinessDirectory::class)->enabled(request()->attributes->get('site')))
+                            <a class="button button-primary" href="/businesses">Explore local businesses</a>
+                        @endif
+                    </div>
+                </div>
+            @else
+                <div class="panel">
+                    @foreach($items as $item)<x-job-result :item="$item"/>@endforeach
+                </div>
+                {{ $items->links() }}
+            @endif
+        </section>
     </div>
 </x-layouts.site>
