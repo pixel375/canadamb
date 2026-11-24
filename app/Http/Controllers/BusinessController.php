@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Business;
 use App\Models\Location;
 use App\Support\BusinessDirectory;
+use App\Support\JobBoard;
 use App\Support\KeywordSearch;
 use App\Support\LocationScope;
 use App\Support\NetworkUrl;
@@ -53,7 +54,14 @@ class BusinessController extends Controller
         $updates = $this->directory->updates($site->location_id)->whereIn('business_location_id', $branches->pluck('id'))->paginate(12);
         $claimed = $business->members()->wherePivot('role', 'owner')->exists();
 
-        return view('business.show', compact('business', 'branches', 'updates', 'claimed', 'canonical'));
+        $jobs = app(JobBoard::class);
+        $openJobs = $jobs->enabled($site)
+            ? $jobs->visible($site->location_id)->whereIn('business_location_id', $branches->pluck('id'))->latest('published_at')->limit(6)->get()
+            : collect();
+        $managesProfile = $request->user() && $business->members()->whereKey($request->user()->id)
+            ->wherePivotIn('role', ['owner', 'manager', 'editor'])->exists();
+
+        return view('business.show', compact('business', 'branches', 'updates', 'claimed', 'canonical', 'openJobs', 'managesProfile'));
     }
 
     public function updates(Request $request)
