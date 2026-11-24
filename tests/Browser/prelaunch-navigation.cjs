@@ -93,12 +93,27 @@ const fs = require('node:fs');
                     'Gated Real Estate category is not discoverable');
                 check(await page.locator('.market-category-card .market-category-icon svg').count() >= 6,
                     'Marketplace category artwork is not using the shared vector icon set');
+                check(await page.locator('.market-category-parent').count() >= 6,
+                    'Main category cards must expose direct subcategory navigation');
+                check(await page.locator('.market-category-children a').count() >= 16,
+                    'Marketplace subcategory quick links are missing');
+                check(await page.locator('.market-category-children a[href^="/marketplace?category=cars"]').isVisible(),
+                    'Cars subcategory is not directly accessible from category chooser');
                 check(await page.getByText('Coming later').isVisible(),
                     'Real Estate is missing its launch status');
                 check(await page.locator('.market-category-card[href^="/real-estate"]').count() === 1,
                     'Dedicated Real Estate category is not linked');
                 check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
                     'Marketplace horizontal overflow at ' + host + ' ' + width);
+                if (width <= 390) {
+                    const categoryColumns = await page.locator('.market-category-parent').first().evaluate(node => ({
+                        card: node.getBoundingClientRect().width,
+                        viewport: innerWidth,
+                        links: [...node.querySelectorAll('.market-category-children a')].length,
+                    }));
+                    check(categoryColumns.card >= width - 40 && categoryColumns.links >= 4,
+                        'Mobile category hierarchy is cramped or incomplete: ' + JSON.stringify(categoryColumns));
+                }
                 if (width === 390 || width === 1440) {
                     await page.screenshot({
                         path: 'test-results/' + (host.includes('brandon') ? 'brandon' : 'province') +
@@ -147,6 +162,8 @@ const fs = require('node:fs');
                     'Responsive discussion layout is missing');
                 check(await page.locator('.discussion-events').isVisible(),
                     'Events timeline is not integrated into Discussions');
+                check(await page.locator('.discussion-empty-actions a[href="/community/new"]').count() > 0,
+                    'Empty discussions have no useful first-post action');
                 check(await page.locator('a[href="/community/new?type=event"]').count() > 0,
                     'No event-request entry point from Discussions');
                 check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),

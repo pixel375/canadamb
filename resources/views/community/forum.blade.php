@@ -36,7 +36,17 @@
                 </details>
                 <div class="panel discussion-topics">
                     @if($threads->isEmpty())
-                        <div class="discussion-empty"><x-icon name="discussions" size="28"/><h3>No discussions found</h3><p>Try another category, or start a conversation for your community.</p></div>
+                        <div class="discussion-empty">
+                            <span class="discussion-empty-icon"><x-icon name="discussions" size="28"/></span>
+                            <h3>{{ empty($filters) ? 'Start the conversation' : 'No discussions match these filters' }}</h3>
+                            <p>{{ empty($filters) ? 'Have a question, a local tip, or something to share? Start the first discussion in your community.' : 'Try another category, or clear your filters to see more conversations.' }}</p>
+                            <div class="discussion-empty-actions">
+                                @if(!empty($filters))
+                                    <a class="button button-outline" href="/community">All topics</a>
+                                @endif
+                                <a class="button button-primary" href="/community/new"><x-icon name="plus" size="16"/> Start a discussion</a>
+                            </div>
+                        </div>
                     @else
                         @foreach($threads as $thread)
                             <article class="discussion-topic">
@@ -49,7 +59,11 @@
                                     @endif
                                 </div>
                                 <h3><a href="/community/{{ $thread->id }}">{{ $thread->title }}</a></h3>
-                                <p>{{ $thread->replies_count }} {{ \Illuminate\Support\Str::plural('reply', $thread->replies_count) }} · Active {{ $thread->last_activity_at?->diffForHumans() ?? 'recently' }}{{ $thread->locked ? ' · Locked' : '' }}</p>
+                                <div class="discussion-topic-footer">
+                                    <span><x-icon name="messages" size="15"/> {{ $thread->replies_count }} {{ \Illuminate\Support\Str::plural('reply', $thread->replies_count) }}</span>
+                                    <span><x-icon name="clock" size="15"/> Active {{ $thread->last_activity_at?->diffForHumans() ?? 'recently' }}</span>
+                                    @if($thread->locked)<span class="discussion-topic-locked">Locked</span>@endif
+                                </div>
                             </article>
                         @endforeach
                     @endif

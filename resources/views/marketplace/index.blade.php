@@ -61,12 +61,25 @@
                 @else
                     <div class="market-category-grid">
                         @foreach($categoryGroups as $slug => $group)
-                            <a class="market-category-card" href="{{ $marketLink(['group' => $slug]) }}">
-                                <span class="market-category-icon" aria-hidden="true"><x-icon :name="$group['icon']" size="25"/></span>
-                                <span class="market-category-name">{{ $group['name'] }}</span>
-                                <span class="market-category-description">{{ $group['subtitle'] }}</span>
-                                <span class="market-category-link">{{ count($group['available']) }} {{ \Illuminate\Support\Str::plural('subcategory', count($group['available'])) }} <span aria-hidden="true">→</span></span>
-                            </a>
+                            <article class="market-category-card market-category-parent" aria-labelledby="market-group-{{ $slug }}">
+                                <div class="market-parent-header">
+                                    <span class="market-category-icon" aria-hidden="true"><x-icon :name="$group['icon']" size="25"/></span>
+                                    <div class="market-parent-copy">
+                                        <h3 id="market-group-{{ $slug }}" class="market-category-name">
+                                            <a href="{{ $marketLink(['group' => $slug]) }}">{{ $group['name'] }}</a>
+                                        </h3>
+                                        <p class="market-category-description">{{ $group['subtitle'] }}</p>
+                                    </div>
+                                </div>
+                                <nav class="market-category-children" aria-label="{{ $group['name'] }} subcategories">
+                                    @foreach($group['available'] as $childSlug => $childName)
+                                        <a href="{{ $marketLink(['category' => $childSlug]) }}">{{ $childName }}</a>
+                                    @endforeach
+                                </nav>
+                                <a class="market-category-link market-parent-more" href="{{ $marketLink(['group' => $slug]) }}">
+                                    Browse {{ $group['name'] }} <x-icon name="arrow" size="15"/>
+                                </a>
+                            </article>
                         @endforeach
                         <a class="market-category-card market-category-upcoming" href="/real-estate{{ isset($filters['location']) ? '?'.http_build_query(['location' => $filters['location']]) : '' }}" aria-label="Browse Real Estate categories, listings coming later">
                             <span class="market-category-icon" aria-hidden="true"><x-icon name="house" size="25"/></span>
@@ -136,12 +149,35 @@
             </form>
         </details>
         @unless($isDiscovery)
-        @if($items->isEmpty())
-            <div class="empty-state"><span class="empty-icon"><x-icon name="tag"/></span><div><h2>No listings found</h2><p>{{ $activeFilterCount ? 'Try a broader search or clear the filters.' : 'Check back later or post a listing of your own.' }}</p></div></div>
-        @else
-            <div class="listing-grid">@foreach($items as $item)<x-listing-card :item="$item"/>@endforeach</div>
-            {{ $items->links() }}
-        @endif
+            <section class="market-results" aria-labelledby="market-results-title">
+                <div class="market-results-heading">
+                    <div>
+                        <p class="section-label">Marketplace listings</p>
+                        <h2 id="market-results-title">
+                            {{ isset($filters['category']) ? $categories[$filters['category']] : ($selectedGroup ? $categoryGroups[$selectedGroup]['name'] : 'All current listings') }}
+                        </h2>
+                    </div>
+                    <span class="discussion-count">{{ $items->total() }} {{ \Illuminate\Support\Str::plural('result', $items->total()) }}</span>
+                </div>
+                @if($items->isEmpty())
+                    <div class="market-results-empty">
+                        <span class="empty-icon" aria-hidden="true"><x-icon name="search" size="23"/></span>
+                        <h3>No listings match your search</h3>
+                        <p>{{ $activeFilterCount ? 'Try fewer filters or a broader search.' : 'Nothing listed here yet. Be the first to post something.' }}</p>
+                        <div class="market-empty-actions">
+                            <a class="button button-outline" href="{{ $marketLink() }}">Browse categories</a>
+                            <a class="button button-primary" href="/marketplace/new"><x-icon name="plus" size="16"/> Post a listing</a>
+                        </div>
+                    </div>
+                @else
+                    <div class="listing-grid">
+                        @foreach($items as $item)
+                            <x-listing-card :item="$item"/>
+                        @endforeach
+                    </div>
+                    {{ $items->links() }}
+                @endif
+            </section>
         @endunless
     </div>
 </x-layouts.site>

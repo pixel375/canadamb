@@ -51,6 +51,10 @@ class MarketplaceCategoryNavigationTest extends TestCase
                 ->assertSee('Home &amp; Living', false)
                 ->assertSee('href="/marketplace?view=all"', false)
                 ->assertSee('href="/marketplace?group=vehicles"', false)
+                ->assertSee('aria-label="Vehicles &amp; Motors subcategories"', false)
+                ->assertSee('href="/marketplace?category=cars"', false)
+                ->assertSee('href="/marketplace?category=rvs"', false)
+                ->assertSee('class="market-category-card market-category-parent"', false)
                 ->assertSee('Real Estate')
                 ->assertSee('Coming later')
                 ->assertSee('href="/real-estate"', false)
@@ -76,6 +80,7 @@ class MarketplaceCategoryNavigationTest extends TestCase
             ->assertSee('What are you looking for?')
             ->assertSee('Browsing <strong>Brandon</strong> listings.', false)
             ->assertSee('href="/marketplace?group=vehicles&amp;location=brandon"', false)
+            ->assertSee('href="/marketplace?category=cars&amp;location=brandon"', false)
             ->assertSee('href="/marketplace?view=all&amp;location=brandon"', false)
             ->assertSee('type="hidden" name="location" value="brandon"', false)
             ->assertDontSee('Brandon family car');

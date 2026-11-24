@@ -59,7 +59,8 @@ class DiscussionHubTest extends TestCase
         $this->get('https://brandonmb.ca/community')
             ->assertOk()
             ->assertSee('Full events calendar')
-            ->assertSee('No discussions found');
+            ->assertSee('Start the conversation')
+            ->assertSee('class="discussion-empty-actions"', false);
     }
 
     public function test_shared_post_composer_uses_existing_moderated_discussion_and_event_endpoints(): void
