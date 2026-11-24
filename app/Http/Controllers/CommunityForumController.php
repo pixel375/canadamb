@@ -39,7 +39,8 @@ class CommunityForumController extends Controller
         if ($eventsEnabled) {
             $start = now('UTC')->format('Y-m-d H:i:s');
             $until = now('America/Winnipeg')->addDays(60)->endOfDay()->utc()->format('Y-m-d H:i:s');
-            $events = $this->community->events($site->location_id)
+            $eventPlace = LocationScope::forBrowsing($site, $filters['location'] ?? null);
+            $events = $this->community->events($eventPlace?->id)
                 ->where('status', 'approved')
                 ->whereBetween('starts_at', [$start, $until])
                 ->orderBy('starts_at')->orderBy('id')->limit(60)->get();
