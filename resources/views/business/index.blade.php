@@ -1,7 +1,8 @@
 <x-layouts.site title="Business directory">
-    <div class="container page-shell">
+    <div class="container page-shell browse-page">
         <div class="page-intro"><div><h1>Business directory</h1><p>Find businesses and services in {{ request()->attributes->get('site')->location?->name ?? 'Manitoba' }}.</p></div><a class="button button-primary" href="/account/businesses/new"><x-icon name="plus" size="16"/> Add your business</a></div>
-        <details class="search-disclosure" @if(!empty($filters)) open @endif>
+        <div class="browse-workspace">
+        <details class="search-disclosure browse-sidebar" @if(!empty($filters)) open @endif>
             <summary><x-icon name="search" size="18"/> Find businesses <x-icon class="disclosure-arrow" name="chevron-down" size="17"/></summary>
             <form action="/businesses" method="get" class="panel filter-bar">
             <label>Business or service<input type="search" name="q" placeholder="Search names and services" value="{{ $filters['q'] ?? '' }}" maxlength="100"></label>
@@ -10,6 +11,7 @@
             <button class="button button-primary"><x-icon name="search" size="16"/> Find businesses</button>
         </form>
         </details>
+        <div class="browse-results-column">
         @php
             $activeFilters = array_filter($filters, fn ($value) => $value !== null && $value !== '');
             $selectedPlace = $places->firstWhere('slug', $activeFilters['location'] ?? null);
@@ -58,5 +60,7 @@
                 {{ $businesses->links() }}
             @endif
         </section>
+        </div>
+        </div>
     </div>
 </x-layouts.site>
