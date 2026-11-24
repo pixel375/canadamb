@@ -8,6 +8,12 @@ use Illuminate\Http\Request;
 
 final class AccountNotificationsController extends Controller
 {
+    public function counts(Request $request, AccountActivity $activity)
+    {
+        return response()->json($activity->counts($request->user(), $request->attributes->get('site')))
+            ->header('Cache-Control', 'private, no-store');
+    }
+
     public function index(Request $request, AccountActivity $activity)
     {
         $site = $request->attributes->get('site');
