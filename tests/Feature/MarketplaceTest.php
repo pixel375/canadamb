@@ -35,10 +35,11 @@ class MarketplaceTest extends TestCase
         $this->get(self::MAIN."/marketplace/$item->id")
             ->assertOk()->assertSee('Oak table')
             ->assertSee('<link rel="canonical" href="'.self::CITY."/marketplace/$item->id".'">', false)
-            ->assertSee('href="/marketplace?category=furniture"', false)
+            ->assertSee('href="/marketplace?category=furniture&amp;location=brandon"', false)
             ->assertSee('Member since');
         $this->get(self::CITY."/marketplace/$item->id")
-            ->assertOk()->assertSee('<link rel="canonical" href="'.self::CITY."/marketplace/$item->id".'">', false);
+            ->assertOk()->assertSee('<link rel="canonical" href="'.self::CITY."/marketplace/$item->id".'">', false)
+            ->assertSee('href="/marketplace?category=furniture"', false);
         $this->get(self::CITY.'/sitemap.xml')->assertSee(self::CITY."/marketplace/$item->id");
         $this->get(self::MAIN.'/sitemap.xml')->assertDontSee("/marketplace/$item->id");
 
