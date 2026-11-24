@@ -48,7 +48,7 @@
         .search-results-navigation .inline-actions { gap: 8px; }
     </style>
 </head>
-<body>
+<body @if(!$preview && auth()->user()?->hasVerifiedEmail()) data-activity-counts="/account/activity-counts" @endif>
 <a class="skip-link" href="#main">Skip to content</a>
 <?php $isPreview = $preview ?? false; ?>
 <?php $marketEnabled = $networkSettings['modules']['marketplace'] ?? false; ?>
