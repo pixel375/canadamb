@@ -36,11 +36,14 @@
                     <a class="text-link" href="/account/community-notifications">View all <x-icon name="arrow" size="16"/></a>
                 </div>
                 <div class="panel">
-                    @forelse($recent as $notification)
+                    @if($recent->isEmpty())
+                        <p>No approved replies in discussions you follow yet.</p>
+                    @else
+                        @foreach($recent as $notification)
                         <div class="item-row">
                             <div>
                                 <h3><a class="text-link" href="/community/{{ $notification->thread_id }}">{{ $notification->title }}</a></h3>
-                                <p>{{ \Illuminate\Support\Carbon::parse($notification->created_at)->diffForHumans() }}@if(! $notification->read_at) · Unread@endif</p>
+                                <p>{{ \Illuminate\Support\Carbon::parse($notification->created_at)->diffForHumans() }}{{ $notification->read_at ? '' : ' · Unread' }}</p>
                             </div>
                             @if(! $notification->read_at)
                                 <form method="post" action="/account/community-notifications/{{ $notification->id }}/read">
@@ -49,9 +52,8 @@
                                 </form>
                             @endif
                         </div>
-                    @empty
-                        <p>No approved replies in discussions you follow yet.</p>
-                    @endforelse
+                        @endforeach
+                    @endif
                 </div>
             </section>
         @endif

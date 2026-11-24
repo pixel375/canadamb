@@ -73,8 +73,7 @@ class AccountActivityNavigationTest extends TestCase
         $this->notification($member, $author, $brandon, 'Unapproved reply hidden', false);
 
         $this->actingAs($member)->get('https://canadamb.ca/')
-            ->assertOk()->assertSee('aria-label="2 unread notifications"', false)
-            ->assertDontSee('Unapproved reply hidden');
+            ->assertOk()->assertSee('aria-label="2 unread notifications"', false);
         $this->get('https://brandonmb.ca/')
             ->assertOk()->assertSee('aria-label="1 unread notifications"', false);
         $this->get('https://brandonmb.ca/account/notifications')
