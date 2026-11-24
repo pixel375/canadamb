@@ -106,6 +106,30 @@ const fs = require('node:fs');
         check(await page.getByRole('navigation', { name: 'Search other sections' }).count() === 0,
             'Search navigation should not appear on category discovery');
         console.log('PASS: cross-section search query and community retention at five widths');
+        const missing = 'zzcanadambnoresults2026zz';
+        for (const width of [390, 1440]) {
+            await page.setViewportSize({ width, height: 900 });
+            for (const [section, location, emptyTitle] of [
+                ['marketplace', 'brandon', 'No listings match your search'],
+                ['businesses', 'brandon', 'No matching businesses.'],
+                ['community', 'brandon', 'No discussions match these filters'],
+                ['jobs', 'Brandon', 'No active jobs match these filters.'],
+            ]) {
+                await page.goto(host + '/' + section + '?' + new URLSearchParams({ q: missing, location }));
+                check(await page.getByRole('heading', { name: emptyTitle, exact: true }).isVisible(),
+                    'Missing useful empty search state: ' + section + ' at ' + width);
+                const clear = new URL(await page.getByRole('link', { name: 'Clear search filters', exact: true }).getAttribute('href'), host);
+                const wide = new URL(await page.getByRole('link', { name: 'Search all Manitoba', exact: true }).getAttribute('href'), host);
+                check(clear.searchParams.get('location') === location && !clear.searchParams.has('q'),
+                    'Reset lost community or retained query: ' + section);
+                check(!wide.searchParams.has('location') && wide.searchParams.get('q') === missing,
+                    'Broader search lost query or retained location: ' + section);
+                check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+                    'Empty search page overflows: ' + section + ' at ' + width);
+            }
+        }
+        console.log('PASS: four scoped empty-result recovery paths on mobile and desktop');
+
 
         console.log('PASS: authenticated notification hub, unread filters and followed conversations at five widths');
     } catch (error) {
