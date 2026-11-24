@@ -39,6 +39,13 @@
                         <x-icon name="arrow" size="17"/>
                     </a>
                 @endif
+                @if($enabled)
+                    <a href="/real-estate{{ $scope }}" class="home-explore-link">
+                        <span class="home-explore-icon"><x-icon name="house" size="23"/></span>
+                        <span><strong>Real Estate</strong><small>Homes, rentals and land · Listings coming soon</small></span>
+                        <x-icon name="arrow" size="17"/>
+                    </a>
+                @endif
                 @if(app(\App\Support\BusinessDirectory::class)->enabled($site))
                     <a href="/businesses" class="home-explore-link">
                         <span class="home-explore-icon"><x-icon name="building" size="23"/></span>

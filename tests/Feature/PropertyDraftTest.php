@@ -52,7 +52,8 @@ class PropertyDraftTest extends TestCase
         $this->actingAs($other)->get($path)->assertNotFound();
         $this->get($thumbnail)->assertNotFound();
         $this->actingAs($author)->post("$path/submit")->assertRedirect();
-        $this->get('https://canadamb.ca/real-estate')->assertNotFound();
+        $this->get('https://canadamb.ca/real-estate')->assertOk()->assertDontSee($draft->title)
+            ->assertDontSee('Private address sample');
         $this->get('https://canadamb.ca/sitemap.xml')->assertDontSee($draft->title);
 
         $review = "https://canadamb.ca/admin/properties/$draft->id";

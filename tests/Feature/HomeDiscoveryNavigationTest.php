@@ -16,6 +16,7 @@ class HomeDiscoveryNavigationTest extends TestCase
         $this->get('https://canadamb.ca/')->assertOk()
             ->assertSee('Explore Manitoba')
             ->assertSee('href="/marketplace"', false)
+            ->assertSee('href="/real-estate"', false)
             ->assertSee('href="/businesses"', false)
             ->assertSee('href="/community"', false)
             ->assertSee('href="/events"', false)
@@ -28,6 +29,7 @@ class HomeDiscoveryNavigationTest extends TestCase
         $this->get('https://brandonmb.ca/')->assertOk()
             ->assertSee('Explore Brandon')
             ->assertSee('href="/marketplace"', false)
+            ->assertSee('href="/real-estate"', false)
             ->assertSee('href="/businesses"', false)
             ->assertSee('href="/community"', false)
             ->assertSee('href="/events"', false)
@@ -42,6 +44,7 @@ class HomeDiscoveryNavigationTest extends TestCase
             ->assertSee('name="q"', false)
             ->assertSee('Search listings')
             ->assertSee('Real Estate')
+            ->assertSee('href="/real-estate"', false)
             ->assertSee('Coming later');
     }
 }

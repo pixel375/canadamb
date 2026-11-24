@@ -22,6 +22,7 @@ use App\Http\Controllers\MessagesController;
 use App\Http\Controllers\NewsController;
 use App\Http\Controllers\PropertyDraftController;
 use App\Http\Controllers\PublicController;
+use App\Http\Controllers\RealEstateController;
 use App\Http\Controllers\PwaController;
 use App\Http\Controllers\UserProfileController;
 use Illuminate\Support\Facades\Route;
@@ -42,6 +43,9 @@ Route::middleware('auth')->group(function () {
 Route::get('/communities', [PublicController::class, 'communities']);
 Route::get('/sitemap.xml', [PublicController::class, 'sitemap']);
 Route::get('/robots.txt', [PublicController::class, 'robots']);
+Route::get('/real-estate', [RealEstateController::class, 'index']);
+Route::get('/real-estate/{property}', [RealEstateController::class, 'show'])->whereNumber('property');
+Route::get('/real-estate/{property}/photo/{photo}', [RealEstateController::class, 'photo'])->whereNumber(['property', 'photo']);
 Route::get('/businesses', [BusinessController::class, 'index']);
 Route::get('/business-updates', [BusinessController::class, 'updates']);
 Route::get('/businesses/{slug}', [BusinessController::class, 'show']);

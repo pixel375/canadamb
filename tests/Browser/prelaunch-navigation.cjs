@@ -68,6 +68,8 @@ const fs = require('node:fs');
                     'Marketplace category artwork is not using the shared vector icon set');
                 check(await page.getByText('Coming later').isVisible(),
                     'Real Estate is missing its launch status');
+                check(await page.locator('.market-category-card[href^="/real-estate"]').count() === 1,
+                    'Dedicated Real Estate category is not linked');
                 check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
                     'Marketplace horizontal overflow at ' + host + ' ' + width);
                 if (width === 390 || width === 1440) {
@@ -78,6 +80,23 @@ const fs = require('node:fs');
                         animations: 'disabled',
                     });
                 }
+                await page.goto(host + '/real-estate');
+                check(await page.getByRole('heading', { name: 'Real Estate' }).isVisible(),
+                    'Dedicated Real Estate section is missing at ' + host + ' ' + width);
+                check(await page.getByText('Property listings are being prepared').isVisible(),
+                    'Real Estate public-availability status missing');
+                check(await page.locator('form[action="/real-estate"] select[name="transaction"]').count() === 1,
+                    'Real Estate sale/rent filters missing');
+                check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+                    'Real Estate horizontal overflow at ' + host + ' ' + width);
+                if (width === 390 || width === 1440) {
+                    await page.screenshot({
+                        path: 'test-results/' + (host.includes('brandon') ? 'brandon' : 'province') +
+                            '-real-estate-' + width + '.png',
+                        fullPage: true, animations: 'disabled',
+                    });
+                }
+                await page.goto(host + '/marketplace');
                 await page.locator('a[href="/marketplace?group=vehicles"]').click();
                 check(await page.getByRole('heading', { name: 'Vehicles & Motors' }).isVisible(),
                     'Main category does not open subcategories');
@@ -116,7 +135,7 @@ const fs = require('node:fs');
                 }
             }
         }
-        console.log('PASS: desktop menus, Marketplace and Discussions/Events on both hosts at six widths');
+        console.log('PASS: desktop menus, Marketplace, Real Estate and Discussions/Events on both hosts at six widths');
     } catch (error) {
         try { await page.screenshot({ path: 'test-results/prelaunch-nav-failure.png', fullPage: true }); } catch {}
         console.error(error?.stack || error);

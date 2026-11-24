@@ -68,12 +68,12 @@
                                 <span class="market-category-link">{{ count($group['available']) }} {{ \Illuminate\Support\Str::plural('subcategory', count($group['available'])) }} <span aria-hidden="true">→</span></span>
                             </a>
                         @endforeach
-                        <div class="market-category-card market-category-upcoming" aria-label="Real Estate, coming later">
+                        <a class="market-category-card market-category-upcoming" href="/real-estate{{ isset($filters['location']) ? '?'.http_build_query(['location' => $filters['location']]) : '' }}" aria-label="Browse Real Estate categories, listings coming later">
                             <span class="market-category-icon" aria-hidden="true"><x-icon name="house" size="25"/></span>
                             <span class="market-category-name">Real Estate</span>
-                            <span class="market-category-description">Homes, rentals and land — a dedicated section is planned for a future launch.</span>
+                            <span class="market-category-description">Explore homes, rentals, acreages and land in a dedicated section.</span>
                             <span class="market-category-coming">Coming later</span>
-                        </div>
+                        </a>
                     </div>
                 @endif
             </section>

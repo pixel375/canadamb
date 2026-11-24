@@ -140,7 +140,10 @@
         <a href="/account/messages"><x-icon name="messages" size="20"/> Messages <x-nav-count :count="$navCounts['messages']" label="messages"/></a>
         <a href="/account/notifications"><x-icon name="bell" size="20"/> Notifications <x-nav-count :count="$navCounts['notifications']" label="notifications"/></a>
         @if($networkSettings['modules']['news'] ?? false)<a href="/news"><x-icon name="news" size="20"/> News</a>@endif
-        @if($marketEnabled)<a href="/marketplace"><x-icon name="marketplace" size="20"/> Marketplace</a>@endif
+        @if($marketEnabled)
+            <a href="/marketplace"><x-icon name="marketplace" size="20"/> Marketplace</a>
+            <a href="/real-estate"><x-icon name="house" size="20"/> Real Estate</a>
+        @endif
         @if(($networkSettings['modules']['businesses'] ?? false) || ($networkSettings['modules']['jobs'] ?? false))
         <details class="drawer-submenu" @if(request()->is('businesses*', 'jobs*')) open @endif>
             <summary><x-icon name="building" size="20"/> Businesses <x-icon class="drawer-chevron" name="chevron-down" size="17"/></summary>
