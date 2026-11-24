@@ -57,9 +57,18 @@ class JobController extends Controller
         abort_unless($this->jobs->enabled($site), 404);
         $employer = $this->managedBusiness($request, $business);
         $branches = $employer->locations()->with('location')->when($site->location_id, fn ($query, $location) => $query->where('location_id', $location))->get();
-        $items = $this->jobs->scope($site->location_id)->whereIn('business_location_id', $branches->pluck('id'))->latest('id')->paginate(12);
+        $statuses = ['pending', 'approved', 'rejected', 'expired', 'withdrawn'];
+        $filters = $request->validate([
+            'status' => ['nullable', Rule::in($statuses)],
+            'q' => 'nullable|string|max:100',
+        ]);
+        $owned = $this->jobs->scope($site->location_id)->whereIn('business_location_id', $branches->pluck('id'));
+        $counts = (clone $owned)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
+        $items = $owned->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
+            ->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'description']))
+            ->latest('id')->paginate(12)->withQueryString();
 
-        return view('jobs.business', compact('employer', 'branches', 'items'));
+        return view('jobs.business', compact('employer', 'branches', 'items', 'statuses', 'filters', 'counts'));
     }
 
     public function store(Request $request, int $business)
