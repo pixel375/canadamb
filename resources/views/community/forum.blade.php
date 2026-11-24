@@ -104,7 +104,7 @@
                             <h2 id="discussion-events-title">Upcoming events</h2>
                             <p>Events over the next 60 days.</p>
                         </div>
-                        <a class="discussion-events-browse" href="/events" aria-label="Open the full events calendar"><x-icon name="arrow" size="19"/></a>
+                        <a class="discussion-events-browse" href="{{ \App\Support\LocationScope::browseUrl(request()->attributes->get('site'), '/events', \App\Support\LocationScope::forBrowsing(request()->attributes->get('site'), $filters['location'] ?? null)) }}" aria-label="Open the full events calendar"><x-icon name="arrow" size="19"/></a>
                     </div>
                     <div class="discussion-timeline">
                         @if($eventDays->isEmpty())
@@ -136,7 +136,7 @@
                         @endif
                     </div>
                     <div class="discussion-events-footer">
-                        <a class="text-link" href="/events">Full events calendar <x-icon name="arrow" size="16"/></a>
+                        <a class="text-link" href="{{ \App\Support\LocationScope::browseUrl(request()->attributes->get('site'), '/events', \App\Support\LocationScope::forBrowsing(request()->attributes->get('site'), $filters['location'] ?? null)) }}">Full events calendar <x-icon name="arrow" size="16"/></a>
                         <a class="text-link" href="/community/new?type=event">Suggest an event</a>
                     </div>
                 </aside>
