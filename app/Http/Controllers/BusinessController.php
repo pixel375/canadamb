@@ -60,7 +60,17 @@ class BusinessController extends Controller
         $site = $request->attributes->get('site');
         abort_unless($this->directory->enabled($site), 404);
 
-        return view('business.updates', ['updates' => $this->directory->updates($site->location_id)->paginate(18)]);
+        $filters = $request->validate([
+            'location' => ['nullable', 'string', 'max:100', Rule::exists('locations', 'slug')->where('province', 'MB')->where('selectable', true)],
+        ]);
+        $place = LocationScope::forBrowsing($site, $filters['location'] ?? null);
+
+        return view('business.updates', [
+            'updates' => $this->directory->updates($place?->id)->paginate(18)->withQueryString(),
+            'place' => $place,
+            'places' => $site->isNetwork() ? Location::selectable()->orderBy('name')->get() : collect(),
+            'filters' => $filters,
+        ]);
     }
 
     public function claim(Request $request, string $slug)
