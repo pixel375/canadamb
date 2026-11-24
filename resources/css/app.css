@@ -817,3 +817,22 @@ a.market-category-card:hover, a.market-category-card:focus-visible {
   .property-empty { padding: 16px; gap: 12px; }
   .property-empty > span { flex-basis: 40px; width: 40px; height: 40px; }
 }
+
+/* The property compliance workflow stays on private authenticated routes. */
+.property-private-notice { margin: 15px 0; padding: 15px 17px; background: var(--soft); border: 1px solid var(--border); border-radius: 11px; }
+.property-private-notice strong { color: var(--text); font-weight: 800; }
+.property-private-notice p { margin: 6px 0 10px; font-size: .84rem; }
+.property-private-actions { display: grid; gap: 15px; justify-items: start; }
+.property-attestation { width: 100%; max-width: 650px; }
+.property-attestation h2, .property-review-checks legend { font-size: 1.04rem; font-weight: 800; }
+.property-attestation button { justify-self: start; }
+.property-consent-check, .property-review-checks label { display: flex; flex-direction: row; align-items: flex-start; gap: 10px; font-size: .88rem; line-height: 1.5; }
+.property-consent-check input, .property-review-checks input { flex: 0 0 auto; margin-top: 4px; }
+.property-review-checks { display: grid; gap: 11px; padding: 16px; border: 1px solid var(--border); border-radius: 10px; }
+.property-review-checks legend { padding-inline: 7px; }
+@media (max-width: 540px) {
+  .property-private-notice { padding: 12px; }
+  .property-review-checks { padding: 11px; }
+  .property-private-actions { justify-items: stretch; }
+  .property-attestation button { width: 100%; }
+}

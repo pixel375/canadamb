@@ -81,6 +81,13 @@ class PropertyDraftController extends Controller
                 $item = $this->owned($request)->lockForUpdate()->findOrFail($property);
                 abort_unless(in_array($item->status, ['draft', 'changes_requested'], true), 409);
                 $item->update($data);
+                // Material changes invalidate the previous self-attestation and review.
+                $item->forceFill([
+                    'authorization_attested_at' => null,
+                    'authorization_capacity' => null,
+                    'review_checklist_completed_at' => null,
+                    'publication_expires_at' => null,
+                ])->save();
                 if ($paths === []) {
                     return [];
                 }
@@ -101,13 +108,27 @@ class PropertyDraftController extends Controller
 
     public function submit(Request $request, int $property)
     {
-        DB::transaction(function () use ($request, $property) {
+        $data = $request->validate([
+            'authorization_capacity' => 'required|in:owner,authorized-agent',
+            'advertising_consent' => 'required|accepted',
+        ]);
+        DB::transaction(function () use ($request, $property, $data) {
             $item = $this->owned($request)->lockForUpdate()->findOrFail($property);
             abort_unless(in_array($item->status, ['draft', 'changes_requested'], true), 409);
-            $item->forceFill(['status' => 'submitted', 'review_note' => null])->save();
+            abort_if(in_array($item->seller_type, ['agent', 'brokerage'], true) && blank($item->brokerage_name),
+                409, 'Enter the brokerage name before submitting this draft.');
+            $item->forceFill([
+                'status' => 'submitted',
+                'review_note' => null,
+                'authorization_capacity' => $data['authorization_capacity'],
+                'authorization_attested_at' => now(),
+                'review_checklist_completed_at' => null,
+                'publication_expires_at' => null,
+                'withdrawn_at' => null,
+            ])->save();
         });
 
-        return redirect('/account/properties/'.$property)->with('status', 'Draft submitted for private review.');
+        return redirect('/account/properties/'.$property)->with('status', 'Property authority attested. Draft submitted for private review only.');
     }
 
     public function archive(Request $request, int $property, ListingPhotos $photos)
@@ -116,7 +137,12 @@ class PropertyDraftController extends Controller
             $item = $this->owned($request)->lockForUpdate()->findOrFail($property);
             $old = $item->photos()->get(['image_path', 'thumbnail_path'])->toArray();
             $item->photos()->delete();
-            $item->forceFill(['status' => 'archived'])->save();
+            $item->forceFill([
+                'status' => 'archived',
+                'withdrawn_at' => now(),
+                'review_checklist_completed_at' => null,
+                'publication_expires_at' => null,
+            ])->save();
 
             return $old;
         });
@@ -163,6 +189,8 @@ class PropertyDraftController extends Controller
             'location_id' => 'nullable|integer',
             'title' => 'required|string|max:140', 'description' => 'required|string|min:20|max:6000',
             'transaction' => 'required|in:sale,rent',
+            'brokerage_name' => 'nullable|string|max:150',
+            'registration_reference' => 'nullable|string|max:100',
             'property_type' => ['required', Rule::in(array_keys(PropertyListing::TYPES))],
             'seller_type' => ['required', Rule::in(array_keys(PropertyListing::SELLERS))],
             'price' => 'required|numeric|decimal:0,2|gt:0|max:1000000000',

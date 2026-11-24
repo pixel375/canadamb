@@ -99,6 +99,10 @@ class RealEstateController extends Controller
 
         return PropertyListing::query()->with(['location', 'photos'])
             ->where('status', 'published')
+            ->whereNotNull('authorization_attested_at')
+            ->whereNotNull('review_checklist_completed_at')
+            ->whereNull('withdrawn_at')
+            ->where('publication_expires_at', '>', now())
             ->when(! config('network.real_estate_public_listings'), fn (Builder $query) => $query->whereRaw('1 = 0'))
             ->when($site->location_id !== null, fn (Builder $query) => $query->where('location_id', $site->location_id));
     }

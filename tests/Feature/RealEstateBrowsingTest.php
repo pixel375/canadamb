@@ -64,8 +64,18 @@ class RealEstateBrowsingTest extends TestCase
         $this->get('https://brandonmb.ca/real-estate/'.$listed->id)->assertNotFound();
         $this->get('https://brandonmb.ca/real-estate/'.$listed->id.'/photo/'.$photo->id)->assertNotFound();
 
-        // Future public visibility still needs an explicit approved status and city match.
+        // Even with the release gate enabled, a published status is insufficient.
+        // Owner authority, manual review, expiry and non-withdrawn state are all mandatory.
         config(['network.real_estate_public_listings' => true]);
+        $this->get('https://brandonmb.ca/real-estate')->assertDontSee('Potential published ranch');
+        $this->get('https://brandonmb.ca/real-estate/'.$listed->id)->assertNotFound();
+        $listed->forceFill([
+            'authorization_capacity' => 'owner',
+            'authorization_attested_at' => now()->subDay(),
+            'review_checklist_completed_at' => now(),
+            'publication_expires_at' => now()->addDays(10),
+        ])->save();
+
         $this->get('https://brandonmb.ca/real-estate')->assertOk()
             ->assertSee('Potential published ranch')
             ->assertDontSee('Never published private rental')
@@ -83,6 +93,15 @@ class RealEstateBrowsingTest extends TestCase
         $this->get('https://canadamb.ca/real-estate?property_type=house&min_price=350001')->assertDontSee('Potential published ranch');
         $this->get('https://canadamb.ca/real-estate?property_type=house&max_price=350000')
             ->assertSee('Potential published ranch');
+
+        $listed->forceFill(['publication_expires_at' => now()->subMinute()])->save();
+        $this->get('https://brandonmb.ca/real-estate')->assertDontSee('Potential published ranch');
+        $this->get('https://brandonmb.ca/real-estate/'.$listed->id)->assertNotFound();
+        $this->get('https://brandonmb.ca/real-estate/'.$listed->id.'/photo/'.$photo->id)->assertNotFound();
+
+        $listed->forceFill(['publication_expires_at' => now()->addDays(10), 'withdrawn_at' => now()])->save();
+        $this->get('https://brandonmb.ca/real-estate')->assertDontSee('Potential published ranch');
+        $this->get('https://brandonmb.ca/real-estate/'.$listed->id)->assertNotFound();
     }
 
     public function test_filters_are_validated_and_only_supported_cities_are_allowed(): void

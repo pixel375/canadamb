@@ -16,3 +16,19 @@ The `/account/properties` and `/admin/properties` workflows remain private and u
 Before implementing any publishing action or turning on the flag, obtain documented regulatory/legal assessment for Manitoba's Real Estate Services Act, appropriate owner/authorized-agent written advertising consent, brokerage registration/identity verification and mandatory ad disclosures, compliance moderation, address/privacy policy, expiry/takedown mechanisms, and secure media review. No unreviewed draft should be promoted by changing its status manually.
 
 Relevant law: https://web2.gov.mb.ca/laws/statutes/ccsm/r021.php?lang=en (notably sections 35-37).
+
+
+## November 2026: private authority and review checkpoints
+
+A private draft now separates the following steps:
+
+1. The owner or authorized representative supplies an **authority declaration** when submitting. This is a self-attestation, *not proof* of written owner consent, and does not confer a right to publish an advertisement.
+2. A network reviewer independently checks authority, seller/brokerage role, property description/location/price, and media/privacy before marking a draft privately reviewed. All checkpoints must be acknowledged. The review remains private, audited, and cannot trigger publication.
+3. Editing a returned draft clears its previously recorded attestation, reviewer checklist and future expiry. An owner archiving a draft immediately records withdrawal and clears any internal readiness/expiry.
+4. Public visibility, should a separately approved public system ever be authorized, requires **all** of: explicitly enabled production rollout, `published` status, recorded submitter attestation, completed manual review, a non-expired `publication_expires_at`, and no withdrawal. Currently no workflow assigns `published`, no workflow assigns publication expiry, and the rollout remains disabled.
+
+Additional private metadata records seller-supplied brokerage name/registration reference for future verification. This is *not* official registrar validation. The database migration only adds nullable columns to the existing `property_listings` table, and keeps old drafts private. This work is not a compliance certification, an MLS importer, a brokerage licence check, or a substitute for current legal advice.
+
+Manitoba's Real Estate Services Act (especially advertising sections 35–37) calls for careful owner authorization, disclosures, and avoidance of false advertisements. Manitoba Financial Services Agency guidance may additionally apply to any future public launch.
+
+[RESA](https://web2.gov.mb.ca/laws/statutes/ccsm/r021.php?lang=en) · [MFSA advertising guidance](https://themfsa.ca/wp-content/uploads/2025/10/Advertising-under-The-Real-Estate-Services-Act.pdf)
