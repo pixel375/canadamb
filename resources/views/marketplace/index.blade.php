@@ -162,9 +162,15 @@
                 @if($items->isEmpty())
                     <div class="market-results-empty">
                         <span class="empty-icon" aria-hidden="true"><x-icon name="search" size="23"/></span>
-                        <h3>No listings match your search</h3>
+                        <h3>{{ $activeFilterCount ? 'No listings match your search' : 'No listings posted yet' }}</h3>
                         <p>{{ $activeFilterCount ? 'Try fewer filters or a broader search.' : 'Nothing listed here yet. Be the first to post something.' }}</p>
                         <div class="market-empty-actions">
+                            @if(array_diff_key($filters, ['location' => true, 'view' => true, 'group' => true]))
+                                <a class="button button-outline" href="{{ $marketLink(['view' => 'all']) }}">Clear search filters</a>
+                            @endif
+                            @if($marketPlace)
+                                <a class="button button-outline" href="{{ '/marketplace?'.http_build_query(array_diff_key($filters, ['location' => true]) + ['view' => 'all']) }}">Search all Manitoba</a>
+                            @endif
                             <a class="button button-outline" href="{{ $marketLink() }}">Browse categories</a>
                             <a class="button button-primary" href="/marketplace/new"><x-icon name="plus" size="16"/> Post a listing</a>
                         </div>
