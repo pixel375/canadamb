@@ -129,9 +129,16 @@ class MarketplaceEngagementTest extends TestCase
         $this->assertDatabaseHas('listing_reports', ['listing_id' => $item->id, 'reporter_id' => $buyer->id]);
         $this->post("$base/message", ['body' => 'Are the chairs included?'])->assertRedirect();
         $thread = Conversation::sole();
+        $inbox = 'https://brandonmb.ca/account/messages';
+        $this->actingAs($stranger)->get($inbox.'?q=Patio')->assertOk()->assertDontSee('Are the chairs included?');
+        $this->actingAs($seller)->get($inbox.'?view=unread')->assertOk()->assertSee('Are the chairs included?')->assertSee('1 unread');
+        $this->get($inbox.'?q=Patio')->assertOk()->assertSee('Are the chairs included?');
+        $this->get($inbox.'?q='.urlencode($buyer->name))->assertOk()->assertSee('Are the chairs included?');
+        $this->get($inbox.'?q=%25')->assertOk()->assertDontSee('Are the chairs included?');
         $url = "https://brandonmb.ca/account/messages/$thread->id";
         $this->actingAs($stranger)->get($url)->assertNotFound();
         $this->actingAs($seller)->get($url)->assertOk()->assertSee('Are the chairs included?');
+        $this->get($inbox.'?view=unread')->assertOk()->assertDontSee('Are the chairs included?');
         $this->post($url, ['body' => 'Yes, all four are included.'])->assertRedirect();
         $this->actingAs($buyer)->get($url)->assertSee('Yes, all four are included.');
         $this->post("$url/block")->assertRedirect();
