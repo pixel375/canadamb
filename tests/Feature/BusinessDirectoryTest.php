@@ -32,6 +32,10 @@ class BusinessDirectoryTest extends TestCase
         $this->assertDatabaseCount('business_import_runs', 2);
         $this->get('https://canadamb.ca/businesses')->assertOk()->assertSee('Brandon Bicycle Repair')->assertSee('Elkhorn Farm Repairs');
         $this->get('https://brandonmb.ca/businesses')->assertOk()->assertSee('Brandon Bicycle Repair')->assertDontSee('Elkhorn Farm Repairs');
+        $this->get('https://canadamb.ca/businesses?location=brandon&category=services')->assertOk()
+            ->assertSee('Browse by category')->assertSee('1 business')->assertSee('Brandon Bicycle Repair')->assertDontSee('Elkhorn Farm Repairs');
+        $this->get('https://canadamb.ca/businesses?q=Repair&category=retail')->assertOk()
+            ->assertSee('2 businesses')->assertSee('No matching businesses.');
         $business = Business::where('name', 'Brandon Bicycle Repair')->sole();
         $this->get('https://brandonmb.ca/businesses/'.$business->slug)->assertSee('Own this business?');
         $this->get('https://canadamb.ca/businesses/'.$business->slug)->assertStatus(301)->assertRedirect('https://brandonmb.ca/businesses/'.$business->slug);
@@ -64,6 +68,7 @@ class BusinessDirectoryTest extends TestCase
             'body' => 'Bring your bike for a tune-up.',
         ])->assertSessionHasNoErrors()->assertRedirect();
         $this->get('https://brandonmb.ca/')->assertDontSee('Workshop opens Saturday');
+        $this->get('https://brandonmb.ca/business-updates?q=Workshop')->assertOk()->assertDontSee('Workshop opens Saturday');
         $this->get('https://brandonmb.ca/account/businesses')->assertOk()->assertSee('Manage jobs')->assertSee('Test Repair');
         $this->get("https://brandonmb.ca/account/businesses/$business->id")->assertOk()->assertSee('Recent business updates')->assertSee('Workshop opens Saturday')->assertSee('Pending');
         $update = DB::table('business_updates')->value('id');
@@ -72,6 +77,9 @@ class BusinessDirectoryTest extends TestCase
         ])->assertSessionHasNoErrors()->assertRedirect();
         $this->get('https://brandonmb.ca/')->assertSee('Workshop opens Saturday');
         $this->get('https://canadamb.ca/')->assertSee('Workshop opens Saturday');
+        $this->get('https://canadamb.ca/business-updates?location=brandon&type=announcement&q=bike%20Workshop')->assertOk()->assertSee('Workshop opens Saturday');
+        $this->get('https://canadamb.ca/business-updates?location=elkhorn&q=Workshop')->assertOk()->assertDontSee('Workshop opens Saturday');
+        $this->get('https://brandonmb.ca/business-updates?type=promotion')->assertOk()->assertDontSee('Workshop opens Saturday');
         $this->assertDatabaseCount('business_updates', 1);
     }
 }
