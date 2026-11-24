@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\SaveListing;
+use App\Models\Conversation;
 use App\Models\Listing;
 use App\Models\ListingCategory;
 use App\Models\Location;
@@ -105,12 +106,20 @@ class MarketplaceController extends Controller
         // Browsing stays on the visitor's portal; search engines use the single
         // canonical community URL. City portals still enforce their own scope.
         $related = $this->marketplace->visible($site)->whereKeyNot($item->id)
-            ->where('category', $item->category)->latest('published_at')->limit(2)->get();
+            ->where('category', $item->category)->orderByRaw('CASE WHEN location_id = ? THEN 0 ELSE 1 END', [$item->location_id])
+            ->latest('published_at')->limit(4)->get();
         $recent = $this->marketplace->visible($site)->whereKeyNot($item->id)
-            ->whereNotIn('id', $related->pluck('id'))
-            ->latest('published_at')->limit(2)->get();
+            ->where('location_id', $item->location_id)->whereNotIn('id', $related->pluck('id'))
+            ->latest('published_at')->limit(4)->get();
 
-        return view('marketplace.show', compact('item', 'canonical', 'related', 'recent'));
+        $member = $request->user();
+        $saved = $member && DB::table('listing_favourites')->where(['user_id' => $member->id, 'listing_id' => $item->id])->exists();
+        $conversation = $member && $member->id !== $item->user_id
+            ? Conversation::where(['buyer_id' => $member->id, 'listing_id' => $item->id])->first()
+            : null;
+        $sellerListingCount = $this->marketplace->visible($site)->where('user_id', $item->user_id)->count();
+
+        return view('marketplace.show', compact('item', 'canonical', 'related', 'recent', 'saved', 'conversation', 'sellerListingCount'));
     }
 
     public function create(Request $request)
