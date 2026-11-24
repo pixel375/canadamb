@@ -8,6 +8,8 @@ use Illuminate\Validation\ValidationException;
 
 final class LocationScope
 {
+    public const PREFERENCE_COOKIE = 'canadamb_community';
+
     // Browsing scope is an explicit, shareable GET parameter, never a
     // publication permission or an override for a dedicated city portal.
     public static function forBrowsing(Site $site, mixed $value, bool $byName = false): ?Location
@@ -22,8 +24,6 @@ final class LocationScope
 
         return Location::selectable()->where($byName ? 'name' : 'slug', $value)->first();
     }
-
-    public const PREFERENCE_COOKIE = 'canadamb_community';
 
     public static function preferred(Site $site, mixed $value): ?Location
     {
