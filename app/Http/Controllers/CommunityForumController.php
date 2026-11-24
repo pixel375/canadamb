@@ -6,6 +6,7 @@ use App\Models\CommunityEvent;
 use App\Models\CommunityThread;
 use App\Models\Location;
 use App\Support\Community;
+use App\Support\KeywordSearch;
 use App\Support\LocationScope;
 use App\Support\NetworkUrl;
 use Illuminate\Database\Query\Builder;
@@ -27,7 +28,7 @@ class CommunityForumController extends Controller
         }
         $filters = $request->validate($rules);
         $threads = $this->community->threads($site->location_id)
-            ->when($filters['q'] ?? null, fn ($query, $term) => $query->whereLike('title', '%'.$term.'%'))
+            ->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'body']))
             ->when($filters['category'] ?? null, fn ($query, $category) => $query->where('category', $category))
             ->when($filters['location'] ?? null, fn ($query, $slug) => $query->whereHas('location', fn ($place) => $place->where('slug', $slug)))
             ->orderByDesc('pinned')->orderByDesc('last_activity_at')->orderByDesc('id')->paginate(18)->withQueryString();
