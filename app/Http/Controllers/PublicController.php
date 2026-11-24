@@ -13,6 +13,7 @@ use App\Support\NetworkSettings;
 use App\Support\NetworkUrl;
 use App\Support\News;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class PublicController extends Controller
 {
@@ -35,7 +36,7 @@ class PublicController extends Controller
         $slug = $data['location'] ?? null;
         $place = LocationScope::preferred($site, $slug);
         if ($slug !== null && ! $place) {
-            throw \Illuminate\Validation\ValidationException::withMessages(['location' => 'Choose a supported Manitoba community.']);
+            throw ValidationException::withMessages(['location' => 'Choose a supported Manitoba community.']);
         }
 
         $response = redirect($place ? LocationScope::browseUrl($site, '/', $place) : '/')->header('Cache-Control', 'private, no-store');
@@ -97,7 +98,9 @@ class PublicController extends Controller
 
         $types = Location::selectable()->select('type')->distinct()->orderBy('type')->pluck('type');
 
-        return view('communities', compact('locations', 'filters', 'types'));
+        $preferredCommunity = LocationScope::preferred($request->attributes->get('site'), $request->cookie(LocationScope::PREFERENCE_COOKIE));
+
+        return view('communities', compact('locations', 'filters', 'types', 'preferredCommunity'));
     }
 
     public function sitemap(Request $request, Marketplace $marketplace, BusinessDirectory $businesses, News $news)
