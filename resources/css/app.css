@@ -1627,3 +1627,19 @@ a.market-category-card:hover, a.market-category-card:focus-visible {
 .job-detail-facts dd { font-weight:700; margin:0; }
 @media(max-width:850px) { .public-profile-layout { grid-template-columns:minmax(0,1fr); } }
 @media(max-width:580px) { .public-business-hero { gap:12px; flex-wrap:wrap; } .public-business-avatar { width:58px; height:58px; flex-basis:58px; border-radius:12px; } .public-business-avatar svg { width:28px; height:28px; } .public-business-hero > .button { width:100%; } }
+
+/* Local business discovery: touch-friendly categories and contextual counts. */
+.business-category-discovery { margin-bottom: 18px; }
+.business-category-discovery .section-heading { flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.business-category-discovery h2 { font-size: 1.12rem; }
+.business-category-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 9px; }
+.business-category-tile { display: flex; flex-direction: column; gap: 9px; padding: 12px; min-width: 0; border: 1px solid var(--border); border-radius: 10px; background: var(--card); }
+.business-category-tile:hover, .business-category-tile:focus-visible { border-color: var(--link); }
+.business-category-tile[aria-current=page] { border-color: var(--link); background: var(--soft); }
+.business-category-tile > span:last-child { display: grid; gap: 4px; min-width: 0; overflow-wrap: anywhere; }
+.business-category-tile strong { font-size: .85rem; line-height: 1.35; }
+.business-category-tile small { font-size: .75rem; color: var(--muted); }
+.business-category-icon { display:grid; place-items:center; width:40px; height:40px; border-radius:9px; color:var(--link); background:var(--soft); }
+.business-contact-summary { display:flex; align-items:center; gap:5px; color:var(--muted); font-size:.75rem; }
+@media(max-width:1150px) { .business-category-grid { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+@media(max-width:580px) { .business-category-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; } .business-category-tile { padding:10px; } .business-category-icon { width:34px; height:34px; } }
