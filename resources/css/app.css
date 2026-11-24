@@ -1643,3 +1643,10 @@ a.market-category-card:hover, a.market-category-card:focus-visible {
 .business-contact-summary { display:flex; align-items:center; gap:5px; color:var(--muted); font-size:.75rem; }
 @media(max-width:1150px) { .business-category-grid { grid-template-columns:repeat(3,minmax(0,1fr)); } }
 @media(max-width:580px) { .business-category-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; } .business-category-tile { padding:10px; } .business-category-icon { width:34px; height:34px; } }
+
+.business-update-card { display:grid; gap:12px; min-width:0; overflow-wrap:anywhere; }
+.business-update-heading { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.business-update-heading > div { flex:1; min-width:0; }
+.business-update-heading > .member-listing-status { flex-shrink:0; }
+.business-update-card h3 { font-size:1.12rem; }
+@media(max-width:580px) { .business-update-heading > .member-listing-status { font-size:.7rem; } }
