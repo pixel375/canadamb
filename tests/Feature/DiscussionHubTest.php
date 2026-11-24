@@ -81,6 +81,9 @@ class DiscussionHubTest extends TestCase
         $this->get('https://brandonmb.ca/community/new?type=event')
             ->assertOk()->assertSee('Event request');
         $this->get('https://canadamb.ca/events/new')->assertOk()->assertSee('Submit an event');
+        $this->get('https://canadamb.ca/events')->assertOk()
+            ->assertSee('href="/community"', false)
+            ->assertSee('href="/community/new?type=event"', false);
     }
 
     private function event(int $locationId, string $title, string $startsAt, string $status = 'approved'): CommunityEvent

@@ -752,3 +752,7 @@ a.market-category-card:hover, a.market-category-card:focus-visible {
     .discussion-events-footer { padding: 15px 16px; }
     .discussion-composer-switch a { flex: 1 1 0; justify-content: center; padding-inline: 9px; }
 }
+
+/* Event details retain a clear route back to Discussions and the full calendar. */
+.discussion-breadcrumb { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; color: var(--muted); margin-bottom: 19px; }
+.discussion-breadcrumb .text-link { font-size: .83rem; }

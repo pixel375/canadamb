@@ -9,7 +9,13 @@
 @endphp
 <x-layouts.site :title="$item->title" :canonical="$canonical" :structured-data="array_filter($eventData)">
     <div class="container page-shell narrow">
-        <a class="text-link mb-4" href="/events">Community events</a>
+        <nav class="discussion-breadcrumb" aria-label="Event navigation">
+            @if(app(\App\Support\Community::class)->enabled(request()->attributes->get('site'), 'community'))
+                <a class="text-link" href="/community">Discussions</a>
+                <x-icon name="chevron" size="14"/>
+            @endif
+            <a class="text-link" href="/events">Events calendar</a>
+        </nav>
         <article class="panel">
             <p class="section-label">{{ \App\Support\Community::EVENTS[$item->category] }} · {{ $item->location->name }}</p>
             <h1>{{ $item->title }}</h1>
