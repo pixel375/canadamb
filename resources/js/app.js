@@ -1,5 +1,14 @@
 import Alpine from 'alpinejs';
 
+// Show browse filters immediately on desktop, without forcing them open on
+// phones or preventing a visitor from collapsing the native disclosure.
+if (window.matchMedia('(min-width: 1024px)').matches) {
+    for (const sidebar of document.querySelectorAll('details.browse-sidebar')) {
+        sidebar.open = true;
+    }
+}
+
+
 const modes = ['system', 'light', 'dark'];
 const themeChoice = document.getElementById('theme-choice');
 const mobileThemeChoice = document.getElementById('theme-choice-mobile');
