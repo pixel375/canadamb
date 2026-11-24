@@ -993,3 +993,25 @@ a.market-category-card:hover, a.market-category-card:focus-visible {
     .market-empty-actions .button, .discussion-empty-actions .button { flex: 1 1 auto; }
     .discussion-topic-footer { gap: 5px 10px; font-size: .75rem; }
 }
+
+
+/* Keep Real Estate visible as a proper main category, not an orphaned final tile. */
+@media (min-width: 1024px) {
+    .market-category-grid:has(.market-category-parent) > .market-category-upcoming {
+        grid-column: 1 / -1; display: grid; grid-template-columns: 56px minmax(0, 1fr) auto;
+        grid-template-rows: auto auto; align-items: center; justify-items: start;
+        gap: 3px 15px; min-height: 108px; padding: 18px 22px;
+    }
+    .market-category-grid:has(.market-category-parent) > .market-category-upcoming .market-category-icon {
+        grid-column: 1; grid-row: 1 / span 2; width: 52px; height: 52px;
+    }
+    .market-category-grid:has(.market-category-parent) > .market-category-upcoming .market-category-name {
+        grid-column: 2; grid-row: 1;
+    }
+    .market-category-grid:has(.market-category-parent) > .market-category-upcoming .market-category-description {
+        grid-column: 2; grid-row: 2; display: block; font-size: .83rem;
+    }
+    .market-category-grid:has(.market-category-parent) > .market-category-upcoming .market-category-coming {
+        grid-column: 3; grid-row: 1 / span 2; margin: 0; align-self: center;
+    }
+}

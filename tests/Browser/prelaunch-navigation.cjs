@@ -147,7 +147,7 @@ const fs = require('node:fs');
                     });
                 }
                 await page.goto(host + '/marketplace');
-                await page.locator('a[href="/marketplace?group=vehicles"]').click();
+                await page.locator('.market-parent-copy a[href="/marketplace?group=vehicles"]').click();
                 check(await page.getByRole('heading', { name: 'Vehicles & Motors' }).isVisible(),
                     'Main category does not open subcategories');
                 await page.locator('a[href="/marketplace?category=cars"]').click();
@@ -180,7 +180,7 @@ const fs = require('node:fs');
                     await page.goto(host + '/marketplace?location=brandon');
                     check(await page.getByRole('heading', { name: 'What are you looking for?' }).isVisible(),
                         'Location-only visit did not open the category chooser');
-                    await page.locator('a[href="/marketplace?group=vehicles&location=brandon"]').click();
+                    await page.locator('.market-parent-copy a[href="/marketplace?group=vehicles&location=brandon"]').click();
                     await page.locator('a[href="/marketplace?category=cars&location=brandon"]').click();
                     check(new URL(page.url()).searchParams.get('location') === 'brandon',
                         'Location was lost while selecting a subcategory');
