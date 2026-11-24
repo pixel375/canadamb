@@ -27,14 +27,15 @@ class BusinessController extends Controller
             'q' => 'nullable|string|max:100', 'category' => ['nullable', Rule::in(array_keys(BusinessDirectory::CATEGORIES))],
             'location' => 'nullable|string|max:100',
         ]);
-        $businesses = $this->directory->visible($site)
-            ->with(['locations.location'])
+        $matching = $this->directory->visible($site)
             ->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['name', 'description']))
+            ->when($site->isNetwork() && filled($filters['location'] ?? null), fn ($query) => $query->whereHas('locations.location', fn ($location) => $location->where('slug', $filters['location'])));
+        $categoryCounts = (clone $matching)->selectRaw('category, COUNT(*) as total')->groupBy('category')->pluck('total', 'category');
+        $businesses = $matching->with(['locations.location'])
             ->when($filters['category'] ?? null, fn ($query, $category) => $query->where('category', $category))
-            ->when($site->isNetwork() && isset($filters['location']), fn ($query) => $query->whereHas('locations.location', fn ($location) => $location->where('slug', $filters['location'])))
             ->orderBy('name')->orderBy('id')->paginate(18)->withQueryString();
 
-        return view('business.index', compact('businesses', 'filters') + [
+        return view('business.index', compact('businesses', 'filters', 'categoryCounts') + [
             'categories' => BusinessDirectory::CATEGORIES,
             'places' => $site->isNetwork() ? Location::selectable()->orderBy('name')->get() : collect(),
         ]);
