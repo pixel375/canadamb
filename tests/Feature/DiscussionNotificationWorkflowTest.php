@@ -1,0 +1,196 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\CommunityReply;
+use App\Models\CommunityThread;
+use App\Models\Location;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Tests\TestCase;
+
+class DiscussionNotificationWorkflowTest extends TestCase
+{
+    use RefreshDatabase;
+
+    protected $seed = true;
+
+    public function test_followed_discussions_only_show_approved_threads_visible_on_the_current_portal(): void
+    {
+        $member = User::factory()->create();
+        $author = User::factory()->create();
+        $brandon = $this->thread($author, 'Brandon garden swap', 'brandon');
+        $winnipeg = $this->thread($author, 'Winnipeg local projects', 'winnipeg');
+        $pending = $this->thread($author, 'Brandon pending conversation', 'brandon', 'pending');
+
+        foreach ([$brandon, $winnipeg, $pending] as $thread) {
+            DB::table('community_thread_follows')->insert([
+                'user_id' => $member->id,
+                'thread_id' => $thread->id,
+            ]);
+        }
+
+        $url = 'https://brandonmb.ca/account/followed-discussions';
+        $this->get($url)->assertRedirect();
+        $this->actingAs($member)->get($url)
+            ->assertOk()
+            ->assertSee('Following discussions')
+            ->assertSee('Brandon garden swap')
+            ->assertSee('1 discussion')
+            ->assertDontSee('Winnipeg local projects')
+            ->assertDontSee('Brandon pending conversation')
+            ->assertSee('href="/account/community-notifications"', false);
+
+        $this->get('https://canadamb.ca/account/followed-discussions')
+            ->assertOk()
+            ->assertSee('Brandon garden swap')
+            ->assertSee('Winnipeg local projects')
+            ->assertSee('2 discussions')
+            ->assertDontSee('Brandon pending conversation');
+
+        $this->actingAs(User::factory()->create())->get($url)
+            ->assertOk()
+            ->assertSee("You're not following any discussions here")
+            ->assertDontSee('Brandon garden swap');
+
+        $this->actingAs(User::factory()->create(['email_verified_at' => null]))
+            ->get($url)->assertRedirect();
+    }
+
+    public function test_unread_filter_and_mark_all_read_respect_approval_user_and_city_scope(): void
+    {
+        $member = User::factory()->create();
+        $other = User::factory()->create();
+        $author = User::factory()->create();
+        $brandon = $this->notify($member, $author, 'Visible Brandon reply', 'brandon');
+        $winnipeg = $this->notify($member, $author, 'Visible Winnipeg reply', 'winnipeg');
+        $pending = $this->notify($member, $author, 'Pending reply should not show', 'brandon', false);
+        $otherMember = $this->notify($other, $author, 'Other member reply', 'brandon');
+
+        $this->actingAs($member)->get('https://brandonmb.ca/account/community-notifications?view=unread')
+            ->assertOk()
+            ->assertSee('Visible Brandon reply')
+            ->assertSee('1', false)
+            ->assertSee('Mark all as read')
+            ->assertSee('href="/community/', false)
+            ->assertDontSee('Visible Winnipeg reply')
+            ->assertDontSee('Pending reply should not show')
+            ->assertDontSee('Other member reply');
+
+        $this->post('https://brandonmb.ca/account/community-notifications/read-all')
+            ->assertRedirect('/account/community-notifications')
+            ->assertSessionHas('status', 'All visible discussion notifications marked as read.');
+
+        $this->assertNotNull(DB::table('community_notifications')->where('id', $brandon)->value('read_at'));
+        foreach ([$winnipeg, $pending, $otherMember] as $unreadId) {
+            $this->assertNull(DB::table('community_notifications')->where('id', $unreadId)->value('read_at'));
+        }
+
+        $this->get('https://brandonmb.ca/account/community-notifications?view=unread')
+            ->assertOk()->assertSee('All caught up')->assertDontSee('Visible Brandon reply');
+
+        $this->get('https://brandonmb.ca/account/community-notifications')
+            ->assertOk()->assertSee('Visible Brandon reply');
+
+        $this->get('https://canadamb.ca/account/community-notifications?view=unread')
+            ->assertOk()->assertSee('Visible Winnipeg reply')->assertDontSee('Visible Brandon reply');
+
+        $this->get('https://canadamb.ca/account/community-notifications?view=invalid')
+            ->assertSessionHasErrors('view');
+
+        $this->actingAs($other)->post('https://brandonmb.ca/account/community-notifications/read-all')
+            ->assertRedirect();
+        $this->assertNull(DB::table('community_notifications')->where('id', $winnipeg)->value('read_at'));
+    }
+
+    public function test_individual_notification_read_returns_to_requested_safe_filter(): void
+    {
+        $member = User::factory()->create();
+        $id = $this->notify($member, User::factory()->create(), 'New approved reply', 'brandon');
+        $this->actingAs($member)->post('https://brandonmb.ca/account/community-notifications/'.$id.'/read', [
+            'return_to' => 'unread',
+        ])->assertRedirect('/account/community-notifications?view=unread');
+        $this->assertNotNull(DB::table('community_notifications')->where('id', $id)->value('read_at'));
+
+        $this->post('https://brandonmb.ca/account/community-notifications/'.$id.'/read', [
+            'return_to' => 'https://example.com',
+        ])->assertRedirect('/account/notifications');
+    }
+
+    public function test_notification_reply_permalink_selects_the_correct_page_and_never_exposes_pending_reply(): void
+    {
+        $member = User::factory()->create();
+        $author = User::factory()->create();
+        $thread = $this->thread($author, 'Brandon long conversation', 'brandon');
+
+        for ($i = 1; $i <= 27; $i++) {
+            $reply = $thread->replies()->create([
+                'author_id' => $author->id,
+                'body' => 'Approved reply number '.$i,
+            ]);
+            $reply->forceFill(['status' => 'approved'])->save();
+            if ($i === 27) {
+                $last = $reply;
+            }
+        }
+        $pending = $thread->replies()->create([
+            'author_id' => $author->id, 'body' => 'A pending hidden reply',
+        ]);
+        DB::table('community_notifications')->insert([
+            'user_id' => $member->id, 'reply_id' => $last->id, 'created_at' => now(),
+        ]);
+
+        $this->actingAs($member)->get('https://brandonmb.ca/account/community-notifications')
+            ->assertOk()
+            ->assertSee('href="/community/'.$thread->id.'/replies/'.$last->id.'"', false);
+        $this->get('https://canadamb.ca/account/notifications')
+            ->assertOk()
+            ->assertSee('href="/community/'.$thread->id.'/replies/'.$last->id.'"', false);
+
+        $expected = 'https://brandonmb.ca/community/'.$thread->id.'?page=2#reply-'.$last->id;
+        $this->get('https://brandonmb.ca/community/'.$thread->id.'/replies/'.$last->id)
+            ->assertRedirect($expected);
+        $this->get('https://canadamb.ca/community/'.$thread->id.'/replies/'.$last->id)
+            ->assertRedirect($expected);
+        $this->get('https://brandonmb.ca/community/'.$thread->id.'/replies/'.$pending->id)
+            ->assertNotFound();
+        $this->get('https://brandonmb.ca/community/'.$thread->id.'?page=2')
+            ->assertOk()->assertSee('id="reply-'.$last->id.'"', false)
+            ->assertDontSee('A pending hidden reply');
+    }
+
+    private function thread(
+        User $author, string $title, string $place, string $status = 'approved'
+    ): CommunityThread {
+        $thread = CommunityThread::create([
+            'author_id' => $author->id,
+            'location_id' => Location::where('slug', $place)->sole()->id,
+            'title' => $title,
+            'category' => 'general',
+            'body' => 'Community updates and replies for the neighbourhood.',
+        ]);
+        $thread->forceFill(['status' => $status])->save();
+
+        return $thread;
+    }
+
+    private function notify(
+        User $member, User $author, string $title, string $place, bool $approved = true
+    ): int {
+        $thread = $this->thread($author, $title, $place);
+        $reply = $thread->replies()->create([
+            'author_id' => $author->id,
+            'body' => 'Discussion notification test content for this community.',
+        ]);
+        if ($approved) {
+            $reply->forceFill(['status' => 'approved'])->save();
+        }
+
+        return DB::table('community_notifications')->insertGetId([
+            'user_id' => $member->id,
+            'reply_id' => $reply->id,
+            'created_at' => now(),
+        ]);
+    }
+}
