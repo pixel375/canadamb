@@ -236,6 +236,34 @@ const fs = require('node:fs');
             'Marketplace category discovery should remain full width');
         console.log('PASS: desktop filter sidebars and mobile disclosure behavior across six browse pages');
 
+        for (const width of [320, 390, 1440]) {
+            await page.setViewportSize({ width, height: 900 });
+            const profileResponse = await page.goto(host + '/account/profile');
+            check(profileResponse?.ok(), 'Account profile request failed');
+            const dashboard = page.locator('.account-shortcuts');
+            check(await dashboard.getByRole('link', { name: /My listings/ }).isVisible(), 'Dashboard missing listings');
+            check(await dashboard.getByRole('link', { name: /Saved jobs/ }).isVisible(), 'Dashboard missing saved jobs');
+            check(await dashboard.getByRole('link', { name: /Notifications/ }).isVisible(), 'Dashboard missing notifications');
+            check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Account dashboard overflow');
+            const editorResponse = await page.goto(host + '/marketplace/new?location=brandon');
+            check(editorResponse?.ok(), 'Listing editor request failed');
+            check(await page.locator('.listing-editor-section').count() === 4, 'Listing editor missing sections');
+            check(await page.locator('select[name="location_id"] option:checked').innerText() === 'Brandon', 'New listing lost browsing community');
+            const input = page.locator('[data-listing-photos]');
+            const file = { name: 'sample.png', mimeType: 'image/png',
+                buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLttAAAAABJRU5ErkJggg==', 'base64') };
+            await input.setInputFiles([file]);
+            check(await page.locator('[data-photo-preview] img').count() === 1, 'Local photo preview missing');
+            check(await page.locator('[data-photo-preview]').isVisible(), 'Local photo preview hidden');
+            await input.setInputFiles([file, file, file, file, file, file]);
+            check(!(await input.evaluate(el => el.validity.valid)), 'Six photos must fail client validation');
+            await input.setInputFiles([]);
+            check(await input.evaluate(el => el.validity.valid), 'Clearing photo input did not reset validation');
+            check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Listing editor overflow');
+        }
+        console.log('PASS: account dashboard and listing editor photo preview at three widths');
+
+
 
 
 
