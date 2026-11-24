@@ -23,7 +23,7 @@ const fs = require('node:fs');
                 'Signed-in notifications hub missing: ' + width);
             check(await page.getByText('1 unread reply notification').isVisible(),
                 'Unread notification count incorrect: ' + width);
-            check(await page.getByText('Community garden neighbours').isVisible(),
+            check(await page.locator('.activity-panel .item-row').filter({ hasText: 'Community garden neighbours' }).count() > 0,
                 'Recent approved discussion reply missing: ' + width);
             check(!(await page.getByText('Private unpublished reply that browser QA must never show.').count()),
                 'Private pending content leaked to notification hub');
