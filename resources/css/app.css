@@ -1601,3 +1601,9 @@ a.market-category-card:hover, a.market-category-card:focus-visible {
     .seller-listing-search input { font-size: 16px; }
     .seller-listing-thumbnail { flex-basis: 70px; width: 70px; }
 }
+
+.job-posting-editor { margin-bottom: 16px; }
+.job-posting-editor > summary { display: flex; align-items: center; gap: 8px; font-weight: 750; cursor: pointer; list-style: none; }
+.job-posting-editor > summary::-webkit-details-marker { display: none; }
+.job-posting-editor[open] > summary { padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+.seller-listing-card h2 { font-size: 1.1rem; overflow-wrap: anywhere; }
