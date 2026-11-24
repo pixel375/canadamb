@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Business;
 use App\Models\Location;
 use App\Support\BusinessDirectory;
+use App\Support\KeywordSearch;
 use App\Support\LocationScope;
 use App\Support\NetworkUrl;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -27,7 +28,7 @@ class BusinessController extends Controller
         ]);
         $businesses = $this->directory->visible($site)
             ->with(['locations.location'])
-            ->when($filters['q'] ?? null, fn ($query, $q) => $query->whereLike('name', '%'.$q.'%'))
+            ->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['name', 'description']))
             ->when($filters['category'] ?? null, fn ($query, $category) => $query->where('category', $category))
             ->when($site->isNetwork() && isset($filters['location']), fn ($query) => $query->whereHas('locations.location', fn ($location) => $location->where('slug', $filters['location'])))
             ->orderBy('name')->orderBy('id')->paginate(18)->withQueryString();
