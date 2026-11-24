@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Conversation;
 use App\Models\User;
+use App\Support\AccountActivity;
 use App\Support\Marketplace;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -67,6 +68,33 @@ class MessagesController extends Controller
         $mine = DB::table('user_blocks')->where(['user_id' => $id, 'blocked_id' => $thread->other($id)])->exists();
 
         return view('messages.show', ['thread' => $thread, 'messages' => $messages, 'blocked' => $this->isBlocked($id, $thread->other($id)), 'myBlock' => $mine]);
+    }
+
+    public function sync(Request $request, int $conversation, AccountActivity $activity)
+    {
+        $id = $request->user()->id;
+        $thread = Conversation::forMember($id)->findOrFail($conversation);
+        $data = $request->validate(['after' => 'required|integer|min:0', 'seen' => 'nullable|integer|min:0']);
+        $after = (int) $data['after'];
+        $seen = (int) ($data['seen'] ?? 0);
+        if ($seen > 0 && $seen <= $after && $thread->messages()->whereKey($seen)->exists()) {
+            $marker = $thread->marker($id);
+            Conversation::whereKey($thread->id)->where($marker, '<', $seen)->update([$marker => $seen, 'updated_at' => $thread->updated_at]);
+        }
+        $messages = $thread->messages()->with('sender:id,name')->where('id', '>', $after)->orderBy('id')->limit(30)->get();
+
+        return response()->json([
+            'messages' => $messages->map(fn ($message) => [
+                'id' => $message->id,
+                'own' => $message->sender_id === $id,
+                'sender' => $message->sender_id === $id ? 'You' : $message->sender->name,
+                'body' => $message->body,
+                'created_at' => $message->created_at->toIso8601String(),
+                'time_label' => $message->created_at->diffForHumans(),
+            ])->values(),
+            'blocked' => $this->isBlocked($id, $thread->other($id)),
+            'counts' => $activity->counts($request->user(), $request->attributes->get('site')),
+        ])->header('Cache-Control', 'private, no-store');
     }
 
     public function reply(Request $request, int $conversation)
