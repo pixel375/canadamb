@@ -36,6 +36,10 @@ class JobPostingTest extends TestCase
         $this->actingAs($owner)->post($url, $input + ['business_location_id' => $winnipeg->id])->assertSessionHasErrors('location_id');
         $this->post($url, $input + ['business_location_id' => $brandon->id])->assertSessionHasNoErrors()->assertRedirect();
         $job = JobPosting::sole();
+        $this->get($url.'?status=pending&q=Storefront')->assertOk()->assertSee('1 job found')->assertSee($input['title']);
+        $this->get($url.'?status=approved')->assertOk()->assertSee('No jobs match these filters.');
+        $this->actingAs($stranger)->get($url)->assertNotFound();
+        $this->actingAs($owner);
 
         $this->get("https://brandonmb.ca/jobs/$job->id")->assertNotFound();
         $this->actingAs($admin)->get('https://canadamb.ca/admin/jobs')->assertOk()->assertSee($input['apply_url']);
