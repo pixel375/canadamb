@@ -50,7 +50,7 @@ class DiscussionNotificationWorkflowTest extends TestCase
 
         $this->actingAs(User::factory()->create())->get($url)
             ->assertOk()
-            ->assertSee("You're not following any discussions here")
+            ->assertSee("You're not following any discussions here", false)
             ->assertDontSee('Brandon garden swap');
 
         $this->actingAs(User::factory()->create(['email_verified_at' => null]))
