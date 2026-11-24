@@ -1,8 +1,5 @@
 name: CanadaMB private prelaunch IP update
 on:
-  push:
-    branches: [main]
-    paths: ['.github/workflows/hostinger-allowlist.yml']
   workflow_dispatch:
     inputs:
       ip:
@@ -19,13 +16,11 @@ concurrency:
 
 jobs:
   update:
-    if: >-
-      github.event_name == 'workflow_dispatch' || github.event.head_commit.message == 'Apply requested November 24 prelaunch access addition'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: hostinger-prelaunch
     env:
-      TARGET_IP: ${{ github.event_name == 'push' && '74.113.180.238' || inputs.ip }}
+      TARGET_IP: ${{ inputs.ip }}
       SSH_HOST: ${{ vars.HOSTINGER_HOST }}
       SSH_PORT: ${{ vars.HOSTINGER_PORT }}
       SSH_USER: ${{ vars.HOSTINGER_USER }}
