@@ -7,7 +7,7 @@ on:
   pull_request:
     paths:
       - 'resources/**'
-      - 'tests/Browser/prelaunch-navigation.cjs'
+      - 'tests/Browser/**'
       - '.github/workflows/prelaunch-nav.yml'
   workflow_dispatch:
 
@@ -54,6 +54,10 @@ jobs:
           exit 1
       - name: Verify desktop menus and tablet drawer in Chromium
         run: node tests/Browser/prelaunch-navigation.cjs
+      - name: Seed only the disposable QA notification account
+        run: php tests/Browser/seed-notification-fixtures.php
+      - name: Verify authenticated notifications in Chromium
+        run: node tests/Browser/prelaunch-authenticated-notifications.cjs
       - name: Preserve screenshots and local logs
         if: always()
         uses: actions/upload-artifact@v4
