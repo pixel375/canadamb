@@ -255,6 +255,30 @@ const fs = require('node:fs');
         }
         console.log('PASS: business category discovery and activity filters at four widths');
 
+        for (const width of [320, 390, 1024, 1440]) {
+            await page.setViewportSize({ width, height: 900 });
+            let response = await page.goto(host + '/community?location=brandon&sort=replies');
+            check(response.ok(), 'Scoped discussions failed');
+            check(await page.locator('.discussion-filter-chip[aria-current="page"]').count() === 1, 'Invalid selected discussion category');
+            check(await page.locator('select[name="sort"]').inputValue() === 'replies', 'Discussion sort lost');
+            check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Discussion overflow at ' + width);
+            response = await page.goto(host + '/community/new?location=brandon&category=help');
+            check(response.ok(), 'Discussion composer failed');
+            check(await page.locator('select[name="location_id"] option:checked').innerText() === 'Brandon', 'Composer lost community');
+            check(await page.locator('select[name="category"]').inputValue() === 'help', 'Composer lost category');
+            await page.locator('textarea[name="body"]').fill('A local discussion test.');
+            check((await page.locator('[data-character-feedback]').innerText()).includes('24 / 5000'), 'Character counter did not update');
+            response = await page.goto(host + '/account/discussions');
+            check(response.ok(), 'Private discussion dashboard failed');
+            check(await page.locator('.seller-status-tile').count() === 4, 'Discussion statuses missing');
+            response = await page.goto(host + '/account/events');
+            check(response.ok(), 'Private event dashboard failed');
+            check(await page.locator('.seller-status-tile').count() === 6, 'Event statuses missing');
+            check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Event dashboard overflow at ' + width);
+        }
+        console.log('PASS: discussion and event discovery, scoped composer and private dashboards at four widths');
+
+
 
         for (const width of [320, 390, 1440]) {
             await page.setViewportSize({ width, height: 900 });

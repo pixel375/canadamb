@@ -79,6 +79,7 @@ class CommunityEventController extends Controller
 
         return view('community.new-event', [
             'places' => $site->isNetwork() ? Location::selectable()->orderBy('name')->get() : collect(),
+            'suggestedLocation' => LocationScope::forBrowsing($site, $request->query('location', $request->cookie(LocationScope::PREFERENCE_COOKIE))),
         ]);
     }
 
@@ -111,10 +112,16 @@ class CommunityEventController extends Controller
     public function owned(Request $request)
     {
         $site = $request->attributes->get('site');
-        $items = $this->community->events($site->location_id)->where('author_id', $request->user()->id)
-            ->orderByDesc('starts_at')->paginate(20);
+        abort_unless($this->community->enabled($site, 'events'), 404);
+        $statuses = ['pending', 'approved', 'rejected', 'cancelled', 'withdrawn'];
+        $filters = $request->validate(['status' => ['nullable', Rule::in($statuses)], 'q' => 'nullable|string|max:100']);
+        $owned = $this->community->events($site->location_id)->where('author_id', $request->user()->id);
+        $counts = (clone $owned)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
+        $items = $owned->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
+            ->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'body', 'venue']))
+            ->orderByDesc('starts_at')->orderByDesc('id')->paginate(20)->withQueryString();
 
-        return view('community.own-events', compact('items'));
+        return view('community.own-events', compact('items', 'statuses', 'filters', 'counts'));
     }
 
     public function cancel(Request $request, int $event)

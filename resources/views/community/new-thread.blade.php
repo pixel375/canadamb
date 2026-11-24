@@ -38,7 +38,7 @@
                 <label>Discussion title<input name="title" required maxlength="140" value="{{ old('title') }}"></label>
                 <label>Category<select name="category" required><option value="">Choose a category</option>@foreach(\App\Support\Community::FORUMS as $key => $label)<option value="{{ $key }}" @selected(old('category', $suggestedCategory) === $key)>{{ $label }}</option>@endforeach</select></label>
                 <x-community-location :places="$places" :suggested-location="$suggestedLocation" :allow-network="true"/>
-                <label>Your post<textarea name="body" required minlength="10" maxlength="5000" rows="7">{{ old('body') }}</textarea></label>
+                <label>Your post<textarea data-character-count name="body" required minlength="10" maxlength="5000" rows="7">{{ old('body') }}</textarea><small class="field-note" data-character-feedback></small></label>
                 <div class="discussion-form-footer"><p>Discussions are reviewed before appearing publicly.</p><button class="button button-primary" type="submit">Submit discussion for review</button></div>
             </form>
         @endif

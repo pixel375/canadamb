@@ -134,12 +134,14 @@ class CommunityForumController extends Controller
         $postType = $request->query('type') === 'event' ? 'event' : 'discussion';
         abort_if($postType === 'event' && ! $eventsEnabled, 404);
 
+        $category = $request->query('category');
+
         return view('community.new-thread', [
             'places' => $site->isNetwork() ? Location::selectable()->orderBy('name')->get() : collect(),
             'eventsEnabled' => $eventsEnabled,
             'postType' => $postType,
             'suggestedLocation' => LocationScope::forBrowsing($site, $request->query('location', $request->cookie(LocationScope::PREFERENCE_COOKIE))),
-            'suggestedCategory' => array_key_exists((string) $request->query('category', ''), Community::FORUMS) ? $request->query('category') : null,
+            'suggestedCategory' => is_string($category) && array_key_exists($category, Community::FORUMS) ? $category : null,
         ]);
     }
 

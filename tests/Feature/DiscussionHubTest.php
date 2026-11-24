@@ -142,6 +142,21 @@ class DiscussionHubTest extends TestCase
             ->assertSee('value="'.$place->id.'" selected', false)->assertSee('value="help" selected', false);
     }
 
+    public function test_event_owner_dashboard_and_scope_respect_private_submissions(): void
+    {
+        $member = User::factory()->create();
+        $place = Location::where('slug', 'brandon')->sole();
+        $event = $this->event($place->id, 'My private event', now()->addWeek()->format('Y-m-d H:i:s'), 'pending');
+        $event->forceFill(['author_id' => $member->id])->save();
+        $this->event($place->id, 'Other private event', now()->addWeek()->format('Y-m-d H:i:s'), 'pending');
+        $this->actingAs($member)->get('https://canadamb.ca/account/events?status=pending&q=private')
+            ->assertOk()->assertSee('My private event')->assertDontSee('Other private event');
+        $this->get('https://canadamb.ca/events/new?location=brandon')->assertOk()
+            ->assertSee('value="'.$place->id.'" selected', false);
+        $this->get('https://canadamb.ca/events?location=brandon')->assertOk()->assertDontSee('My private event')
+            ->assertSee('href="/community/new?type=event&amp;location=brandon"', false);
+    }
+
     private function event(int $locationId, string $title, string $startsAt, string $status = 'approved'): CommunityEvent
     {
         $event = CommunityEvent::create([

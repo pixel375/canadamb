@@ -1663,3 +1663,7 @@ a.market-category-card:hover, a.market-category-card:focus-visible {
 .event-date-tile span { font-size:.8rem; }
 @media(max-width:960px) { .discussion-mobile-jumps { display:flex; gap:8px; flex-wrap:wrap; } }
 @media(max-width:580px) { .event-date-tile { flex-basis:49px; height:58px; } .event-discovery-card { gap:10px; } }
+
+.discussion-owner-status { grid-template-columns:repeat(4,minmax(0,1fr)); }
+.event-hero-date { width:88px; flex-basis:88px; height:88px; }
+@media(max-width:580px) { .discussion-owner-status { grid-template-columns:repeat(2,minmax(0,1fr)); } .event-hero-date { width:64px; flex-basis:64px; height:64px; } }

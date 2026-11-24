@@ -1,8 +1,15 @@
+<?php
+    $eventSite = request()->attributes->get('site');
+    $createEventUrl = app(\App\Support\Community::class)->enabled($eventSite, 'community') ? '/community/new?type=event' : '/events/new';
+    if ($eventSite->isNetwork() && $place) {
+        $createEventUrl .= (str_contains($createEventUrl, '?') ? '&' : '?').'location='.rawurlencode($place->slug);
+    }
+?>
 <x-layouts.site title="Events in Discussions" :location="$place">
     <div class="container page-shell browse-page">
-        <div class="page-intro"><div><h1>Community events</h1><p>Find upcoming events in {{ $place?->name ?? 'Manitoba' }}.</p></div><a class="button button-primary" href="{{ app(\App\Support\Community::class)->enabled(request()->attributes->get('site'), 'community') ? '/community/new?type=event' : '/events/new' }}">Submit an event</a></div>
+        <div class="page-intro"><div><h1>Community events</h1><p>Find upcoming events in {{ $place?->name ?? 'Manitoba' }}.</p></div><a class="button button-primary" href="{{ $createEventUrl }}">Submit an event</a></div>
         <div class="inline-actions mb-4">
-            <a class="button button-outline" href="{{ \App\Support\LocationScope::browseUrl(request()->attributes->get('site'), '/community', $place) }}"><x-icon name="discussions" size="17"/> Discussions</a>
+            @if(app(\App\Support\Community::class)->enabled($eventSite, 'community'))<a class="button button-outline" href="{{ \App\Support\LocationScope::browseUrl(request()->attributes->get('site'), '/community', $place) }}"><x-icon name="discussions" size="17"/> Discussions</a>@endif
             @auth<a class="button button-outline" href="/account/events">My events</a>@endauth
         </div>
         <div class="browse-workspace">
