@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\CommunityEvent;
+use App\Models\CommunityThread;
 use App\Models\Location;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -69,7 +70,7 @@ class DiscussionHubTest extends TestCase
         $brandon = Location::where('slug', 'brandon')->sole();
         $winnipeg = Location::where('slug', 'winnipeg')->sole();
         foreach ([$brandon, $winnipeg] as $place) {
-            $thread = \App\Models\CommunityThread::create([
+            $thread = CommunityThread::create([
                 'author_id' => $author->id,
                 'location_id' => $place->id,
                 'title' => 'Community search cleanup in '.$place->name,
