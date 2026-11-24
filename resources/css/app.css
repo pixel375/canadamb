@@ -1546,3 +1546,23 @@ a.market-category-card:hover, a.market-category-card:focus-visible {
     .community-preference-banner .inline-actions form button { width: 100%; }
     .home-preference-actions { align-items: flex-start; flex-direction: column; gap: 4px; }
 }
+
+/* Listing details: separate discovery from the seller's primary actions. */
+.listing-detail-recommendations { grid-column: 1 / -1; display: grid; gap: 16px; min-width: 0; }
+.listing-detail-recommendations .listing-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr)); }
+.listing-detail-recommendations .listing-suggestions h2 { margin-bottom: 12px; }
+.listing-key-facts { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.listing-key-facts span { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; font-size: .82rem; background: var(--soft); }
+.listing-detail-no-photo { min-height: 180px; display: grid; place-content: center; justify-items: center; gap: 8px; border: 1px dashed var(--border); border-radius: 10px; background: var(--soft); color: var(--muted); margin-top: 16px; }
+.listing-seller-identity { display: flex; gap: 12px; align-items: center; margin-top: 12px; }
+.listing-seller-identity > div { min-width: 0; }
+.listing-seller-identity .seller-since { margin-bottom: 0; }
+.seller-inventory-link { display: inline-flex; gap: 5px; align-items: center; margin: 12px 0; font-size: .85rem; }
+.seller-action[aria-pressed=true] { border-color: var(--link); color: var(--link); }
+.listing-safety h2 { display: flex; align-items: center; gap: 6px; font-size: 1rem; }
+.listing-safety p { margin-top: 8px; font-size: .85rem; line-height: 1.5; }
+@media (max-width: 580px) {
+    .listing-detail-recommendations .listing-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+    .listing-detail-recommendations .listing-grid:has(> :only-child) { grid-template-columns: minmax(0,1fr); }
+    .seller-contact textarea { font-size: 16px; }
+}
