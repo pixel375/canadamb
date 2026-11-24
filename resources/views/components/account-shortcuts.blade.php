@@ -1,6 +1,8 @@
 @props(['heading' => 'Your account'])
 <?php
     $site = request()->attributes->get('site');
+    $networkSettings = app(\App\Support\NetworkSettings::class)->forSite($site);
+    $navCounts = auth()->user()->hasVerifiedEmail() ? app(\App\Support\AccountActivity::class)->counts(auth()->user(), $site) : ['messages' => 0, 'notifications' => 0];
     $entries = [
         ['path' => '/account/listings', 'icon' => 'marketplace', 'label' => 'My listings', 'note' => 'Manage your Marketplace posts', 'enabled' => $networkSettings['modules']['marketplace'] ?? false],
         ['path' => '/account/saved', 'icon' => 'tag', 'label' => 'Saved listings', 'note' => 'Items you bookmarked', 'enabled' => $networkSettings['modules']['marketplace'] ?? false],
