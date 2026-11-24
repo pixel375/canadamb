@@ -64,6 +64,8 @@ class BusinessDirectoryTest extends TestCase
             'body' => 'Bring your bike for a tune-up.',
         ])->assertSessionHasNoErrors()->assertRedirect();
         $this->get('https://brandonmb.ca/')->assertDontSee('Workshop opens Saturday');
+        $this->get('https://brandonmb.ca/account/businesses')->assertOk()->assertSee('Manage jobs')->assertSee('Test Repair');
+        $this->get("https://brandonmb.ca/account/businesses/$business->id")->assertOk()->assertSee('Recent business updates')->assertSee('Workshop opens Saturday')->assertSee('Pending');
         $update = DB::table('business_updates')->value('id');
         $this->actingAs($admin)->post("https://canadamb.ca/admin/business-updates/$update", [
             'decision' => 'approved', 'notes' => 'Reviewed the update.',
