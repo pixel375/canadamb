@@ -8,7 +8,9 @@
             </div>
             <div class="discussion-intro-actions">
                 <a class="button button-primary" href="/community/new"><x-icon name="plus" size="17"/> Start a discussion</a>
-                @if($eventsEnabled)<a class="button button-outline" href="/community/new?type=event"><x-icon name="calendar" size="17"/> Submit an event</a>@endif
+                @if($eventsEnabled)
+                    <a class="button button-outline" href="/community/new?type=event"><x-icon name="calendar" size="17"/> Submit an event</a>
+                @endif
             </div>
         </div>
 
@@ -19,12 +21,12 @@
                     <span class="discussion-count">{{ $threads->total() }} {{ \Illuminate\Support\Str::plural('topic', $threads->total()) }}</span>
                 </div>
                 <nav class="discussion-category-nav" aria-label="Discussion categories">
-                    <a class="discussion-filter-chip" href="/community{{ isset($filters['q']) ? '?'.http_build_query(['q' => $filters['q']]) : '' }}" @if(!isset($filters['category'])) aria-current="page" @endif>All topics</a>
+                    <a class="discussion-filter-chip" href="/community{{ isset($filters['q']) ? '?'.http_build_query(['q' => $filters['q']]) : '' }}" aria-current="{{ isset($filters['category']) ? 'false' : 'page' }}">All topics</a>
                     @foreach(\App\Support\Community::FORUMS as $key => $label)
-                        <a class="discussion-filter-chip" href="/community?{{ http_build_query(array_filter(['category' => $key, 'q' => $filters['q'] ?? null])) }}" @if(($filters['category'] ?? null) === $key) aria-current="page" @endif>{{ $label }}</a>
+                        <a class="discussion-filter-chip" href="/community?{{ http_build_query(array_filter(['category' => $key, 'q' => $filters['q'] ?? null])) }}" aria-current="{{ ($filters['category'] ?? null) === $key ? 'page' : 'false' }}">{{ $label }}</a>
                     @endforeach
                 </nav>
-                <details class="search-disclosure" @if(!empty($filters)) open @endif>
+                <details class="search-disclosure" {{ !empty($filters) ? 'open' : '' }}>
                     <summary><x-icon name="search" size="18"/> Search discussions <x-icon class="disclosure-arrow" name="chevron-down" size="17"/></summary>
                     <form method="get" action="/community" class="panel filter-bar">
                         <label>Search discussions<input type="search" name="q" maxlength="100" value="{{ $filters['q'] ?? '' }}" placeholder="Search conversations"></label>
@@ -42,10 +44,12 @@
                                     <span>{{ \App\Support\Community::FORUMS[$thread->category] }}</span>
                                     <span aria-hidden="true">·</span>
                                     <span>{{ $thread->location?->name ?? 'Manitoba' }}</span>
-                                    @if($thread->pinned)<span class="discussion-topic-pill">Pinned</span>@endif
+                                    @if($thread->pinned)
+                                        <span class="discussion-topic-pill">Pinned</span>
+                                    @endif
                                 </div>
                                 <h3><a href="/community/{{ $thread->id }}">{{ $thread->title }}</a></h3>
-                                <p>{{ $thread->replies_count }} {{ \Illuminate\Support\Str::plural('reply', $thread->replies_count) }} · Active {{ $thread->last_activity_at?->diffForHumans() ?? 'recently' }}@if($thread->locked) · Locked@endif</p>
+                                <p>{{ $thread->replies_count }} {{ \Illuminate\Support\Str::plural('reply', $thread->replies_count) }} · Active {{ $thread->last_activity_at?->diffForHumans() ?? 'recently' }}{{ $thread->locked ? ' · Locked' : '' }}</p>
                             </article>
                         @endforeach
                     @endif
@@ -73,7 +77,7 @@
                         @else
                             @foreach($eventDays as $date => $dayEvents)
                                 @php($day = \Carbon\CarbonImmutable::parse($date, 'America/Winnipeg'))
-                                <details class="discussion-day" @if($loop->first) open @endif>
+                                <details class="discussion-day" {{ $loop->first ? 'open' : '' }}>
                                     <summary>
                                         <span class="discussion-day-date"><strong>{{ $day->format('j') }}</strong><small>{{ $day->format('M') }}</small></span>
                                         <span class="discussion-day-copy"><strong>{{ $day->format('l') }}</strong><small>{{ $dayEvents->count() }} {{ \Illuminate\Support\Str::plural('event', $dayEvents->count()) }}</small></span>
