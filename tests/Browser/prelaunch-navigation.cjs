@@ -87,8 +87,16 @@ const fs = require('node:fs');
                     'Real Estate public-availability status missing');
                 check(await page.locator('form[action="/real-estate"] select[name="transaction"]').count() === 1,
                     'Real Estate sale/rent filters missing');
-                check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
-                    'Real Estate horizontal overflow at ' + host + ' ' + width);
+                const estateOverflow = await page.evaluate(() => ({
+                    width: innerWidth,
+                    scrollWidth: document.documentElement.scrollWidth,
+                    offenders: [...document.querySelectorAll('body *')]
+                        .filter(el => el.getBoundingClientRect().right > innerWidth + 1)
+                        .slice(0, 5)
+                        .map(el => ({ tag: el.tagName, class: String(el.className).slice(0, 110) }))
+                }));
+                check(estateOverflow.scrollWidth <= estateOverflow.width,
+                    'Real Estate horizontal overflow at ' + host + ' ' + width + ': ' + JSON.stringify(estateOverflow.offenders));
                 if (width === 390 || width === 1440) {
                     await page.screenshot({
                         path: 'test-results/' + (host.includes('brandon') ? 'brandon' : 'province') +
