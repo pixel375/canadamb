@@ -6,6 +6,7 @@ use App\Http\Requests\SaveListing;
 use App\Models\Listing;
 use App\Models\ListingCategory;
 use App\Models\Location;
+use App\Support\KeywordSearch;
 use App\Support\ListingPhotos;
 use App\Support\Marketplace;
 use App\Support\MarketplaceCategories;
@@ -65,12 +66,7 @@ class MarketplaceController extends Controller
         $query = $this->marketplace->visible($site)
             ->when($selectedGroup !== null && ! isset($filters['category']),
                 fn ($query) => $query->whereIn('category', MarketplaceCategories::childSlugs($selectedGroup, $categories->all())))
-            ->when(isset($filters['q']), function ($query) use ($filters) {
-                $term = '%'.strtr($filters['q'], ['!' => '!!', '%' => '!%', '_' => '!_']).'%';
-
-                return $query->where(fn ($match) => $match->whereRaw("title LIKE ? ESCAPE '!'", [$term])
-                    ->orWhereRaw("description LIKE ? ESCAPE '!'", [$term]));
-            })
+            ->when(isset($filters['q']), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'description']))
             ->when($filters['category'] ?? null, fn ($query, $value) => $query->where('category', $value))
             ->when($filters['condition'] ?? null, fn ($query, $value) => $query->where('condition', $value))
             ->when(isset($filters['min_price']), fn ($query) => $query->where('price_cents', '>=', (int) round((float) $filters['min_price'] * 100)))
