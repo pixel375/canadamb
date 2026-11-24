@@ -121,6 +121,27 @@ class HomeDiscoveryNavigationTest extends TestCase
             ->assertSee('Brandon neighbourhood cleanup');
     }
 
+    public function test_home_search_uses_real_site_scoped_get_routes_without_javascript(): void
+    {
+        $this->get('https://canadamb.ca/?location=brandon')
+            ->assertOk()
+            ->assertSee('Search Brandon')
+            ->assertSee('aria-label="Search your community"', false)
+            ->assertSee('data-home-search-section="marketplace" action="/marketplace" method="get"', false)
+            ->assertSee('data-home-search-section="businesses" action="/businesses" method="get"', false)
+            ->assertSee('data-home-search-section="community" action="/community" method="get"', false)
+            ->assertSee('data-home-search-section="jobs" action="/jobs" method="get"', false)
+            ->assertSee('name="location" value="brandon"', false)
+            ->assertSee('name="location" value="Brandon"', false);
+
+        $this->get('https://brandonmb.ca/')
+            ->assertOk()
+            ->assertSee('Search Brandon')
+            ->assertSee('action="/marketplace" method="get"', false)
+            ->assertSee('action="/community" method="get"', false)
+            ->assertDontSee('name="location" value="brandon"', false);
+    }
+
     public function test_category_discovery_search_is_real_submission_not_a_dummy_button(): void
     {
         $this->get('https://canadamb.ca/marketplace')->assertOk()

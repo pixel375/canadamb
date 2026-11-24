@@ -26,9 +26,9 @@
                     <span class="discussion-count">{{ $threads->total() }} {{ \Illuminate\Support\Str::plural('topic', $threads->total()) }}</span>
                 </div>
                 <nav class="discussion-category-nav" aria-label="Discussion categories">
-                    <a class="discussion-filter-chip" href="/community{{ isset($filters['q']) ? '?'.http_build_query(['q' => $filters['q']]) : '' }}" aria-current="{{ isset($filters['category']) ? 'false' : 'page' }}">All topics</a>
+                    <a class="discussion-filter-chip" href="/community{{ array_filter(['q' => $filters['q'] ?? null, 'location' => $filters['location'] ?? null]) ? '?'.http_build_query(array_filter(['q' => $filters['q'] ?? null, 'location' => $filters['location'] ?? null])) : '' }}" aria-current="{{ isset($filters['category']) ? 'false' : 'page' }}">All topics</a>
                     @foreach(\App\Support\Community::FORUMS as $key => $label)
-                        <a class="discussion-filter-chip" href="/community?{{ http_build_query(array_filter(['category' => $key, 'q' => $filters['q'] ?? null])) }}" aria-current="{{ ($filters['category'] ?? null) === $key ? 'page' : 'false' }}">{{ $label }}</a>
+                        <a class="discussion-filter-chip" href="/community?{{ http_build_query(array_filter(['category' => $key, 'q' => $filters['q'] ?? null, 'location' => $filters['location'] ?? null])) }}" aria-current="{{ ($filters['category'] ?? null) === $key ? 'page' : 'false' }}">{{ $label }}</a>
                     @endforeach
                 </nav>
                 <details class="search-disclosure" {{ !empty($filters) ? 'open' : '' }}>
@@ -36,6 +36,9 @@
                     <form method="get" action="/community" class="panel filter-bar">
                         <label>Search discussions<input type="search" name="q" maxlength="100" value="{{ $filters['q'] ?? '' }}" placeholder="Search conversations"></label>
                         <label>Category<select name="category"><option value="">All categories</option>@foreach(\App\Support\Community::FORUMS as $key => $label)<option value="{{ $key }}" @selected(($filters['category'] ?? null) === $key)>{{ $label }}</option>@endforeach</select></label>
+                        @if(request()->attributes->get('site')->isNetwork())
+                            <label>Location<select name="location"><option value="">All Manitoba</option>@foreach($places as $place)<option value="{{ $place->slug }}" @selected(($filters['location'] ?? null) === $place->slug)>{{ $place->name }}</option>@endforeach</select></label>
+                        @endif
                         <button class="button button-primary" type="submit">Search</button>
                     </form>
                 </details>

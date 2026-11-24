@@ -63,6 +63,41 @@ class DiscussionHubTest extends TestCase
             ->assertSee('class="discussion-empty-actions"', false);
     }
 
+    public function test_provincial_discussion_search_preserves_location_in_filters_and_never_leaks_other_towns(): void
+    {
+        $author = User::factory()->create();
+        $brandon = Location::where('slug', 'brandon')->sole();
+        $winnipeg = Location::where('slug', 'winnipeg')->sole();
+        foreach ([$brandon, $winnipeg] as $place) {
+            $thread = \App\Models\CommunityThread::create([
+                'author_id' => $author->id,
+                'location_id' => $place->id,
+                'title' => 'Community search cleanup in '.$place->name,
+                'body' => 'Local community discussion search results.',
+                'category' => 'general',
+            ]);
+            $thread->forceFill(['status' => 'approved'])->save();
+        }
+        $this->get('https://canadamb.ca/community?q=cleanup&location=brandon')
+            ->assertOk()
+            ->assertSee('Community search cleanup in Brandon')
+            ->assertDontSee('Community search cleanup in Winnipeg')
+            ->assertSee('name="location"', false)
+            ->assertSee('value="brandon" selected', false)
+            ->assertSee('href="/community?category=help&amp;q=cleanup&amp;location=brandon"', false);
+
+        $this->get('https://canadamb.ca/community?location=winnipeg')
+            ->assertOk()->assertSee('Community search cleanup in Winnipeg')
+            ->assertDontSee('Community search cleanup in Brandon');
+
+        $this->get('https://canadamb.ca/community?location=not-a-real-place')
+            ->assertSessionHasErrors('location');
+
+        $this->get('https://brandonmb.ca/community?location=winnipeg')
+            ->assertOk()->assertSee('Community search cleanup in Brandon')
+            ->assertDontSee('Community search cleanup in Winnipeg');
+    }
+
     public function test_shared_post_composer_uses_existing_moderated_discussion_and_event_endpoints(): void
     {
         $this->get('https://canadamb.ca/community/new?type=event')->assertRedirect();

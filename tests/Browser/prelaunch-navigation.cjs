@@ -14,6 +14,32 @@ const fs = require('node:fs');
                 await page.goto(host);
                 check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
                     'Horizontal overflow at ' + host + ' ' + width);
+                // The homepage search switches between genuine server-side GET routes.
+                // Each mode has an independent form; switching requires no JavaScript.
+                const homeSearch = page.locator('.home-unified-search');
+                check(await homeSearch.isVisible(), 'Homepage local search missing: ' + host + ' ' + width);
+                check(await homeSearch.locator('input[name="home-search-mode"]').count() === 4,
+                    'Enabled search modes are missing: ' + host);
+                check(await homeSearch.locator('form.home-search-form:visible').count() === 1,
+                    'Only the selected search form should be visible');
+                check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+                    'Homepage search overflows viewport at ' + width);
+                if (width === 390 || width === 1440) {
+                    for (const [mode, action] of [
+                        ['marketplace', '/marketplace'], ['businesses', '/businesses'],
+                        ['community', '/community'], ['jobs', '/jobs']
+                    ]) {
+                        await homeSearch.locator('label.home-search-mode').filter({ has: page.locator('input[value="' + mode + '"]') }).click();
+                        const active = homeSearch.locator('form.home-search-form:visible');
+                        check(await active.count() === 1 && await active.getAttribute('action') === action,
+                            'Search mode did not activate real ' + mode + ' GET form at ' + width);
+                        check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+                            'Search mode change overflows at ' + width + ': ' + mode);
+                    }
+                    await homeSearch.locator('label.home-search-mode').filter({
+                        has: page.locator('input[value="marketplace"]')
+                    }).click();
+                }
                 check(await page.getByRole('heading', { name: /Around (Manitoba|Brandon)/ }).isVisible(),
                     'Homepage community activity heading missing at ' + host + ' ' + width);
                 check(await page.locator('.home-community-card').count() === 3,

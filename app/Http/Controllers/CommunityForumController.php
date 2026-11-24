@@ -21,10 +21,15 @@ class CommunityForumController extends Controller
     {
         $site = $request->attributes->get('site');
         abort_unless($this->community->enabled($site, 'community'), 404);
-        $filters = $request->validate(['q' => 'nullable|string|max:100', 'category' => ['nullable', Rule::in(array_keys(Community::FORUMS))]]);
+        $rules = ['q' => 'nullable|string|max:100', 'category' => ['nullable', Rule::in(array_keys(Community::FORUMS))]];
+        if ($site->isNetwork()) {
+            $rules['location'] = ['nullable', 'string', 'max:100', Rule::exists('locations', 'slug')->where('province', 'MB')->where('selectable', true)];
+        }
+        $filters = $request->validate($rules);
         $threads = $this->community->threads($site->location_id)
             ->when($filters['q'] ?? null, fn ($query, $term) => $query->whereLike('title', '%'.$term.'%'))
             ->when($filters['category'] ?? null, fn ($query, $category) => $query->where('category', $category))
+            ->when($filters['location'] ?? null, fn ($query, $slug) => $query->whereHas('location', fn ($place) => $place->where('slug', $slug)))
             ->orderByDesc('pinned')->orderByDesc('last_activity_at')->orderByDesc('id')->paginate(18)->withQueryString();
 
         // The Discussions hub includes an optional, day-grouped event timeline.
@@ -41,7 +46,9 @@ class CommunityForumController extends Controller
             $eventDays = $events->groupBy(fn (CommunityEvent $event) => $event->localStart()->toDateString());
         }
 
-        return view('community.forum', compact('threads', 'filters', 'eventDays', 'eventsEnabled'));
+        $places = $site->isNetwork() ? Location::selectable()->orderBy('name')->get() : collect();
+
+        return view('community.forum', compact('threads', 'filters', 'eventDays', 'eventsEnabled', 'places'));
     }
 
     public function thread(Request $request, int $thread)

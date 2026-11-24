@@ -8,6 +8,63 @@
 @endphp
 <x-layouts.site :preview="$preview ?? false" :location="$location" main-class="home-main">
     <div class="container">
+        @php($businessesEnabled = app(\App\Support\BusinessDirectory::class)->enabled($site))
+        @if($enabled || $businessesEnabled || ($homeModules['community'] ?? false) || ($homeModules['jobs'] ?? false))
+            <section class="home-unified-search" aria-label="Search your community">
+                <div class="home-search-heading">
+                    <p class="section-label"><x-icon name="search" size="16"/> Find it locally</p>
+                    <h2>Search {{ $place }}</h2>
+                    <p>Find listings, businesses, discussions, and jobs in your community.</p>
+                </div>
+                <div class="home-search-tools">
+                    <fieldset class="home-search-modes">
+                        <legend class="sr-only">Choose what to search</legend>
+                        @if($enabled)<label class="home-search-mode"><input type="radio" name="home-search-mode" value="marketplace" checked><span>Marketplace</span></label>@endif
+                        @if($businessesEnabled)<label class="home-search-mode"><input type="radio" name="home-search-mode" value="businesses" @checked(! $enabled)><span>Businesses</span></label>@endif
+                        @if($homeModules['community'] ?? false)<label class="home-search-mode"><input type="radio" name="home-search-mode" value="community" @checked(! $enabled && ! $businessesEnabled)><span>Discussions</span></label>@endif
+                        @if($homeModules['jobs'] ?? false)<label class="home-search-mode"><input type="radio" name="home-search-mode" value="jobs" @checked(! $enabled && ! $businessesEnabled && ! ($homeModules['community'] ?? false))><span>Jobs</span></label>@endif
+                    </fieldset>
+                    <div class="home-search-forms">
+                        @if($enabled)
+                            <form class="home-search-form" data-home-search-section="marketplace" action="/marketplace" method="get" role="search">
+                                <x-icon name="search" size="19"/>
+                                <label class="sr-only" for="home-search-marketplace">Search Marketplace listings</label>
+                                <input id="home-search-marketplace" type="search" name="q" maxlength="100" placeholder="Search listings, vehicles, furniture...">
+                                @if($site->isNetwork() && $location)<input type="hidden" name="location" value="{{ $location->slug }}">@endif
+                                <button class="button button-primary" type="submit">Search listings</button>
+                            </form>
+                        @endif
+                        @if($businessesEnabled)
+                            <form class="home-search-form" data-home-search-section="businesses" action="/businesses" method="get" role="search">
+                                <x-icon name="search" size="19"/>
+                                <label class="sr-only" for="home-search-businesses">Search local businesses</label>
+                                <input id="home-search-businesses" type="search" name="q" maxlength="100" placeholder="Search shops, services, and businesses...">
+                                @if($site->isNetwork() && $location)<input type="hidden" name="location" value="{{ $location->slug }}">@endif
+                                <button class="button button-primary" type="submit">Find businesses</button>
+                            </form>
+                        @endif
+                        @if($homeModules['community'] ?? false)
+                            <form class="home-search-form" data-home-search-section="community" action="/community" method="get" role="search">
+                                <x-icon name="search" size="19"/>
+                                <label class="sr-only" for="home-search-community">Search discussion topics</label>
+                                <input id="home-search-community" type="search" name="q" maxlength="100" placeholder="Search questions and conversations...">
+                                @if($site->isNetwork() && $location)<input type="hidden" name="location" value="{{ $location->slug }}">@endif
+                                <button class="button button-primary" type="submit">Find discussions</button>
+                            </form>
+                        @endif
+                        @if($homeModules['jobs'] ?? false)
+                            <form class="home-search-form" data-home-search-section="jobs" action="/jobs" method="get" role="search">
+                                <x-icon name="search" size="19"/>
+                                <label class="sr-only" for="home-search-jobs">Search jobs</label>
+                                <input id="home-search-jobs" type="search" name="q" maxlength="100" placeholder="Search local jobs and opportunities...">
+                                @if($site->isNetwork() && $location)<input type="hidden" name="location" value="{{ $location->name }}">@endif
+                                <button class="button button-primary" type="submit">Find jobs</button>
+                            </form>
+                        @endif
+                    </div>
+                </div>
+            </section>
+        @endif
         <div class="home-lead-grid">
         <section class="hero{{ $hero ? ' hero-photo' : '' }}" aria-labelledby="hero-title">
             @if($hero)<img class="hero-image hero-{{ $hero }}" src="/images/{{ $hero }}.webp" alt="" fetchpriority="high">@endif
