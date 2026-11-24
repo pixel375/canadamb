@@ -7,6 +7,7 @@ use App\Models\Site;
 use App\Support\BusinessDirectory;
 use App\Support\Community;
 use App\Support\JobBoard;
+use App\Support\LocationScope;
 use App\Support\Marketplace;
 use App\Support\NetworkSettings;
 use App\Support\NetworkUrl;
@@ -17,7 +18,31 @@ class PublicController extends Controller
 {
     public function home(Request $request, Marketplace $marketplace)
     {
-        return view('home', $this->homeData($request->attributes->get('site'), $marketplace, $request->query('location')));
+        $site = $request->attributes->get('site');
+        $preferred = LocationScope::preferred($site, $request->cookie(LocationScope::PREFERENCE_COOKIE));
+        if ($preferred && ! $request->query->has('location')) {
+            return redirect(LocationScope::browseUrl($site, '/', $preferred))->header('Cache-Control', 'private, no-store');
+        }
+
+        return view('home', $this->homeData($site, $marketplace, $request->query('location')));
+    }
+
+    public function rememberCommunity(Request $request)
+    {
+        $site = $request->attributes->get('site');
+        abort_unless($site->isNetwork(), 404);
+        $data = $request->validate(['location' => 'nullable|string|max:150']);
+        $slug = $data['location'] ?? null;
+        $place = LocationScope::preferred($site, $slug);
+        if ($slug !== null && ! $place) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['location' => 'Choose a supported Manitoba community.']);
+        }
+
+        $response = redirect($place ? LocationScope::browseUrl($site, '/', $place) : '/')->header('Cache-Control', 'private, no-store');
+
+        return $place
+            ? $response->withCookie(cookie(LocationScope::PREFERENCE_COOKIE, $place->slug, 525600, '/', null, $request->isSecure(), true, false, 'lax'))
+            : $response->withoutCookie(LocationScope::PREFERENCE_COOKIE, '/');
     }
 
     public function homeData(Site $site, Marketplace $marketplace, mixed $preferred = null): array
