@@ -38,14 +38,17 @@ class ListingEngagementController extends Controller
         $item = $this->visibleListing($request, $listing);
         DB::table('listing_favourites')->insertOrIgnore(['user_id' => $request->user()->id, 'listing_id' => $item->id]);
 
-        return redirect('/account/saved')->with('status', 'Listing saved.');
+        return redirect($request->input('return_to') === 'listing' ? '/marketplace/'.$item->id : '/account/saved')->with('status', 'Listing saved.');
     }
 
     public function remove(Request $request, int $listing)
     {
+        if ($request->input('return_to') === 'listing') {
+            $this->visibleListing($request, $listing);
+        }
         DB::table('listing_favourites')->where(['user_id' => $request->user()->id, 'listing_id' => $listing])->delete();
 
-        return redirect('/account/saved')->with('status', 'Listing removed from saved items.');
+        return redirect($request->input('return_to') === 'listing' ? '/marketplace/'.$listing : '/account/saved')->with('status', 'Listing removed from saved items.');
     }
 
     public function saved(Request $request)
