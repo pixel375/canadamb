@@ -1,7 +1,8 @@
 <x-layouts.site title="Events in Discussions" :location="$place">
-    <div class="container page-shell narrow">
+    <div class="container page-shell browse-page">
         <div class="page-intro"><div><h1>Community events</h1><p>Find upcoming events in {{ $place?->name ?? 'Manitoba' }}.</p></div><a class="button button-primary" href="{{ app(\App\Support\Community::class)->enabled(request()->attributes->get('site'), 'community') ? '/community/new?type=event' : '/events/new' }}">Submit an event</a></div>
-        <details class="search-disclosure" @if(!empty($filters)) open @endif>
+        <div class="browse-workspace">
+        <details class="search-disclosure browse-sidebar" @if(!empty($filters)) open @endif>
             <summary><x-icon name="search" size="18"/> Event filters <x-icon class="disclosure-arrow" name="chevron-down" size="17"/></summary>
             <form method="get" action="/events" class="panel filter-bar">
             <label>Search events<input type="search" name="q" maxlength="100" value="{{ $filters['q'] ?? '' }}"></label>
@@ -11,6 +12,7 @@
             <button class="button button-primary">Filter events</button>
         </form>
         </details>
+        <div class="browse-results-column">
         @if($month)
             @php
                 $calendarFilters = array_filter(['q' => $filters['q'] ?? null, 'category' => $filters['category'] ?? null, 'location' => $filters['location'] ?? null]);
@@ -42,5 +44,7 @@
             @empty<p>No upcoming events match these filters.</p>@endforelse
         </div>
         {{ $items->links() }}
+        </div>
+        </div>
     </div>
 </x-layouts.site>
