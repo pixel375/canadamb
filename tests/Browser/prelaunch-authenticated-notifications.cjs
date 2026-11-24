@@ -203,6 +203,39 @@ const fs = require('node:fs');
             }
         }
         console.log('PASS: desktop header and unclipped exclusive dropdowns at five widths');
+        for (const width of [390, 1024, 1440]) {
+            await page.setViewportSize({ width, height: 900 });
+            for (const route of ['/marketplace?view=all', '/businesses', '/jobs', '/news', '/events', '/real-estate']) {
+                const response = await page.goto(host + route);
+                check(response && response.ok(), 'Browse workspace request failed: ' + route);
+                const sidebar = page.locator('.browse-workspace > details.browse-sidebar');
+                const results = page.locator('.browse-workspace > .browse-results-column');
+                check(await sidebar.isVisible() && await results.isVisible(), 'Browse workspace missing: ' + route);
+                if (width >= 1024) {
+                    await sidebar.locator('form').waitFor({ state: 'visible' });
+                    const bounds = await page.evaluate(() => {
+                        const sidebar = document.querySelector('.browse-sidebar').getBoundingClientRect();
+                        const results = document.querySelector('.browse-results-column').getBoundingClientRect();
+                        return { sidebarRight: sidebar.right, sidebarTop: sidebar.top,
+                            resultsLeft: results.left, resultsTop: results.top, resultsWidth: results.width };
+                    });
+                    check(bounds.sidebarRight < bounds.resultsLeft &&
+                        Math.abs(bounds.sidebarTop - bounds.resultsTop) < 5 && bounds.resultsWidth >= 600,
+                        'Desktop browse filters are not beside a usable results column: ' + route);
+                } else {
+                    check(!(await sidebar.evaluate(el => el.open)), 'Unfiltered mobile sidebar should start collapsed: ' + route);
+                    await sidebar.locator('summary').click();
+                    check(await sidebar.locator('form').isVisible(), 'Mobile filter disclosure failed: ' + route);
+                }
+                check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+                    'Browse workspace overflow: ' + route + ' at ' + width);
+            }
+        }
+        await page.goto(host + '/marketplace');
+        check(await page.locator('.browse-workspace').count() === 0,
+            'Marketplace category discovery should remain full width');
+        console.log('PASS: desktop filter sidebars and mobile disclosure behavior across six browse pages');
+
 
 
 
