@@ -19,6 +19,8 @@ class MobileNavigationTest extends TestCase
                 ->assertOk()
                 ->assertSee('id="site-menu-open"', false)
                 ->assertSee('id="site-drawer"', false)
+                ->assertSee('class="site-drawer-search"', false)
+                ->assertSee('class="button button-primary site-drawer-post"', false)
                 ->assertSee('class="desktop-real-estate"', false)
                 ->assertSee('class="mobile-tab-bar"', false)
                 ->assertSee('href="/account/messages"', false)

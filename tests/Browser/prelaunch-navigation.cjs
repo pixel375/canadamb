@@ -20,6 +20,20 @@ const fs = require('node:fs');
                     await hamburger.click();
                     check(await page.locator('#site-drawer').evaluate(node => node.open),
                         'Tablet/mobile drawer did not open: ' + width);
+                    check(await page.locator('.site-drawer-search input[name="q"]').isVisible(),
+                        'Drawer has no Marketplace quick search at ' + width);
+                    check(await page.locator('.site-drawer-post').isVisible(),
+                        'Drawer has no clear Post a listing action at ' + width);
+                    const drawerLayout = await page.evaluate(() => {
+                        const dialog = document.getElementById('site-drawer');
+                        const nav = dialog.querySelector('.site-drawer-nav');
+                        return { dialogWidth: dialog.getBoundingClientRect().width,
+                            viewport: innerWidth, overflow: getComputedStyle(nav).overflowY,
+                            navHeight: nav.getBoundingClientRect().height };
+                    });
+                    check(drawerLayout.dialogWidth <= drawerLayout.viewport &&
+                        drawerLayout.overflow === 'auto' && drawerLayout.navHeight > 0,
+                        'Drawer is clipped or no longer scrolls as one menu: ' + JSON.stringify(drawerLayout));
                     await page.keyboard.press('Escape');
                     check(!(await page.locator('#site-drawer').evaluate(node => node.open)),
                         'Escape failed to close drawer: ' + width);

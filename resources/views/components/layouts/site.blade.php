@@ -163,14 +163,25 @@
         <strong>Explore {{ $site->name }}</strong>
         <button id="site-menu-close" class="site-drawer-close" type="button" aria-label="Close menu"><x-icon name="close" size="22"/></button>
     </div>
+    @if($marketEnabled)
+        <div class="site-drawer-quick">
+            <form class="site-drawer-search" action="/marketplace" method="get" role="search">
+                <x-icon name="search" size="19"/>
+                <label class="sr-only" for="site-drawer-query">Search Marketplace</label>
+                <input id="site-drawer-query" type="search" name="q" placeholder="Search local listings" maxlength="100">
+                <button type="submit" aria-label="Submit Marketplace search"><x-icon name="arrow" size="18"/></button>
+            </form>
+            <a class="button button-primary site-drawer-post" href="/marketplace/new"><x-icon name="plus" size="18"/> Post a listing</a>
+        </div>
+    @endif
     <nav class="site-drawer-nav" aria-label="All site sections">
-        <a href="/"><x-icon name="home" size="20"/> Home</a>
-        <a href="/account/messages"><x-icon name="messages" size="20"/> Messages <x-nav-count :count="$navCounts['messages']" label="messages"/></a>
-        <a href="/account/notifications"><x-icon name="bell" size="20"/> Notifications <x-nav-count :count="$navCounts['notifications']" label="notifications"/></a>
+        <a href="/" aria-current="{{ request()->is('/') ? 'page' : 'false' }}"><x-icon name="home" size="20"/> Home</a>
+        <a href="/account/messages" aria-current="{{ request()->is('account/messages*') ? 'page' : 'false' }}"><x-icon name="messages" size="20"/> Messages <x-nav-count :count="$navCounts['messages']" label="messages"/></a>
+        <a href="/account/notifications" aria-current="{{ request()->is('account/notifications*', 'account/community-notifications*') ? 'page' : 'false' }}"><x-icon name="bell" size="20"/> Notifications <x-nav-count :count="$navCounts['notifications']" label="notifications"/></a>
         @if($networkSettings['modules']['news'] ?? false)<a href="/news"><x-icon name="news" size="20"/> News</a>@endif
         @if($marketEnabled)
-            <a href="/marketplace"><x-icon name="marketplace" size="20"/> Marketplace</a>
-            <a href="/real-estate"><x-icon name="house" size="20"/> Real Estate</a>
+            <a href="/marketplace" aria-current="{{ request()->is('marketplace*') ? 'page' : 'false' }}"><x-icon name="marketplace" size="20"/> Marketplace</a>
+            <a href="/real-estate" aria-current="{{ request()->is('real-estate*') ? 'page' : 'false' }}"><x-icon name="house" size="20"/> Real Estate</a>
         @endif
         @if(($networkSettings['modules']['businesses'] ?? false) || ($networkSettings['modules']['jobs'] ?? false))
         <details class="drawer-submenu" @if(request()->is('businesses*', 'jobs*')) open @endif>
