@@ -14,6 +14,18 @@ const fs = require('node:fs');
                 await page.goto(host);
                 check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
                     'Horizontal overflow at ' + host + ' ' + width);
+                check(await page.getByRole('heading', { name: /Around (Manitoba|Brandon)/ }).isVisible(),
+                    'Homepage community activity heading missing at ' + host + ' ' + width);
+                check(await page.locator('.home-community-card').count() === 3,
+                    'All enabled homepage community modules must show helpful cards even with no published posts');
+                check(await page.locator('.home-community-card-footer a').count() === 3,
+                    'Home community cards must have working discovery links');
+                if (width <= 390) {
+                    const cards = await page.locator('.home-community-card').evaluateAll(nodes =>
+                        nodes.map(node => ({ width: node.getBoundingClientRect().width, left: node.getBoundingClientRect().left, right: node.getBoundingClientRect().right })));
+                    check(cards.every(rect => rect.left >= 0 && rect.right <= width + 1 && rect.width >= width - 42),
+                        'Mobile community cards are cramped/overflowing: ' + JSON.stringify(cards));
+                }
                 if (width < 1024) {
                     const hamburger = page.locator('#site-menu-open');
                     check(await hamburger.isVisible(), 'Tablet/mobile hamburger hidden: ' + width);

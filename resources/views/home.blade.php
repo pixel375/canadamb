@@ -128,7 +128,7 @@
             @if($latest->isEmpty())
                 <div class="empty-state">
                     <span class="empty-icon"><x-icon name="tag" size="25"/></span>
-                    <div><h3>No active listings yet</h3><p>New listings will appear here after review.</p></div>
+                    <div><h3>No active listings yet</h3><p>New listings will appear here after review.</p>@unless($preview ?? false)<a class="text-link home-empty-link" href="/marketplace{{ $scope }}">Browse categories <x-icon name="arrow" size="15"/></a>@endunless</div>
                     @unless($preview ?? false)<a class="button button-outline" href="/marketplace/new"><x-icon name="plus" size="16"/> Post a listing</a>@endunless
                 </div>
             @else
@@ -149,46 +149,116 @@
                             <div><h3>{{ $update->title }}</h3><p>{{ $update->branch->business->name }} · {{ $update->branch->location->name }}</p></div>
                             <time datetime="{{ $update->published_at->toDateString() }}">{{ $update->published_at->format('M j, Y') }}</time>
                         </article>
-                    @empty<p>No published business updates in {{ $place }}.</p>@endforelse
+                    @empty
+                        <div class="home-business-empty">
+                            <span class="home-business-empty-icon" aria-hidden="true"><x-icon name="building" size="23"/></span>
+                            <div>
+                                <h3>Discover local businesses</h3>
+                                <p>There are no published updates yet. Explore shops and services serving {{ $place }}.</p>
+                                @unless($preview ?? false)<a class="text-link home-empty-link" href="/businesses">Browse the directory <x-icon name="arrow" size="15"/></a>@endunless
+                            </div>
+                        </div>
+                    @endforelse
                 </div>
             </section>
         @endif
 
         </div>
 
-        @if($recentDiscussions->isNotEmpty() || $upcomingEvents->isNotEmpty() || $latestJobs->isNotEmpty())
-            <div class="community-activity">
-                @if($recentDiscussions->isNotEmpty())
-                    <section class="homepage-section" aria-labelledby="discussion-title">
-                        <div class="section-heading"><h2 id="discussion-title">Recent discussions</h2>@unless($preview ?? false)<a class="text-link" href="/community">All discussions <x-icon name="arrow" size="16"/></a>@endunless</div>
-                        <div class="panel">
-                            @foreach($recentDiscussions as $thread)
-                                <article class="item-row"><div><h3>@if($preview ?? false){{ $thread->title }}@else<a href="/community/{{ $thread->id }}">{{ $thread->title }}</a>@endif</h3><p>{{ $thread->location?->name ?? 'Manitoba' }} · {{ $thread->replies_count }} {{ \Illuminate\Support\Str::plural('reply', $thread->replies_count) }}</p></div></article>
-                            @endforeach
-                        </div>
-                    </section>
-                @endif
-                @if($upcomingEvents->isNotEmpty())
-                    <section class="homepage-section" aria-labelledby="events-title">
-                        <div class="section-heading"><h2 id="events-title">Upcoming events</h2>@unless($preview ?? false)<a class="text-link" href="/events">All events <x-icon name="arrow" size="16"/></a>@endunless</div>
-                        <div class="panel">
-                            @foreach($upcomingEvents as $event)
-                                <article class="item-row"><div><h3>@if($preview ?? false){{ $event->title }}@else<a href="/events/{{ $event->id }}">{{ $event->title }}</a>@endif</h3><p>{{ $event->localStart()->format('M j · g:i a T') }} · {{ $event->location->name }}</p></div></article>
-                            @endforeach
-                        </div>
-                    </section>
-                @endif
-                @if($latestJobs->isNotEmpty())
-                    <section class="homepage-section" aria-labelledby="jobs-title">
-                        <div class="section-heading"><h2 id="jobs-title">Latest jobs</h2>@unless($preview ?? false)<a class="text-link" href="/jobs">All jobs <x-icon name="arrow" size="16"/></a>@endunless</div>
-                        <div class="panel">
-                            @foreach($latestJobs as $job)
-                                <article class="item-row"><div><h3>@if($preview ?? false){{ $job->title }}@else<a href="/jobs/{{ $job->id }}">{{ $job->title }}</a>@endif</h3><p>{{ $job->branch->business->name }} · {{ $job->branch->location->name }}</p></div></article>
-                            @endforeach
-                        </div>
-                    </section>
-                @endif
-            </div>
+        @if(($homeModules['community'] ?? false) || ($homeModules['events'] ?? false) || ($homeModules['jobs'] ?? false))
+            <section class="home-community-section" aria-labelledby="home-community-title">
+                <div class="home-community-heading">
+                    <div>
+                        <p class="section-label">Community activity</p>
+                        <h2 id="home-community-title">Around {{ $place }}</h2>
+                        <p>Conversations, local happenings, and opportunities in your community.</p>
+                    </div>
+                    @unless($preview ?? false)
+                        @if($homeModules['community'] ?? false)<a class="text-link" href="/community">Explore discussions <x-icon name="arrow" size="16"/></a>@endif
+                    @endunless
+                </div>
+                <div class="community-activity home-community-grid">
+                    @if($homeModules['community'] ?? false)
+                        <section class="home-community-card" aria-labelledby="home-discussions-title">
+                            <header class="home-community-card-heading">
+                                <span class="home-community-card-icon" aria-hidden="true"><x-icon name="discussions" size="22"/></span>
+                                <div><p class="section-label">Local conversations</p><h3 id="home-discussions-title">Discussions</h3></div>
+                            </header>
+                            <div class="home-community-card-content">
+                                @forelse($recentDiscussions as $thread)
+                                    <article class="home-community-item">
+                                        <p class="home-community-item-eyebrow">{{ \App\Support\Community::FORUMS[$thread->category] ?? 'Discussion' }} · {{ $thread->location?->name ?? 'Manitoba' }}</p>
+                                        <h4>@if($preview ?? false){{ $thread->title }}@else<a href="/community/{{ $thread->id }}">{{ $thread->title }}</a>@endif</h4>
+                                        <p>{{ $thread->replies_count }} {{ \Illuminate\Support\Str::plural('reply', $thread->replies_count) }} · {{ \Illuminate\Support\Str::limit($thread->body, 88) }}</p>
+                                    </article>
+                                @empty
+                                    <div class="home-community-empty">
+                                        <h4>Start a local conversation</h4>
+                                        <p>Ask a question, share a recommendation, or connect with neighbours.</p>
+                                    </div>
+                                @endforelse
+                            </div>
+                            @unless($preview ?? false)
+                                <footer class="home-community-card-footer"><a href="{{ $recentDiscussions->isEmpty() ? '/community/new' : '/community' }}">{{ $recentDiscussions->isEmpty() ? 'Start a discussion' : 'Browse all discussions' }} <x-icon name="arrow" size="16"/></a></footer>
+                            @endunless
+                        </section>
+                    @endif
+                    @if($homeModules['events'] ?? false)
+                        <section class="home-community-card" aria-labelledby="home-events-title">
+                            <header class="home-community-card-heading">
+                                <span class="home-community-card-icon" aria-hidden="true"><x-icon name="calendar" size="22"/></span>
+                                <div><p class="section-label">What's happening</p><h3 id="home-events-title">Upcoming events</h3></div>
+                            </header>
+                            <div class="home-community-card-content">
+                                @forelse($upcomingEvents as $event)
+                                    <article class="home-community-item home-community-event">
+                                        <time class="home-community-date" datetime="{{ $event->localStart()->toDateString() }}">
+                                            <strong>{{ $event->localStart()->format('j') }}</strong><small>{{ $event->localStart()->format('M') }}</small>
+                                        </time>
+                                        <div>
+                                            <h4>@if($preview ?? false){{ $event->title }}@else<a href="/events/{{ $event->id }}">{{ $event->title }}</a>@endif</h4>
+                                            <p>{{ $event->localStart()->format('g:i a') }} · {{ $event->location->name }}</p>
+                                        </div>
+                                    </article>
+                                @empty
+                                    <div class="home-community-empty">
+                                        <h4>Have an event to share?</h4>
+                                        <p>Local events appear in the community calendar after review.</p>
+                                    </div>
+                                @endforelse
+                            </div>
+                            @unless($preview ?? false)
+                                <footer class="home-community-card-footer"><a href="{{ $upcomingEvents->isEmpty() ? '/community/new?type=event' : '/events' }}">{{ $upcomingEvents->isEmpty() ? 'Submit an event' : 'View events calendar' }} <x-icon name="arrow" size="16"/></a></footer>
+                            @endunless
+                        </section>
+                    @endif
+                    @if($homeModules['jobs'] ?? false)
+                        <section class="home-community-card" aria-labelledby="home-jobs-title">
+                            <header class="home-community-card-heading">
+                                <span class="home-community-card-icon" aria-hidden="true"><x-icon name="briefcase" size="22"/></span>
+                                <div><p class="section-label">Local opportunities</p><h3 id="home-jobs-title">Jobs</h3></div>
+                            </header>
+                            <div class="home-community-card-content">
+                                @forelse($latestJobs as $job)
+                                    <article class="home-community-item">
+                                        <p class="home-community-item-eyebrow">{{ $job->branch->location->name }}</p>
+                                        <h4>@if($preview ?? false){{ $job->title }}@else<a href="/jobs/{{ $job->id }}">{{ $job->title }}</a>@endif</h4>
+                                        <p>{{ $job->branch->business->name }}</p>
+                                    </article>
+                                @empty
+                                    <div class="home-community-empty">
+                                        <h4>Find work nearby</h4>
+                                        <p>Browse local opportunities and discover employers in {{ $place }}.</p>
+                                    </div>
+                                @endforelse
+                            </div>
+                            @unless($preview ?? false)
+                                <footer class="home-community-card-footer"><a href="/jobs">Browse local jobs <x-icon name="arrow" size="16"/></a></footer>
+                            @endunless
+                        </section>
+                    @endif
+                </div>
+            </section>
         @endif
 
         @unless($preview ?? false)
