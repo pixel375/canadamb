@@ -42,15 +42,20 @@ class JobPostingTest extends TestCase
         $this->actingAs($owner);
 
         $this->get("https://brandonmb.ca/jobs/$job->id")->assertNotFound();
+        $this->get('https://brandonmb.ca/businesses/manitoba-co-op')->assertOk()->assertDontSee($input['title']);
         $this->actingAs($admin)->get('https://canadamb.ca/admin/jobs')->assertOk()->assertSee($input['apply_url']);
         $this->post("https://canadamb.ca/admin/jobs/$job->id", ['action' => 'approve', 'version' => $job->reviewVersion()])->assertRedirect();
         $this->get('https://brandonmb.ca/jobs?pay_unit=hour&minimum_pay=27')->assertOk()->assertSee($input['title']);
         $this->get('https://brandonmb.ca/jobs?pay_unit=hour&minimum_pay=31')->assertDontSee($input['title']);
         $this->get("https://canadamb.ca/jobs/$job->id")->assertRedirect("https://brandonmb.ca/jobs/$job->id");
-        $this->get("https://brandonmb.ca/jobs/$job->id")->assertSee('https://example.test/careers')->assertSee('JobPosting');
+        $this->get("https://brandonmb.ca/jobs/$job->id")->assertSee('https://example.test/careers')->assertSee('JobPosting')->assertSee('Job overview')->assertSee('About the employer');
+        $this->get('https://brandonmb.ca/businesses/manitoba-co-op')->assertOk()->assertSee('Current job opportunities')->assertSee($input['title']);
         $this->get('https://brandonmb.ca/sitemap.xml')->assertOk()->assertSee("https://brandonmb.ca/jobs/$job->id");
 
-        $this->actingAs($stranger)->post("https://brandonmb.ca/jobs/$job->id/save")->assertRedirect();
+        $this->actingAs($stranger)->post("https://brandonmb.ca/jobs/$job->id/save", ['return_to' => 'job'])->assertRedirect('/jobs/'.$job->id);
+        $this->get("https://brandonmb.ca/jobs/$job->id")->assertOk()->assertSee('Remove saved job');
+        $this->delete("https://brandonmb.ca/jobs/$job->id/save", ['return_to' => 'job'])->assertRedirect('/jobs/'.$job->id);
+        $this->post("https://brandonmb.ca/jobs/$job->id/save")->assertRedirect('/account/saved-jobs');
         $this->get('https://canadamb.ca/account/saved-jobs')->assertSee($input['title']);
         $this->actingAs($owner)->get($url)->assertOk()->assertSee($input['title']);
         $this->get("$url/$job->id/edit")->assertOk()->assertSee($input['title']);
