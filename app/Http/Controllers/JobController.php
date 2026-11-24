@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Business;
 use App\Models\JobPosting;
 use App\Support\JobBoard;
+use App\Support\KeywordSearch;
 use App\Support\LocationScope;
 use App\Support\NetworkUrl;
 use Illuminate\Http\Request;
@@ -25,7 +26,7 @@ class JobController extends Controller
             'pay_unit' => 'required_with:minimum_pay|nullable|in:hour,year', 'minimum_pay' => 'nullable|numeric|decimal:0,2|min:0|max:10000000',
         ]);
         $items = $query
-            ->when($filters['q'] ?? null, fn ($query, $term) => $query->whereLike('title', '%'.$term.'%'))
+            ->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'description']))
             ->when($filters['type'] ?? null, fn ($query, $type) => $query->where('employment_type', $type))
             ->when($filters['workplace'] ?? null, fn ($query, $workplace) => $query->where('workplace', $workplace))
             ->when($filters['pay_unit'] ?? null, fn ($query, $unit) => $query->where('pay_unit', $unit))
