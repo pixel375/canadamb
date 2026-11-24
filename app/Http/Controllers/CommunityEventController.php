@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\CommunityEvent;
 use App\Models\Location;
 use App\Support\Community;
+use App\Support\KeywordSearch;
 use App\Support\LocationScope;
 use App\Support\NetworkUrl;
 use Carbon\CarbonImmutable;
@@ -31,7 +32,7 @@ class CommunityEventController extends Controller
         $places = $site->isNetwork() ? Location::selectable()->orderBy('name')->get() : collect();
         $month = isset($filters['month']) ? CarbonImmutable::createFromFormat('!Y-m', $filters['month'], 'America/Winnipeg') : null;
         $query = $this->community->upcoming($this->community->events($place?->id))
-            ->when($filters['q'] ?? null, fn ($query, $term) => $query->whereLike('title', '%'.$term.'%'))
+            ->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'body', 'venue', 'organizer']))
             ->when($filters['category'] ?? null, fn ($query, $category) => $query->where('category', $category));
         $calendar = [];
         if ($month) {
