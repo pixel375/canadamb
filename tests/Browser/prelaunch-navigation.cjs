@@ -62,7 +62,7 @@ const fs = require('node:fs');
                     'Category-first Marketplace missing at ' + host + ' ' + width);
                 check(await page.locator('.market-category-card').count() >= 6,
                     'Main Marketplace categories are missing');
-                check(await page.getByText('Real Estate').isVisible(),
+                check(await page.locator('.market-category-card').getByText('Real Estate', { exact: true }).isVisible(),
                     'Gated Real Estate category is not discoverable');
                 check(await page.locator('.market-category-card .market-category-icon svg').count() >= 6,
                     'Marketplace category artwork is not using the shared vector icon set');
