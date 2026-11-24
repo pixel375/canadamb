@@ -157,6 +157,53 @@ const fs = require('node:fs');
         check(await page.getByRole('link', { name: 'Community garden neighbours', exact: true }).count() === 0,
             'Discussion search should require all words');
         console.log('PASS: discussion keywords are case insensitive, unordered and conjunctive');
+        for (const width of [1024, 1200, 1280, 1440, 1920]) {
+            await page.setViewportSize({ width, height: 900 });
+            await page.goto(host + '/?location=brandon');
+            const primary = page.getByRole('navigation', { name: 'Primary navigation' });
+            const businesses = primary.locator('summary').filter({ hasText: 'Businesses' });
+            const discussions = primary.locator('summary').filter({ hasText: 'Discussions' });
+            const account = page.locator('.header-account-menu > summary');
+            const search = page.locator('.masthead > .header-search');
+            check(await search.isVisible(), 'Desktop quick search unavailable at ' + width);
+            check(await page.locator('.header-post').isVisible(), 'Post listing action unavailable at ' + width);
+            check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+                'Desktop header overflows at ' + width);
+            await businesses.click();
+            const directory = primary.getByRole('link', { name: 'Directory', exact: true });
+            check(await directory.isVisible(), 'Directory submenu missing at ' + width);
+            check(await directory.evaluate(el => {
+                const r = el.getBoundingClientRect();
+                const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+                return r.left >= 0 && r.right <= innerWidth && el.contains(hit);
+            }), 'Directory submenu clipped or covered at ' + width);
+            await discussions.click();
+            check(!(await businesses.locator('..').evaluate(el => el.open)),
+                'Business dropdown remained open when switching groups at ' + width);
+            check(await primary.getByRole('link', { name: 'Events calendar', exact: true }).isVisible(),
+                'Events dropdown unavailable at ' + width);
+            await page.keyboard.press('Escape');
+            check(!(await discussions.locator('..').evaluate(el => el.open)),
+                'Escape did not dismiss discussions menu at ' + width);
+            check(await discussions.evaluate(el => document.activeElement === el),
+                'Escape did not restore summary focus at ' + width);
+            await account.click();
+            check(await page.locator('.header-account-dropdown').isVisible(),
+                'Account menu unavailable at ' + width);
+            const profile = page.locator('.header-account-dropdown').getByRole('link', { name: 'My profile' });
+            check(await profile.evaluate(el => {
+                const r = el.getBoundingClientRect();
+                return r.left >= 0 && r.right <= innerWidth &&
+                    el.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
+            }), 'Account menu clipped or covered by navigation at ' + width);
+            await page.keyboard.press('Escape');
+            check(!(await account.locator('..').evaluate(el => el.open)), 'Account menu did not close');
+            if (width === 1024 || width === 1440) {
+                await page.screenshot({ path: 'test-results/desktop-header-' + width + '.png', animations: 'disabled' });
+            }
+        }
+        console.log('PASS: desktop header and unclipped exclusive dropdowns at five widths');
+
 
 
 
