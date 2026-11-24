@@ -13,12 +13,26 @@ class MessagesController extends Controller
     public function index(Request $request)
     {
         $id = $request->user()->id;
-        $threads = Conversation::forMember($id)->with(['listing:id,title', 'buyer:id,name', 'seller:id,name'])
-            ->withCount(['messages as unread' => fn ($messages) => $messages->where('sender_id', '!=', $id)
-                ->whereRaw('messages.id > CASE WHEN conversations.buyer_id = ? THEN conversations.buyer_last_read_id ELSE conversations.seller_last_read_id END', [$id])])
-            ->latest('updated_at')->paginate(20);
+        $filters = $request->validate(['view' => 'nullable|in:unread', 'q' => 'nullable|string|max:100']);
+        $unread = fn ($messages) => $messages->where('sender_id', '!=', $id)
+            ->whereRaw('messages.id > CASE WHEN conversations.buyer_id = ? THEN conversations.buyer_last_read_id ELSE conversations.seller_last_read_id END', [$id]);
+        $threads = Conversation::forMember($id)
+            ->with(['listing:id,title', 'buyer:id,name', 'seller:id,name', 'latestMessage'])
+            ->withCount(['messages as unread' => $unread])
+            ->when(($filters['view'] ?? null) === 'unread', fn ($query) => $query->whereHas('messages', $unread))
+            ->when(filled($filters['q'] ?? null), function ($query) use ($filters, $id) {
+                $pattern = '%'.strtr($filters['q'], ['!' => '!!', '%' => '!%', '_' => '!_']).'%';
 
-        return view('messages.index', ['threads' => $threads, 'member' => $id]);
+                $query->where(fn ($match) => $match
+                    ->whereHas('listing', fn ($listing) => $listing->whereRaw("title LIKE ? ESCAPE '!'", [$pattern]))
+                    ->orWhere(fn ($buyer) => $buyer->where('buyer_id', '!=', $id)
+                        ->whereHas('buyer', fn ($user) => $user->whereRaw("name LIKE ? ESCAPE '!'", [$pattern])))
+                    ->orWhere(fn ($seller) => $seller->where('seller_id', '!=', $id)
+                        ->whereHas('seller', fn ($user) => $user->whereRaw("name LIKE ? ESCAPE '!'", [$pattern]))));
+            })
+            ->latest('updated_at')->latest('id')->paginate(20)->withQueryString();
+
+        return view('messages.index', ['threads' => $threads, 'member' => $id, 'filters' => $filters]);
     }
 
     public function start(Request $request, int $listing, Marketplace $marketplace)
