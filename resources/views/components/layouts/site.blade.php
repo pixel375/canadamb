@@ -127,7 +127,7 @@
                     <a class="sign-in" href="{{ $site->isNetwork() ? '/login' : '/auth/start' }}" aria-label="Sign in"><x-icon name="person" size="18"/> <span>Sign in</span></a>
                     @if($registerLink)<a class="text-link header-register" href="{{ $registerLink }}">Create account</a>@endif
                 @endauth
-                @if($marketEnabled)<a class="button button-primary header-post" href="/marketplace/new" title="Post a listing"><x-icon name="plus" size="16"/> <span>Post a listing</span></a>@endif
+                @if($marketEnabled)<a class="button button-primary header-post" href="{{ $browseLink('/marketplace/new') }}" title="Post a listing"><x-icon name="plus" size="16"/> <span>Post a listing</span></a>@endif
             @endunless
         </div>
     </div>
@@ -189,7 +189,7 @@
                 @if($site->isNetwork() && $browsePlace)<input type="hidden" name="location" value="{{ $browsePlace->slug }}">@endif
                 <button type="submit" aria-label="Submit Marketplace search"><x-icon name="arrow" size="18"/></button>
             </form>
-            <a class="button button-primary site-drawer-post" href="/marketplace/new"><x-icon name="plus" size="18"/> Post a listing</a>
+            <a class="button button-primary site-drawer-post" href="{{ $browseLink('/marketplace/new') }}"><x-icon name="plus" size="18"/> Post a listing</a>
         </div>
     @endif
     <nav class="site-drawer-nav" aria-label="All site sections">
