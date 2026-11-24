@@ -1569,3 +1569,35 @@ a.market-category-card:hover, a.market-category-card:focus-visible {
 
 .listing-photo-actions { display: grid; gap: 5px; padding: 6px; }
 .listing-photo-actions .button { min-height: 32px; font-size: .73rem; padding: 5px; white-space: normal; }
+
+/* Seller inventory: responsive overview and deliberate lifecycle actions. */
+.seller-status-grid { display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); gap: 10px; margin-bottom: 16px; }
+.seller-status-tile { display: grid; gap: 5px; padding: 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); min-width: 0; }
+.seller-status-tile strong { font-size: 1.5rem; line-height: 1.1; }
+.seller-status-tile span { color: var(--muted); font-size: .82rem; }
+.seller-status-tile[aria-current=page] { background: var(--soft); border-color: var(--link); color: var(--link); }
+.seller-listing-search { display: flex; gap: 10px; align-items: center; }
+.seller-listing-search input { flex: 1; min-width: 0; }
+.seller-results-count { margin: 12px 0; }
+.seller-listing-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; }
+.seller-listing-grid > .market-results-empty { grid-column: 1 / -1; }
+.seller-listing-card { display: flex; flex-direction: column; gap: 13px; }
+.seller-listing-top { display: flex; gap: 12px; align-items: flex-start; }
+.seller-listing-thumbnail { display: grid; place-items: center; width: 88px; flex: 0 0 88px; aspect-ratio: 1; background: var(--soft); border: 1px solid var(--border); border-radius: 9px; overflow: hidden; color: var(--muted); }
+.seller-listing-thumbnail img { width: 100%; height: 100%; object-fit: cover; }
+.seller-listing-top .member-listing-info { min-width: 0; overflow-wrap: anywhere; flex: 1; }
+.seller-lifecycle-note { font-size: .82rem; color: var(--muted); padding: 10px; border-radius: 7px; background: var(--soft); }
+.seller-listing-actions { margin-top: auto; }
+.seller-remove-listing { border-top: 1px solid var(--border); padding-top: 10px; font-size: .82rem; }
+.seller-remove-listing summary { cursor: pointer; color: var(--muted); }
+.seller-remove-listing p { margin: 8px 0; }
+@media(max-width: 900px) { .seller-status-grid { grid-template-columns: repeat(3,minmax(0,1fr)); } }
+@media(max-width: 650px) {
+    .seller-status-grid { gap: 7px; }
+    .seller-status-tile { padding: 10px; }
+    .seller-status-tile strong { font-size: 1.25rem; }
+    .seller-listing-grid { grid-template-columns: minmax(0,1fr); }
+    .seller-listing-search { flex-wrap: wrap; }
+    .seller-listing-search input { font-size: 16px; }
+    .seller-listing-thumbnail { flex-basis: 70px; width: 70px; }
+}
