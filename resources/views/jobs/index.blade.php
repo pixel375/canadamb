@@ -1,9 +1,10 @@
 <x-layouts.site title="Manitoba jobs">
-    <div class="container page-shell narrow">
+    <div class="container page-shell browse-page">
         <div class="page-intro"><div><h1>Jobs</h1><p>Browse active job postings in {{ request()->attributes->get('site')->location?->name ?? 'Manitoba' }}.</p></div>
             @auth <a href="/account/saved-jobs" class="button button-outline">Saved jobs</a> @endauth
         </div>
-        <details class="search-disclosure" @if(!empty($filters)) open @endif>
+        <div class="browse-workspace">
+        <details class="search-disclosure browse-sidebar" @if(!empty($filters)) open @endif>
             <summary><x-icon name="search" size="18"/> Search jobs <x-icon class="disclosure-arrow" name="chevron-down" size="17"/></summary>
             <form method="get" action="/jobs" class="panel filter-bar">
             <label>Search jobs<input type="search" name="q" maxlength="100" value="{{ $filters['q'] ?? '' }}"></label>
@@ -15,6 +16,7 @@
             <button type="submit" class="button button-primary">Filter jobs</button>
         </form>
         </details>
+        <div class="browse-results-column">
         @php
             $activeFilters = array_filter($filters, fn ($value) => $value !== null && $value !== '');
             $localSite = request()->attributes->get('site')->location;
@@ -55,5 +57,7 @@
                 {{ $items->links() }}
             @endif
         </section>
+        </div>
+        </div>
     </div>
 </x-layouts.site>
