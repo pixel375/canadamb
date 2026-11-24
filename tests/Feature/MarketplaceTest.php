@@ -100,6 +100,35 @@ class MarketplaceTest extends TestCase
         $this->getJson(self::CITY.'/api/v1/marketplace?q=chairs%20OAK')->assertOk()->assertJsonCount(0, 'data');
     }
 
+    public function test_seller_dashboard_filters_own_listings_with_portal_scope(): void
+    {
+        $seller = User::factory()->create();
+        $other = User::factory()->create();
+        $brandon = Location::where('slug', 'brandon')->sole();
+        $elkhorn = Location::where('slug', 'elkhorn')->sole();
+        foreach ([
+            [$seller, $brandon, 'Pending oak desk', 'pending'],
+            [$seller, $brandon, 'Sold patio set', 'sold'],
+            [$seller, $elkhorn, 'Rural bookshelf', 'expired'],
+            [$other, $brandon, 'Private outsider inventory', 'pending'],
+        ] as [$user, $place, $title, $status]) {
+            Listing::create([
+                'user_id' => $user->id, 'location_id' => $place->id,
+                'title' => $title, 'description' => 'Local furniture', 'category' => 'furniture',
+                'condition' => 'good', 'price_cents' => 2500, 'status' => $status,
+            ]);
+        }
+
+        $this->actingAs($seller)->get(self::MAIN.'/account/listings')->assertOk()
+            ->assertSee('3 listings found')->assertSee('Pending oak desk')
+            ->assertSee('Sold patio set')->assertSee('Rural bookshelf')->assertDontSee('Private outsider inventory');
+        $this->get(self::CITY.'/account/listings')->assertOk()->assertSee('2 listings found')->assertDontSee('Rural bookshelf');
+        $this->get(self::MAIN.'/account/listings?status=pending&q=oak')->assertOk()
+            ->assertSee('1 listing found')->assertSee('Pending oak desk')->assertDontSee('Sold patio set');
+        $this->get(self::MAIN.'/account/listings?status=sold&q=oak')->assertOk()->assertSee('No listings match these filters.');
+        $this->getJson(self::MAIN.'/account/listings?status=removed')->assertUnprocessable();
+    }
+
     private function listing(string $title): array
     {
         return ['title' => $title, 'description' => 'Includes the table and chairs.', 'category' => 'furniture',
