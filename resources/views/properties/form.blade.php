@@ -9,12 +9,6 @@
                 <label>Property type<select name="property_type" required><option value="">Choose a property type</option>@foreach(\App\Models\PropertyListing::TYPES as $id => $label)<option value="{{ $id }}" @selected(old('property_type', $item->property_type) === $id)>{{ $label }}</option>@endforeach</select></label>
                 <label>Seller role<select name="seller_type" required><option value="">Choose a role</option>@foreach(\App\Models\PropertyListing::SELLERS as $id => $label)<option value="{{ $id }}" @selected(old('seller_type', $item->seller_type) === $id)>{{ $label }}</option>@endforeach</select></label>
             </div>
-            <div class="property-private-notice"><strong>Seller and brokerage information</strong><p>Private information collected for future manual advertising review. Agents and brokerages must provide their brokerage name before requesting review.</p>
-                <div class="form-grid">
-                    <label>Brokerage name (if applicable)<input name="brokerage_name" maxlength="150" value="{{ old('brokerage_name', $item->brokerage_name) }}"></label>
-                    <label>Registration or brokerage reference (optional)<input name="registration_reference" maxlength="100" value="{{ old('registration_reference', $item->registration_reference) }}"></label>
-                </div>
-            </div>
             @if(request()->attributes->get('site')->isNetwork())
                 <label>Location<select name="location_id" required><option value="">Choose a Manitoba community</option>@foreach($places as $place)<option value="{{ $place->id }}" @selected((string) old('location_id', $item->location_id) === (string) $place->id)>{{ $place->name }}</option>@endforeach</select></label>
             @else <p>Location · {{ request()->attributes->get('site')->location->name }}</p> @endif
@@ -30,6 +24,7 @@
                 <label>Availability date<input name="available_on" type="date" value="{{ old('available_on', $item->available_on?->toDateString()) }}"></label>
                 <label>Pets<select name="pets_allowed"><option value="">Unspecified</option><option value="1" @selected(in_array(old('pets_allowed', $item->pets_allowed), [true, '1'], true))>Pets allowed</option><option value="0" @selected(in_array(old('pets_allowed', $item->pets_allowed), [false, '0'], true))>Pets restricted</option></select></label>
             </div>
+            <p class="property-private-notice">Submitting this property for private review requires an authority declaration. Agent and brokerage advertising details will need independent verification before a public property listing can be considered.</p>
             <label>Private street address<input name="private_address" maxlength="240" value="{{ old('private_address', $item->private_address) }}"></label>
             <label>Private legal land description<input name="legal_land_description" maxlength="240" value="{{ old('legal_land_description', $item->legal_land_description) }}"></label>
             <label>Description<textarea name="description" required minlength="20" maxlength="6000" rows="6">{{ old('description', $item->description) }}</textarea></label>

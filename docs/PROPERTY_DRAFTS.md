@@ -18,17 +18,14 @@ Before implementing any publishing action or turning on the flag, obtain documen
 Relevant law: https://web2.gov.mb.ca/laws/statutes/ccsm/r021.php?lang=en (notably sections 35-37).
 
 
-## November 2026: private authority and review checkpoints
+## Private authorization and review checkpoints (audit-backed release)
 
-A private draft now separates the following steps:
+When the property draft feature is enabled, an authenticated owner or authorized representative must declare their capacity and confirm the property owner's authority before submitting a private draft for review. The system saves a timestamped `property-draft.authority-declared` event in the existing append-only `audit_logs` table with the submitter account, property ID, declaration version and capacity. This is a **self-declaration, not verification of written advertising consent**.
 
-1. The owner or authorized representative supplies an **authority declaration** when submitting. This is a self-attestation, *not proof* of written owner consent, and does not confer a right to publish an advertisement.
-2. A network reviewer independently checks authority, seller/brokerage role, property description/location/price, and media/privacy before marking a draft privately reviewed. All checkpoints must be acknowledged. The review remains private, audited, and cannot trigger publication.
-3. Editing a returned draft clears its previously recorded attestation, reviewer checklist and future expiry. An owner archiving a draft immediately records withdrawal and clears any internal readiness/expiry.
-4. Public visibility, should a separately approved public system ever be authorized, requires **all** of: explicitly enabled production rollout, `published` status, recorded submitter attestation, completed manual review, a non-expired `publication_expires_at`, and no withdrawal. Currently no workflow assigns `published`, no workflow assigns publication expiry, and the rollout remains disabled.
+A reviewer must check the four explicit authority, seller-role, property-detail and media/privacy questions to record `property-draft.review`. The existing private `reviewed` state does **not** mean published or regulator-approved. Reviewers can request corrections even after a private review. Editing a returned draft triggers `property-draft.revised`; archiving triggers `property-draft.withdrawn`, with the existing state transition ensuring the draft disappears from the owner's active draft list. All events remain private.
 
-Additional private metadata records seller-supplied brokerage name/registration reference for future verification. This is *not* official registrar validation. The database migration only adds nullable columns to the existing `property_listings` table, and keeps old drafts private. This work is not a compliance certification, an MLS importer, a brokerage licence check, or a substitute for current legal advice.
+This phase intentionally uses the pre-existing audit table; **no production schema changes** and no deployment migration approval are needed. More detailed brokerage/registration fields, formal expiry dates and a verified publication lifecycle have been designed but are deferred until a separately approved production database migration. Their code history exists in commit `73ea4e9a29bcee6a3468db0d0c3cc7b5d1f4e69f` and must not be treated as deployed.
 
-Manitoba's Real Estate Services Act (especially advertising sections 35–37) calls for careful owner authorization, disclosures, and avoidance of false advertisements. Manitoba Financial Services Agency guidance may additionally apply to any future public launch.
+No admin or member endpoint can set a property's public `published` status; the independent `CANADAMB_REAL_ESTATE_PUBLIC_LISTINGS` flag is disabled. This review workflow does not permit any real property advertisement.
 
-[RESA](https://web2.gov.mb.ca/laws/statutes/ccsm/r021.php?lang=en) · [MFSA advertising guidance](https://themfsa.ca/wp-content/uploads/2025/10/Advertising-under-The-Real-Estate-Services-Act.pdf)
+[Manitoba Real Estate Services Act](https://web2.gov.mb.ca/laws/statutes/ccsm/r021.php?lang=en) · [MFSA real estate advertising guidance](https://themfsa.ca/wp-content/uploads/2025/10/Advertising-under-The-Real-Estate-Services-Act.pdf)

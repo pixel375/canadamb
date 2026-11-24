@@ -17,43 +17,6 @@ class PropertyDraftTest extends TestCase
 
     protected $seeder = DatabaseSeeder::class;
 
-    public function test_agent_role_requires_brokerage_and_archive_revokes_review_authority(): void
-    {
-        config(['network.property_drafts' => true]);
-        $owner = User::factory()->create();
-        $location = Location::where('slug', 'brandon')->sole();
-        $property = PropertyListing::create([
-            'owner_id' => $owner->id,
-            'location_id' => $location->id,
-            'title' => 'Private agent listing',
-            'description' => 'A private unit that needs brokerage information.',
-            'transaction' => 'sale',
-            'property_type' => 'house',
-            'seller_type' => 'agent',
-            'price_cents' => 10000000,
-        ]);
-        $url = 'https://brandonmb.ca/account/properties/'.$property->id;
-
-        $this->actingAs($owner)->post($url.'/submit', [
-            'authorization_capacity' => 'authorized-agent',
-            'advertising_consent' => '1',
-        ])->assertStatus(409);
-        $this->assertSame('draft', $property->fresh()->status);
-
-        $property->forceFill(['brokerage_name' => 'Verified only by internal reviewer'])->save();
-        $this->post($url.'/submit', [
-            'authorization_capacity' => 'authorized-agent',
-            'advertising_consent' => '1',
-        ])->assertRedirect();
-        $this->assertSame('submitted', $property->fresh()->status);
-
-        $this->delete($url)->assertRedirect();
-        $this->assertSame('archived', $property->fresh()->status);
-        $this->assertNotNull($property->fresh()->withdrawn_at);
-        $this->get($url)->assertNotFound();
-        $this->get('https://brandonmb.ca/real-estate/'.$property->id)->assertNotFound();
-    }
-
     public function test_private_property_drafts_are_location_scoped_and_cannot_be_published_by_review(): void
     {
         Storage::fake('local');
@@ -92,10 +55,14 @@ class PropertyDraftTest extends TestCase
             ->assertSee('name="authorization_capacity"', false)
             ->assertSee('name="advertising_consent"', false);
         $this->post("$path/submit")->assertSessionHasErrors(['authorization_capacity', 'advertising_consent']);
-        $this->post("$path/submit", ['authorization_capacity' => 'owner', 'advertising_consent' => '1'])
-            ->assertRedirect();
-        $this->assertNotNull($draft->fresh()->authorization_attested_at);
-        $this->assertSame('owner', $draft->fresh()->authorization_capacity);
+        $this->post("$path/submit", [
+            'authorization_capacity' => 'owner',
+            'advertising_consent' => '1',
+        ])->assertRedirect();
+        $this->assertDatabaseHas('audit_logs', [
+            'actor_id' => $author->id,
+            'action' => 'property-draft.authority-declared',
+        ]);
         $this->get('https://canadamb.ca/real-estate')->assertOk()->assertDontSee($draft->title)
             ->assertDontSee('Private address sample');
         $this->get('https://canadamb.ca/sitemap.xml')->assertDontSee($draft->title);
@@ -116,8 +83,50 @@ class PropertyDraftTest extends TestCase
             'media_checked' => '1',
         ])->assertRedirect();
         $this->assertDatabaseHas('property_listings', ['id' => $draft->id, 'status' => 'reviewed']);
-        $this->assertNotNull($draft->fresh()->review_checklist_completed_at);
-        $this->assertNull($draft->fresh()->publication_expires_at);
+        $this->assertDatabaseHas('audit_logs', [
+            'actor_id' => $admin->id,
+            'action' => 'property-draft.review',
+        ]);
         $this->get("https://brandonmb.ca/real-estate/$draft->id")->assertNotFound();
+    }
+
+    public function test_private_review_can_be_reopened_and_withdrawal_is_audited(): void
+    {
+        config(['network.property_drafts' => true]);
+        $owner = User::factory()->create();
+        $moderator = User::factory()->create(['role' => 'network_admin']);
+        $draft = PropertyListing::create([
+            'owner_id' => $owner->id,
+            'location_id' => Location::where('slug', 'brandon')->sole()->id,
+            'title' => 'Private family property',
+            'description' => 'A home draft used to verify the internal review audit.',
+            'transaction' => 'sale',
+            'property_type' => 'house',
+            'seller_type' => 'owner',
+            'price_cents' => 22000000,
+        ]);
+        $path = 'https://brandonmb.ca/account/properties/'.$draft->id;
+        $review = 'https://canadamb.ca/admin/properties/'.$draft->id;
+
+        $this->actingAs($owner)->post($path.'/submit', [
+            'authorization_capacity' => 'owner',
+            'advertising_consent' => '1',
+        ])->assertRedirect();
+        $this->actingAs($moderator)->post($review, [
+            'action' => 'review', 'note' => 'The authority and property details were checked.',
+            'owner_authority_checked' => '1', 'seller_role_checked' => '1',
+            'property_details_checked' => '1', 'media_checked' => '1',
+        ])->assertRedirect();
+        $this->post($review, [
+            'action' => 'request-changes',
+            'note' => 'Please confirm the updated property description.',
+        ])->assertRedirect();
+        $this->assertSame('changes_requested', $draft->fresh()->status);
+
+        $this->actingAs($owner)->delete($path)->assertRedirect();
+        $this->assertSame('archived', $draft->fresh()->status);
+        $this->assertDatabaseHas('audit_logs', ['actor_id' => $owner->id, 'action' => 'property-draft.withdrawn']);
+        $this->get($path)->assertNotFound();
+        $this->get('https://brandonmb.ca/real-estate/'.$draft->id)->assertNotFound();
     }
 }
