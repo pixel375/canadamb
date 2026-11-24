@@ -4,7 +4,7 @@
         <details class="search-disclosure" @if(!empty($filters)) open @endif>
             <summary><x-icon name="search" size="18"/> Find businesses <x-icon class="disclosure-arrow" name="chevron-down" size="17"/></summary>
             <form action="/businesses" method="get" class="panel filter-bar">
-            <label>Business name<input type="search" name="q" value="{{ $filters['q'] ?? '' }}" maxlength="100"></label>
+            <label>Business or service<input type="search" name="q" placeholder="Search names and services" value="{{ $filters['q'] ?? '' }}" maxlength="100"></label>
             <label>Category<select name="category"><option value="">All categories</option>@foreach($categories as $key => $category)<option value="{{ $key }}" @selected(($filters['category'] ?? '') === $key)>{{ $category }}</option>@endforeach</select></label>
             @if($places->isNotEmpty())<label>Location<select name="location"><option value="">All Manitoba</option>@foreach($places as $place)<option value="{{ $place->slug }}" @selected(($filters['location'] ?? '') === $place->slug)>{{ $place->name }}</option>@endforeach</select></label>@endif
             <button class="button button-primary"><x-icon name="search" size="16"/> Find businesses</button>
