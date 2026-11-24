@@ -160,8 +160,12 @@
                         <option value="{{ $placeOption->slug }}" @selected($location?->id === $placeOption->id)>{{ $placeOption->name }}</option>
                     @endforeach
                 </select>
-                <button class="button button-outline" type="submit">Apply</button>
+                <button class="button button-outline" type="submit">Browse once</button>
             </form>
+            <div class="home-preference-actions">
+                <form method="post" action="/communities/preference">@csrf<input type="hidden" name="location" value="{{ $location?->slug }}"><button class="text-link" type="submit"><x-icon name="pin" size="16"/> {{ $location ? "Remember ".$location->name." on this browser" : "Use all Manitoba as my default" }}</button></form>
+                <a class="text-link" href="/communities">Find another community</a>
+            </div>
             @endif
         @endunless
 
