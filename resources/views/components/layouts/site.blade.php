@@ -53,6 +53,13 @@
 @php($isPreview = $preview ?? false)
 @php($marketEnabled = $networkSettings['modules']['marketplace'] ?? false)
 @php($localLabel = $site->location?->name ?? 'Manitoba')
+@php
+    $browsePaths = ['/', 'marketplace', 'real-estate', 'businesses', 'business-updates', 'community', 'jobs', 'events', 'news'];
+    $browsePlace = $location ?? (in_array(request()->path(), $browsePaths, true)
+        ? \App\Support\LocationScope::forBrowsing($site, request()->query('location'), request()->is('jobs'))
+        : $site->location);
+    $browseLink = fn (string $path) => \App\Support\LocationScope::browseUrl($site, $path, $browsePlace);
+@endphp
 @php($registerLink = !config('network.prelaunch') || ($networkSettings['prelaunch_test_registration_enabled'] ?? false) === true ? ($site->isNetwork() ? '/register' : \App\Support\NetworkUrl::to(\App\Support\NetworkUrl::main(), '/register?community='.$site->id)) : null)
 @if($isPreview)<aside class="preview-notice">Preview of {{ $site->name }} <a href="/admin/communities/{{ $site->id }}">Return to community settings</a></aside>@endif
 <header class="site-header">
@@ -62,7 +69,7 @@
                 <x-icon name="menu" size="23"/>
             </button>
         @endunless
-        <a class="brand" href="{{ $isPreview ? url()->current() : '/' }}" aria-label="{{ $site->name }} home">
+        <a class="brand" href="{{ $isPreview ? url()->current() : $browseLink('/') }}" aria-label="{{ $site->name }} home">
             @if($site->logo_url)
                 <img src="{{ $site->logo_url }}" width="42" height="42" alt="">
             @else
@@ -76,6 +83,7 @@
                     <form class="header-search" action="/marketplace" method="get">
                         <x-icon name="search" size="17"/>
                         <input type="search" name="q" maxlength="100" aria-label="Search Marketplace" placeholder="Search Marketplace">
+                        @if($site->isNetwork() && $browsePlace)<input type="hidden" name="location" value="{{ $browsePlace->slug }}">@endif
                     </form>
                 @endif
                 <label class="theme-control" title="Appearance">
@@ -124,18 +132,18 @@
     <div class="navigation-wrap">
         <div class="container navigation">
             <nav aria-label="Primary navigation">
-                <a @if(request()->is('/')) aria-current="page" @endif href="/">Home</a>
+                <a @if(request()->is('/')) aria-current="page" @endif href="{{ $browseLink('/') }}">Home</a>
                 @if($marketEnabled)
-                    <a @if(request()->is('marketplace*')) aria-current="page" @endif href="/marketplace">Marketplace</a>
-                    <a class="desktop-real-estate" @if(request()->is('real-estate*')) aria-current="page" @endif href="/real-estate">Real Estate</a>
+                    <a @if(request()->is('marketplace*')) aria-current="page" @endif href="{{ $browseLink('/marketplace') }}">Marketplace</a>
+                    <a class="desktop-real-estate" @if(request()->is('real-estate*')) aria-current="page" @endif href="{{ $browseLink('/real-estate') }}">Real Estate</a>
                 @endif
-                @if($networkSettings['modules']['news'] ?? false)<a @if(request()->is('news*')) aria-current="page" @endif href="/news">News</a>@endif
+                @if($networkSettings['modules']['news'] ?? false)<a @if(request()->is('news*')) aria-current="page" @endif href="{{ $browseLink('/news') }}">News</a>@endif
                 @if(($networkSettings['modules']['businesses'] ?? false) || ($networkSettings['modules']['jobs'] ?? false))
                     <details class="desktop-nav-group">
                         <summary @if(request()->is('businesses*', 'business-updates', 'jobs*')) aria-current="page" @endif>Businesses <x-icon name="chevron-down" size="15"/></summary>
                         <div class="desktop-nav-submenu">
-                            @if($networkSettings['modules']['businesses'] ?? false)<a href="/businesses">Directory</a>@endif
-                            @if($networkSettings['modules']['jobs'] ?? false)<a href="/jobs">Jobs</a>@endif
+                            @if($networkSettings['modules']['businesses'] ?? false)<a href="{{ $browseLink('/businesses') }}">Directory</a>@endif
+                            @if($networkSettings['modules']['jobs'] ?? false)<a href="{{ $browseLink('/jobs') }}">Jobs</a>@endif
                         </div>
                     </details>
                 @endif
@@ -143,8 +151,8 @@
                     <details class="desktop-nav-group">
                         <summary @if(request()->is('community*', 'events*')) aria-current="page" @endif>Discussions <x-icon name="chevron-down" size="15"/></summary>
                         <div class="desktop-nav-submenu">
-                            <a href="/community">All discussions</a>
-                            @if($networkSettings['modules']['events'] ?? false)<a href="/events">Events calendar</a>@endif
+                            <a href="{{ $browseLink('/community') }}">All discussions</a>
+                            @if($networkSettings['modules']['events'] ?? false)<a href="{{ $browseLink('/events') }}">Events calendar</a>@endif
                         </div>
                     </details>
                 @endif
@@ -152,7 +160,7 @@
             </nav>
             @unless($isPreview)
                 @if($site->isNetwork())
-                    <a class="scope-link" href="/communities"><x-icon name="pin" size="17"/> {{ $location->name ?? 'All Manitoba' }}</a>
+                    <a class="scope-link" href="/communities"><x-icon name="pin" size="17"/> {{ $browsePlace?->name ?? 'All Manitoba' }}</a>
                 @else
                     <a class="scope-link" href="{{ \App\Support\NetworkUrl::to(\App\Support\NetworkUrl::main()) }}"><x-icon name="pin" size="17"/> CanadaMB network</a>
                 @endif
@@ -173,26 +181,27 @@
                 <x-icon name="search" size="19"/>
                 <label class="sr-only" for="site-drawer-query">Search Marketplace</label>
                 <input id="site-drawer-query" type="search" name="q" placeholder="Search local listings" maxlength="100">
+                @if($site->isNetwork() && $browsePlace)<input type="hidden" name="location" value="{{ $browsePlace->slug }}">@endif
                 <button type="submit" aria-label="Submit Marketplace search"><x-icon name="arrow" size="18"/></button>
             </form>
             <a class="button button-primary site-drawer-post" href="/marketplace/new"><x-icon name="plus" size="18"/> Post a listing</a>
         </div>
     @endif
     <nav class="site-drawer-nav" aria-label="All site sections">
-        <a href="/" aria-current="{{ request()->is('/') ? 'page' : 'false' }}"><x-icon name="home" size="20"/> Home</a>
+        <a href="{{ $browseLink('/') }}" aria-current="{{ request()->is('/') ? 'page' : 'false' }}"><x-icon name="home" size="20"/> Home</a>
         <a href="/account/messages" aria-current="{{ request()->is('account/messages*') ? 'page' : 'false' }}"><x-icon name="messages" size="20"/> Messages <x-nav-count :count="$navCounts['messages']" label="messages"/></a>
         <a href="/account/notifications" aria-current="{{ request()->is('account/notifications*', 'account/community-notifications*') ? 'page' : 'false' }}"><x-icon name="bell" size="20"/> Notifications <x-nav-count :count="$navCounts['notifications']" label="notifications"/></a>
-        @if($networkSettings['modules']['news'] ?? false)<a href="/news"><x-icon name="news" size="20"/> News</a>@endif
+        @if($networkSettings['modules']['news'] ?? false)<a href="{{ $browseLink('/news') }}"><x-icon name="news" size="20"/> News</a>@endif
         @if($marketEnabled)
-            <a href="/marketplace" aria-current="{{ request()->is('marketplace*') ? 'page' : 'false' }}"><x-icon name="marketplace" size="20"/> Marketplace</a>
-            <a href="/real-estate" aria-current="{{ request()->is('real-estate*') ? 'page' : 'false' }}"><x-icon name="house" size="20"/> Real Estate</a>
+            <a href="{{ $browseLink('/marketplace') }}" aria-current="{{ request()->is('marketplace*') ? 'page' : 'false' }}"><x-icon name="marketplace" size="20"/> Marketplace</a>
+            <a href="{{ $browseLink('/real-estate') }}" aria-current="{{ request()->is('real-estate*') ? 'page' : 'false' }}"><x-icon name="house" size="20"/> Real Estate</a>
         @endif
         @if(($networkSettings['modules']['businesses'] ?? false) || ($networkSettings['modules']['jobs'] ?? false))
         <details class="drawer-submenu" @if(request()->is('businesses*', 'jobs*')) open @endif>
             <summary><x-icon name="building" size="20"/> Businesses <x-icon class="drawer-chevron" name="chevron-down" size="17"/></summary>
             <div>
-                @if($networkSettings['modules']['businesses'] ?? false)<a href="/businesses">Directory</a>@endif
-                @if($networkSettings['modules']['jobs'] ?? false)<a href="/jobs">Jobs</a>@endif
+                @if($networkSettings['modules']['businesses'] ?? false)<a href="{{ $browseLink('/businesses') }}">Directory</a>@endif
+                @if($networkSettings['modules']['jobs'] ?? false)<a href="{{ $browseLink('/jobs') }}">Jobs</a>@endif
             </div>
         </details>
         @endif
@@ -200,14 +209,14 @@
         <details class="drawer-submenu" @if(request()->is('community*', 'events*')) open @endif>
             <summary><x-icon name="discussions" size="20"/> Discussions <x-icon class="drawer-chevron" name="chevron-down" size="17"/></summary>
             <div>
-                <a href="/community">All discussions</a>
-                @if($networkSettings['modules']['events'] ?? false)<a href="/events">Events calendar</a>@endif
+                <a href="{{ $browseLink('/community') }}">All discussions</a>
+                @if($networkSettings['modules']['events'] ?? false)<a href="{{ $browseLink('/events') }}">Events calendar</a>@endif
             </div>
         </details>
         @endif
         <hr>
         @if($site->isNetwork())
-            <a href="/communities"><x-icon name="map" size="20"/> Communities</a>
+            <a href="/communities"><x-icon name="map" size="20"/> Communities <small>{{ $browsePlace?->name ?? 'All Manitoba' }}</small></a>
         @else
             <a href="{{ \App\Support\NetworkUrl::to(\App\Support\NetworkUrl::main(), '/communities') }}"><x-icon name="map" size="20"/> Communities</a>
         @endif
@@ -233,8 +242,8 @@
     </nav>
 </dialog>
 <nav class="mobile-tab-bar" aria-label="Quick navigation">
-    <a href="/" @if(request()->is('/')) aria-current="page" @endif><x-icon name="home" size="22"/><span>Home</span></a>
-    <a href="/marketplace" @if(request()->is('marketplace*', 'real-estate*')) aria-current="page" @endif><x-icon name="marketplace" size="22"/><span>Marketplace</span></a>
+    <a href="{{ $browseLink('/') }}" @if(request()->is('/')) aria-current="page" @endif><x-icon name="home" size="22"/><span>Home</span></a>
+    <a href="{{ $browseLink('/marketplace') }}" @if(request()->is('marketplace*', 'real-estate*')) aria-current="page" @endif><x-icon name="marketplace" size="22"/><span>Marketplace</span></a>
     <a href="/account/messages" @if(request()->is('account/messages*')) aria-current="page" @endif><x-icon name="messages" size="22"/><span>Messages</span><x-nav-count :count="$navCounts['messages']" label="messages"/></a>
     <a href="/account/notifications" @if(request()->is('account/notifications*', 'account/community-notifications*')) aria-current="page" @endif><x-icon name="bell" size="22"/><span>Notifications</span><x-nav-count :count="$navCounts['notifications']" label="notifications"/></a>
 </nav>
