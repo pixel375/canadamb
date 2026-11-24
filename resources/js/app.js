@@ -12,6 +12,7 @@ if (window.matchMedia('(min-width: 1024px)').matches) {
 const modes = ['system', 'light', 'dark'];
 const themeChoice = document.getElementById('theme-choice');
 const mobileThemeChoice = document.getElementById('theme-choice-mobile');
+const settingsThemeChoice = document.getElementById('theme-choice-settings');
 const systemDark = window.matchMedia('(prefers-color-scheme: dark)');
 const systemBarTheme = document.querySelector('meta[name="theme-color"]');
 
@@ -30,6 +31,7 @@ function theme(value) {
     }
     if (themeChoice) themeChoice.value = value;
     if (mobileThemeChoice) mobileThemeChoice.value = value;
+    if (settingsThemeChoice) settingsThemeChoice.value = value;
     updateSystemBarTheme(value);
 }
 
@@ -46,7 +48,7 @@ systemDark.addEventListener('change', () => {
     if (!document.documentElement.dataset.theme) updateSystemBarTheme('system');
 });
 
-for (const control of [themeChoice, mobileThemeChoice]) {
+for (const control of [themeChoice, mobileThemeChoice, settingsThemeChoice]) {
     control?.addEventListener('change', () => {
         theme(control.value);
         try {
@@ -487,6 +489,28 @@ if (chatPanel) {
 // Refresh counts, not message contents, while browsing other signed-in pages.
 // The open chat already includes counts in its own sync response.
 const activityEndpoint = document.body.dataset.activityCounts;
+const activitySetting = document.getElementById('activity-refresh-setting');
+const preferenceStatus = document.getElementById('device-preference-status');
+let activityEnabled = true;
+try {
+    activityEnabled = localStorage.getItem('canadamb-activity-refresh') !== 'off';
+} catch {
+    // Storage restrictions leave the default enabled.
+}
+if (activitySetting) {
+    activitySetting.checked = activityEnabled;
+    activitySetting.addEventListener('change', () => {
+        activityEnabled = activitySetting.checked;
+        try {
+            localStorage.setItem('canadamb-activity-refresh', activityEnabled ? 'on' : 'off');
+            preferenceStatus.textContent = 'Device preference saved.';
+        } catch {
+            preferenceStatus.textContent = 'Preference applies to this page only; browser storage is unavailable.';
+        }
+        document.dispatchEvent(new Event('activity-preference-changed'));
+    });
+}
+
 if (activityEndpoint && !chatPanel) {
     let running = false;
     let stopped = false;
@@ -494,10 +518,10 @@ if (activityEndpoint && !chatPanel) {
     let delay = 45000;
     const schedule = () => {
         clearTimeout(timer);
-        if (!document.hidden && !stopped) timer = setTimeout(refresh, delay);
+        if (!document.hidden && !stopped && activityEnabled) timer = setTimeout(refresh, delay);
     };
     async function refresh() {
-        if (running || stopped || document.hidden) return;
+        if (running || stopped || document.hidden || !activityEnabled) return;
         running = true;
         try {
             const response = await fetch(activityEndpoint, {
@@ -520,6 +544,13 @@ if (activityEndpoint && !chatPanel) {
     document.addEventListener('visibilitychange', () => {
         clearTimeout(timer);
         if (!document.hidden) refresh();
+    });
+    document.addEventListener('activity-preference-changed', schedule);
+    window.addEventListener('storage', event => {
+        if (event.key !== 'canadamb-activity-refresh') return;
+        activityEnabled = event.newValue !== 'off';
+        if (activitySetting) activitySetting.checked = activityEnabled;
+        schedule();
     });
     schedule();
 }
