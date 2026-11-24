@@ -1,22 +1,10 @@
 <x-layouts.site title="My listings">
     <div class="container page-shell">
-        <div class="page-intro"><div><h1>My listings</h1><p>Manage your Marketplace posts.</p></div><div class="inline-actions">
-            <a class="button button-outline" href="/account/saved">Saved listings</a>
-            <a class="button button-outline" href="/account/messages">Messages</a>
-            @php($site = request()->attributes->get('site'))
-            @if(app(\App\Support\Community::class)->enabled($site, 'community'))<a class="button button-outline" href="/account/community-notifications">Discussion notifications</a>@endif
-            @if(app(\App\Support\Community::class)->enabled($site, 'events'))<a class="button button-outline" href="/account/events">My events</a>@endif
-            @if(app(\App\Support\JobBoard::class)->enabled($site))<a class="button button-outline" href="/account/saved-jobs">Saved jobs</a>@endif
-            @if(config('network.property_drafts'))<a class="button button-outline" href="/account/properties">Private property drafts</a>@endif
-            <a class="button button-outline" href="/account/businesses">My businesses</a>
-            @can('manage-network')<a class="button button-outline" href="{{ \App\Support\NetworkUrl::to(\App\Support\NetworkUrl::main(), '/admin') }}">Network admin</a>@endcan
-            @can('manage-news')<a class="button button-outline" href="{{ \App\Support\NetworkUrl::to(\App\Support\NetworkUrl::main(), '/admin/news') }}">News editorial</a>@endcan
-            <form method="post" action="/account/logout">@csrf<button class="button button-outline">Sign out everywhere</button></form>
-        </div></div>
-        <div class="panel">
+        <div class="page-intro"><div><a class="text-link" href="/account/profile">My account</a><h1>My listings</h1><p>Manage your Marketplace posts.</p></div><a class="button button-primary" href="/marketplace/new"><x-icon name="plus" size="18"/> Post a listing</a></div>
+        <div class="panel member-listing-manager">
             @forelse($items as $item)
                 <article class="item-row">
-                    <div><h3>{{ $item->title }}</h3><p>{{ $item->location->name }} · {{ ucfirst($item->status) }} · {{ $item->priceLabel() }}</p></div>
+                    <div class="member-listing-info"><span class="member-listing-status" data-status="{{ $item->status }}">{{ ucfirst($item->status) }}</span><h3>{{ $item->title }}</h3><p>{{ $item->location->name }} · {{ $item->priceLabel() }}</p></div>
                     <div class="inline-actions">
                         @if(in_array($item->status, ['pending','active','expired','rejected'], true))<a class="button button-outline" href="/account/listings/{{ $item->id }}/edit">Edit</a>@endif
                         <form method="post" action="/account/listings/{{ $item->id }}/status" class="inline-actions">@csrf
@@ -26,7 +14,7 @@
                         </form>
                     </div>
                 </article>
-            @empty<p>You have no listings on this portal.</p>@endforelse
+            @empty<div class="market-results-empty"><span class="empty-icon"><x-icon name="marketplace" size="24"/></span><h3>You have no listings on this portal.</h3><p>Post your first item to reach local buyers.</p><a class="button button-primary" href="/marketplace/new">Post a listing</a></div>@endforelse
         </div>
         {{ $items->links() }}
     </div>
