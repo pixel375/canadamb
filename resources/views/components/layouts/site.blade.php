@@ -42,6 +42,10 @@
             --accent-radius: {{ $site->accent['radius'] ?? 0 }}px;
             --accent-shadow: {{ ($site->accent['shadow'] ?? false) ? '0 1px 4px rgb(0 0 0 / 0.18)' : 'none' }};
         }
+        .search-results-context { padding-top: 16px; }
+        .search-results-navigation { display: grid; gap: 8px; }
+        .search-results-query { overflow-wrap: anywhere; }
+        .search-results-navigation .inline-actions { gap: 8px; }
     </style>
 </head>
 <body>
@@ -242,6 +246,53 @@
             @foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach
         </ul></div></div>
     @endif
+    @unless($isPreview)
+        @php
+            $searchSections = array_filter([
+                'marketplace' => $marketEnabled ? 'Marketplace' : null,
+                'businesses' => app(\App\Support\BusinessDirectory::class)->enabled($site) ? 'Businesses' : null,
+                'community' => ($networkSettings['modules']['community'] ?? false) ? 'Discussions' : null,
+                'jobs' => ($networkSettings['modules']['jobs'] ?? false) ? 'Jobs' : null,
+            ]);
+            $searchSection = request()->path();
+            $searchTerm = request()->query('q');
+        @endphp
+        @if(isset($searchSections[$searchSection]) && is_string($searchTerm) && trim($searchTerm) !== '' && count($searchSections) > 1)
+            @php
+                $searchLocation = request()->query('location');
+                $searchPlace = null;
+                if ($site->isNetwork() && is_string($searchLocation) && trim($searchLocation) !== '') {
+                    $searchPlace = \App\Models\Location::selectable()
+                        ->where($searchSection === 'jobs' ? 'name' : 'slug', $searchLocation)->first();
+                }
+                $searchScopeUnknown = $site->isNetwork() && is_string($searchLocation) && trim($searchLocation) !== '' && ! $searchPlace;
+            @endphp
+            <div class="container search-results-context">
+                <nav class="panel search-results-navigation" aria-label="Search other sections">
+                    <p class="section-label">Search across sections</p>
+                    <p class="search-results-query">Results for <strong>{{ $searchTerm }}</strong> · {{ $searchPlace?->name ?? $site->location?->name ?? 'Manitoba' }}</p>
+                    <div class="inline-actions">
+                        @foreach($searchSections as $section => $label)
+                            @if($section === $searchSection)
+                                <span class="button button-primary" aria-current="page">{{ $label }}</span>
+                            @else
+                                @php
+                                    $searchParams = ['q' => $searchTerm];
+                                    if ($searchPlace) {
+                                        $searchParams['location'] = $section === 'jobs' ? $searchPlace->name : $searchPlace->slug;
+                                    }
+                                @endphp
+                                <a class="button button-outline" href="{{ '/'.$section.'?'.http_build_query($searchParams, '', '&', PHP_QUERY_RFC3986) }}">{{ $label }}</a>
+                            @endif
+                        @endforeach
+                    </div>
+                    @if($searchScopeUnknown)
+                        <p class="field-note">Your location filter could not be matched to a community. Other sections will search all Manitoba.</p>
+                    @endif
+                </nav>
+            </div>
+        @endif
+    @endunless
     {{ $slot }}
 </main>
 <footer class="site-footer">
