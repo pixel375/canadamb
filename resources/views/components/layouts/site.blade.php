@@ -262,6 +262,9 @@
                 'businesses' => app(\App\Support\BusinessDirectory::class)->enabled($site) ? 'Businesses' : null,
                 'community' => ($networkSettings['modules']['community'] ?? false) ? 'Discussions' : null,
                 'jobs' => ($networkSettings['modules']['jobs'] ?? false) ? 'Jobs' : null,
+                'real-estate' => $marketEnabled && config('network.real_estate_public_listings') ? 'Real Estate' : null,
+                'news' => ($networkSettings['modules']['news'] ?? false) ? 'News' : null,
+                'events' => ($networkSettings['modules']['events'] ?? false) ? 'Events' : null,
             ]);
             $searchSection = request()->path();
             $searchTerm = request()->query('q');
