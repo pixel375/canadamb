@@ -20,12 +20,14 @@ class AccountActivityNavigationTest extends TestCase
     public function test_notifications_hub_requires_login_and_shows_empty_state_for_member(): void
     {
         $this->get('https://canadamb.ca/account/notifications')->assertRedirect();
+        $this->getJson('https://canadamb.ca/account/activity-counts')->assertUnauthorized();
         $member = User::factory()->create();
         $this->actingAs($member)->get('https://canadamb.ca/account/notifications')
             ->assertOk()->assertSee('No unread private messages.')
             ->assertSee('No unread discussion replies.')
             ->assertSee('href="/account/messages"', false);
         $this->get('https://brandonmb.ca/account/notifications')->assertOk();
+        $this->getJson('https://canadamb.ca/account/activity-counts')->assertOk()->assertExactJson(['messages' => 0, 'notifications' => 0]);
     }
 
     public function test_only_message_participants_receive_unread_counts_and_read_markers_clear_them(): void
@@ -51,10 +53,12 @@ class AccountActivityNavigationTest extends TestCase
             ->assertOk()->assertSee('aria-label="1 unread messages"', false);
         $this->get('https://brandonmb.ca/account/notifications')
             ->assertOk()->assertSee('1 unread message');
+        $this->getJson('https://brandonmb.ca/account/activity-counts')->assertOk()->assertJsonPath('messages', 1);
         $this->actingAs($stranger)->get('https://canadamb.ca/')
             ->assertOk()->assertDontSee('aria-label="1 unread messages"', false);
         $this->get('https://canadamb.ca/account/notifications')
             ->assertOk()->assertSee('No unread private messages.');
+        $this->getJson('https://canadamb.ca/account/activity-counts')->assertOk()->assertExactJson(['messages' => 0, 'notifications' => 0]);
 
         $this->actingAs($seller)->get('https://canadamb.ca/account/messages/'.$conversation->id)->assertOk();
         $this->get('https://canadamb.ca/')->assertOk()->assertDontSee('aria-label="1 unread messages"', false);
@@ -76,6 +80,8 @@ class AccountActivityNavigationTest extends TestCase
             ->assertOk()->assertSee('aria-label="2 unread notifications"', false);
         $this->get('https://brandonmb.ca/')
             ->assertOk()->assertSee('aria-label="1 unread notifications"', false);
+        $this->getJson('https://canadamb.ca/account/activity-counts')->assertOk()->assertJsonPath('notifications', 2);
+        $this->getJson('https://brandonmb.ca/account/activity-counts')->assertOk()->assertJsonPath('notifications', 1);
         $this->get('https://brandonmb.ca/account/notifications')
             ->assertOk()->assertSee('Brandon neighbourhood news')
             ->assertDontSee('Winnipeg neighbourhood news')
