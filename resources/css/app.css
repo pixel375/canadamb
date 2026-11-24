@@ -200,6 +200,12 @@ html.listing-lightbox-open { overflow: hidden; }
 .place-grid, .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 225px), 1fr)); gap: 13px; }
 .place-grid .panel, .stat-grid .panel { margin-top: 0; }
 .place-grid p { margin-block: 5px 10px; text-transform: capitalize; }
+.business-result-card { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; overflow-wrap: anywhere; }
+.business-result-card h3 { font-size: 1.05rem; }
+.business-result-card h3 a { color: var(--text); }
+.business-result-excerpt { color: var(--muted); font-size: .86rem; line-height: 1.5; margin-bottom: 12px; }
+.business-result-card .text-link { margin-top: auto; padding-top: 6px; }
+
 .admin-shell { display: grid; grid-template-columns: minmax(150px, 205px) minmax(0, 1fr); align-items: start; gap: 20px; }
 .admin-nav { display: grid; gap: 4px; }
 .admin-nav strong { padding: 0 8px 7px; color: var(--muted); font-size: .8rem; }
