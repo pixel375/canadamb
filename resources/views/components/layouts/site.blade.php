@@ -77,15 +77,16 @@
             @endif
             <span><strong>{{ $site->name }}</strong><small>{{ $site->subtitle }}</small></span>
         </a>
+        @if(!$isPreview && $marketEnabled)
+            <form class="header-search" action="/marketplace" method="get" role="search" aria-label="Marketplace quick search">
+                <x-icon name="search" size="19"/>
+                <input type="search" name="q" maxlength="100" aria-label="Search Marketplace" placeholder="Search Marketplace">
+                @if($site->isNetwork() && $browsePlace)<input type="hidden" name="location" value="{{ $browsePlace->slug }}">@endif
+                <button class="header-search-submit" type="submit" aria-label="Submit Marketplace search"><x-icon name="arrow" size="18"/></button>
+            </form>
+        @endif
         <div class="header-actions">
             @unless($isPreview)
-                @if($marketEnabled)
-                    <form class="header-search" action="/marketplace" method="get">
-                        <x-icon name="search" size="17"/>
-                        <input type="search" name="q" maxlength="100" aria-label="Search Marketplace" placeholder="Search Marketplace">
-                        @if($site->isNetwork() && $browsePlace)<input type="hidden" name="location" value="{{ $browsePlace->slug }}">@endif
-                    </form>
-                @endif
                 <label class="theme-control" title="Appearance">
                     <x-icon name="moon" size="18"/>
                     <select id="theme-choice" aria-label="Appearance">
@@ -93,10 +94,10 @@
                     </select>
                 </label>
                 @auth
-                    <a class="sign-in header-inbox" href="/account/messages" @if(request()->is('account/messages*')) aria-current="page" @endif><x-icon name="messages" size="18"/> <span class="header-action-label">Messages</span><x-nav-count :count="$navCounts['messages']" label="messages"/></a>
-                    <a class="sign-in header-inbox" href="/account/notifications" @if(request()->is('account/notifications*', 'account/community-notifications*')) aria-current="page" @endif><x-icon name="bell" size="18"/> <span class="header-action-label">Notifications</span><x-nav-count :count="$navCounts['notifications']" label="notifications"/></a>
+                    <a class="sign-in header-inbox" href="/account/messages" title="Messages" @if(request()->is('account/messages*')) aria-current="page" @endif><x-icon name="messages" size="18"/> <span class="header-action-label">Messages</span><x-nav-count :count="$navCounts['messages']" label="messages"/></a>
+                    <a class="sign-in header-inbox" href="/account/notifications" title="Notifications" @if(request()->is('account/notifications*', 'account/community-notifications*')) aria-current="page" @endif><x-icon name="bell" size="18"/> <span class="header-action-label">Notifications</span><x-nav-count :count="$navCounts['notifications']" label="notifications"/></a>
                     <details class="header-account-menu">
-                        <summary aria-label="Account menu" aria-haspopup="menu">
+                        <summary aria-label="Account menu">
                             <span class="header-account-avatar" aria-hidden="true"><x-icon name="person" size="19"/></span>
                             <span class="header-account-title">Account</span>
                             <x-icon class="header-account-chevron" name="chevron-down" size="15"/>
@@ -125,44 +126,47 @@
                     <a class="sign-in" href="{{ $site->isNetwork() ? '/login' : '/auth/start' }}" aria-label="Sign in"><x-icon name="person" size="18"/> <span>Sign in</span></a>
                     @if($registerLink)<a class="text-link header-register" href="{{ $registerLink }}">Create account</a>@endif
                 @endauth
-                @if($marketEnabled)<a class="button button-primary header-post" href="/marketplace/new"><x-icon name="plus" size="16"/> Post a listing</a>@endif
+                @if($marketEnabled)<a class="button button-primary header-post" href="/marketplace/new" title="Post a listing"><x-icon name="plus" size="16"/> <span>Post a listing</span></a>@endif
             @endunless
         </div>
     </div>
     <div class="navigation-wrap">
         <div class="container navigation">
             <nav aria-label="Primary navigation">
-                <a @if(request()->is('/')) aria-current="page" @endif href="{{ $browseLink('/') }}">Home</a>
+                <a @if(request()->is('/')) aria-current="page" @endif href="{{ $browseLink('/') }}"><x-icon name="home" size="17"/> <span>Home</span></a>
                 @if($marketEnabled)
-                    <a @if(request()->is('marketplace*')) aria-current="page" @endif href="{{ $browseLink('/marketplace') }}">Marketplace</a>
-                    <a class="desktop-real-estate" @if(request()->is('real-estate*')) aria-current="page" @endif href="{{ $browseLink('/real-estate') }}">Real Estate</a>
+                    <a @if(request()->is('marketplace*')) aria-current="page" @endif href="{{ $browseLink('/marketplace') }}"><x-icon name="marketplace" size="17"/> <span>Marketplace</span></a>
+                    <a class="desktop-real-estate" @if(request()->is('real-estate*')) aria-current="page" @endif href="{{ $browseLink('/real-estate') }}"><x-icon name="house" size="17"/> <span>Real Estate</span></a>
                 @endif
-                @if($networkSettings['modules']['news'] ?? false)<a @if(request()->is('news*')) aria-current="page" @endif href="{{ $browseLink('/news') }}">News</a>@endif
+                @if($networkSettings['modules']['news'] ?? false)<a @if(request()->is('news*')) aria-current="page" @endif href="{{ $browseLink('/news') }}"><x-icon name="news" size="17"/> <span>News</span></a>@endif
                 @if(($networkSettings['modules']['businesses'] ?? false) || ($networkSettings['modules']['jobs'] ?? false))
                     <details class="desktop-nav-group">
-                        <summary @if(request()->is('businesses*', 'business-updates', 'jobs*')) aria-current="page" @endif>Businesses <x-icon name="chevron-down" size="15"/></summary>
+                        <summary @if(request()->is('businesses*', 'business-updates', 'jobs*')) aria-current="page" @endif><x-icon name="building" size="17"/> <span>Businesses</span> <x-icon class="nav-group-chevron" name="chevron-down" size="15"/></summary>
                         <div class="desktop-nav-submenu">
-                            @if($networkSettings['modules']['businesses'] ?? false)<a href="{{ $browseLink('/businesses') }}">Directory</a>@endif
-                            @if($networkSettings['modules']['jobs'] ?? false)<a href="{{ $browseLink('/jobs') }}">Jobs</a>@endif
+                            @if($networkSettings['modules']['businesses'] ?? false)
+                                <a href="{{ $browseLink('/businesses') }}"><x-icon name="building" size="18"/> Directory</a>
+                                <a href="{{ $browseLink('/business-updates') }}"><x-icon name="news" size="18"/> Business updates</a>
+                            @endif
+                            @if($networkSettings['modules']['jobs'] ?? false)<a href="{{ $browseLink('/jobs') }}"><x-icon name="briefcase" size="18"/> Jobs</a>@endif
                         </div>
                     </details>
                 @endif
                 @if($networkSettings['modules']['community'] ?? false)
                     <details class="desktop-nav-group">
-                        <summary @if(request()->is('community*', 'events*')) aria-current="page" @endif>Discussions <x-icon name="chevron-down" size="15"/></summary>
+                        <summary @if(request()->is('community*', 'events*')) aria-current="page" @endif><x-icon name="discussions" size="17"/> <span>Discussions</span> <x-icon class="nav-group-chevron" name="chevron-down" size="15"/></summary>
                         <div class="desktop-nav-submenu">
-                            <a href="{{ $browseLink('/community') }}">All discussions</a>
-                            @if($networkSettings['modules']['events'] ?? false)<a href="{{ $browseLink('/events') }}">Events calendar</a>@endif
+                            <a href="{{ $browseLink('/community') }}"><x-icon name="discussions" size="18"/> All discussions</a>
+                            @if($networkSettings['modules']['events'] ?? false)<a href="{{ $browseLink('/events') }}"><x-icon name="calendar" size="18"/> Events calendar</a>@endif
                         </div>
                     </details>
                 @endif
-                @if($site->isNetwork())<a href="/communities" @if(request()->is('communities')) aria-current="page" @endif>Communities</a>@endif
+                @if($site->isNetwork())<a href="/communities" @if(request()->is('communities')) aria-current="page" @endif><x-icon name="map" size="17"/> <span>Communities</span></a>@endif
             </nav>
             @unless($isPreview)
                 @if($site->isNetwork())
-                    <a class="scope-link" href="/communities"><x-icon name="pin" size="17"/> {{ $browsePlace?->name ?? 'All Manitoba' }}</a>
+                    <a class="scope-link" href="/communities"><x-icon name="pin" size="17"/> <span>{{ $browsePlace?->name ?? 'All Manitoba' }}</span></a>
                 @else
-                    <a class="scope-link" href="{{ \App\Support\NetworkUrl::to(\App\Support\NetworkUrl::main()) }}"><x-icon name="pin" size="17"/> CanadaMB network</a>
+                    <a class="scope-link" href="{{ \App\Support\NetworkUrl::to(\App\Support\NetworkUrl::main()) }}"><x-icon name="pin" size="17"/> <span>CanadaMB network</span></a>
                 @endif
             @endunless
         </div>
