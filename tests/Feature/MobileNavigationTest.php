@@ -45,18 +45,12 @@ class MobileNavigationTest extends TestCase
     {
         foreach (['marketplace', 'businesses', 'jobs', 'news', 'community', 'events'] as $page) {
             $empty = $this->get('https://canadamb.ca/'.$page)->assertOk()->getContent();
-            preg_match('/<details class="search-disclosure"([^>]*)>/', $empty, $initial);
+            preg_match('/<details class="search-disclosure(?: browse-sidebar)?"([^>]*)>/', $empty, $initial);
             $this->assertArrayHasKey(1, $initial, $page.' must render a filter disclosure');
             $this->assertDoesNotMatchRegularExpression('/\bopen\b/', $initial[1]);
 
-            $param = $page === 'news' ? 'category' : 'q';
-            $value = $page === 'news' ? 'local' : 'test';
-            // The news category lookup must accept only a known value.
-            if ($page === 'news') {
-                continue;
-            }
-            $response = $this->get('https://canadamb.ca/'.$page.'?'.$param.'='.$value)->assertOk()->getContent();
-            preg_match('/<details class="search-disclosure"([^>]*)>/', $response, $filtered);
+            $response = $this->get('https://canadamb.ca/'.$page.'?q=test')->assertOk()->getContent();
+            preg_match('/<details class="search-disclosure(?: browse-sidebar)?"([^>]*)>/', $response, $filtered);
             $this->assertArrayHasKey(1, $filtered);
             $this->assertMatchesRegularExpression('/\bopen\b/', $filtered[1]);
         }
