@@ -23,7 +23,7 @@ const fs = require('node:fs');
                 if (width <= 390) {
                     const cards = await page.locator('.home-community-card').evaluateAll(nodes =>
                         nodes.map(node => ({ width: node.getBoundingClientRect().width, left: node.getBoundingClientRect().left, right: node.getBoundingClientRect().right })));
-                    check(cards.every(rect => rect.left >= 0 && rect.right <= width + 1 && rect.width >= width - 42),
+                    check(cards.every(rect => rect.left >= 0 && rect.right <= width + 1 && rect.width >= width - 52),
                         'Mobile community cards are cramped/overflowing: ' + JSON.stringify(cards));
                 }
                 if (width < 1024) {

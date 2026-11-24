@@ -2,6 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Models\CommunityEvent;
+use App\Models\CommunityThread;
+use App\Models\Location;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -35,6 +39,86 @@ class HomeDiscoveryNavigationTest extends TestCase
             ->assertSee('href="/events"', false)
             ->assertSee('href="/jobs"', false)
             ->assertDontSee('href="/communities"', false);
+    }
+
+    public function test_empty_homepage_still_shows_all_enabled_community_sections_and_real_actions(): void
+    {
+        foreach (['https://canadamb.ca/', 'https://brandonmb.ca/'] as $url) {
+            $this->get($url)
+                ->assertOk()
+                ->assertSee('Community activity')
+                ->assertSee($url === 'https://canadamb.ca/' ? 'Around Manitoba' : 'Around Brandon')
+                ->assertSee('class="community-activity home-community-grid"', false)
+                ->assertSee('Start a local conversation')
+                ->assertSee('Have an event to share?')
+                ->assertSee('Find work nearby')
+                ->assertSee('href="/community/new"', false)
+                ->assertSee('href="/community/new?type=event"', false)
+                ->assertSee('href="/jobs"', false)
+                ->assertSee('Browse the directory')
+                ->assertSee('Browse categories');
+        }
+    }
+
+    public function test_community_activity_uses_real_approved_posts_events_and_location_scope(): void
+    {
+        $this->travelTo('2026-11-24 12:00:00');
+        $author = User::factory()->create();
+        $brandon = Location::where('slug', 'brandon')->sole();
+        $winnipeg = Location::where('slug', 'winnipeg')->sole();
+
+        $local = CommunityThread::create([
+            'author_id' => $author->id, 'location_id' => $brandon->id,
+            'title' => 'Brandon neighbourhood cleanup',
+            'category' => 'general', 'body' => 'Planning a local cleanup with our neighbours.',
+        ]);
+        $local->forceFill(['status' => 'approved'])->save();
+
+        $hidden = CommunityThread::create([
+            'author_id' => $author->id, 'location_id' => $brandon->id,
+            'title' => 'Unapproved discussion must stay private',
+            'category' => 'general', 'body' => 'Not yet reviewed by a moderator.',
+        ]);
+        $hidden->forceFill(['status' => 'pending'])->save();
+
+        $remote = CommunityThread::create([
+            'author_id' => $author->id, 'location_id' => $winnipeg->id,
+            'title' => 'Winnipeg neighbourhood news',
+            'category' => 'general', 'body' => 'A discussion in a different community.',
+        ]);
+        $remote->forceFill(['status' => 'approved'])->save();
+
+        $event = CommunityEvent::create([
+            'author_id' => $author->id, 'location_id' => $brandon->id,
+            'title' => 'Brandon winter food drive',
+            'body' => 'We are collecting donations for local families.',
+            'category' => 'community', 'venue' => 'Community centre',
+            'organizer' => 'Local volunteers', 'starts_at' => now()->addDays(3)->utc()->format('Y-m-d H:i:s'),
+        ]);
+        $event->forceFill(['status' => 'approved'])->save();
+
+        $this->get('https://brandonmb.ca/')
+            ->assertOk()
+            ->assertSee('Brandon neighbourhood cleanup')
+            ->assertSee('Brandon winter food drive')
+            ->assertSee('href="/community/'.$local->id.'"', false)
+            ->assertSee('href="/events/'.$event->id.'"', false)
+            ->assertDontSee('Winnipeg neighbourhood news')
+            ->assertDontSee('Unapproved discussion must stay private')
+            ->assertDontSee('Start a local conversation')
+            ->assertDontSee('Have an event to share?');
+
+        $this->get('https://canadamb.ca/?location=brandon')
+            ->assertOk()
+            ->assertSee('Around Brandon')
+            ->assertSee('Brandon neighbourhood cleanup')
+            ->assertSee('Brandon winter food drive')
+            ->assertDontSee('Winnipeg neighbourhood news');
+
+        $this->get('https://canadamb.ca/')
+            ->assertOk()
+            ->assertSee('Winnipeg neighbourhood news')
+            ->assertSee('Brandon neighbourhood cleanup');
     }
 
     public function test_category_discovery_search_is_real_submission_not_a_dummy_button(): void
