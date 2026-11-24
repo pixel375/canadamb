@@ -1,21 +1,46 @@
 <x-layouts.site :title="$thread->listing->title.' | Messages'">
-    <div class="container page-shell narrow">
-        <div class="page-intro"><div><h1>{{ $thread->listing->title }}</h1><p>Conversation with {{ $thread->buyer_id === auth()->id() ? $thread->seller->name : $thread->buyer->name }}</p></div><a class="text-link" href="/account/messages">All messages</a></div>
-        <div class="panel">
-            @foreach($messages->reverse() as $message)
-                <article class="item-row"><div><strong>{{ $message->sender->name }}</strong> <small>{{ $message->created_at->diffForHumans() }}</small><p class="prose-text">{{ $message->body }}</p></div></article>
-            @endforeach
+    <div class="container page-shell message-workspace">
+        <a class="text-link mb-4" href="/account/messages"><x-icon name="messages" size="18"/> All messages</a>
+        <div class="panel chat-panel">
+            <header class="chat-heading">
+                <span class="message-avatar" aria-hidden="true"><x-icon name="person" size="26"/></span>
+                <div class="chat-heading-copy">
+                    <p class="section-label">Marketplace conversation</p>
+                    <h1>{{ $thread->buyer_id === auth()->id() ? $thread->seller->name : $thread->buyer->name }}</h1>
+                    <p>{{ $thread->listing->title }}</p>
+                </div>
+                <details class="chat-actions">
+                    <summary>Options <x-icon name="chevron-down" size="16"/></summary>
+                    <form method="post" action="/account/messages/{{ $thread->id }}/block">
+                        @csrf @if($myBlock)@method('DELETE')@endif
+                        <p class="field-note">{{ $myBlock ? 'Allow this member to contact you again.' : 'Blocking stops new messages between you and this member.' }}</p>
+                        <button class="button button-outline">{{ $myBlock ? 'Unblock member' : 'Block member' }}</button>
+                    </form>
+                </details>
+            </header>
+            <nav class="chat-history-nav" aria-label="Conversation history">
+                @if($messages->hasMorePages())<a class="text-link" href="{{ $messages->nextPageUrl() }}">Older messages</a>@endif
+                @if(!$messages->onFirstPage())<a class="text-link" href="{{ $messages->previousPageUrl() }}">Newer messages</a><a class="text-link" href="/account/messages/{{ $thread->id }}">Latest messages</a>@endif
+            </nav>
+            <div class="chat-history" aria-label="Messages in chronological order">
+                @foreach($messages->reverse() as $message)
+                    <article class="chat-message {{ $message->sender_id === auth()->id() ? 'is-own' : 'is-other' }}">
+                        <div class="chat-message-meta">
+                            <strong>{{ $message->sender_id === auth()->id() ? 'You' : $message->sender->name }}</strong>
+                            <time datetime="{{ $message->created_at->toIso8601String() }}" title="{{ $message->created_at->timezone('America/Winnipeg')->format('M j, Y · g:i a') }}">{{ $message->created_at->diffForHumans() }}</time>
+                        </div>
+                        <p class="chat-bubble">{{ $message->body }}</p>
+                    </article>
+                @endforeach
+            </div>
+            @if(!$blocked)
+                <form method="post" action="/account/messages/{{ $thread->id }}" class="chat-composer form-stack">@csrf
+                    <label>Reply<textarea name="body" maxlength="2000" rows="3" required placeholder="Write a message…">{{ old('body') }}</textarea></label>
+                    <div class="chat-composer-footer"><small class="field-note">Keep personal and payment information private.</small><button class="button button-primary">Send reply <x-icon name="arrow" size="17"/></button></div>
+                </form>
+            @else
+                <p class="notice">New messages are blocked for this conversation.</p>
+            @endif
         </div>
-        {{ $messages->links() }}
-        @if(!$blocked)
-            <form method="post" action="/account/messages/{{ $thread->id }}" class="panel form-stack">@csrf
-                <label>Reply<textarea name="body" maxlength="2000" rows="3" required>{{ old('body') }}</textarea></label>
-                <div><button class="button button-primary">Send reply</button></div>
-            </form>
-        @else<p class="notice">New messages are blocked for this conversation.</p>@endif
-        <form class="mt-3" method="post" action="/account/messages/{{ $thread->id }}/block">
-            @csrf @if($myBlock)@method('DELETE')@endif
-            <button class="button button-outline">{{ $myBlock ? 'Unblock member' : 'Block member' }}</button>
-        </form>
     </div>
 </x-layouts.site>
