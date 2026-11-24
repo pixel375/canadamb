@@ -1,10 +1,11 @@
-<x-layouts.site title="Local news">
+<x-layouts.site title="Local news" :location="$place">
     <div class="container page-shell narrow">
-        <div class="page-intro"><div><h1>Local news</h1><p>Source-attributed news from {{ request()->attributes->get('site')->location?->name ?? 'Manitoba' }}.</p></div></div>
+        <div class="page-intro"><div><h1>Local news</h1><p>Source-attributed news from {{ $place?->name ?? 'Manitoba' }}.</p></div></div>
         <details class="search-disclosure" @if(!empty($filter)) open @endif>
             <summary><x-icon name="search" size="18"/> News filters <x-icon class="disclosure-arrow" name="chevron-down" size="17"/></summary>
             <form method="get" action="/news" class="panel filter-bar">
             <label>Category<select name="category"><option value="">All categories</option>@foreach(\App\Support\News::CATEGORIES as $id => $label)<option value="{{ $id }}" @selected(($filter['category'] ?? null) === $id)>{{ $label }}</option>@endforeach</select></label>
+            @if($places->isNotEmpty())<label>Location<select name="location"><option value="">All Manitoba</option>@foreach($places as $option)<option value="{{ $option->slug }}" @selected($place?->id === $option->id)>{{ $option->name }}</option>@endforeach</select></label>@endif
             <button class="button button-primary">Filter news</button>
         </form>
         </details>
