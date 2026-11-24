@@ -23,11 +23,14 @@ class CommunityEventController extends Controller
         abort_unless($this->community->enabled($site, 'events'), 404);
         $filters = $request->validate([
             'month' => 'nullable|date_format:Y-m',
+            'location' => ['nullable', 'string', 'max:100', Rule::exists('locations', 'slug')->where('province', 'MB')->where('selectable', true)],
             'day' => 'nullable|date_format:Y-m-d',
             'q' => 'nullable|string|max:100', 'category' => ['nullable', Rule::in(array_keys(Community::EVENTS))],
         ]);
+        $place = LocationScope::forBrowsing($site, $filters['location'] ?? null);
+        $places = $site->isNetwork() ? Location::selectable()->orderBy('name')->get() : collect();
         $month = isset($filters['month']) ? CarbonImmutable::createFromFormat('!Y-m', $filters['month'], 'America/Winnipeg') : null;
-        $query = $this->community->upcoming($this->community->events($site->location_id))
+        $query = $this->community->upcoming($this->community->events($place?->id))
             ->when($filters['q'] ?? null, fn ($query, $term) => $query->whereLike('title', '%'.$term.'%'))
             ->when($filters['category'] ?? null, fn ($query, $category) => $query->where('category', $category));
         $calendar = [];
@@ -52,7 +55,7 @@ class CommunityEventController extends Controller
         }
         $items = $query->orderBy('starts_at')->orderBy('id')->paginate(24)->withQueryString();
 
-        return view('community.events', compact('items', 'filters', 'month', 'calendar'));
+        return view('community.events', compact('items', 'filters', 'month', 'calendar', 'place', 'places'));
     }
 
     public function show(Request $request, int $event)
