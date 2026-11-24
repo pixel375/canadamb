@@ -7,6 +7,7 @@ use App\Models\Listing;
 use App\Models\ListingCategory;
 use App\Models\Location;
 use App\Support\KeywordSearch;
+use App\Support\LocationScope;
 use App\Support\ListingPhotos;
 use App\Support\Marketplace;
 use App\Support\MarketplaceCategories;
@@ -207,6 +208,7 @@ class MarketplaceController extends Controller
         return view('marketplace.form', [
             'item' => $item, 'categories' => $this->categories(), 'conditions' => Marketplace::CONDITIONS,
             'fields' => Marketplace::FIELDS, 'locations' => $site->isNetwork() ? Location::selectable()->orderBy('name')->get() : collect(),
+            'suggestedLocation' => $item->exists ? null : LocationScope::forBrowsing($site, $request->query('location')),
         ]);
     }
 
