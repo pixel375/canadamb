@@ -1,10 +1,6 @@
 <x-layouts.site title="Events in Discussions">
     <div class="container page-shell narrow">
-        @php($discussionAvailable = app(\App\Support\Community::class)->enabled(request()->attributes->get('site'), 'community'))
-        @if($discussionAvailable)
-            <a class="text-link mb-4" href="/community">Back to Discussions</a>
-        @endif
-        <div class="page-intro"><div><h1>Community events</h1><p>Find upcoming events in {{ request()->attributes->get('site')->location?->name ?? 'Manitoba' }}.</p></div><a class="button button-primary" href="{{ $discussionAvailable ? '/community/new?type=event' : '/events/new' }}">Submit an event</a></div>
+        <div class="page-intro"><div><h1>Community events</h1><p>Find upcoming events in {{ request()->attributes->get('site')->location?->name ?? 'Manitoba' }}.</p></div><a class="button button-primary" href="{{ app(\App\Support\Community::class)->enabled(request()->attributes->get('site'), 'community') ? '/community/new?type=event' : '/events/new' }}">Submit an event</a></div>
         <details class="search-disclosure" @if(!empty($filters)) open @endif>
             <summary><x-icon name="search" size="18"/> Event filters <x-icon class="disclosure-arrow" name="chevron-down" size="17"/></summary>
             <form method="get" action="/events" class="panel filter-bar">
