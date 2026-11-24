@@ -113,6 +113,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/marketplace/{listing}/message', [MessagesController::class, 'start'])->whereNumber('listing')->middleware('throttle:15,1');
     Route::get('/account/messages', [MessagesController::class, 'index']);
     Route::get('/account/messages/{conversation}', [MessagesController::class, 'show'])->whereNumber('conversation');
+    Route::post('/account/messages/{conversation}/sync', [MessagesController::class, 'sync'])->whereNumber('conversation')->middleware('throttle:30,1');
     Route::post('/account/messages/{conversation}', [MessagesController::class, 'reply'])->whereNumber('conversation')->middleware('throttle:25,1');
     Route::post('/account/messages/{conversation}/block', [MessagesController::class, 'block'])->whereNumber('conversation');
     Route::delete('/account/messages/{conversation}/block', [MessagesController::class, 'unblock'])->whereNumber('conversation');
