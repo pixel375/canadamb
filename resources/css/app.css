@@ -1566,3 +1566,6 @@ a.market-category-card:hover, a.market-category-card:focus-visible {
     .listing-detail-recommendations .listing-grid:has(> :only-child) { grid-template-columns: minmax(0,1fr); }
     .seller-contact textarea { font-size: 16px; }
 }
+
+.listing-photo-actions { display: grid; gap: 5px; padding: 6px; }
+.listing-photo-actions .button { min-height: 32px; font-size: .73rem; padding: 5px; white-space: normal; }
