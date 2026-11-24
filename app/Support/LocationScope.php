@@ -23,6 +23,13 @@ final class LocationScope
         return Location::selectable()->where($byName ? 'name' : 'slug', $value)->first();
     }
 
+    public const PREFERENCE_COOKIE = 'canadamb_community';
+
+    public static function preferred(Site $site, mixed $value): ?Location
+    {
+        return $site->isNetwork() ? self::forBrowsing($site, $value) : null;
+    }
+
     public static function browseUrl(Site $site, string $path, ?Location $place): string
     {
         if (! $site->isNetwork() || ! $place) {
