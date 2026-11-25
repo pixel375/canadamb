@@ -130,19 +130,24 @@ class NetworkController extends Controller
 
     public function moderation(Request $request)
     {
-        $filters = $request->validate(['status' => 'nullable|in:pending,active', 'q' => 'nullable|string|max:100']);
-        $matching = Listing::whereIn('status', ['pending', 'active'])->where('user_id', '!=', $request->user()->id)
-            ->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'description']));
+        $filters = $request->validate(['status' => 'nullable|in:pending,active,rejected,expired,sold,removed', 'q' => 'nullable|string|max:100',
+            'location' => 'nullable|integer|exists:locations,id', 'report_status' => 'nullable|in:pending,resolved', 'reference' => 'nullable|integer|min:1']);
+        $matching = Listing::whereIn('status', ['pending', 'active', 'rejected', 'expired', 'sold', 'removed'])->where('user_id', '!=', $request->user()->id)
+            ->when($filters['location'] ?? null, fn ($query, $id) => $query->where('location_id', $id))
+            ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'description']));
         $counts = (clone $matching)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
 
-        return view('admin.moderation', ['filters' => $filters, 'counts' => $counts, 'items' => $matching->with(['location', 'seller', 'categoryRecord', 'media'])
+        return view('admin.moderation', ['filters' => $filters, 'counts' => $counts, 'places' => Location::selectable()->orderBy('name')->get(['id', 'name']), 'items' => $matching->with(['location', 'seller', 'categoryRecord', 'media'])
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
-            ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")
-            ->latest('updated_at')->paginate(25)->withQueryString(), 'reports' => DB::table('listing_reports')
+            ->orderByRaw("CASE WHEN status = 'pending' THEN 0 WHEN status = 'active' THEN 1 ELSE 2 END")
+            ->latest('updated_at')->latest('id')->paginate(25)->withQueryString(), 'reports' => DB::table('listing_reports')
             ->join('listings', 'listings.id', '=', 'listing_reports.listing_id')
-            ->whereNull('resolved_at')->where('listings.user_id', '!=', $request->user()->id)
+            ->when(($filters['report_status'] ?? 'pending') === 'resolved', fn ($query) => $query->whereNotNull('listing_reports.resolved_at'), fn ($query) => $query->whereNull('listing_reports.resolved_at'))
+            ->when($filters['location'] ?? null, fn ($query, $id) => $query->where('listings.location_id', $id))
+            ->when($filters['reference'] ?? null, fn ($query, $id) => $query->where('listing_reports.id', $id))
+            ->where('listings.user_id', '!=', $request->user()->id)
             ->where('listing_reports.reporter_id', '!=', $request->user()->id)->latest('listing_reports.id')
-            ->paginate(15, ['listing_reports.*', 'listings.title'], 'reports_page')->withQueryString()]);
+            ->paginate(15, ['listing_reports.id', 'listing_reports.reason', 'listing_reports.resolved_at', 'listing_reports.created_at', 'listings.title'], 'reports_page')->withQueryString()]);
     }
 
     public function resolveReport(Request $request, int $report)

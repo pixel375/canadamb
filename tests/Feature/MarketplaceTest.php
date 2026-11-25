@@ -59,6 +59,9 @@ class MarketplaceTest extends TestCase
         $this->get(self::CITY."/marketplace/$item->id")->assertNotFound();
         $this->assertDatabaseCount('listings', 1);
         $this->assertDatabaseHas('listing_status_history', ['listing_id' => $item->id, 'status' => 'removed']);
+        $this->actingAs($admin)->get(self::MAIN.'/admin/moderation?status=removed&location='.$item->location_id)->assertOk()
+            ->assertSee('Oak dining table')->assertSee('Historical record')->assertDontSee('action="/admin/moderation/'.$item->id.'"', false);
+        $this->get(self::MAIN.'/admin/moderation?status=removed&location='.Location::where('slug', 'elkhorn')->sole()->id)->assertOk()->assertDontSee('Oak dining table');
     }
 
     public function test_manitoba_feed_includes_rural_items_that_brandon_cannot_see(): void

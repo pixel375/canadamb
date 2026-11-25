@@ -201,6 +201,8 @@ class MarketplaceEngagementTest extends TestCase
         $reviewer = User::factory()->create(['role' => 'network_admin']);
         $this->actingAs($reviewer)->post('https://canadamb.ca/admin/moderation/reports/'.$report, ['note' => 'Reviewed the submitted report.'])->assertRedirect();
         $this->post('https://canadamb.ca/admin/moderation/reports/'.$report, ['note' => 'Repeated decision.'])->assertConflict();
+        $this->get('https://canadamb.ca/admin/moderation?report_status=resolved&reference='.$report)->assertOk()->assertSee('Report #'.$report)
+            ->assertSee('Review completed')->assertDontSee('action="/admin/moderation/reports/'.$report.'"', false);
         $this->actingAs($buyer)->get('https://canadamb.ca/account/listing-reports?status=resolved&reference='.$report)->assertOk()->assertSee('Patio set')->assertDontSee('Reviewed the submitted report.');
         $this->get('https://canadamb.ca/account/listing-reports?status=pending')->assertOk()->assertDontSee('Patio set');
         $this->actingAs($buyer);
