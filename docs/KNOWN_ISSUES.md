@@ -6,7 +6,7 @@
 
 - Real phone/desktop testing from an approved network, including actual Android standalone/WebAPK installation (browser manifest and worker tests are not device installation proof), full HTTPS community sign-in and posting.
 - SMTP delivery and monitored support mailbox, reviewed privacy policy/terms, retention, account export/deletion.
-- Broader content-reporting queue for discussions, replies, jobs, events, businesses and private messages; use the existing listing-report queue for Marketplace and contact guidance for other issues. Do not store message contents or reports in the audit log as a substitute for an authorized report store. See the migration proposal in [CONTENT_REPORTING_PLAN.md](CONTENT_REPORTING_PLAN.md).
+- Review-staged content-reporting queue for discussions, replies and events; jobs, businesses and private messages remain outstanding; use the existing listing-report queue for Marketplace and contact guidance for other issues. Do not store message contents or reports in the audit log as a substitute for an authorized report store. See the migration proposal in [CONTENT_REPORTING_PLAN.md](CONTENT_REPORTING_PLAN.md).
 - Real estate publication, ownership/authority and compliance review; property drafts remain private.
 - Business ownership transfer/dispute handling, invitation acceptance, contact verification, subscriptions, advertising and job alerts. Owner-controlled manager/editor access and read-only ownership lookup are implemented in the current development branch.
 - Scheduled news ingestion and provider feeds require verification; polling remains suppressed during prelaunch.

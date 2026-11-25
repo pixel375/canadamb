@@ -7,7 +7,7 @@
             <article class="admin-review-card form-stack">
                 <div><h3>{{ $item->title }}</h3><p>{{ $item->author?->name ?? 'Former member' }} · {{ $item->location?->name ?? 'Manitoba' }} · {{ ucfirst($item->status) }}</p></div>
                 <p class="prose-text">{{ $item->body }}</p>
-                <x-community-moderation-form :path="'/admin/community/threads/'.$item->id" :approved="$item->status === 'approved'" :thread-controls="true" :pinned="$item->pinned" :locked="$item->locked"/>
+                <x-community-moderation-form :path="'/admin/community/threads/'.$item->id" :approved="$item->status === 'approved'" :thread-controls="true" :pinned="$item->pinned" :locked="$item->locked" :version="$item->contentVersion()"/>
             </article>
         @empty<p>No discussions to moderate.</p>@endforelse
         {{ $threads->links() }}

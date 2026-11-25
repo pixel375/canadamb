@@ -37,7 +37,8 @@ class DiscussionEditingTest extends TestCase
         $this->assertFalse($thread->fresh()->pinned);
         $this->get($public)->assertNotFound();
         $this->put($url, $data)->assertSessionHasErrors('version');
-        $this->actingAs($admin)->post('https://canadamb.ca/admin/community/threads/'.$thread->id, ['action' => 'approve'])->assertRedirect();
+        $this->actingAs($admin)->post('https://canadamb.ca/admin/community/threads/'.$thread->id, ['action' => 'approve', 'version' => $data['version']])->assertSessionHasErrors('version');
+        $this->post('https://canadamb.ca/admin/community/threads/'.$thread->id, ['action' => 'approve', 'version' => $thread->fresh()->contentVersion()])->assertRedirect();
         $this->get($public)->assertOk()->assertSee('Edited discussion')->assertSee('A published reply.');
         $thread->refresh()->forceFill(['locked' => true])->save();
         $this->actingAs($owner)->get($url.'/edit')->assertConflict();

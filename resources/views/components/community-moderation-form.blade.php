@@ -1,5 +1,6 @@
-@props(['path', 'approved' => false, 'threadControls' => false, 'pinned' => false, 'locked' => false])
+@props(['path', 'approved' => false, 'threadControls' => false, 'pinned' => false, 'locked' => false, 'version' => null])
 <form method="post" action="{{ $path }}" class="form-stack">@csrf
+    @if($version)<input type="hidden" name="version" value="{{ $version }}">@endif
     <label>Reason for rejection<input name="reason" maxlength="300"></label>
     <div class="inline-actions">
         @if($approved && $threadControls)

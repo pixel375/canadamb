@@ -10,6 +10,7 @@ use App\Support\Audit;
 use App\Support\KeywordSearch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class CommunityModerationController extends Controller
 {
@@ -44,10 +45,14 @@ class CommunityModerationController extends Controller
     {
         $data = $request->validate([
             'action' => 'required|in:approve,reject,pin,unpin,lock,unlock',
+            'version' => 'nullable|string|size:64',
             'reason' => 'required_if:action,reject|nullable|string|max:300',
         ]);
         DB::transaction(function () use ($request, $thread, $data) {
             $item = CommunityThread::lockForUpdate()->findOrFail($thread);
+            if (isset($data['version']) && ! hash_equals($item->contentVersion(), $data['version'])) {
+                throw ValidationException::withMessages(['version' => 'The discussion changed. Reload the moderation queue before reviewing it.']);
+            }
             $action = $data['action'];
             $changes = match ($action) {
                 'approve' => ['status' => 'approved', 'last_activity_at' => now()],
