@@ -31,7 +31,7 @@ class PropertyReviewController extends Controller
 
     public function media(Request $request, int $property, int $photo)
     {
-        return PropertyDraftController::privatePhoto($this->reviewable($request)->findOrFail($property), $photo);
+        return PropertyDraftController::privatePhoto($this->reviewable($request)->findOrFail($property), $photo, $request->query('size') === 'full');
     }
 
     public function update(Request $request, int $property)
@@ -59,6 +59,7 @@ class PropertyReviewController extends Controller
                 'property' => $item->id,
                 'checklist_completed' => $data['action'] === 'review',
                 'review_version' => 1,
+                'content_sha256' => $data['version'],
             ]);
         });
 

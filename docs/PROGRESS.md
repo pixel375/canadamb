@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-25 — private property review and reuse
+
+Added owner-scoped similar-draft creation without photos, address, land description, availability or prior declarations; authorized full-resolution photo viewing with no-store/nosniff headers; creation and exact-content declaration/review audit hashes; version-bound browser archive actions. Public property publication remains disabled.
+
 ## 2026-11-25 — Marketplace edit integrity
 
 Browser editor and lifecycle actions carry full version tokens including latest status history; stale submissions are rejected when a token is supplied. Legacy callers without tokens remain compatible. Unchanged active edits retain publication; photo order updates only when needed; duplicate price is prefilled. Active moderation permits removal rather than rejection. No schema change.

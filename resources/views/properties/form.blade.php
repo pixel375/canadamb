@@ -1,6 +1,7 @@
 <x-layouts.site :title="$item->exists ? 'Edit private property draft' : 'New private property draft'">
     <div class="container page-shell listing-editor">
         <div class="page-intro"><div><a class="text-link" href="/account/properties">Private property drafts</a><h1>{{ $item->exists ? 'Edit private property draft' : 'New private property draft' }}</h1><p>Only you and authorized reviewers can access a submitted draft.</p></div></div>
+        @if($duplicating ?? false)<p class="notice">Copied property details only. Private address, legal land description, availability date, photos and review declarations are not copied. Review the information before saving a new private draft.</p>@endif
         <form method="post" enctype="multipart/form-data" action="/account/properties{{ $item->exists ? '/'.$item->id : '' }}" class="form-stack">@csrf
             @if($item->exists)
                 @method('PUT')

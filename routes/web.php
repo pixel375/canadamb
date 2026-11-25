@@ -102,6 +102,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/account/properties/new', [PropertyDraftController::class, 'create']);
     Route::post('/account/properties', [PropertyDraftController::class, 'store'])->middleware('throttle:6,1');
     Route::get('/account/properties/{property}', [PropertyDraftController::class, 'show'])->whereNumber('property');
+    Route::get('/account/properties/{property}/duplicate', [PropertyDraftController::class, 'duplicate'])->whereNumber('property');
     Route::get('/account/properties/{property}/edit', [PropertyDraftController::class, 'edit'])->whereNumber('property');
     Route::put('/account/properties/{property}', [PropertyDraftController::class, 'update'])->whereNumber('property')->middleware('throttle:12,1');
     Route::delete('/account/properties/{property}', [PropertyDraftController::class, 'archive'])->whereNumber('property');

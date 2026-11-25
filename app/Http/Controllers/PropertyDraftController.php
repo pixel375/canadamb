@@ -50,6 +50,15 @@ class PropertyDraftController extends Controller
         return $this->form($request, new PropertyListing);
     }
 
+    public function duplicate(Request $request, int $property)
+    {
+        $source = $this->owned($request)->findOrFail($property);
+        $item = new PropertyListing($source->only(['location_id', 'title', 'description', 'transaction', 'property_type',
+            'seller_type', 'price_cents', 'bedrooms', 'bathrooms', 'floor_area', 'acreage', 'year_built', 'pets_allowed']));
+
+        return $this->form($request, $item, true);
+    }
+
     public function store(Request $request, ListingPhotos $photos)
     {
         abort_unless(config('network.property_drafts'), 404);
@@ -59,6 +68,7 @@ class PropertyDraftController extends Controller
             $item = DB::transaction(function () use ($request, $data, $paths) {
                 $item = PropertyListing::create($data + ['owner_id' => $request->user()->id]);
                 $item->photos()->createMany($paths);
+                Audit::record('property-draft.created', $request->user()->id, context: ['property' => $item->id]);
 
                 return $item;
             });
@@ -151,7 +161,7 @@ class PropertyDraftController extends Controller
             // Store declaration in the existing append-only audit log, without
             // placing consent details on any public property record.
             Audit::record('property-draft.authority-declared', $request->user()->id,
-                context: ['property' => $item->id, 'capacity' => $data['authorization_capacity'], 'version' => 1]);
+                context: ['property' => $item->id, 'capacity' => $data['authorization_capacity'], 'version' => 1, 'content_sha256' => $item->contentVersion()]);
         });
 
         return redirect('/account/properties/'.$property)->with('status', 'Authority declaration recorded. Submitted for private review only.');
@@ -173,8 +183,12 @@ class PropertyDraftController extends Controller
 
     public function archive(Request $request, int $property, ListingPhotos $photos)
     {
-        $paths = DB::transaction(function () use ($request, $property) {
+        $data = $request->validate(['version' => 'nullable|string|size:64']);
+        $paths = DB::transaction(function () use ($request, $property, $data) {
             $item = $this->owned($request)->lockForUpdate()->findOrFail($property);
+            if (isset($data['version'])) {
+                abort_unless(hash_equals($item->contentVersion(), $data['version']), 409, 'Draft changed. Reload before archiving.');
+            }
             abort_unless(in_array($item->status, ['draft', 'changes_requested', 'submitted', 'reviewed'], true), 409);
             $old = $item->photos()->get(['image_path', 'thumbnail_path'])->toArray();
             $item->photos()->delete();
@@ -192,16 +206,18 @@ class PropertyDraftController extends Controller
     {
         $item = $this->owned($request)->findOrFail($property);
 
-        return self::privatePhoto($item, $photo);
+        return self::privatePhoto($item, $photo, $request->query('size') === 'full');
     }
 
-    public static function privatePhoto(PropertyListing $item, int $id)
+    public static function privatePhoto(PropertyListing $item, int $id, bool $full = false)
     {
         $photo = $item->photos()->findOrFail($id);
         $disk = Storage::disk('local');
-        abort_unless(preg_match('~^property-drafts/[a-f0-9-]{36}-preview\.webp$~D', $photo->thumbnail_path) && $disk->exists($photo->thumbnail_path), 404);
+        $path = $full ? $photo->image_path : $photo->thumbnail_path;
+        $pattern = $full ? '~^property-drafts/[a-f0-9-]{36}\.webp$~D' : '~^property-drafts/[a-f0-9-]{36}-preview\.webp$~D';
+        abort_unless(preg_match($pattern, $path) && $disk->exists($path), 404);
 
-        return $disk->response($photo->thumbnail_path, 'property-photo.webp', ['Content-Type' => 'image/webp', 'Cache-Control' => 'private, no-store']);
+        return $disk->response($path, 'property-photo.webp', ['Content-Type' => 'image/webp', 'Cache-Control' => 'private, no-store', 'X-Content-Type-Options' => 'nosniff', 'X-Robots-Tag' => 'noindex']);
     }
 
     private function owned(Request $request): Builder
@@ -213,12 +229,12 @@ class PropertyDraftController extends Controller
             ->when($site->location_id, fn (Builder $query, int $location) => $query->where('location_id', $location));
     }
 
-    private function form(Request $request, PropertyListing $item)
+    private function form(Request $request, PropertyListing $item, bool $duplicating = false)
     {
         $site = $request->attributes->get('site');
 
         return view('properties.form', [
-            'item' => $item,
+            'item' => $item, 'duplicating' => $duplicating,
             'places' => $site->isNetwork() ? Location::selectable()->orderBy('name')->get() : collect(),
             'suggestedLocation' => $item->exists ? null : LocationScope::forBrowsing($site, $request->query('location', $request->cookie(LocationScope::PREFERENCE_COOKIE))),
             'suggestedTransaction' => in_array($request->query('transaction'), ['sale', 'rent'], true) ? $request->query('transaction') : null,

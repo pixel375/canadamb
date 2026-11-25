@@ -170,6 +170,12 @@ class PropertyDraftTest extends TestCase
             'photos' => [UploadedFile::fake()->image('third.jpg')]])->assertRedirect()->assertSessionHasNoErrors();
         $this->assertSame($initial[1]->id, $draft->photos()->first()->id);
         $this->assertCount(2, $draft->photos()->get());
+        $this->get($path.'/media/'.$initial[1]->id.'?size=full')->assertOk()->assertHeader('X-Content-Type-Options', 'nosniff');
+        $this->get($path.'/duplicate')->assertOk()->assertSee('Property photo management')->assertSee('Private address, legal land description');
+        $this->assertDatabaseCount('property_listings', 1);
+        $this->actingAs($admin)->get($path.'/duplicate')->assertNotFound();
+        $this->get($path.'/media/'.$initial[1]->id.'?size=full')->assertNotFound();
+        $this->actingAs($owner);
         Storage::disk('local')->assertMissing($initial[0]->image_path);
         Storage::disk('local')->assertExists($initial[1]->image_path);
         $this->put($path, $data + ['version' => $version])->assertConflict();

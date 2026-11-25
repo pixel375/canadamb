@@ -14,7 +14,7 @@
             @if($item->review_note)<p class="notice">{{ $item->review_note }}</p>@endif
             <p class="prose-text">{{ $item->description }}</p>
             @if($item->photos->isNotEmpty())
-                <div class="listing-grid">@foreach($item->photos as $photo)<img src="{{ $path }}/media/{{ $photo->id }}" alt="Property photo {{ $loop->iteration }}" loading="lazy">@endforeach</div>
+                <div class="listing-grid">@foreach($item->photos as $photo)<a href="{{ $path }}/media/{{ $photo->id }}?size=full" aria-label="View full-size property photo {{ $loop->iteration }}"><img src="{{ $path }}/media/{{ $photo->id }}" alt="Property photo {{ $loop->iteration }}" loading="lazy"></a>@endforeach</div>
             @endif
             <dl class="job-detail-facts mt-3">
                 @foreach(['bedrooms' => 'Bedrooms', 'bathrooms' => 'Bathrooms', 'floor_area' => 'Floor area (sq ft)', 'acreage' => 'Acreage', 'year_built' => 'Year built', 'private_address' => 'Street address', 'legal_land_description' => 'Legal land description'] as $field => $label)
@@ -50,6 +50,7 @@
             </form>
         @elseif(!$review)
             <div class="panel property-private-actions">
+                <a class="button button-outline" href="{{ $path }}/duplicate">Create similar draft</a>
                 @if(in_array($item->status, ['draft', 'changes_requested'], true))
                     <a class="button button-outline" href="{{ $path }}/edit">Edit draft</a>
                     <form method="post" action="{{ $path }}/submit" class="form-stack property-attestation">
@@ -78,7 +79,7 @@
                     </details>
                 @endif
                 <details class="seller-remove-listing"><summary>Archive / withdraw draft</summary><p class="field-note">This removes the draft from your workspace and deletes its stored photos. It cannot be restored here.</p>
-                    <form method="post" action="{{ $path }}">@csrf @method('DELETE')<button class="button button-outline" type="submit">Confirm archive / withdrawal</button></form>
+                    <form method="post" action="{{ $path }}">@csrf @method('DELETE')<input type="hidden" name="version" value="{{ $item->contentVersion() }}"><button class="button button-outline" type="submit">Confirm archive / withdrawal</button></form>
                 </details>
             </div>
         @endif
