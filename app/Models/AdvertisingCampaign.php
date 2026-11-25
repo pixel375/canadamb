@@ -3,9 +3,9 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Support\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 #[Fillable(['business_id', 'site_id', 'author_id', 'placement', 'title', 'body', 'starts_on', 'weeks', 'estimated_cents', 'rate_revision_id'])]
 class AdvertisingCampaign extends Model

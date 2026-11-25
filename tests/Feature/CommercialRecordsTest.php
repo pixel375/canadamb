@@ -30,6 +30,7 @@ class CommercialRecordsTest extends TestCase
             // schema without reversing unrelated historical migrations.
             $this->artisan('migrate:rollback', ['--path' => 'database/proposed-migrations', '--step' => 1])->assertSuccessful();
             RefreshDatabaseState::$migrated = false;
+            RefreshDatabaseState::$inMemoryConnections = [];
         });
     }
 
