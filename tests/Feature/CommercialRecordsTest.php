@@ -59,6 +59,13 @@ class CommercialRecordsTest extends TestCase
         $campaign = AdvertisingCampaign::sole();
         $this->assertSame('pending', $campaign->status);
         $this->assertNull($campaign->estimated_cents);
+        $export = 'https://canadamb.ca/account/data-export';
+        $this->get($export)->assertOk()->assertSee('Advertising requests (1)');
+        $input = ['current_password' => 'password', 'section' => 'advertising-requests'];
+        $this->post($export, $input)->assertOk()->assertJsonCount(1, 'records')->assertJsonPath('records.0.title', $data['title'])
+            ->assertJsonMissingPath('records.0.reviewer_id')->assertJsonMissingPath('records.0.review_note')->assertJsonMissingPath('records.0.rate_revision_id');
+        $this->actingAs($stranger)->post($export, $input)->assertOk()->assertJsonCount(0, 'records');
+        $this->actingAs($owner);
         $this->get($path)->assertOk()->assertSee($data['title']);
         $this->get('https://canadamb.ca/')->assertDontSee($data['title']);
         $this->actingAs($stranger)->get($path)->assertNotFound();

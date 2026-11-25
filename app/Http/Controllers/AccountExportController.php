@@ -28,9 +28,10 @@ class AccountExportController extends Controller
     ];
 
     private const OPTIONAL = [
+        'advertising-requests' => ['advertising_campaigns', 'author_id', ['id', 'business_id', 'site_id', 'placement', 'title', 'body', 'starts_on', 'weeks', 'estimated_cents', 'status', 'created_at', 'updated_at']],
         'marketplace-searches' => ['marketplace_searches', 'user_id', ['id', 'site_id', 'name', 'filters', 'created_at', 'updated_at']],
         'job-searches' => ['job_searches', 'user_id', ['id', 'site_id', 'name', 'filters', 'alerts', 'checked_at', 'created_at', 'updated_at']],
-        'content-reports' => ['content_reports', 'reporter_id', ['id', 'site_id', 'target_type', 'target_id', 'reason', 'explanation', 'status', 'created_at', 'updated_at']],
+        'content-reports' => ['content_reports', 'reporter_id', ['id', 'site_id', 'target_type', 'target_id', 'reason', 'explanation', 'status', 'resolved_at', 'created_at', 'updated_at']],
         'business-disputes' => ['business_disputes', 'claimant_id', ['id', 'business_id', 'site_id', 'contact_email', 'explanation', 'status', 'created_at', 'updated_at']],
         'business-change-requests' => ['business_change_requests', 'requester_id', ['id', 'business_id', 'branch_id', 'location_id', 'kind', 'value', 'status', 'created_at', 'updated_at']],
         'privacy-requests' => ['account_privacy_requests', 'user_id', ['id', 'kind', 'status', 'created_at', 'updated_at']],
@@ -89,6 +90,11 @@ class AccountExportController extends Controller
             ->where('property_listings.owner_id', $member)->selectRaw('property_photos.id AS export_id, property_photos.property_listing_id, property_photos.position');
         $sections['listing-photo-metadata'] = DB::query()->fromSub($listingPhotos, 'export_records');
         $sections['property-photo-metadata'] = DB::query()->fromSub($propertyPhotos, 'export_records');
+        if (Schema::hasTable('business_inquiry_settings')) {
+            $preferences = DB::table('business_inquiry_settings')->where('owner_id', $member)
+                ->selectRaw('business_id AS export_id, business_inquiries, job_inquiries, updated_at');
+            $sections['business-inquiry-preferences'] = DB::query()->fromSub($preferences, 'export_records');
+        }
         if (Schema::hasTable('message_attachments')) {
             $photos = DB::table('message_attachments')->join('messages', 'messages.id', '=', 'message_attachments.message_id')
                 ->where('messages.sender_id', $member)->selectRaw('message_attachments.id AS export_id, message_attachments.message_id, messages.conversation_id, message_attachments.created_at');

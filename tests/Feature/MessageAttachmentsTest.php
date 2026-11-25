@@ -50,6 +50,12 @@ class MessageAttachmentsTest extends TestCase
         $this->actingAs($member)->post($start, ['body' => 'Question'])->assertNotFound();
         $this->post($settings, $preferences)->assertNotFound();
         $this->actingAs($owner)->post($settings, $preferences)->assertRedirect();
+        $export = $base.'/account/data-export';
+        $input = ['current_password' => 'password', 'section' => 'business-inquiry-preferences'];
+        $this->get($export)->assertOk()->assertSee('Business inquiry preferences (1)');
+        $this->post($export, $input)->assertOk()->assertJsonCount(1, 'records')->assertJsonPath('records.0.export_id', $business->id)
+            ->assertJsonMissingPath('records.0.owner_id');
+        $this->actingAs($member)->post($export, $input)->assertOk()->assertJsonCount(0, 'records');
         $this->actingAs($member)->post($start, ['body' => 'Question'])->assertRedirect();
         $thread = Conversation::sole();
         $url = $base.'/account/messages/'.$thread->id;

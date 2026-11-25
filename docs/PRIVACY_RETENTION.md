@@ -19,3 +19,7 @@ Member exports include the identifiers and display order of their own Marketplac
 ### Marketplace and property media reconciliation
 
 Use `php artisan media:inventory --limit=500` to inspect bounded aggregate photo integrity counts for the Marketplace and private property folders separately. The limit applies to each folder's database rows and file entries. Missing references, unexpected entries, symlinked directories, old unreferenced files and truncation are reported without paths or contents. The command never deletes, moves, repairs or schedules anything. Treat results as observations, not deletion authorization. Verify backup coverage and reconcile reports and legal holds before planning any retention changes.
+
+### Additional staged export coverage
+
+Where the corresponding schemas exist, the member export includes only authored advertising requests and owner-specific business inquiry preferences, with explicit column allowlists and record cursors. Payment-provider identifiers, internal reviewer notes and another person's records remain excluded. Aggregate impact inspection also counts received photo attachments and operator review relationships; these counts are not authorization to access or delete their contents.

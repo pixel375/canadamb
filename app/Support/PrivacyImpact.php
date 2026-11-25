@@ -32,6 +32,9 @@ final class PrivacyImpact
         'Notification preferences' => ['notification_preferences', 'user_id'],
         'Blocked members' => ['user_blocks', 'user_id'],
         'Blocked by other members' => ['user_blocks', 'blocked_id'],
+        'Commercial trials granted as operator' => ['business_entitlements', 'granted_by'],
+        'Content reports reviewed as operator' => ['content_reports', 'reviewer_id'],
+        'Privacy requests reviewed as operator' => ['account_privacy_requests', 'reviewer_id'],
         'Advertising requests authored' => ['advertising_campaigns', 'author_id'],
         'Business inquiry preferences' => ['business_inquiry_settings', 'owner_id'],
         'Sessions' => ['sessions', 'user_id'],
@@ -52,6 +55,11 @@ final class PrivacyImpact
             ? DB::table('business_access_requests')->where(fn ($query) => $query->where('requester_id', $member)->orWhere('recipient_id', $member))->count() : null;
         $counts['Sent photo attachments'] = Schema::hasTable('message_attachments')
             ? DB::table('message_attachments')->join('messages', 'messages.id', '=', 'message_attachments.message_id')->where('messages.sender_id', $member)->count() : null;
+
+        $counts['Received photo attachments'] = Schema::hasTable('message_attachments')
+            ? DB::table('message_attachments')->join('messages', 'messages.id', '=', 'message_attachments.message_id')
+                ->join('conversations', 'conversations.id', '=', 'messages.conversation_id')
+                ->where('messages.sender_id', '!=', $member)->where(fn ($query) => $query->where('conversations.buyer_id', $member)->orWhere('conversations.seller_id', $member))->count() : null;
 
         $counts['Listing photos'] = DB::table('listing_media')->join('listings', 'listings.id', '=', 'listing_media.listing_id')->where('listings.user_id', $member)->count();
         $counts['Private property photos'] = DB::table('property_photos')->join('property_listings', 'property_listings.id', '=', 'property_photos.property_listing_id')->where('property_listings.owner_id', $member)->count();
