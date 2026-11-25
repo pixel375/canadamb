@@ -68,6 +68,10 @@ class JobPostingTest extends TestCase
         $this->assertSame('withdrawn', $items[0]->fresh()->status);
         $this->assertSame('withdrawn', $items[1]->fresh()->status);
         $this->assertSame('pending', $items[2]->fresh()->status);
+        $admin = User::factory()->create(['role' => 'network_admin']);
+        $queue = 'https://canadamb.ca/admin/jobs?status=withdrawn&location='.$items[0]->branch->location_id;
+        $this->actingAs($admin)->get($queue)->assertOk()->assertSee('Batch job 0')->assertSee('Historical record')->assertDontSee('action="/admin/jobs/'.$items[0]->id.'"', false);
+        $this->get('https://canadamb.ca/admin/jobs?status=withdrawn&location='.$items[2]->branch->location_id)->assertOk()->assertDontSee('Batch job 0');
     }
 
     public function test_business_jobs_are_authorized_moderated_scoped_and_expired(): void

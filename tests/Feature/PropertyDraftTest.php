@@ -76,7 +76,8 @@ class PropertyDraftTest extends TestCase
         $review = "https://canadamb.ca/admin/properties/$draft->id";
         $this->post($review, ['action' => 'review'])->assertForbidden();
         $this->actingAs($admin)->get($review)->assertOk()->assertSee($draft->title);
-        $this->get('https://canadamb.ca/admin/properties?status=submitted&q=outbuilding')->assertOk()->assertSee($draft->title);
+        $this->get('https://canadamb.ca/admin/properties?status=submitted&q=outbuilding&location='.$draft->location_id)->assertOk()->assertSee($draft->title);
+        $this->get('https://canadamb.ca/admin/properties?status=submitted&location='.$outside)->assertOk()->assertDontSee($draft->title);
         $this->get('https://canadamb.ca/admin/properties?status=reviewed')->assertOk()->assertDontSee($draft->title);
         $this->post($review, ['version' => $draft->fresh()->contentVersion(), 'action' => 'publish'])->assertSessionHasErrors('action');
         $this->post($review, ['version' => $draft->fresh()->contentVersion(), 'action' => 'review', 'note' => 'The draft has the required internal fields.'])
