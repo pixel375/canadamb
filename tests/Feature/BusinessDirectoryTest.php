@@ -67,6 +67,25 @@ class BusinessDirectoryTest extends TestCase
         $this->assertDatabaseHas('audit_logs', ['action' => 'business.profile-updated', 'actor_id' => $editor->id]);
     }
 
+    public function test_pending_business_review_is_versioned_and_searchable_by_community(): void
+    {
+        $owner = User::factory()->create();
+        $admin = User::factory()->create(['role' => 'network_admin']);
+        $business = Business::create(['slug' => 'pending-repair', 'name' => 'Pending Repair', 'category' => 'services', 'status' => 'pending', 'description' => 'Original description']);
+        $business->members()->attach($owner->id, ['role' => 'owner']);
+        $branch = $business->locations()->create(['location_id' => Location::where('slug', 'brandon')->sole()->id, 'address' => '1 Review Road']);
+        $url = 'https://canadamb.ca/admin/business-review';
+        $version = $business->profileVersion();
+        $this->actingAs($admin)->get($url.'?q=Repair&location='.$branch->location_id)->assertOk()->assertSee('Pending Repair')->assertSee($version);
+        $this->get($url.'?location='.Location::where('slug', 'winnipeg')->sole()->id)->assertOk()->assertDontSee('Pending Repair');
+        $business->update(['description' => 'Revised description']);
+        $decision = ['decision' => 'approved', 'notes' => 'Independent profile review completed.'];
+        $this->post($url.'/'.$business->id, $decision + ['version' => $version])->assertConflict();
+        $this->assertSame('pending', $business->fresh()->status);
+        $this->post($url.'/'.$business->id, $decision + ['version' => $business->fresh()->profileVersion()])->assertRedirect();
+        $this->get($url.'?history=completed&q=Repair')->assertOk()->assertSee('Pending Repair')->assertSee('Historical record')->assertDontSee('action="/admin/business-review/'.$business->id.'"', false);
+    }
+
     public function test_import_is_idempotent_and_directory_respects_physical_branch_location(): void
     {
         $file = tempnam(sys_get_temp_dir(), 'canadamb-business-');
