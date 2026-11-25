@@ -27,12 +27,15 @@ class MessagesController extends Controller
     public function index(Request $request)
     {
         $id = $request->user()->id;
-        $filters = $request->validate(['view' => 'nullable|in:unread,archived', 'q' => 'nullable|string|max:100']);
+        $filters = $request->validate(['view' => 'nullable|in:unread,archived', 'q' => 'nullable|string|max:100', 'kind' => 'nullable|in:marketplace,business,job']);
         $unread = fn ($messages) => $messages->where('sender_id', '!=', $id)
             ->whereRaw('messages.id > CASE WHEN conversations.buyer_id = ? THEN conversations.buyer_last_read_id ELSE conversations.seller_last_read_id END', [$id]);
         $extended = MessagingExtensions::enabled();
-        abort_if(($filters['view'] ?? null) === 'archived' && ! $extended, 404);
+        abort_if(! $extended && (($filters['view'] ?? null) === 'archived' || in_array($filters['kind'] ?? null, ['business', 'job'], true)), 404);
         $threads = Conversation::forMember($id)
+            ->when(($filters['kind'] ?? null) === 'marketplace', fn ($query) => $query->whereNotNull('listing_id'))
+            ->when(($filters['kind'] ?? null) === 'business', fn ($query) => $query->whereNull('listing_id')->whereNotNull('inquiry_business_id')->whereNull('inquiry_job_id'))
+            ->when(($filters['kind'] ?? null) === 'job', fn ($query) => $query->whereNull('listing_id')->whereNotNull('inquiry_job_id'))
             ->when($extended, function ($query) use ($filters, $id) {
                 $column = 'CASE WHEN buyer_id = ? THEN buyer_archived_at ELSE seller_archived_at END';
                 $query->whereRaw($column.(($filters['view'] ?? null) === 'archived' ? ' IS NOT NULL' : ' IS NULL'), [$id]);

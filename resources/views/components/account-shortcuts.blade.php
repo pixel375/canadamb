@@ -6,6 +6,7 @@
     $entries = [
         ['path' => '/account/listings', 'icon' => 'marketplace', 'label' => 'My listings', 'note' => 'Manage your Marketplace posts', 'enabled' => $networkSettings['modules']['marketplace'] ?? false],
         ['path' => '/account/saved', 'icon' => 'tag', 'label' => 'Saved listings', 'note' => 'Items you bookmarked', 'enabled' => $networkSettings['modules']['marketplace'] ?? false],
+        ['path' => '/account/marketplace-searches', 'icon' => 'search', 'label' => 'Saved Marketplace searches', 'note' => 'Reuse your item filters', 'enabled' => \App\Support\MarketplaceSearches::enabled($site)],
         ['path' => '/account/messages', 'icon' => 'messages', 'label' => 'Messages', 'note' => 'Private conversations', 'enabled' => true, 'count' => $navCounts['messages'] ?? 0],
         ['path' => '/account/notifications', 'icon' => 'bell', 'label' => 'Notifications', 'note' => 'Recent account activity', 'enabled' => true, 'count' => $navCounts['notifications'] ?? 0],
         ['path' => '/account/discussions', 'icon' => 'discussions', 'label' => 'My discussions', 'note' => 'Review your submitted discussions', 'enabled' => $networkSettings['modules']['community'] ?? false],

@@ -44,6 +44,10 @@ class ExtendedMessagingTest extends TestCase
         $this->post($base.'/businesses/'.$business->id.'/message', ['body' => 'Business question'])->assertRedirect();
         $this->post($base.'/jobs/'.$job->id.'/message', ['body' => 'Job question'])->assertRedirect();
         $this->assertDatabaseCount('conversations', 2);
+        $this->get($base.'/account/messages?kind=job')->assertSee('Local helper')->assertDontSee('Business question');
+        $this->get($base.'/account/messages?kind=business')->assertSee('Business question')->assertDontSee('Local helper');
+        $this->get($base.'/account/messages?kind=marketplace')->assertSee('No conversations match your search.');
+        $this->getJson($base.'/account/messages?kind=invalid')->assertUnprocessable();
         $thread = Conversation::whereNotNull('inquiry_job_id')->sole();
         $url = $base.'/account/messages/'.$thread->id;
         $this->get($url)->assertOk()->assertSee('Job question');

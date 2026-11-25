@@ -1,7 +1,6 @@
 <x-layouts.site title="Saved listings">
     <div class="container page-shell">
         <div class="page-intro"><div><a class="text-link" href="/account/profile">My account</a><h1>Saved listings</h1><p>Find active items you saved on this portal.</p></div><a class="button button-outline" href="/marketplace">Browse Marketplace</a></div>
-        @if(\App\Support\MarketplaceSearches::enabled(request()->attributes->get('site')))<p><a class="button button-outline" href="/account/marketplace-searches">Saved Marketplace searches</a></p>@endif
         <x-saved-navigation current="listings" :total="$total"/>
         <form class="panel saved-search" method="get" action="/account/saved">
             <label>Search saved listings<input type="search" name="q" maxlength="100" value="{{ $filters['q'] ?? '' }}" placeholder="Title or description"></label>

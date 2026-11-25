@@ -1,6 +1,7 @@
 <x-layouts.site title="Saved job searches">
     <div class="container page-shell">
         <div class="page-intro"><div><a class="text-link" href="/account/saved-jobs">Saved jobs</a><h1>Job searches and alerts</h1><p>Manage saved searches for this portal. Alerts show newly published, still-open matches in your account; no emails are sent.</p></div><a class="button button-primary" href="/jobs">Browse jobs</a></div>
+        <x-saved-navigation current="job-searches" :total="$items->count()"/>
         <section class="seller-listing-grid">
             @forelse($items as $item)
                 <article class="panel seller-listing-card form-stack">

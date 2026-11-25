@@ -1473,6 +1473,14 @@ a.market-category-card:hover, a.market-category-card:focus-visible {
 .message-search { display: flex; align-items: center; gap: 9px; padding: 16px; }
 .message-search input[type=search] { flex: 1; min-width: 0; width: 100%; }
 .message-search .button { flex-shrink: 0; }
+.message-kind-filter { display: grid; gap: 4px; min-width: 0; max-width: 210px; flex: 0 1 38%; font-size: .78rem; color: var(--muted); }
+.message-kind-filter select { width: 100%; min-width: 0; }
+.message-thread-kind { color: var(--muted); font-size: .74rem; font-weight: 650; }
+@media (max-width: 540px) {
+    .message-search:has(.message-kind-filter) { flex-wrap: wrap; }
+    .message-search:has(.message-kind-filter) input[type=search] { flex: 1 1 100%; }
+    .message-kind-filter { flex: 1; max-width: none; }
+}
 .message-filter-tabs { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 0 16px 14px; border-bottom: 1px solid var(--border); }
 .message-filter-tabs a { padding: 8px 14px; border-radius: 8px; font-size: .85rem; font-weight: 750; color: var(--muted); }
 .message-filter-tabs a[aria-current=page] { color: var(--link); background: var(--soft); }

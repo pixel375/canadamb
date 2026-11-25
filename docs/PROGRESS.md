@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-25 — member discovery and unified inbox filters
+
+Added conversation-type filtering across all/unread/archived views, visible context labels and preserved query parameters, with no private message content used as search filters. Saved Marketplace searches are directly linked from account shortcuts; both saved-search types join the shared saved-content navigation. Added scope and navigation regressions.
+
 ## 2026-11-25 — review privacy and consolidated workload
 
 Content report list and count share a query that excludes reporter, author, business-member and private-conversation conflicts. Private reports must have a valid original recipient. Added reference filters and regression coverage; target checks remain in resolution actions. Dashboard now surfaces enabled business change, transfer, dispute, content, privacy and commercial queues with permission-scoped private counts. No schema or feature switch changes.
