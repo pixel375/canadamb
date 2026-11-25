@@ -5,7 +5,8 @@
         <section class="seller-listing-grid">
             @forelse($items as $item)
                 <article class="panel seller-listing-card form-stack">
-                    <div><h2>{{ $item->name }}</h2><p>{{ $item->alerts ? $counts[$item->id].' new '.\Illuminate\Support\Str::plural('match', $counts[$item->id]) : 'Alerts paused' }}</p><p class="field-note">{{ count($item->filters) ? count($item->filters).' saved filters' : 'All open jobs on this portal' }}</p></div>
+                    <div><h2>{{ $item->name }}</h2><p>{{ $item->alerts ? $counts[$item->id].' new '.\Illuminate\Support\Str::plural('match', $counts[$item->id]) : 'Alerts paused' }}</p></div>
+                    <x-saved-filter-summary :filters="$item->filters" kind="jobs"/>
                     <div class="inline-actions"><a class="button button-primary" href="/account/job-searches/{{ $item->id }}">View matches</a><a class="text-link" href="/jobs?{{ http_build_query($item->filters) }}">Open original search</a><a class="button button-outline" href="/account/job-searches/{{ $item->id }}/edit">Edit filters</a></div>
                     <details><summary>Search and alert preferences</summary><form class="form-stack mt-2" method="post" action="/account/job-searches/{{ $item->id }}/preferences">@csrf
                         <label>Name<input name="name" required maxlength="80" value="{{ $item->name }}"></label>

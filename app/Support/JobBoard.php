@@ -48,7 +48,7 @@ class JobBoard
     public function filter(Builder $query, Site $site, array $filters): Builder
     {
         return $query
-            ->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'description']))
+            ->when(isset($filters['q']), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'description']))
             ->when($filters['type'] ?? null, fn ($query, $type) => $query->where('employment_type', $type))
             ->when($filters['workplace'] ?? null, fn ($query, $workplace) => $query->where('workplace', $workplace))
             ->when($filters['pay_unit'] ?? null, fn ($query, $unit) => $query->where('pay_unit', $unit))

@@ -22,7 +22,10 @@ class MarketplaceSearchController extends Controller
         $categories = ListingCategory::pluck('name', 'slug')->all();
         $counts = $items->mapWithKeys(fn (SavedSearch $item) => [$item->id => MarketplaceSearch::matching($site, $item->filters, $categories)->count()]);
 
-        return view('marketplace.searches', compact('items', 'counts'));
+        $groups = MarketplaceCategories::grouped($categories);
+        $places = $site->isNetwork() ? Location::selectable()->pluck('name', 'slug')->all() : [];
+
+        return view('marketplace.searches', compact('items', 'counts', 'categories', 'groups', 'places'));
     }
 
     public function store(Request $request)

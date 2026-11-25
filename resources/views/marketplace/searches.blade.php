@@ -1,6 +1,7 @@
 <x-layouts.site title="Saved Marketplace searches">
     <div class="container page-shell">
-        <div class="page-intro"><div><a class="text-link" href="/account/saved">Saved listings</a><h1>Saved Marketplace searches</h1><p>Keep your favorite filters on this portal. Result counts reflect currently public listings.</p></div><a class="button button-primary" href="/marketplace?view=all">Browse Marketplace</a></div>
+        <div class="page-intro"><div><a class="text-link" href="/account/saved">Saved listings</a><h1>Saved Marketplace searches</h1><p>Keep your favorite filters on this portal. Result counts reflect currently public listings.</p></div><x-saved-filter-summary :filters="$item->filters" kind="marketplace" :categories="$categories" :groups="$groups" :places="$places"/>
+                <a class="button button-primary" href="/marketplace?view=all">Browse Marketplace</a></div>
         <x-saved-navigation current="marketplace-searches" :total="$items->count()"/>
         <section class="seller-listing-grid">@forelse($items as $item)
             <article class="panel seller-listing-card form-stack"><h2>{{ $item->name }}</h2><p>{{ $counts[$item->id] }} {{ \Illuminate\Support\Str::plural('matching listing', $counts[$item->id]) }}</p>

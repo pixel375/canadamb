@@ -57,7 +57,7 @@ class MarketplaceSearchesTest extends TestCase
         $search = MarketplaceSearch::sole();
         $this->assertArrayNotHasKey('location', $search->filters);
         $this->post($base, array_replace($filters, ['max_price' => '50.00', 'sort' => 'price_asc']))->assertSessionHasErrors('name');
-        $this->get($base)->assertOk()->assertSee('1 matching listing')->assertSee('My furniture');
+        $this->get($base)->assertOk()->assertSee('1 matching listing')->assertSee('My furniture')->assertSee('Keywords: Oak')->assertSee('Maximum price: $50.00');
         $this->get('https://brandonmb.ca/account/profile')->assertSee('Saved Marketplace searches');
         $this->get('https://brandonmb.ca/account/saved')->assertSee('Marketplace searches');
         $this->get('https://brandonmb.ca/marketplace?'.http_build_query($search->filters))->assertSee('Oak desk')->assertDontSee('Oak hidden')->assertDontSee('Oak rural')->assertDontSee('Oak expensive');

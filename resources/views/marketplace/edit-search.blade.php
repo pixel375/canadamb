@@ -10,7 +10,7 @@
             <p class="field-note">A specific category takes precedence over the group.</p>
             <label>Condition<select name="condition"><option value="">Any condition</option>@foreach(\App\Support\Marketplace::CONDITIONS as $id => $label)<option value="{{ $id }}" @selected(old('condition', $item->filters['condition'] ?? '') === $id)>{{ $label }}</option>@endforeach</select></label>
             <div class="form-grid"><label>Minimum price (CAD)<input name="min_price" type="number" min="0" step="0.01" value="{{ old('min_price', $item->filters['min_price'] ?? '') }}"></label><label>Maximum price (CAD)<input name="max_price" type="number" min="0" step="0.01" value="{{ old('max_price', $item->filters['max_price'] ?? '') }}"></label></div>
-            <button class="button button-primary">Save filters</button>
+            <div class="inline-actions"><button class="button button-primary">Save filters</button><a class="button button-outline" href="/account/marketplace-searches">Cancel</a></div>
         </form>
     </div>
 </x-layouts.site>

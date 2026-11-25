@@ -9,7 +9,7 @@
             <label>Workplace<select name="workplace"><option value="">Any workplace</option>@foreach(\App\Support\JobBoard::WORKPLACES as $id => $label)<option value="{{ $id }}" @selected(old('workplace', $item->filters['workplace'] ?? '') === $id)>{{ $label }}</option>@endforeach</select></label>
             <label>Pay period<select name="pay_unit"><option value="">Any pay period</option>@foreach(['hour' => 'Hourly', 'year' => 'Annual'] as $id => $label)<option value="{{ $id }}" @selected(old('pay_unit', $item->filters['pay_unit'] ?? '') === $id)>{{ $label }}</option>@endforeach</select></label>
             <label>Minimum pay (CAD)<input name="minimum_pay" type="number" min="0" step="0.01" value="{{ old('minimum_pay', $item->filters['minimum_pay'] ?? '') }}"></label>
-            <button class="button button-primary">Save filters</button>
+            <div class="inline-actions"><button class="button button-primary">Save filters</button><a class="button button-outline" href="/account/job-searches">Cancel</a></div>
         </form>
     </div>
 </x-layouts.site>
