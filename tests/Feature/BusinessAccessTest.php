@@ -25,6 +25,30 @@ class BusinessAccessTest extends TestCase
         });
     }
 
+    public function test_expired_and_cancelled_requests_do_not_grant_access(): void
+    {
+        config(['network.business_access_requests' => true]);
+        $owner = User::factory()->create();
+        $recipient = User::factory()->create();
+        $business = Business::create(['slug' => 'expiry-test', 'name' => 'Expiry Test', 'category' => 'services', 'status' => 'active']);
+        $business->members()->attach($owner->id, ['role' => 'owner']);
+        $base = 'https://canadamb.ca/account/business-access';
+        $create = 'https://canadamb.ca/account/businesses/'.$business->id.'/access-requests';
+        $data = ['email' => $recipient->email, 'kind' => 'editor', 'current_password' => 'password'];
+        $this->actingAs($owner)->post($create, $data)->assertRedirect()->assertSessionHasNoErrors();
+        $this->post($create, $data)->assertSessionHasErrors('email');
+        $id = DB::table('business_access_requests')->value('id');
+        DB::table('business_access_requests')->where('id', $id)->update(['expires_at' => now()->subMinute()]);
+        $response = ['action' => 'accept', 'current_password' => 'password'];
+        $this->actingAs($recipient)->get($base)->assertSee('Expired');
+        $this->post($base.'/'.$id.'/respond', $response)->assertConflict();
+        $this->actingAs($owner)->post($create, $data)->assertRedirect()->assertSessionHasNoErrors();
+        $second = DB::table('business_access_requests')->max('id');
+        $this->post($base.'/'.$second.'/cancel')->assertRedirect();
+        $this->actingAs($recipient)->post($base.'/'.$second.'/respond', $response)->assertConflict();
+        $this->assertDatabaseCount('business_memberships', 1);
+    }
+
     public function test_invitation_and_transfer_require_recipient_and_independent_review(): void
     {
         $owner = User::factory()->create(['role' => 'network_admin']);

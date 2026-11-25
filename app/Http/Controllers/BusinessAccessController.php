@@ -100,7 +100,7 @@ class BusinessAccessController extends Controller
     {
         abort_unless(BusinessAccess::enabled(), 404);
         $id = $request->user()->id;
-        $items = $this->records()->where('kind', 'transfer')->where('status', 'accepted')
+        $items = $this->records()->where('kind', 'transfer')->where('business_access_requests.status', 'accepted')
             ->where('requester_id', '!=', $id)->where('recipient_id', '!=', $id)
             ->where('expires_at', '>', now())->whereNotExists(fn ($query) => $query->selectRaw('1')->from('business_memberships')
                 ->whereColumn('business_memberships.business_id', 'business_access_requests.business_id')->where('user_id', $id))
