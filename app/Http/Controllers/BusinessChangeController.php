@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Business;
+use App\Models\BusinessLocation;
 use App\Models\Location;
 use App\Support\Audit;
 use App\Support\BusinessChanges;
@@ -34,10 +35,11 @@ class BusinessChangeController extends Controller
     {
         $this->managed($request, $business);
         $data = $request->validate([
-            'kind' => 'required|in:branch-add,branch-address,contact',
-            'branch_id' => 'nullable|required_if:kind,branch-address|integer',
-            'location_id' => 'nullable|integer',
-            'address' => 'nullable|required_if:kind,branch-add,branch-address|string|max:255',
+            'kind' => 'required|in:branch-add,branch-address,branch-close,branch-relocate,contact',
+            'branch_id' => 'nullable|required_if:kind,branch-address,branch-close,branch-relocate|integer',
+            'location_id' => 'nullable|required_if:kind,branch-relocate|integer',
+            'address' => 'nullable|required_if:kind,branch-add,branch-address,branch-relocate|string|max:255',
+            'reason' => 'nullable|required_if:kind,branch-close|string|min:10|max:255',
         ]);
         DB::transaction(function () use ($request, $business, $data) {
             $item = Business::lockForUpdate()->findOrFail($business);
@@ -53,8 +55,23 @@ class BusinessChangeController extends Controller
                     throw ValidationException::withMessages(['kind' => 'Save a valid public contact email before requesting verification.']);
                 }
                 $value = $item->public_email;
+            } elseif (in_array($data['kind'], ['branch-close', 'branch-relocate'], true)) {
+                abort_unless($item->members()->whereKey($id)->wherePivot('role', 'owner')->exists(), 404);
+                $branch = $item->openLocations()->findOrFail($data['branch_id']);
+                $previous = $branch->address;
+                if ($data['kind'] === 'branch-close') {
+                    $place = LocationScope::forPublication($site, $branch->location_id);
+                    $value = trim($data['reason']);
+                } else {
+                    abort_unless($site->isNetwork(), 404);
+                    $place = LocationScope::forPublication($site, (int) $data['location_id']);
+                    if ($place === $branch->location_id) {
+                        throw ValidationException::withMessages(['location_id' => 'Use address correction for the same community.']);
+                    }
+                    $value = trim($data['address']);
+                }
             } elseif ($data['kind'] === 'branch-address') {
-                $branch = $item->locations()->findOrFail($data['branch_id']);
+                $branch = $item->openLocations()->findOrFail($data['branch_id']);
                 $place = LocationScope::forPublication($site, $branch->location_id);
                 $previous = $branch->address;
                 $value = trim($data['address']);
@@ -65,11 +82,13 @@ class BusinessChangeController extends Controller
                 $place = LocationScope::forPublication($site, isset($data['location_id']) ? (int) $data['location_id'] : null);
                 $value = trim($data['address']);
             }
-            if ($place && ($value === '' || $this->addressConflict($item, $place, $value, $branch?->id))) {
+            if ($place && $data['kind'] !== 'branch-close' && ($value === '' || $this->addressConflict($item, $place, $value, $branch?->id))) {
                 throw ValidationException::withMessages(['address' => 'This business address already appears in the directory or is empty.']);
             }
             $pending = DB::table('business_change_requests')->where('business_id', $business)
-                ->where('kind', $data['kind'])->where('status', 'pending')
+                ->when($branch, fn ($query) => $query->whereIn('kind', ['branch-address', 'branch-close', 'branch-relocate']),
+                    fn ($query) => $query->where('kind', $data['kind']))
+                ->where('status', 'pending')
                 ->when($branch, fn ($query) => $query->where('branch_id', $branch->id))
                 ->when($data['kind'] === 'branch-add', fn ($query) => $query->where('location_id', $place)->where('value', $value))
                 ->exists();
@@ -153,7 +172,7 @@ class BusinessChangeController extends Controller
 
     private function apply(Business $business, object $row): void
     {
-        $roles = $row->kind === 'contact' ? ['owner'] : ['owner', 'manager'];
+        $roles = in_array($row->kind, ['contact', 'branch-close', 'branch-relocate'], true) ? ['owner'] : ['owner', 'manager'];
         abort_unless($business->status === 'active' && $row->requester_id
             && $business->members()->whereKey($row->requester_id)->wherePivotIn('role', $roles)->exists(), 409);
         if ($row->kind === 'contact') {
@@ -162,8 +181,25 @@ class BusinessChangeController extends Controller
             return;
         }
         abort_unless(Location::selectable()->whereKey($row->location_id)->exists(), 409);
-        $branch = $row->branch_id ? $business->locations()->lockForUpdate()->findOrFail($row->branch_id) : null;
-        abort_unless(in_array($row->kind, ['branch-add', 'branch-address'], true), 409);
+        $branch = $row->branch_id ? $business->openLocations()->lockForUpdate()->findOrFail($row->branch_id) : null;
+        abort_unless(in_array($row->kind, ['branch-add', 'branch-address', 'branch-close', 'branch-relocate'], true), 409);
+        if ($row->kind === 'branch-close') {
+            abort_unless($branch && $branch->address === $row->previous_value && (int) $branch->location_id === (int) $row->location_id, 409);
+            $this->closeBranch($branch, (int) $row->id);
+
+            return;
+        }
+        if ($row->kind === 'branch-relocate') {
+            abort_unless($branch && $branch->address === $row->previous_value && (int) $branch->location_id !== (int) $row->location_id, 409);
+            abort_if($this->addressConflict($business, (int) $row->location_id, $row->value, null), 409);
+            $business->locations()->create([
+                'location_id' => $row->location_id, 'address' => $row->value,
+                'address_key' => BusinessDirectory::addressKey($business->name, $row->value), 'last_verified_at' => now(),
+            ]);
+            $this->closeBranch($branch, (int) $row->id);
+
+            return;
+        }
         if ($row->kind === 'branch-address') {
             abort_unless($branch && $branch->address === $row->previous_value && (int) $branch->location_id === (int) $row->location_id, 409);
         }
@@ -177,6 +213,19 @@ class BusinessChangeController extends Controller
         } else {
             $business->locations()->create($changes + ['location_id' => $row->location_id]);
         }
+    }
+
+    private function closeBranch(BusinessLocation $branch, int $request): void
+    {
+        // Preserve the historic location ID, address and source identity. Never
+        // move jobs, reports, updates or inquiry history to a different branch.
+        $branch->update(['location_status' => 'closed', 'last_verified_at' => now()]);
+        DB::table('job_postings')->where('business_location_id', $branch->id)->whereIn('status', ['pending', 'approved'])
+            ->update(['status' => 'withdrawn', 'updated_at' => now()]);
+        DB::table('business_updates')->where('business_location_id', $branch->id)->whereIn('status', ['pending', 'approved'])
+            ->update(['status' => 'withdrawn', 'updated_at' => now()]);
+        DB::table('business_change_requests')->where('branch_id', $branch->id)->where('id', '!=', $request)
+            ->where('status', 'pending')->update(['status' => 'stale', 'updated_at' => now()]);
     }
 
     private function addressConflict(Business $business, int $place, string $address, ?int $except): bool

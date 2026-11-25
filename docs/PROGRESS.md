@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-25 — reviewed branch closure and relocation
+
+Used existing branch location_status and staged business change requests: owner-only closure or CanadaMB-only relocation, independent review, preserved original branch/address/history, withdrawal of pending/approved jobs and announcements, open-only public directory/canonical/search/sitemap, job and inquiry eligibility, and commercial eligibility. Management retains closed branches; relocation creates a new branch rather than moving old records. No new schema or public activation; reopening requires separate review. Added branch lifecycle regression coverage.
+
 ## 2026-11-25 — moderation concurrency and production dependency reclaim
 
 Marketplace reviews now require a current content/photo version and reject self-review. Listing report resolution excludes the reporter and seller, rejects repeated decisions and uses consistent listing/report locks. Added stale-review regression and staged saved-search browser acceptance. The Hostinger read-only inventory found about 4.7 GiB of accumulated release files; trusted-main workflow 45655814730 reclaimed 2,020,852 KiB of Composer dependencies from 20 explicitly verified inactive releases, retaining all source, backups, shared storage and recent rollback copies. Live DB checks and both domain access gates passed after reclaim. Retired vendor directories require dependency reinstall before rollback. No database changes or public access changes.

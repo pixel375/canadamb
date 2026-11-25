@@ -19,8 +19,8 @@
                     </form>
                 @endif
                 <h2>Branches on this portal</h2>
-                @forelse($branches as $branch)<div><strong>{{ $branch->location->name }}</strong><p>{{ $branch->address }}</p></div>@empty<p>No branches on this portal. Manage other locations on CanadaMB.ca.</p>@endforelse
-                @if($business->status === 'active' && app(\App\Support\BusinessDirectory::class)->enabled($site) && $branches->isNotEmpty())<a class="text-link" href="/businesses/{{ $business->slug }}">View public profile <x-icon name="arrow" size="16"/></a>@endif
+                @forelse($branches as $branch)<div><strong>{{ $branch->location->name }}</strong><p>{{ $branch->address }} @if(!$branch->isOpen()) · Closed @endif</p></div>@empty<p>No branches on this portal. Manage other locations on CanadaMB.ca.</p>@endforelse
+                @if($business->status === 'active' && app(\App\Support\BusinessDirectory::class)->enabled($site) && $branches->contains(fn ($branch) => $branch->isOpen()))<a class="text-link" href="/businesses/{{ $business->slug }}">View public profile <x-icon name="arrow" size="16"/></a>@endif
             </section>
         @endif
         <form class="panel form-stack" method="post" action="{{ $business->exists ? '/account/businesses/'.$business->id : '/account/businesses' }}">
@@ -49,10 +49,10 @@
             && $business->members()->whereKey(auth()->id())->wherePivotIn('role', ['owner', 'manager'])->exists())
             <div class="panel"><a href="/account/businesses/{{ $business->id }}/jobs" class="button button-outline">Manage job postings</a></div>
         @endif
-        @if($business->status === 'active' && $branches->isNotEmpty())
+        @if($business->status === 'active' && $branches->contains(fn ($branch) => $branch->isOpen()))
             <form class="panel form-stack" method="post" action="/account/businesses/{{ $business->id }}/updates">@csrf
                 <h2>Publish a business update</h2>
-                <label>Branch<select name="business_location_id" required>@foreach($branches as $branch)<option value="{{ $branch->id }}" @selected((int) old('business_location_id') === $branch->id)>{{ $branch->location->name }} · {{ $branch->address }}</option>@endforeach</select></label>
+                <label>Branch<select name="business_location_id" required>@foreach($branches->filter(fn ($branch) => $branch->isOpen()) as $branch)<option value="{{ $branch->id }}" @selected((int) old('business_location_id') === $branch->id)>{{ $branch->location->name }} · {{ $branch->address }}</option>@endforeach</select></label>
                 <label>Type<select name="type" required>@foreach(['announcement', 'promotion', 'update'] as $type)<option value="{{ $type }}" @selected(old('type') === $type)>{{ ucfirst($type) }}</option>@endforeach</select></label>
                 <label>Title<input name="title" value="{{ old('title') }}" maxlength="140" required></label>
                 <label>Update<textarea name="body" rows="5" maxlength="3000" required>{{ old('body') }}</textarea></label>

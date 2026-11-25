@@ -11,7 +11,7 @@
                     <div class="seller-listing-top"><span class="seller-listing-thumbnail"><x-icon name="building" size="28"/></span>
                         <div class="member-listing-info"><span class="member-listing-status" data-status="{{ $business->status }}">{{ ucfirst($business->status) }}</span><h2>{{ $business->name }}</h2><p>{{ \App\Support\BusinessDirectory::CATEGORIES[$business->category] ?? $business->category }} · {{ ucfirst($role ?? 'member') }}</p></div>
                     </div>
-                    <p class="field-note">{{ $business->locations->count() }} {{ \Illuminate\Support\Str::plural('branch', $business->locations->count()) }} · {{ $business->locations->pluck('location.name')->unique()->implode(', ') }}</p>
+                    <p class="field-note">{{ $business->locations->filter(fn ($branch) => $branch->isOpen())->count() }} open {{ \Illuminate\Support\Str::plural('branch', $business->locations->filter(fn ($branch) => $branch->isOpen())->count()) }} · {{ $business->locations->filter(fn ($branch) => $branch->isOpen())->pluck('location.name')->unique()->implode(', ') }}</p>
                     <p class="seller-lifecycle-note">{{ $business->status === 'active' ? 'Profile approved. Manage your business information and publish updates.' : 'This profile is not currently public. Open the profile to manage its details.' }}</p>
                     <div class="inline-actions seller-listing-actions">
                         <a class="button button-primary" href="/account/businesses/{{ $business->id }}">Manage profile</a>
@@ -19,7 +19,7 @@
                         @if($business->status === 'active' && in_array($role, ['owner','manager'], true) && app(\App\Support\JobBoard::class)->enabled($site))
                             <a class="button button-outline" href="/account/businesses/{{ $business->id }}/jobs"><x-icon name="briefcase" size="17"/> Manage jobs</a>
                         @endif
-                        @if($business->status === 'active' && app(\App\Support\BusinessDirectory::class)->enabled($site) && ($site->isNetwork() || $business->locations->contains('location_id', $site->location_id)))
+                        @if($business->status === 'active' && app(\App\Support\BusinessDirectory::class)->enabled($site) && $business->locations->contains(fn ($branch) => $branch->isOpen() && ($site->isNetwork() || $branch->location_id === $site->location_id)))
                             <a class="text-link" href="/businesses/{{ $business->slug }}">View public profile <x-icon name="arrow" size="16"/></a>
                         @endif
                     </div>
