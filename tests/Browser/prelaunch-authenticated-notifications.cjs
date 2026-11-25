@@ -333,6 +333,36 @@ const fs = require('node:fs');
         }
         console.log('PASS: account dashboard and listing editor photo preview at three widths');
 
+        for (const width of [320, 390, 1024, 1440]) {
+            await page.setViewportSize({ width, height: 900 });
+            let response = await page.goto(host + '/real-estate?location=brandon&transaction=rent&q=garage');
+            check(response.ok(), 'Scoped property browser failed');
+            check(await page.locator('.property-type-card').count() === 13, 'Property categories missing');
+            await page.locator('.property-type-card').filter({ hasText: 'Townhouses' }).click();
+            const url = new URL(page.url());
+            check(url.searchParams.get('property_type') === 'townhouse' && url.searchParams.get('transaction') === 'rent' &&
+                url.searchParams.get('q') === 'garage' && url.searchParams.get('location') === 'brandon', 'Property category lost filters');
+            check(await page.locator('.property-type-card[aria-current="page"]').count() === 1, 'Property selected category incorrect');
+            await page.getByRole('link', { name: 'Prepare a private property draft' }).click();
+            check(await page.locator('.listing-editor-section').count() === 4, 'Private property editor missing sections');
+            check(await page.locator('select[name="location_id"] option:checked').innerText() === 'Brandon', 'Property draft lost community');
+            check(await page.locator('select[name="transaction"]').inputValue() === 'rent', 'Property draft lost rental selection');
+            const input = page.locator('[data-listing-photos]');
+            const file = { name: 'property.png', mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLttAAAAABJRU5ErkJggg==', 'base64') };
+            await input.setInputFiles(Array(6).fill(file));
+            check(await input.evaluate(el => el.validity.valid), 'Property draft should allow six images');
+            await input.setInputFiles(Array(7).fill(file));
+            check(!(await input.evaluate(el => el.validity.valid)), 'Property draft must reject seven images');
+            await input.setInputFiles([]);
+            check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Property editor overflow at ' + width);
+            response = await page.goto(host + '/account/properties');
+            check(response.ok(), 'Private property dashboard failed');
+            check(await page.locator('.seller-status-tile').count() === 5, 'Private property statuses missing');
+            check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Property dashboard overflow at ' + width);
+        }
+        console.log('PASS: real estate discovery, private property workspace and upload limits at four widths');
+
+
         await page.goto(host + '/account/settings');
         check(await page.locator('body[data-activity-counts="/account/activity-counts"]').count() === 1,
             'Verified account missing activity count endpoint');

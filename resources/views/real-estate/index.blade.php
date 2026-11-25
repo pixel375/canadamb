@@ -131,7 +131,7 @@
                             <div class="property-result-body">
                                 <p class="section-label">{{ $item->transaction === 'rent' ? 'For rent' : 'For sale' }} · {{ $item->location->name }}</p>
                                 <h3><a href="/real-estate/{{ $item->id }}">{{ $item->title }}</a></h3>
-                                <strong class="property-result-price">${{ number_format($item->price_cents / 100) }}{{ $item->transaction === 'rent' ? ' / month' : '' }}</strong>
+                                <strong class="property-result-price">${{ number_format($item->price_cents / 100, $item->price_cents % 100 === 0 ? 0 : 2) }}{{ $item->transaction === 'rent' ? ' / month' : '' }}</strong>
                                 <p class="property-result-meta">
                                     {{ \App\Models\PropertyListing::TYPES[$item->property_type] }}
                                     {{ $item->bedrooms === null ? '' : ' · '.$item->bedrooms.' bed' }}

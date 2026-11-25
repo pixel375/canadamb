@@ -18,6 +18,9 @@ jobs:
   chromium:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    env:
+      CANADAMB_PROPERTY_DRAFTS_ENABLED: 'true'
+      CANADAMB_REAL_ESTATE_PUBLIC_LISTINGS: 'false'
     steps:
       - uses: actions/checkout@v5
       - uses: shivammathur/setup-php@v2
@@ -51,6 +54,7 @@ jobs:
             sleep 1
           done
           cat navigation-server.log
+          tail -n 100 storage/logs/laravel.log 2>/dev/null || true
           exit 1
       - name: Verify desktop menus and tablet drawer in Chromium
         run: node tests/Browser/prelaunch-navigation.cjs
