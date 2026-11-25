@@ -114,6 +114,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/account/report/{type}/{target}', [ContentReportController::class, 'create'])->whereIn('type', array_keys(ContentReports::TYPES))->whereNumber('target');
     Route::post('/account/report/{type}/{target}', [ContentReportController::class, 'store'])->whereIn('type', array_keys(ContentReports::TYPES))->whereNumber('target')->middleware('throttle:6,1,content-report');
     Route::get('/account/discussions', [CommunityForumController::class, 'owned']);
+    Route::get('/account/replies', [CommunityForumController::class, 'ownedReplies']);
+    Route::get('/account/replies/{reply}/edit', [CommunityForumController::class, 'editReply'])->whereNumber('reply');
+    Route::put('/account/replies/{reply}', [CommunityForumController::class, 'updateReply'])->whereNumber('reply')->middleware('throttle:8,1,reply-edit');
+    Route::post('/account/replies/{reply}/withdraw', [CommunityForumController::class, 'withdrawReply'])->whereNumber('reply')->middleware('throttle:8,1,reply-withdraw');
     Route::get('/account/discussions/{thread}/edit', [CommunityForumController::class, 'edit'])->whereNumber('thread');
     Route::put('/account/discussions/{thread}', [CommunityForumController::class, 'update'])->whereNumber('thread')->middleware('throttle:8,1,discussion-edit');
     Route::post('/account/discussions/{thread}/withdraw', [CommunityForumController::class, 'withdraw'])->whereNumber('thread')->middleware('throttle:8,1,discussion-withdraw');

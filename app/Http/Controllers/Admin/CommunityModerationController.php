@@ -74,11 +74,14 @@ class CommunityModerationController extends Controller
 
     public function replies(Request $request, int $reply)
     {
-        $data = $request->validate(['action' => 'required|in:approve,reject', 'reason' => 'required_if:action,reject|nullable|string|max:300']);
+        $data = $request->validate(['action' => 'required|in:approve,reject', 'version' => 'required|string|size:64', 'reason' => 'required_if:action,reject|nullable|string|max:300']);
         DB::transaction(function () use ($request, $reply, $data) {
             $initial = CommunityReply::findOrFail($reply);
             $thread = CommunityThread::lockForUpdate()->findOrFail($initial->thread_id);
             $item = $thread->replies()->lockForUpdate()->findOrFail($reply);
+            if (! hash_equals($item->contentVersion(), $data['version'])) {
+                throw ValidationException::withMessages(['version' => 'The reply changed. Reload the moderation queue before reviewing it.']);
+            }
             $approval = $data['action'] === 'approve';
             abort_unless($approval ? $item->status === 'pending' : in_array($item->status, ['pending', 'approved'], true), 409);
             if ($approval) {
@@ -87,6 +90,8 @@ class CommunityModerationController extends Controller
                 DB::table('community_notifications')->insertUsing(['user_id', 'reply_id', 'created_at'],
                     DB::table('community_thread_follows')->where('thread_id', $thread->id)
                         ->when($item->author_id, fn ($query, $author) => $query->where('user_id', '!=', $author))
+                        ->whereNotExists(fn ($query) => $query->selectRaw('1')->from('community_notifications')
+                            ->whereColumn('community_notifications.user_id', 'community_thread_follows.user_id')->where('reply_id', $item->id))
                         ->select('user_id')->selectRaw('?, ?', [$item->id, now()]),
                 );
             }

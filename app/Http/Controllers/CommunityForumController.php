@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\CommunityEvent;
+use App\Models\CommunityReply;
 use App\Models\CommunityThread;
 use App\Models\Location;
 use App\Support\Audit;
@@ -155,6 +156,84 @@ class CommunityForumController extends Controller
 
         return CommunityThread::where('author_id', $request->user()->id)
             ->when($site->location_id, fn ($query, $id) => $query->where('location_id', $id));
+    }
+
+    public function ownedReplies(Request $request)
+    {
+        $statuses = ['pending', 'approved', 'rejected', 'withdrawn'];
+        $filters = $request->validate(['status' => ['nullable', Rule::in($statuses)], 'q' => 'nullable|string|max:100']);
+        $owned = $this->ownedReplyQuery($request);
+        $counts = (clone $owned)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
+        $items = $owned->with('thread:id,title,status,locked')
+            ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
+            ->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['body']))
+            ->latest('id')->paginate(20)->withQueryString();
+
+        return view('community.owned-replies', compact('items', 'counts', 'statuses', 'filters'));
+    }
+
+    public function editReply(Request $request, int $reply)
+    {
+        $item = $this->ownedReplyQuery($request)->with('thread')->findOrFail($reply);
+        $this->ensureReplyEditable($item->thread, $item);
+
+        return view('community.edit-reply', compact('item'));
+    }
+
+    public function updateReply(Request $request, int $reply)
+    {
+        $data = $request->validate(['body' => 'required|string|min:5|max:3000', 'version' => 'required|string|size:64']);
+        DB::transaction(function () use ($request, $reply, $data) {
+            $initial = $this->ownedReplyQuery($request)->findOrFail($reply);
+            $thread = CommunityThread::lockForUpdate()->findOrFail($initial->thread_id);
+            $item = $this->ownedReplyQuery($request)->lockForUpdate()->findOrFail($reply);
+            $this->ensureReplyEditable($thread, $item);
+            $this->checkReplyVersion($item, $data['version']);
+            if ($item->body === $data['body']) {
+                return;
+            }
+            $item->forceFill(['body' => $data['body'], 'status' => 'pending'])->save();
+            Audit::record('community.reply.edited', $request->user()->id, context: ['reply' => $reply]);
+        }, attempts: 3);
+
+        return redirect('/account/replies')->with('status', 'Reply saved. Changed content requires moderation before publication.');
+    }
+
+    public function withdrawReply(Request $request, int $reply)
+    {
+        $data = $request->validate(['version' => 'required|string|size:64']);
+        DB::transaction(function () use ($request, $reply, $data) {
+            $initial = $this->ownedReplyQuery($request)->findOrFail($reply);
+            $thread = CommunityThread::lockForUpdate()->findOrFail($initial->thread_id);
+            $item = $this->ownedReplyQuery($request)->lockForUpdate()->findOrFail($reply);
+            $this->ensureReplyEditable($thread, $item);
+            $this->checkReplyVersion($item, $data['version']);
+            $item->forceFill(['status' => 'withdrawn'])->save();
+            Audit::record('community.reply.withdrawn', $request->user()->id, context: ['reply' => $reply]);
+        }, attempts: 3);
+
+        return redirect('/account/replies')->with('status', 'Reply withdrawn from public view.');
+    }
+
+    private function ownedReplyQuery(Request $request)
+    {
+        $site = $request->attributes->get('site');
+        abort_unless($this->community->enabled($site, 'community'), 404);
+
+        return CommunityReply::where('author_id', $request->user()->id)
+            ->whereHas('thread', fn ($query) => $query->when($site->location_id, fn ($thread, $id) => $thread->where('location_id', $id)));
+    }
+
+    private function ensureReplyEditable(CommunityThread $thread, CommunityReply $item): void
+    {
+        abort_if($thread->status !== 'approved' || $thread->locked || ! in_array($item->status, ['pending', 'approved', 'rejected'], true), 409);
+    }
+
+    private function checkReplyVersion(CommunityReply $item, string $version): void
+    {
+        if (! hash_equals($item->contentVersion(), $version)) {
+            throw ValidationException::withMessages(['version' => 'This reply changed. Reload before saving.']);
+        }
     }
 
     public function followed(Request $request)

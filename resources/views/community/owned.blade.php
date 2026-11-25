@@ -1,6 +1,6 @@
 <x-layouts.site title="My discussions">
     <div class="container page-shell">
-        <div class="page-intro"><div><a class="text-link" href="/account/profile">My account</a><h1>My discussions</h1><p>Check your submitted topics and moderation status.</p></div><a class="button button-primary" href="/community/new">Start a discussion</a></div>
+        <div class="page-intro"><div><a class="text-link" href="/account/profile">My account</a><h1>My discussions</h1><p>Check your submitted topics and moderation status.</p><a class="text-link" href="/account/replies">My replies</a></div><a class="button button-primary" href="/community/new">Start a discussion</a></div>
         <nav class="seller-status-grid discussion-owner-status" aria-label="Discussion status">
             @foreach(array_merge(['all'], $statuses) as $status)
                 <?php $params = array_filter(['status' => $status === 'all' ? null : $status, 'q' => $filters['q'] ?? null]); ?>

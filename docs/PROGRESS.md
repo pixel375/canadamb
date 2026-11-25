@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-24 — reply lifecycle and moderation
+
+Prior profile/private-message reporting source `aac294331540e83f9a16fb30a37485e039fe4b15` passed [backend CI](https://github.com/pixel375/canadamb/actions/runs/45548693682) and [browser QA](https://github.com/pixel375/canadamb/actions/runs/45548693671); deployment was queued. This pass adds scoped My replies history, author editing and withdrawal, stale-version protection in moderation, and duplicate-safe notifications on reapproval. Existing notification read state is preserved. Hidden parent titles are not shown in reply history. No migrations or feature switches are changed. New release verification remains separate.
+
 ## 2026-11-24 — reporting completion and release checkpoint
 
 The previous source `664df941cdb0d765629c82fff69b593db3b2cb50` passed [backend CI](https://github.com/pixel375/canadamb/actions/runs/45543910619), [browser QA](https://github.com/pixel375/canadamb/actions/runs/45543910600) and [guarded production deployment and independent audits](https://github.com/pixel375/canadamb/actions/runs/45544157484). The next pass extends review-staged reports to profiles and individually reported received Marketplace messages, with participant-only submission and independent review, including refreshed chat messages. No production migration or feature activation is included; this pass requires its own CI and deployment evidence.

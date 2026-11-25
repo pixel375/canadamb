@@ -15,7 +15,7 @@
     <section class="panel" id="replies"><h2>Replies</h2>
         @forelse($replies as $item)
             <article class="admin-review-card form-stack"><h3>{{ $item->thread->title }}</h3><p>{{ $item->author?->name ?? 'Former member' }}</p><p class="prose-text">{{ $item->body }}</p>
-                <p>{{ ucfirst($item->status) }}</p><x-community-moderation-form :path="'/admin/community/replies/'.$item->id" :approved="$item->status === 'approved'"/>
+                <p>{{ ucfirst($item->status) }}</p><x-community-moderation-form :path="'/admin/community/replies/'.$item->id" :approved="$item->status === 'approved'" :version="$item->contentVersion()"/>
             </article>
         @empty<p>No replies awaiting review.</p>@endforelse
         {{ $replies->links() }}

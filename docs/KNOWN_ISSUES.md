@@ -11,7 +11,7 @@
 - Business ownership transfer/dispute handling, invitation acceptance, contact verification, subscriptions, advertising and job alerts. Owner-controlled manager/editor access and read-only ownership lookup are implemented in the active implementation branch.
 - Scheduled news ingestion and provider feeds require verification; polling remains suppressed during prelaunch.
 - Recheck production backups, scheduler and mail delivery as part of launch acceptance; practice file-level media restoration. Retain the original public_html inode, private keys and access restrictions. No unreviewed migrations or seeders.
-- Location boundaries and administrative relationships require additional authoritative Manitoba data. Reply editing, recurring events and automated media retention remain open.
+- Location boundaries and administrative relationships require additional authoritative Manitoba data. Recurring events and automated media retention remain open. Reply editing, withdrawal and private history are implemented in the current source; verify deployment separately.
 
 ## Superseded earlier UX concerns
 

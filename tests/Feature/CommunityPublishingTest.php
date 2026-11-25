@@ -42,11 +42,11 @@ class CommunityPublishingTest extends TestCase
         $this->actingAs($reader)->post("$city/replies", ['body' => 'I can donate some vegetable seeds.'])->assertSessionHasNoErrors();
         $this->get($city)->assertDontSee('I can donate some vegetable seeds.');
         $reply = CommunityReply::sole();
-        $this->actingAs($moderator)->post("https://canadamb.ca/admin/community/replies/$reply->id", ['action' => 'approve'])->assertRedirect();
+        $this->actingAs($moderator)->post("https://canadamb.ca/admin/community/replies/$reply->id", ['action' => 'approve', 'version' => $reply->contentVersion()])->assertRedirect();
         $this->get($city)->assertSee('I can donate some vegetable seeds.');
         $this->actingAs($author)->get('https://canadamb.ca/account/community-notifications')->assertSee('Neighbourhood garden planning');
         $this->actingAs($moderator)->post("https://canadamb.ca/admin/community/replies/$reply->id", [
-            'action' => 'reject', 'reason' => 'Reply removed during second review.',
+            'action' => 'reject', 'reason' => 'Reply removed during second review.', 'version' => $reply->fresh()->contentVersion(),
         ])->assertRedirect();
         $this->get($city)->assertOk()->assertDontSee('I can donate some vegetable seeds.');
         $this->actingAs($moderator)->post("https://canadamb.ca/admin/community/threads/$thread->id", ['action' => 'lock'])->assertRedirect();

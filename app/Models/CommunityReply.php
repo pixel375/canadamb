@@ -11,6 +11,11 @@ class CommunityReply extends Model
 {
     protected $attributes = ['status' => 'pending'];
 
+    public function contentVersion(): string
+    {
+        return hash('sha256', json_encode([$this->body, $this->status, $this->updated_at?->toIso8601String()], JSON_THROW_ON_ERROR));
+    }
+
     public function author(): BelongsTo
     {
         return $this->belongsTo(User::class, 'author_id');

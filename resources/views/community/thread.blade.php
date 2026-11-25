@@ -115,6 +115,7 @@
                             </div>
                             <p class="prose-text">{{ $reply->body }}</p>
                             <a class="text-link reply-permalink" href="/community/{{ $item->id }}/replies/{{ $reply->id }}">Link to this reply</a> <x-content-report-link type="reply" :target="$reply->id"/>
+                            @if($canParticipate && !$item->locked && (int) $reply->author_id === auth()->id())<a class="text-link" href="/account/replies/{{ $reply->id }}/edit">Edit my reply</a>@endif
                         </div>
                     </article>
                 @empty
