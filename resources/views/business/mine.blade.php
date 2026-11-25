@@ -4,6 +4,14 @@
         @if(\App\Support\BusinessAccess::enabled())<p class="mb-4"><a class="button button-outline" href="/account/business-access">Invitations and ownership transfers</a></p>@endif
         @if(\App\Support\BusinessDisputes::enabled())<p class="mb-4"><a class="button button-outline" href="/account/business-disputes">My ownership disputes</a></p>@endif
         <?php $site = request()->attributes->get('site'); ?>
+        @if($total > 0)
+            <form method="get" action="/account/businesses" class="panel form-stack mb-4">
+                @if(filled($filters['claim_status'] ?? null))<input type="hidden" name="claim_status" value="{{ $filters['claim_status'] }}">@endif
+                <div class="form-grid"><label>Search managed profiles<input type="search" name="q" maxlength="100" value="{{ $filters['q'] ?? '' }}"></label><label>My role<select name="role"><option value="">All roles</option>@foreach(['owner', 'manager', 'editor'] as $role)<option value="{{ $role }}" @selected(($filters['role'] ?? '') === $role)>{{ ucfirst($role) }}</option>@endforeach</select></label></div>
+                <div class="inline-actions"><button class="button button-primary">Filter profiles</button><a class="button button-outline" href="/account/businesses">Reset filters</a></div>
+            </form>
+            <p class="field-note">{{ $businesses->total() }} matching · {{ $total }} managed across the network</p>
+        @endif
         <section aria-label="Managed business profiles" class="seller-listing-grid">
             @forelse($businesses as $business)
                 <?php $role = $business->members->first()?->pivot->role; ?>
@@ -25,15 +33,21 @@
                     </div>
                 </article>
             @empty
-                <div class="panel market-results-empty"><x-icon name="building" size="32"/><h2>You do not manage any business profiles yet.</h2><p>Add your business or find an existing profile to request a claim.</p><div class="inline-actions"><a class="button button-primary" href="/account/businesses/new">Add a business</a><a class="button button-outline" href="/businesses">Find my business</a></div></div>
+                <div class="panel market-results-empty"><x-icon name="building" size="32"/><h2>{{ $total ? 'No managed profiles match your filters.' : 'You do not manage any business profiles yet.' }}</h2><p>{{ $total ? 'Try another search or role.' : 'Add your business or find an existing profile to request a claim.' }}</p><div class="inline-actions"><a class="button button-primary" href="/account/businesses/new">Add a business</a><a class="button button-outline" href="/businesses">Find my business</a></div></div>
             @endforelse
         </section>
         {{ $businesses->links() }}
-        @if($claims->isNotEmpty())
+        @if($claimCounts->isNotEmpty())
             <section class="panel mt-4"><h2>Claim requests</h2><p class="field-note">Ownership requests are reviewed before management access is granted.</p>
-                @foreach($claims as $claim)<div class="item-row"><div><h3>{{ $claim->name }}</h3><p>Submitted {{ \Illuminate\Support\Carbon::parse($claim->created_at)->format('M j, Y') }}</p></div><div class="form-stack"><span class="member-listing-status" data-status="{{ $claim->status }}">{{ ucfirst($claim->status) }}</span>
+                <form method="get" action="/account/businesses" class="form-stack mb-4">
+                    @if(filled($filters['q'] ?? null))<input type="hidden" name="q" value="{{ $filters['q'] }}">@endif
+                    @if(filled($filters['role'] ?? null))<input type="hidden" name="role" value="{{ $filters['role'] }}">@endif
+                    <label>Claim status<select name="claim_status"><option value="">All claims ({{ $claimCounts->sum() }})</option>@foreach(['pending', 'approved', 'rejected', 'withdrawn', 'superseded'] as $status)<option value="{{ $status }}" @selected(($filters['claim_status'] ?? '') === $status)>{{ ucfirst($status) }} ({{ $claimCounts[$status] ?? 0 }})</option>@endforeach</select></label>
+                    <button class="button button-outline">Filter claims</button>
+                </form>
+                @forelse($claims as $claim)<div class="item-row"><div><h3>{{ $claim->name }}</h3><p>Submitted {{ \Illuminate\Support\Carbon::parse($claim->created_at)->format('M j, Y') }}</p></div><div class="form-stack"><span class="member-listing-status" data-status="{{ $claim->status }}">{{ ucfirst($claim->status) }}</span>
                     @if($claim->status === 'pending')<form method="post" action="/account/business-claims/{{ $claim->id }}/withdraw">@csrf<button class="button button-outline">Withdraw claim</button></form>@endif
-                    </div></div>@endforeach
+                    </div></div>@empty<p>No claims match this status.</p>@endforelse
                 {{ $claims->links() }}
             </section>
         @endif

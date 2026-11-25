@@ -134,12 +134,21 @@ class BusinessController extends Controller
     public function mine(Request $request)
     {
         $user = $request->user()->id;
-        $businesses = Business::managedBy($user)->with(['locations.location', 'members' => fn ($query) => $query->whereKey($user)])
-            ->orderBy('name')->paginate(20);
-        $claims = DB::table('business_claims')->join('businesses', 'businesses.id', '=', 'business_claims.business_id')
-            ->where('business_claims.user_id', $user)->latest('business_claims.id')->paginate(15, ['business_claims.id', 'businesses.name', 'business_claims.status', 'business_claims.created_at'], 'claims_page');
+        $filters = $request->validate(['q' => 'nullable|string|max:100', 'role' => 'nullable|in:owner,manager,editor',
+            'claim_status' => 'nullable|in:pending,approved,rejected,withdrawn,superseded']);
+        $owned = Business::managedBy($user);
+        $total = (clone $owned)->count();
+        $businesses = $owned->when($filters['role'] ?? null, fn ($query, $role) => $query->managedBy($user, [$role]))
+            ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['name', 'description']))
+            ->with(['locations.location', 'members' => fn ($query) => $query->whereKey($user)])
+            ->orderBy('name')->orderBy('id')->paginate(20)->withQueryString();
+        $ownedClaims = DB::table('business_claims')->join('businesses', 'businesses.id', '=', 'business_claims.business_id')
+            ->where('business_claims.user_id', $user);
+        $claimCounts = (clone $ownedClaims)->selectRaw('business_claims.status, COUNT(*) as total')->groupBy('business_claims.status')->pluck('total', 'status');
+        $claims = $ownedClaims->when($filters['claim_status'] ?? null, fn ($query, $status) => $query->where('business_claims.status', $status))
+            ->latest('business_claims.id')->paginate(15, ['business_claims.id', 'businesses.name', 'business_claims.status', 'business_claims.created_at'], 'claims_page')->withQueryString();
 
-        return view('business.mine', compact('businesses', 'claims'));
+        return view('business.mine', compact('businesses', 'claims', 'filters', 'total', 'claimCounts'));
     }
 
     public function create(Request $request)

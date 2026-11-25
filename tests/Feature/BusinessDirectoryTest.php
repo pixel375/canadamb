@@ -134,6 +134,11 @@ class BusinessDirectoryTest extends TestCase
         $this->get('https://brandonmb.ca/')->assertDontSee('Workshop opens Saturday');
         $this->get('https://brandonmb.ca/business-updates?q=Workshop')->assertOk()->assertDontSee('Workshop opens Saturday');
         $this->get('https://brandonmb.ca/account/businesses')->assertOk()->assertSee('Manage jobs')->assertSee('Test Repair');
+        $this->get('https://brandonmb.ca/account/businesses?q=Repair&role=owner')->assertOk()->assertSee('Manage jobs')->assertSee('1 matching');
+        $this->get('https://brandonmb.ca/account/businesses?role=editor')->assertOk()->assertSee('No managed profiles match your filters.')->assertDontSee('Manage jobs');
+        $this->get('https://brandonmb.ca/account/businesses?claim_status=withdrawn')->assertOk()->assertSee('No claims match this status.');
+        $this->actingAs($competitor)->get('https://brandonmb.ca/account/businesses?claim_status=withdrawn')->assertOk()->assertSee('Test Repair')->assertDontSee('Manage jobs');
+        $this->actingAs($claimant);
         $this->get("https://brandonmb.ca/account/businesses/$business->id")->assertOk()->assertSee('Recent business updates')->assertSee('Workshop opens Saturday')->assertSee('Pending');
         $update = DB::table('business_updates')->value('id');
         $this->actingAs($admin)->post("https://canadamb.ca/admin/business-updates/$update", [
