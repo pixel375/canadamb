@@ -1,6 +1,6 @@
 # Known issues and remaining acceptance
 
-**Verified restricted production source at the start of this batch:** `342d3841dc8951c284e44f1458c46f0cf418cdca`. [Backend CI](https://github.com/pixel375/canadamb/actions/runs/45700553346), [browser QA](https://github.com/pixel375/canadamb/actions/runs/45700553540), and [deployment with independent audits and two-release retention](https://github.com/pixel375/canadamb/actions/runs/45700964093) passed. This is not a public-launch approval.
+**Verified restricted production source at the start of this batch:** `86bb95552d970aca74b90299adcca57ed0a27e6b`. [Backend CI](https://github.com/pixel375/canadamb/actions/runs/45702972153), [browser QA](https://github.com/pixel375/canadamb/actions/runs/45702972114), and [deployment with independent audits and two-release retention](https://github.com/pixel375/canadamb/actions/runs/45703372226) passed. This is not a public-launch approval.
 
 ## Outstanding launch blockers and acceptance
 
@@ -17,7 +17,7 @@
 - Contested ownership adjudication, automated contact verification, subscriptions, advertising and proactive job alert delivery. Saved job searches and on-demand in-app new-match alerts are review-staged; no email, push or scheduler is enabled. Moderated branch additions, address corrections and manual email review are review-staged. Private dispute intake and independent triage are review-staged; they do not change memberships. Invitations and consensual transfers are review-staged and require migration approval. Owner-controlled manager/editor access and read-only ownership lookup are implemented in the active implementation branch.
 - Scheduled news ingestion and provider feeds require verification; polling remains suppressed during prelaunch.
 - Recheck production backups, scheduler and mail delivery as part of launch acceptance; practice file-level media restoration. Retain the original public_html inode, private keys and access restrictions. No unreviewed migrations or seeders.
-- Location boundaries and administrative relationships require additional authoritative Manitoba data. Bounded recurring submissions are implemented behind a switch; single upcoming event correction, coordinated linked discussion correction and scoped follow management are implemented in the current source; series-wide editing and automated media retention remain open. Linked corrections require a currently editable discussion and preserve independent moderation. Reply editing, withdrawal and private history are implemented in the current source; verify deployment separately.
+- Location boundaries and administrative relationships require additional authoritative Manitoba data. Bounded recurring submissions are implemented behind a switch; single upcoming event correction, coordinated linked discussion correction and scoped follow management are implemented in the current source; selected-occurrence venue, organizer and URL edits are implemented behind the recurring-event switch. Persistent series identities, bulk date/title changes and automated media retention remain open. Linked corrections require a currently editable discussion and preserve independent moderation. Reply editing, withdrawal and private history are implemented in the current source; verify deployment separately.
 
 ## Superseded earlier UX concerns
 

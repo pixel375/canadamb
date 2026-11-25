@@ -287,6 +287,52 @@ class CommunityEventController extends Controller
         return redirect('/account/events')->with('status', 'Event cancellation recorded.');
     }
 
+    public function reviseSelected(Request $request)
+    {
+        abort_unless(config('network.recurring_events'), 404);
+        $data = $request->validate([
+            'events' => 'required|array|list|min:1|max:8', 'events.*' => 'required|integer|distinct|min:1',
+            'versions' => 'required|array|max:20', 'versions.*' => 'required|string|size:64',
+            'field' => 'required|in:venue,organizer,event_url',
+            'value' => ['required_unless:field,event_url', 'nullable', 'string', 'max:1024'],
+            'confirm_update' => 'accepted',
+        ]);
+        $field = $data['field'];
+        $value = $data['value'] ?? null;
+        $request->validate(['value' => match ($field) {
+            'venue' => 'required|string|max:180',
+            'organizer' => 'required|string|max:150',
+            default => 'nullable|url:https|max:1024',
+        }]);
+        $author = $request->user()->id;
+        $changed = DB::transaction(function () use ($request, $data, $field, $value, $author) {
+            User::lockForUpdate()->findOrFail($author);
+            $items = $this->ownedEvent($request)->whereIn('id', $data['events'])->orderBy('id')->lockForUpdate()->get();
+            abort_unless($items->count() === count($data['events']), 404);
+            foreach ($items as $item) {
+                abort_unless(in_array($item->status, ['pending', 'approved', 'rejected'], true) && ! $item->localStart()->isPast(), 409);
+                if (! isset($data['versions'][$item->id])) {
+                    throw ValidationException::withMessages(['versions' => 'Reload the event list before updating selected events.']);
+                }
+                $this->checkVersion($item, $data['versions'][$item->id]);
+                $item->fill([$field => $value]);
+            }
+            $revisions = $items->filter(fn ($item) => $item->isDirty());
+            $additional = $revisions->where('status', '!=', 'pending')->count();
+            if ($additional && CommunityEvent::where('author_id', $author)->where('status', 'pending')->count() + $additional > 24) {
+                throw ValidationException::withMessages(['events' => 'You can have up to 24 pending event submissions. No events changed.']);
+            }
+            foreach ($revisions as $item) {
+                $item->forceFill(['status' => 'pending'])->save();
+                Audit::record('community.event.edited', $author, context: ['event' => $item->id]);
+            }
+
+            return $revisions->count();
+        }, attempts: 3);
+
+        return redirect('/account/events')->with('status', $changed.' selected events updated. Changed events require moderation.');
+    }
+
     public function cancelSelected(Request $request)
     {
         $site = $request->attributes->get('site');

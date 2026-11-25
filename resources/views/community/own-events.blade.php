@@ -20,6 +20,17 @@
             <label>Private cancellation note<input name="cancellation_note" maxlength="300"></label>
             <label class="checkbox-line"><input type="checkbox" name="confirm_cancel" value="1" required> Confirm cancellation of the selected events</label><button class="button button-outline">Cancel selected events</button>
         </form></details>
+        @if(config('network.recurring_events') && $items->contains(fn ($item) => in_array($item->status, ['pending', 'approved', 'rejected'], true) && !$item->localStart()->isPast()))
+            <details class="panel form-stack mb-4"><summary>Update shared event details</summary>
+                <form id="event-batch-edit" method="post" action="/account/events/revise-selected" class="form-stack mt-3">@csrf
+                    <p class="field-note">Choose up to eight upcoming occurrences below. Update one shared field at a time; dates, descriptions and discussions stay unchanged. Changed events require review.</p>
+                    <label>Field<select name="field"><option value="venue">Venue</option><option value="organizer">Organizer</option><option value="event_url">Event website</option></select></label>
+                    <label>New value<input name="value" maxlength="1024"><small class="field-note">Leave blank only to remove an event website.</small></label>
+                    <label class="checkbox-line"><input type="checkbox" name="confirm_update" value="1" required> Confirm changes to selected events</label>
+                    <button class="button button-outline">Update selected events</button>
+                </form>
+            </details>
+        @endif
         <section class="seller-listing-grid">
             @forelse($items as $item)
                 <article class="panel seller-listing-card">
@@ -33,6 +44,10 @@
                         @else
                             <p class="field-note">The linked discussion cannot currently be edited. You can cancel and reuse the event.</p>
                         @endif
+                    @endif
+                    @if(config('network.recurring_events') && in_array($item->status, ['pending', 'approved', 'rejected'], true) && !$item->localStart()->isPast())
+                        <label class="checkbox-line"><input form="event-batch-edit" type="checkbox" name="events[]" value="{{ $item->id }}"> Select for shared detail update</label>
+                        <input form="event-batch-edit" type="hidden" name="versions[{{ $item->id }}]" value="{{ $item->contentVersion() }}">
                     @endif
                     <a class="text-link" href="/events/new?reuse={{ $item->id }}">Reuse event details</a>
                     @if(in_array($item->status, ['pending', 'approved'], true))
