@@ -13,7 +13,26 @@
         <p class="field-note">Rate cards use the existing versioned configuration. Publishing in Global settings also publishes other pending network settings; review them together first.</p>
     </section>
     <section class="panel form-stack mt-4"><h2>Private placement previews</h2><p>Use an approved business profile to inspect how separate, explicitly labelled placements might look. These previews are never rendered to ordinary visitors.</p>
-        <form method="get" action="/admin/commercial" class="form-stack"><label>Preview business<select name="business"><option value="">Illustrative example</option>@foreach($businesses as $business)<option value="{{ $business->id }}" @selected($preview?->id === $business->id)>{{ $business->name }}</option>@endforeach</select></label><button class="button button-outline">Preview placement</button></form>
+        <form method="get" action="/admin/commercial" class="form-stack">
+            <div class="form-grid">
+                <label>Preview business<select name="business"><option value="">Illustrative example</option>@foreach($businesses as $business)<option value="{{ $business->id }}" @selected($preview?->id === $business->id)>{{ $business->name }}</option>@endforeach</select></label>
+                <label>Target portal<select name="portal"><option value="">Select an active portal</option>@foreach($portals as $option)<option value="{{ $option->id }}" @selected($portal?->id === $option->id)>{{ $option->name }}</option>@endforeach</select></label>
+                <label>Placement<select name="placement">@foreach(\App\Support\CommercialCatalog::PLACEMENTS as $key => $module)<option value="{{ $key }}" @selected($placement === $key)>{{ $catalog[$key]['name'] }}</option>@endforeach</select></label>
+                <label>Duration (weeks)<input type="number" name="weeks" min="1" max="12" value="{{ $weeks }}" required></label>
+            </div>
+            <button class="button button-outline">Preview placement</button>
+        </form>
+        <div class="commercial-estimate"><div><p class="section-label">Planning estimate · {{ $weeks }} {{ \Illuminate\Support\Str::plural('week', $weeks) }}</p><h3>{{ $estimate === null ? 'Rate not set' : 'CAD 
+        <div class="commercial-preview-grid">
+            @foreach(['directory-sponsored' => 'Business directory', 'home-banner' => 'Community homepage', 'marketplace-banner' => 'Marketplace'] as $key => $label)
+                <div class="commercial-preview"><p class="section-label">{{ $label }} · private preview</p><div class="commercial-preview-content"><span class="commercial-sponsored-label">Sponsored · preview only</span><h3>{{ $preview?->name ?? 'Example local business' }}</h3><p>{{ \Illuminate\Support\Str::limit($preview?->description ?: 'A short message from a local advertiser.', 140) }}</p><span class="field-note">No live destination or impression tracking</span></div></div>
+            @endforeach
+        </div>
+    </section>
+    <section class="panel form-stack mt-4"><h2>Before accepting payments</h2><ul class="help-guidelines"><li>Approve pricing, tax and refund policies.</li><li>Implement isolated campaign and entitlement records, review workflow and expiry.</li><li>Verify payment-provider test mode, signed webhooks, retries and reconciliation.</li><li>Approve placement inventory and limits, privacy-conscious measurement, and advertiser terms.</li></ul><p>Public real estate advertising is outside this initial commercial release.</p></section>
+</x-layouts.admin>
+.number_format($estimate / 100, 2) }}</h3><p class="field-note">Based on proposed weekly rates, before taxes. Not an offer or reservation.</p></div><div><p class="section-label">Target</p><strong>{{ $portal?->name ?? 'Not selected' }}</strong><p>{{ $catalog[$placement]['name'] }}</p></div></div>
+        @if($warnings)<div class="notice">@foreach($warnings as $warning)<p>{{ $warning }}</p>@endforeach</div>@endif
         <div class="commercial-preview-grid">
             @foreach(['directory-sponsored' => 'Business directory', 'home-banner' => 'Community homepage', 'marketplace-banner' => 'Marketplace'] as $key => $label)
                 <div class="commercial-preview"><p class="section-label">{{ $label }} · private preview</p><div class="commercial-preview-content"><span class="commercial-sponsored-label">Sponsored · preview only</span><h3>{{ $preview?->name ?? 'Example local business' }}</h3><p>{{ \Illuminate\Support\Str::limit($preview?->description ?: 'A short message from a local advertiser.', 140) }}</p><span class="field-note">No live destination or impression tracking</span></div></div>

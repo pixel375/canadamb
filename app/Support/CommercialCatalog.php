@@ -11,6 +11,21 @@ final class CommercialCatalog
         'marketplace-banner' => ['name' => 'Marketplace banner', 'period' => '7 days', 'description' => 'A separate advertising placement, not a ranked organic listing.'],
     ];
 
+    public const PLACEMENTS = [
+        'directory-sponsored' => 'businesses',
+        'home-banner' => null,
+        'marketplace-banner' => 'marketplace',
+    ];
+
+    public static function estimate(array $catalog, string $placement, int $weeks): ?int
+    {
+        $price = $catalog[$placement]['price_cents'] ?? null;
+
+        return array_key_exists($placement, self::PLACEMENTS) && is_int($price) && $weeks >= 1 && $weeks <= 12
+            ? $price * $weeks
+            : null;
+    }
+
     public static function fromSettings(array $settings): array
     {
         $catalog = $settings['commercial_catalog'] ?? [];

@@ -2,6 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Models\Business;
+use App\Models\Location;
+use App\Models\Site;
 use App\Models\User;
 use App\Support\CommercialCatalog;
 use App\Support\NetworkSettings;
@@ -34,7 +37,17 @@ class CommercialPlanningTest extends TestCase
         $this->assertSame(2995, $draft['business-pro']['price_cents']);
         $this->assertNull($draft['directory-sponsored']['price_cents']);
         $this->assertSame(0, $draft['marketplace-banner']['price_cents']);
+        $this->assertSame(3000, CommercialCatalog::estimate($draft, 'home-banner', 3));
+        $this->assertNull(CommercialCatalog::estimate($draft, 'directory-sponsored', 3));
+        $this->assertNull(CommercialCatalog::estimate($draft, 'business-pro', 3));
+        $this->assertNull(CommercialCatalog::estimate($draft, 'home-banner', 13));
         $this->assertNull(CommercialCatalog::fromSettings($settings->revision($state->published_id))['business-pro']['price_cents']);
+        $business = Business::create(['name' => 'Example campaign shop', 'slug' => 'campaign-shop', 'category' => 'retail', 'status' => 'active']);
+        $business->locations()->create(['location_id' => Location::where('slug', 'elkhorn')->sole()->id, 'address' => '1 Test Road']);
+        $portal = Site::where('code', 'brandon')->sole();
+        $this->get($url.'?business='.$business->id.'&portal='.$portal->id.'&placement=home-banner&weeks=3')
+            ->assertOk()->assertSee('CAD $30.00')->assertSee('no physical branch in the selected community');
+        $this->getJson($url.'?placement=business-pro')->assertUnprocessable();
         $this->post('https://canadamb.ca/admin/settings/publish')->assertRedirect();
         $this->get($url)->assertOk()->assertSee('CAD $29.95');
         foreach (['canadamb.ca', 'brandonmb.ca'] as $host) {

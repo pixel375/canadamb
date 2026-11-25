@@ -399,7 +399,7 @@ const fs = require('node:fs');
         for (const width of [320, 390, 768, 1024, 1440]) {
             await adminPage.setViewportSize({ width, height: 900 });
             for (const path of ['/admin', '/admin/moderation?status=pending', '/admin/community?status=pending',
-                '/admin/jobs?status=pending', '/admin/business-review', '/admin/business-ownership', '/admin/news', '/admin/audit', '/admin/readiness']) {
+                '/admin/jobs?status=pending', '/admin/business-review', '/admin/business-ownership', '/admin/news', '/admin/audit', '/admin/readiness', '/admin/commercial']) {
                 const response = await adminPage.goto(host + path);
                 check(response.ok(), 'Admin page failed: ' + path + ' at ' + width);
                 check(await adminPage.locator('.admin-shell').isVisible(), 'Admin layout missing: ' + path);
@@ -420,7 +420,17 @@ const fs = require('node:fs');
             'Pending review search did not find the seeded discussion');
         check(await adminPage.getByText('Community garden neighbours', { exact: true }).count() === 0,
             'Approved topic leaked into the pending review filter');
+        await adminPage.goto(host + '/admin/commercial');
+        await adminPage.locator('input[name="prices[home-banner]"]').fill('20.50');
+        await adminPage.getByRole('button', { name: 'Save rate-card draft' }).click();
+        check(await adminPage.locator('input[name="prices[home-banner]"]').inputValue() === '20.50', 'Proposed rate not persisted');
+        await adminPage.locator('select[name="placement"]').selectOption('home-banner');
+        await adminPage.locator('input[name="weeks"]').fill('3');
+        await adminPage.getByRole('button', { name: 'Preview placement' }).click();
+        check((await adminPage.locator('.commercial-estimate').innerText()).includes('CAD $61.50'), 'Campaign estimate incorrect');
+        check(await adminPage.locator('.commercial-sponsored-label').count() === 3, 'Sponsored previews missing');
         await adminPage.close();
+        console.log('PASS: private commercial planning, draft rate persistence and campaign estimate');
         console.log('PASS: admin overview, moderation and audit layouts at five widths, with filtered pending review');
 
         await page.setViewportSize({ width: 390, height: 900 });

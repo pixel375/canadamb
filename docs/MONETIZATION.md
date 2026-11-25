@@ -13,3 +13,5 @@ Before implementation, review a dedicated additive schema for plans, entitlement
 ## Implemented: internal commercial planning
 
 The super-administrator-only /admin/commercial workspace stores an optional CAD rate card for Business Pro, sponsored directory placements, homepage banners and Marketplace banners. It uses existing versioned network configuration, integer cents and explicit draft/publish controls. No rate is preset. Preview cards use an active directory business or an explicitly illustrative example, with no links, billing, live placement, tracking or entitlements. Publishing a configuration revision does not enable advertising. The operational schema, advertiser workflows and payment adapter are still outstanding.
+
+The private placement preview also calculates estimates for one to twelve whole weeks using proposed rates, checks whether the selected active portal hides the target module, and flags businesses without a branch in the selected community. The estimate is not a quote, allocation or promise of delivery. No campaign record is created.
