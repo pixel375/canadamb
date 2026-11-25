@@ -29,12 +29,15 @@ git -C "$source" merge-base --is-ancestor "$current" refs/remotes/origin/impleme
 entries() { find -P "$1" -xdev -printf '.' | wc -c; }
 receipt_ok() {
     local id=$1 dir="$backups/$1" db="$backups/$1/u713153343_canadamb.sql" media="$backups/$1/storage.tar.gz"
-    [[ -d "$dir" && ! -L "$dir" && -s "$dir/checksums.sha256" && ! -L "$dir/checksums.sha256" &&
-       -s "$db" && ! -L "$db" && -s "$media" && ! -L "$media" ]] || return 1
+    [[ -d "$dir" && ! -L "$dir" && -s "$db" && ! -L "$db" && -s "$media" && ! -L "$media" ]] || return 1
     # Verify the exact two expected files rather than trusting paths supplied in a receipt.
-    local expected actual
+    local expected actual receipt="$dir/checksums.sha256"
+    if [[ "$id" == b5f16a6c08eefcd804deb1970f52490220af67f5 && ! -s "$receipt" ]]; then
+        receipt="$dir/verified-initial-checksums.sha256"
+    fi
+    [[ -s "$receipt" && ! -L "$receipt" ]] || return 1
     expected=$(sha256sum "$db" "$media") || return 1
-    actual=$(cat "$dir/checksums.sha256") || return 1
+    actual=$(cat "$receipt") || return 1
     [[ "$actual" == "$expected" ]]
 }
 safe_root() {
@@ -80,6 +83,49 @@ for id in $history; do
 done
 [[ "$protected" -eq 3 ]] || { echo 'Fewer than two verified rollback candidates; refusing cleanup.'; exit 1; }
 receipt_ok "$current"
+# The initial deployment predates the generated checksum file. Its original
+# .last-preflight records both relative-path checksums. Verify those exact
+# archived bytes, preserve the original receipt alongside the backup, and
+# generate a separately named checksum record without replacing any evidence.
+initial=b5f16a6c08eefcd804deb1970f52490220af67f5
+initial_root="$releases/$initial"
+initial_backup="$backups/$initial"
+if [[ "$reclaim" == true && -d "$initial_root" && -z "${keep[$initial]:-}" ]] &&
+   ! receipt_ok "$initial"; then
+    original="$initial_root/.last-preflight"
+    db="$initial_backup/u713153343_canadamb.sql"
+    media="$initial_backup/storage.tar.gz"
+    if safe_root "$initial_root" &&
+       git -C "$source" merge-base --is-ancestor "$initial" "$current" &&
+       [[ -s "$original" && ! -L "$original" && -f "$initial_root/.prepared" &&
+          ! -e "$initial_root/.preflight" &&
+          -d "$initial_backup" && ! -L "$initial_backup" &&
+          -s "$db" && ! -L "$db" && -s "$media" && ! -L "$media" &&
+          ! -s "$initial_backup/checksums.sha256" &&
+          ! -L "$initial_backup/checksums.sha256" ]]; then
+        recorded=$(sed -n '3,4p' "$original")
+        expected=$(cd "$initial_backup" && sha256sum u713153343_canadamb.sql storage.tar.gz)
+        if [[ "$(sed -n '1p' "$original")" == production-initial &&
+              "$(sed -n '2p' "$original")" == u713153343_canadamb &&
+              "$recorded" == "$expected" ]]; then
+            saved="$initial_backup/original-initial-preflight.receipt"
+            receipt="$initial_backup/verified-initial-checksums.sha256"
+            if [[ ! -e "$saved" && ! -L "$saved" ]]; then
+                (set -o noclobber; cat "$original" > "$saved")
+            fi
+            [[ -f "$saved" && ! -L "$saved" ]] && cmp -s "$saved" "$original" || exit 1
+            if [[ ! -e "$receipt" && ! -L "$receipt" ]]; then
+                (set -o noclobber; sha256sum "$db" "$media" > "$receipt")
+            fi
+            receipt_ok "$initial"
+            echo 'Original installation backup matches recorded preflight hashes; preserved legacy receipt.'
+        else
+            echo 'Original installation backup does not match its recorded preflight; keeping release.'
+        fi
+    else
+        echo 'Original installation receipt could not be verified; keeping release.'
+    fi
+fi
 # Inventory all entries first, then remove only explicitly classified paths.
 candidates=()
 counts=()
