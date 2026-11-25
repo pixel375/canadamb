@@ -12,6 +12,8 @@ use App\Models\Message;
 use App\Models\Site;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Query\Builder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 final class ContentReports
@@ -56,6 +58,39 @@ final class ContentReports
             'business-update' => app(BusinessDirectory::class)->updates($site->location_id)->findOrFail($id),
             default => abort(404),
         };
+    }
+
+    public static function reviewQueue(int $reviewer): Builder
+    {
+        $query = DB::table('content_reports')->where(fn ($report) => $report->whereNull('reporter_id')->orWhere('reporter_id', '!=', $reviewer))
+            ->where(fn ($report) => $report->whereNotIn('target_type', ['message', 'message-photo'])
+                ->orWhere(fn ($private) => $private->whereIn('target_type', ['message', 'message-photo'])
+                    ->whereExists(fn ($messages) => $messages->selectRaw('1')->from('messages')
+                        ->join('conversations', 'conversations.id', '=', 'messages.conversation_id')
+                        ->whereColumn('messages.id', 'content_reports.target_id')
+                        ->whereColumn('messages.sender_id', '!=', 'content_reports.reporter_id')
+                        ->where(fn ($participants) => $participants->whereColumn('conversations.buyer_id', 'content_reports.reporter_id')
+                            ->orWhereColumn('conversations.seller_id', 'content_reports.reporter_id'))
+                        ->where('conversations.buyer_id', '!=', $reviewer)
+                        ->where('conversations.seller_id', '!=', $reviewer))))
+            ->where(fn ($report) => $report->where('target_type', '!=', 'profile')->orWhere('target_id', '!=', $reviewer));
+
+        foreach (['discussion' => 'community_threads', 'reply' => 'community_replies', 'event' => 'community_events', 'job' => 'job_postings', 'business-update' => 'business_updates'] as $type => $table) {
+            $query->where(fn ($report) => $report->where('target_type', '!=', $type)
+                ->orWhereNotExists(fn ($target) => $target->selectRaw('1')->from($table)->whereColumn($table.'.id', 'content_reports.target_id')->where('author_id', $reviewer)));
+        }
+        $query->where(fn ($report) => $report->where('target_type', '!=', 'business')
+            ->orWhereNotExists(fn ($members) => $members->selectRaw('1')->from('business_memberships')
+                ->whereColumn('business_id', 'content_reports.target_id')->where('user_id', $reviewer)));
+        foreach (['job' => 'job_postings', 'business-update' => 'business_updates'] as $type => $table) {
+            $query->where(fn ($report) => $report->where('target_type', '!=', $type)
+                ->orWhereNotExists(fn ($members) => $members->selectRaw('1')->from($table)
+                    ->join('business_locations', 'business_locations.id', '=', $table.'.business_location_id')
+                    ->join('business_memberships', 'business_memberships.business_id', '=', 'business_locations.business_id')
+                    ->whereColumn($table.'.id', 'content_reports.target_id')->where('business_memberships.user_id', $reviewer)));
+        }
+
+        return $query;
     }
 
     public static function privateType(string $type): bool

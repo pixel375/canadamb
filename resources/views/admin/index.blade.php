@@ -9,7 +9,7 @@
             <div class="panel"><strong>{{ number_format($value) }}</strong><small>{{ $label }}</small></div>
         @endforeach
     </div>
-    <section class="admin-overview-section"><div class="section-heading"><div><p class="section-label">Review workload</p><h2>Moderation queues</h2></div><span class="discussion-count">{{ number_format(collect($queues)->sum('count')) }} pending actions</span></div>
+    <section class="admin-overview-section"><div class="section-heading"><div><p class="section-label">Review workload</p><h2>Moderation queues</h2><p class="field-note">Includes enabled review modules; private queues respect your review permissions.</p></div><span class="discussion-count">{{ number_format(collect($queues)->sum('count')) }} pending actions</span></div>
         <div class="admin-queue-grid">
             @foreach($queues as $queue)
                 <a class="panel admin-queue-card" href="{{ $queue['url'] }}"><span class="account-shortcut-icon"><x-icon :name="$queue['icon']" size="20"/></span><div><strong>{{ $queue['count'] }}</strong><small>{{ $queue['label'] }}</small></div><x-icon name="chevron" size="16"/></a>

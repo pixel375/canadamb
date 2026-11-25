@@ -9,10 +9,16 @@ use App\Models\PropertyListing;
 use App\Models\Site;
 use App\Models\User;
 use App\Support\Audit;
+use App\Support\BusinessAccess;
+use App\Support\BusinessChanges;
+use App\Support\BusinessDisputes;
+use App\Support\CommercialRecords;
+use App\Support\ContentReports;
 use App\Support\KeywordSearch;
 use App\Support\Marketplace;
 use App\Support\NetworkSettings;
 use App\Support\NetworkUrl;
+use App\Support\PrivacyRequests;
 use App\Support\StagedFeatures;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -33,8 +39,40 @@ class NetworkController extends Controller
             ['label' => 'Ownership claims', 'count' => DB::table('business_claims')->where('status', 'pending')->count(), 'url' => '/admin/business-review#claims', 'icon' => 'person'],
             ['label' => 'Business updates', 'count' => DB::table('business_updates')->where('status', 'pending')->count(), 'url' => '/admin/business-review#updates', 'icon' => 'news'],
         ];
+        $reviewer = auth()->id();
         if (config('network.property_drafts')) {
-            $queues[] = ['label' => 'Private property reviews', 'count' => PropertyListing::where('status', 'submitted')->count(), 'url' => '/admin/properties', 'icon' => 'house'];
+            $queues[] = ['label' => 'Private property reviews', 'count' => PropertyListing::where('status', 'submitted')->where('owner_id', '!=', $reviewer)->count(), 'url' => '/admin/properties', 'icon' => 'house'];
+        }
+        if (ContentReports::enabled()) {
+            $queues[] = ['label' => 'Content reports', 'count' => ContentReports::reviewQueue($reviewer)->where('status', 'pending')->count(), 'url' => '/admin/content-reports?status=pending', 'icon' => 'shield'];
+        }
+        foreach ([
+            [BusinessChanges::enabled(), 'business_change_requests', 'requester_id', ['pending'], 'Branch and contact changes', '/admin/business-changes', 'building'],
+            [BusinessDisputes::enabled(), 'business_disputes', 'claimant_id', ['pending', 'escalated'], 'Ownership disputes', '/admin/business-disputes', 'person'],
+            [BusinessAccess::enabled(), 'business_access_requests', 'requester_id', ['accepted'], 'Ownership transfers', '/admin/business-transfers', 'person'],
+        ] as [$enabled, $table, $actor, $statuses, $label, $url, $icon]) {
+            if (! $enabled) {
+                continue;
+            }
+            $query = DB::table($table)->whereIn('status', $statuses)->where($actor, '!=', $reviewer)
+                ->whereNotExists(fn ($members) => $members->selectRaw('1')->from('business_memberships')
+                    ->whereColumn('business_memberships.business_id', $table.'.business_id')->where('user_id', $reviewer));
+            if ($table === 'business_access_requests') {
+                $query->where('kind', 'transfer')->where('recipient_id', '!=', $reviewer)->where('expires_at', '>', now());
+            }
+            $queues[] = ['label' => $label, 'count' => $query->count(), 'url' => $url, 'icon' => $icon];
+        }
+        if (auth()->user()->can('manage-theme')) {
+            if (PrivacyRequests::enabled()) {
+                $queues[] = ['label' => 'Privacy requests', 'count' => DB::table('account_privacy_requests')->whereIn('status', ['pending', 'in-review'])->where('user_id', '!=', $reviewer)->count(), 'url' => '/admin/privacy-requests', 'icon' => 'shield'];
+            }
+            if (CommercialRecords::enabled()) {
+                $queues[] = ['label' => 'Advertising reviews', 'count' => DB::table('advertising_campaigns')->where('status', 'pending')
+                    ->where(fn ($query) => $query->whereNull('author_id')->orWhere('author_id', '!=', $reviewer))
+                    ->whereNotExists(fn ($members) => $members->selectRaw('1')->from('business_memberships')
+                        ->whereColumn('business_memberships.business_id', 'advertising_campaigns.business_id')->where('user_id', $reviewer))->count(),
+                    'url' => '/admin/advertising?status=pending', 'icon' => 'news'];
+            }
         }
         if (auth()->user()->can('manage-news')) {
             $queues[] = ['label' => 'News drafts', 'count' => DB::table('news_articles')->where('status', 'draft')->count(), 'url' => '/admin/news#editorial-queue', 'icon' => 'news'];

@@ -124,7 +124,9 @@ class ContentReportsTest extends TestCase
         $this->assertDatabaseCount('content_reports', 2);
         $report = DB::table('content_reports')->where('target_type', 'business')->value('id');
         $review = 'https://canadamb.ca/admin/content-reports/'.$report;
-        $this->actingAs($owner)->post($review, ['note' => 'Conflicted review attempt.'])->assertForbidden();
+        $this->actingAs($owner)->get('https://canadamb.ca/admin/content-reports')->assertDontSee($data['explanation'])->assertDontSee('Reported job');
+        $this->post($review, ['note' => 'Conflicted review attempt.'])->assertForbidden();
+        $this->actingAs($admin)->get('https://canadamb.ca/admin/content-reports?reference='.$report)->assertSee($data['explanation'])->assertDontSee('Reported job');
         $this->actingAs($admin)->post($review, ['note' => 'Independent review completed.'])->assertRedirect();
         $this->assertDatabaseHas('content_reports', ['id' => $report, 'status' => 'resolved']);
     }

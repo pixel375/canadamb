@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-25 — review privacy and consolidated workload
+
+Content report list and count share a query that excludes reporter, author, business-member and private-conversation conflicts. Private reports must have a valid original recipient. Added reference filters and regression coverage; target checks remain in resolution actions. Dashboard now surfaces enabled business change, transfer, dispute, content, privacy and commercial queues with permission-scoped private counts. No schema or feature switch changes.
+
 ## 2026-11-25 — messaging lifecycle and activity integrity
 
 Business/job replies require a single verified original owner and an open business; job inquiries remain replyable after ordinary expiry but not after withdrawal, rejection or branch closure. New inquiries recheck the recipient after participant locking. Archive/unarchive and sync read receipts no longer mutate conversation activity order. Photo processing errors map to the actual upload field. Added regression checks for stale owner verification, ambiguous ownership, withdrawn/expired jobs and archive activity timestamps.
