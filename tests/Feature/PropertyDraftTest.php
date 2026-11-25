@@ -166,6 +166,10 @@ class PropertyDraftTest extends TestCase
         $this->put($path, $data + ['version' => $version, 'manage_photos' => 1, 'keep_photos' => [$initial[1]->id, 999999]])
             ->assertSessionHasErrors('photos');
         $this->assertCount(2, $draft->photos()->get());
+        $this->put($path, $data + ['version' => $version, 'manage_photos' => 1, 'keep_photos' => $initial->pluck('id')->all()])
+            ->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertDatabaseMissing('audit_logs', ['action' => 'property-draft.revised']);
+        $this->assertSame($version, $draft->fresh()->contentVersion());
         $this->put($path, $data + ['version' => $version, 'manage_photos' => 1, 'keep_photos' => [$initial[1]->id],
             'photos' => [UploadedFile::fake()->image('third.jpg')]])->assertRedirect()->assertSessionHasNoErrors();
         $this->assertSame($initial[1]->id, $draft->photos()->first()->id);
@@ -182,7 +186,10 @@ class PropertyDraftTest extends TestCase
         $this->post($path.'/submit', ['version' => $draft->fresh()->contentVersion(), 'authorization_capacity' => 'owner', 'advertising_consent' => '1'])->assertRedirect();
         $reviewVersion = $draft->fresh()->contentVersion();
         $this->actingAs($admin)->get('https://canadamb.ca/admin/properties/'.$draft->id)->assertOk();
-        $this->actingAs($owner)->post($path.'/withdraw-review', ['version' => $reviewVersion])->assertRedirect();
+        $this->actingAs($owner)->get($base)->assertOk()->assertSee('Return selected properties to draft');
+        $this->post($base.'/withdraw-selected', ['properties' => [$draft->id], 'versions' => [$draft->id => str_repeat('0', 64)], 'confirm_withdraw' => '1'])->assertSessionHasErrors('properties');
+        $this->assertSame('submitted', $draft->fresh()->status);
+        $this->post($base.'/withdraw-selected', ['properties' => [$draft->id], 'versions' => [$draft->id => $reviewVersion], 'confirm_withdraw' => '1'])->assertRedirect()->assertSessionHasNoErrors();
         $this->assertCount(2, $draft->photos()->get());
         $this->assertSame('draft', $draft->fresh()->status);
     }

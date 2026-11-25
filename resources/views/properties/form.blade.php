@@ -5,7 +5,7 @@
         <form method="post" enctype="multipart/form-data" action="/account/properties{{ $item->exists ? '/'.$item->id : '' }}" class="form-stack">@csrf
             @if($item->exists)
                 @method('PUT')
-                <input type="hidden" name="version" value="{{ $item->contentVersion() }}">
+                <input type="hidden" name="version" value="{{ old('version', $item->contentVersion()) }}">
             @endif
             <section class="panel form-stack listing-editor-section"><h2>1. Property overview</h2>
             <label>Title<input name="title" required maxlength="140" value="{{ old('title', $item->title) }}"></label>

@@ -24,16 +24,22 @@ class PropertyDraftController extends Controller
             'transaction' => 'nullable|in:sale,rent', 'property_type' => ['nullable', Rule::in(array_keys(PropertyListing::TYPES))],
             'q' => 'nullable|string|max:100',
             'status' => 'nullable|in:draft,submitted,changes_requested,reviewed',
+            'sort' => 'nullable|in:recent,price-low,price-high',
         ]);
         $statuses = ['draft', 'submitted', 'changes_requested', 'reviewed'];
         $matching = $this->owned($request)->whereIn('status', $statuses)
             ->when($filters['transaction'] ?? null, fn (Builder $query, string $value) => $query->where('transaction', $value))
             ->when($filters['property_type'] ?? null, fn (Builder $query, string $value) => $query->where('property_type', $value))
-            ->when($filters['q'] ?? null, fn (Builder $query, string $value) => $query->where(fn (Builder $match) => KeywordSearch::apply($match, $value, ['title', 'description'])));
+            ->when(filled($filters['q'] ?? null), fn (Builder $query) => KeywordSearch::apply($query, $filters['q'], ['title', 'description']));
         $counts = (clone $matching)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
         $items = $matching->with('photos')
-            ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
-            ->latest('id')->paginate(20)->withQueryString();
+            ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status));
+        match ($filters['sort'] ?? 'recent') {
+            'price-low' => $items->orderBy('price_cents'),
+            'price-high' => $items->orderByDesc('price_cents'),
+            default => $items->latest('updated_at'),
+        };
+        $items = $items->latest('id')->paginate(20)->withQueryString();
 
         return view('properties.index', compact('items', 'filters', 'statuses', 'counts'));
     }
@@ -105,28 +111,36 @@ class PropertyDraftController extends Controller
                 $item = $this->owned($request)->lockForUpdate()->findOrFail($property);
                 abort_unless(in_array($item->status, ['draft', 'changes_requested'], true), 409);
                 abort_unless(hash_equals($item->contentVersion(), $selection['version']), 409, 'Draft changed. Reload the editor.');
-                $item->update($data);
-                Audit::record('property-draft.revised', $request->user()->id, context: ['property' => $item->id]);
+                $item->fill($data);
+                $changed = $item->isDirty() || $paths !== [];
                 if ($request->boolean('manage_photos')) {
                     $current = $item->photos()->get()->keyBy('id');
                     $keep = array_map('intval', $selection['keep_photos'] ?? []);
                     if (array_diff($keep, $current->keys()->all()) || count($keep) + count($paths) > 6) {
                         throw ValidationException::withMessages(['photos' => 'Keep only photos from this draft, with at most six photos total.']);
                     }
+                    $changed = $changed || $keep !== $current->keys()->all();
                     $discard = $current->except($keep);
-                    $item->photos()->whereIn('id', $discard->modelKeys())->delete();
-                    foreach ($keep as $position => $id) {
-                        $current[$id]->update(['position' => 100 + $position]);
+                    if ($discard->isNotEmpty()) {
+                        $item->photos()->whereIn('id', $discard->modelKeys())->delete();
                     }
-                    foreach ($keep as $position => $id) {
-                        $current[$id]->update(['position' => $position]);
+                    if ($keep !== $current->keys()->all()) {
+                        foreach ($keep as $position => $id) {
+                            $current[$id]->update(['position' => 100 + $position]);
+                        }
+                        foreach ($keep as $position => $id) {
+                            $current[$id]->update(['position' => $position]);
+                        }
                     }
                     foreach ($paths as $position => $photo) {
                         $item->photos()->create(array_replace($photo, ['position' => count($keep) + $position]));
                     }
 
+                    $this->saveRevision($item, $request->user()->id, $changed);
+
                     return $discard->values()->toArray();
                 }
+                $this->saveRevision($item, $request->user()->id, $changed);
                 if ($paths === []) {
                     return [];
                 }
@@ -143,6 +157,14 @@ class PropertyDraftController extends Controller
         $photos->delete($replaced, 'local');
 
         return redirect('/account/properties/'.$property)->with('status', 'Private property draft updated.');
+    }
+
+    private function saveRevision(PropertyListing $item, int $member, bool $changed): void
+    {
+        if ($changed) {
+            $item->save();
+            Audit::record('property-draft.revised', $member, context: ['property' => $item->id]);
+        }
     }
 
     public function submit(Request $request, int $property)
@@ -179,6 +201,31 @@ class PropertyDraftController extends Controller
         });
 
         return redirect('/account/properties/'.$property)->with('status', 'Returned to private draft. Photos retained.');
+    }
+
+    public function withdrawSelected(Request $request)
+    {
+        $data = $request->validate([
+            'properties' => 'required|array|list|min:1|max:10', 'properties.*' => 'required|integer|distinct|min:1',
+            'versions' => 'required|array|max:20', 'versions.*' => 'required|string|size:64',
+            'confirm_withdraw' => 'accepted',
+        ]);
+        DB::transaction(function () use ($request, $data) {
+            $items = $this->owned($request)->whereIn('id', $data['properties'])->orderBy('id')->lockForUpdate()->get();
+            abort_unless($items->count() === count($data['properties']), 404);
+            foreach ($items as $item) {
+                if (! in_array($item->status, ['submitted', 'reviewed'], true)
+                    || ! isset($data['versions'][$item->id]) || ! hash_equals($item->contentVersion(), $data['versions'][$item->id])) {
+                    throw ValidationException::withMessages(['properties' => 'A selected property changed or is not in review. No drafts changed.']);
+                }
+            }
+            foreach ($items as $item) {
+                $item->forceFill(['status' => 'draft', 'review_note' => null])->save();
+                Audit::record('property-draft.review-withdrawn', $request->user()->id, context: ['property' => $item->id]);
+            }
+        }, attempts: 3);
+
+        return redirect('/account/properties')->with('status', count($data['properties']).' properties returned to private drafts. Photos retained.');
     }
 
     public function archive(Request $request, int $property, ListingPhotos $photos)
