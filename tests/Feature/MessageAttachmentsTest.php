@@ -64,6 +64,16 @@ class MessageAttachmentsTest extends TestCase
         $this->actingAs($stranger)->get($download)->assertNotFound();
         $this->actingAs($owner)->get($url)->assertSee('Download photo attachment');
         $this->get($download)->assertOk();
+        config(['network.content_reports' => true]);
+        $reportUrl = $base.'/account/report/message-photo/'.$attachment->message_id;
+        $this->post($reportUrl, ['reason' => 'privacy', 'explanation' => 'This photo contains private information.'])->assertRedirect()->assertSessionHasNoErrors();
+        $report = DB::table('content_reports')->value('id');
+        $review = 'https://canadamb.ca/admin/content-reports/'.$report;
+        $this->actingAs($stranger)->get($review.'/photo')->assertOk()->assertHeader('Content-Type', 'image/webp');
+        $this->assertDatabaseHas('audit_logs', ['action' => 'content.report-photo-accessed', 'actor_id' => $stranger->id]);
+        $this->post($review, ['note' => 'Photo review completed independently.'])->assertRedirect();
+        $this->get($review.'/photo')->assertNotFound();
+        $this->actingAs($owner);
         $this->post($url.'/sync', ['after' => 0])->assertJsonPath('messages.1.has_attachment', true);
         $this->post($url.'/block')->assertRedirect();
         $this->actingAs($member)->post($url, ['body' => 'Blocked', 'photo' => UploadedFile::fake()->image('blocked.png')])->assertForbidden();

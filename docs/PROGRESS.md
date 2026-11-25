@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-25 — photo report moderation and export CI repair
+
+Attachment source `ce2f4d7` passed exact backend and browser checks. Privacy pass `fac6793` failed only because its expanded export test exceeded the production six-per-minute limit. Keep the throttle; assert 429 then advance test time. This pass stages distinct photo reports, narrowly scoped pending-report download for independent moderators, audit logging and participant-only reporting. No arbitrary inbox access or automatic removal.
+
 ## 2026-11-25 — privacy intake, export expansion and attachment inventory
 
 Expanded owned-record and bookmark exports, including optional schema-aware sections; added proposed password-confirmed deletion/data-review intake and super-admin-only triage without destructive actions. Added a bounded, read-only private attachment inventory command (aggregate counts only; no filenames, automatic deletion or scheduling). Retention and legal holds, actual account erasure and export fulfillment remain unresolved. Previous attachment commit `ce2f4d7` was still in CI at start of pass. No production migrations or feature changes.

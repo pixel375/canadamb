@@ -4,7 +4,7 @@
 
 ## Outstanding launch blockers and acceptance
 
-- Business/job inquiries and participant-local archiving are review-staged; the proposed nullable-listing migration requires backup, migration and rollback review. Private re-encoded photo attachments and owner-specific inquiry opt-in are review-staged. Arbitrary files, attachment deletion/retention policy, attachment-specific report review, and a shared business inbox remain outstanding. Existing private chat history is never assigned to a new owner.
+- Business/job inquiries and participant-local archiving are review-staged; the proposed nullable-listing migration requires backup, migration and rollback review. Private re-encoded photo attachments and owner-specific inquiry opt-in are review-staged. Arbitrary files, attachment deletion/retention policy, attachment-specific report review is staged with restricted audited access; and a shared business inbox remain outstanding. Existing private chat history is never assigned to a new owner.
 
 - Real phone/desktop testing from an approved network, including actual Android standalone/WebAPK installation (browser manifest and worker tests are not device installation proof), full HTTPS community sign-in and posting.
 - SMTP delivery and monitored support mailbox, reviewed privacy policy/terms, retention, full account export/deletion (expanded allowlisted password-confirmed exports and staged privacy request intake; actual deletion execution, fulfillment and retention review outstanding). Read-only attachment inventory is available; no automatic deletion.

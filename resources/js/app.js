@@ -540,6 +540,13 @@ if (chatPanel) {
             report.href = '/account/report/message/' + item.id;
             report.textContent = 'Report message';
             article.append(report);
+            if (item.has_attachment) {
+                const photoReport = document.createElement('a');
+                photoReport.className = 'text-link field-note';
+                photoReport.href = '/account/report/message-photo/' + item.id;
+                photoReport.textContent = 'Report photo';
+                article.append(photoReport);
+            }
         }
         history.append(article);
         cursor = item.id;

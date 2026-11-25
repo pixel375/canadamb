@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Schema;
 
 final class ContentReports
 {
-    public const TYPES = ['discussion' => 'Discussion', 'reply' => 'Discussion reply', 'event' => 'Event', 'job' => 'Job posting', 'business' => 'Business profile', 'business-update' => 'Business update', 'profile' => 'Member profile', 'message' => 'Private message'];
+    public const TYPES = ['discussion' => 'Discussion', 'reply' => 'Discussion reply', 'event' => 'Event', 'job' => 'Job posting', 'business' => 'Business profile', 'business-update' => 'Business update', 'profile' => 'Member profile', 'message' => 'Private message', 'message-photo' => 'Private message photo'];
 
     public const REASONS = ['spam' => 'Spam or scam', 'harassment' => 'Harassment or threats', 'privacy' => 'Personal information', 'misleading' => 'Misleading content', 'other' => 'Other concern'];
 
@@ -32,9 +32,12 @@ final class ContentReports
         if ($type === 'profile') {
             return User::whereKey($id)->where('id', '!=', $member)->firstOrFail();
         }
-        if ($type === 'message') {
+        if (self::privateType($type)) {
+            abort_if($type === 'message-photo' && ! MessageAttachments::enabled(), 404);
+
             return Message::whereKey($id)->where('sender_id', '!=', $member)
-                ->whereHas('conversation', fn ($query) => $query->forMember($member))->firstOrFail();
+                ->whereHas('conversation', fn ($query) => $query->forMember($member))
+                ->when($type === 'message-photo', fn ($query) => $query->whereHas('attachment'))->firstOrFail();
         }
 
         $community = app(Community::class);
@@ -53,6 +56,11 @@ final class ContentReports
             'business-update' => app(BusinessDirectory::class)->updates($site->location_id)->findOrFail($id),
             default => abort(404),
         };
+    }
+
+    public static function privateType(string $type): bool
+    {
+        return in_array($type, ['message', 'message-photo'], true);
     }
 
     public static function label(Model $target): string
@@ -91,7 +99,7 @@ final class ContentReports
             'business' => Business::find($id),
             'business-update' => BusinessUpdate::with('branch.business')->find($id),
             'profile' => User::select('id', 'name')->find($id),
-            'message' => Message::with('conversation:id,buyer_id,seller_id')->find($id),
+            'message', 'message-photo' => Message::with('conversation:id,buyer_id,seller_id')->find($id),
             default => null,
         };
     }

@@ -36,6 +36,8 @@ class AccountExportTest extends TestCase
         DB::table('user_blocks')->insert(['user_id' => $other->id, 'blocked_id' => $member->id]);
         $this->post($url, $data + ['section' => 'blocked-members'])->assertOk()->assertJsonCount(1, 'records')
             ->assertJsonPath('records.0.blocked_id', $other->id)->assertJsonMissingPath('records.0.email');
+        $this->post($url, $data + ['section' => 'blocked-members', 'after_id' => $other->id])->assertTooManyRequests();
+        $this->travel(61)->seconds();
         $this->post($url, $data + ['section' => 'blocked-members', 'after_id' => $other->id])->assertOk()->assertJsonCount(0, 'records');
         $this->assertDatabaseHas('audit_logs', ['action' => 'user.data-exported', 'actor_id' => $member->id]);
     }

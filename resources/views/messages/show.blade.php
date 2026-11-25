@@ -38,7 +38,7 @@
                         </div>
                         <p class="chat-bubble">{{ $message->body }}</p>
                         @if($message->attachment_exists)<a class="text-link" href="/account/messages/{{ $thread->id }}/attachments/{{ $message->id }}">Download photo attachment</a>@endif
-                        @if($messageReports && $message->sender_id !== auth()->id())<a class="text-link field-note" href="/account/report/message/{{ $message->id }}">Report message</a>@endif
+                        @if($messageReports && $message->sender_id !== auth()->id())<a class="text-link field-note" href="/account/report/message/{{ $message->id }}">Report message</a>@if($message->attachment_exists)<a class="text-link field-note" href="/account/report/message-photo/{{ $message->id }}">Report photo</a>@endif @endif
                     </article>
                 @endforeach
             </div>
