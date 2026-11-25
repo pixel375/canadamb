@@ -3,7 +3,7 @@
         <div class="page-intro"><div><a href="/account/businesses/{{ $employer->id }}" class="text-link">Business dashboard</a><h1>{{ $employer->name }} jobs</h1><p>Manage hiring across your business branches.</p></div></div>
         <nav class="seller-status-grid" aria-label="Filter jobs by status">
             @foreach(array_merge(['all'], $statuses) as $status)
-                <?php $selected = ($filters['status'] ?? 'all') === $status; $query = http_build_query(array_filter(['status' => $status === 'all' ? null : $status, 'q' => $filters['q'] ?? null])); ?>
+                <?php $selected = ($filters['status'] ?? 'all') === $status; $query = http_build_query(array_filter(['status' => $status === 'all' ? null : $status, 'q' => $filters['q'] ?? null, 'branch' => $filters['branch'] ?? null])); ?>
                 <a class="seller-status-tile" href="/account/businesses/{{ $employer->id }}/jobs{{ $query ? '?'.$query : '' }}" @if($selected) aria-current="page" @endif>
                     <strong>{{ $status === 'all' ? $counts->sum() : ($counts[$status] ?? 0) }}</strong><span>{{ $status === 'all' ? 'All jobs' : ucfirst($status) }}</span>
                 </a>
@@ -24,6 +24,7 @@
         <form class="panel seller-listing-search" method="get" action="/account/businesses/{{ $employer->id }}/jobs">
             @if($filters['status'] ?? null)<input type="hidden" name="status" value="{{ $filters['status'] }}">@endif
             <label for="job-owner-search" class="sr-only">Search your jobs</label><input type="search" id="job-owner-search" name="q" maxlength="100" value="{{ $filters['q'] ?? '' }}" placeholder="Search your job postings">
+            <label>Branch<select name="branch"><option value="">All branches</option>@foreach($branches as $branch)<option value="{{ $branch->id }}" @selected((int) ($filters['branch'] ?? 0) === $branch->id)>{{ $branch->location->name }} · {{ $branch->address }}</option>@endforeach</select></label>
             <button class="button button-primary"><x-icon name="search" size="16"/> Search</button>
         </form>
         <p class="field-note seller-results-count">{{ $items->total() }} {{ \Illuminate\Support\Str::plural('job', $items->total()) }} found</p>
@@ -47,7 +48,7 @@
                     </p>
                     <div class="inline-actions seller-listing-actions">
                         @if($item->status === 'approved' && $item->closing_on->toDateString() >= today('America/Winnipeg')->toDateString())<a class="button button-outline" href="/jobs/{{ $item->id }}">View posting</a>@endif
-                        @if(in_array($item->status, ['pending', 'approved', 'rejected'], true))<a class="button button-outline" href="/account/businesses/{{ $employer->id }}/jobs/{{ $item->id }}/edit">Edit</a>@endif
+                        @if(in_array($item->status, ['pending', 'approved', 'rejected', 'expired'], true))<a class="button button-outline" href="/account/businesses/{{ $employer->id }}/jobs/{{ $item->id }}/edit">Edit</a>@endif
                         <a class="button button-outline" href="/account/businesses/{{ $employer->id }}/jobs/{{ $item->id }}/duplicate">Reuse posting</a>
                     </div>
                     @if(in_array($item->status, ['pending', 'approved'], true))

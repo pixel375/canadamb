@@ -62,14 +62,17 @@ class JobPostingTest extends TestCase
         $this->actingAs($owner)->get($url)->assertOk()->assertSee($input['title']);
         $this->get("$url/$job->id/edit")->assertOk()->assertSee($input['title']);
         $oldVersion = $job->fresh()->reviewVersion();
-        $this->put("$url/$job->id", array_replace($input, ['title' => 'Senior storefront supervisor']))->assertSessionHasNoErrors();
+        $this->put("$url/$job->id", array_replace($input, ['title' => 'Senior storefront supervisor', 'version' => $oldVersion]))->assertSessionHasNoErrors();
         $this->get("https://brandonmb.ca/jobs/$job->id")->assertNotFound();
+        $this->put("$url/$job->id", $input + ['version' => $oldVersion])->assertConflict();
         $this->actingAs($admin)->post("https://canadamb.ca/admin/jobs/$job->id", ['action' => 'approve', 'version' => $oldVersion])->assertConflict();
         $this->post("https://canadamb.ca/admin/jobs/$job->id", ['action' => 'approve', 'version' => $job->fresh()->reviewVersion()])->assertRedirect();
         $this->travel(8)->days();
         $this->get("https://brandonmb.ca/jobs/$job->id")->assertNotFound();
         $this->artisan('job-postings:expire')->assertSuccessful();
         $this->assertDatabaseHas('job_postings', ['id' => $job->id, 'status' => 'expired']);
+        $this->actingAs($stranger)->get('https://canadamb.ca/account/saved-jobs')->assertSee('Unavailable saved jobs (1)')->assertDontSee('Senior storefront supervisor');
+        $this->delete("https://brandonmb.ca/jobs/$job->id/save")->assertRedirect('/account/saved-jobs');
         $this->actingAs($stranger)->get("$url/$job->id/duplicate")->assertNotFound();
         $this->actingAs($owner)->get("$url/$job->id/duplicate")->assertOk()->assertSee('Reuse job posting')->assertSee('Senior storefront supervisor');
         $this->post($url, array_replace($input, ['business_location_id' => $brandon->id, 'closing_on' => today()->addWeek()->toDateString()]))->assertRedirect()->assertSessionHasNoErrors();

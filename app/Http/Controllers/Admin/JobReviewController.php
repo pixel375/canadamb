@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Business;
 use App\Models\JobPosting;
 use App\Support\Audit;
 use App\Support\JobBoard;
@@ -16,6 +17,8 @@ class JobReviewController extends Controller
     {
         $filters = $request->validate(['status' => 'nullable|in:pending,approved', 'q' => 'nullable|string|max:100']);
         $matching = $board->scope(null)->whereIn('status', ['pending', 'approved'])
+            ->whereHas('branch.business', fn ($query) => $query->whereDoesntHave('members', fn ($members) => $members->whereKey($request->user()->id)))
+            ->where(fn ($query) => $query->whereNull('author_id')->orWhere('author_id', '!=', $request->user()->id))
             ->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'description']));
         $counts = (clone $matching)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
         $items = $matching->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
@@ -31,7 +34,10 @@ class JobReviewController extends Controller
             'version' => 'required|size:64|alpha_num',
         ]);
         DB::transaction(function () use ($request, $job, $board, $data) {
+            $initial = JobPosting::with('branch')->findOrFail($job);
+            $business = Business::lockForUpdate()->findOrFail($initial->branch->business_id);
             $item = JobPosting::with('branch.business')->lockForUpdate()->findOrFail($job);
+            abort_if($item->author_id === $request->user()->id || $business->members()->whereKey($request->user()->id)->exists(), 403);
             abort_unless(hash_equals($item->reviewVersion(), $data['version']), 409, 'The posting changed. Reload it before reviewing.');
             if ($data['action'] === 'approve') {
                 abort_unless($item->status === 'pending' && $item->branch->business->status === 'active'

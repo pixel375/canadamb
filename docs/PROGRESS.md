@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-25 — hiring lifecycle and deployment incident
+
+Prior `8851bdd` passed exact backend and browser CI but production preparation failed before activation. Read-only audit 45655286097 classified the private log as Disk quota exceeded; prior `ba1ee92` remains active and both domain gates passed. Added branch filters, version-bound job edits, expired job re-review, conflict-free job review, audited hiring transitions, one-year closing horizon and private unavailable bookmark cleanup. No schema changes.
+
 ## 2026-11-25 — campaign duplicate-date regression
 
 Backend 45612984060 reached the full 126-test suite with one failing assertion: equivalent campaign submission was not detected on SQLite because Eloquent stores date casts with a time suffix. Compare using whereDate, as the existing campaign date filters do. Keep duplicate protection and its test. Final cumulative CI required.

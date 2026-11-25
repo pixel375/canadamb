@@ -3,7 +3,7 @@
 <div class="form-grid">
     <label>Employment type<select name="employment_type" required><option value="">Choose a type</option>@foreach(\App\Support\JobBoard::TYPES as $id => $label)<option value="{{ $id }}" @selected(old('employment_type', $item?->employment_type) === $id)>{{ $label }}</option>@endforeach</select></label>
     <label>Workplace<select name="workplace" required><option value="">Choose a workplace</option>@foreach(\App\Support\JobBoard::WORKPLACES as $id => $label)<option value="{{ $id }}" @selected(old('workplace', $item?->workplace) === $id)>{{ $label }}</option>@endforeach</select></label>
-    <label>Closing date<input name="closing_on" type="date" required value="{{ old('closing_on', $item?->closing_on?->toDateString()) }}"></label>
+    <label>Closing date<input name="closing_on" type="date" min="{{ today('America/Winnipeg')->toDateString() }}" max="{{ today('America/Winnipeg')->addYear()->toDateString() }}" required value="{{ old('closing_on', $item?->closing_on?->toDateString()) }}"></label>
 </div>
 <div class="form-grid">
     <label>Pay period<select name="pay_unit"><option value="">Undisclosed</option><option value="hour" @selected(old('pay_unit', $item?->pay_unit) === 'hour')>Hourly</option><option value="year" @selected(old('pay_unit', $item?->pay_unit) === 'year')>Annual</option></select></label>

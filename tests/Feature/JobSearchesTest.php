@@ -55,7 +55,7 @@ class JobSearchesTest extends TestCase
         $make($branch, 'Pending clerk', 'pending');
         $make($other, 'Other city clerk', 'approved');
         $make($branch, 'Low pay clerk', 'approved', 2000);
-        $this->get($base)->assertOk()->assertSee('1 new matches');
+        $this->get($base)->assertOk()->assertSee('1 new match');
         $this->get($url)->assertOk()->assertSee('Matching clerk')->assertDontSee('Pending clerk')->assertDontSee('Other city clerk')->assertDontSee('Low pay clerk');
         $this->get('https://canadamb.ca/account/job-searches/'.$search->id)->assertNotFound();
         $this->actingAs($stranger)->get($url)->assertNotFound();

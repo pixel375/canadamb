@@ -108,10 +108,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/account/properties/{property}/submit', [PropertyDraftController::class, 'submit'])->whereNumber('property')->middleware('throttle:6,1');
     Route::get('/account/properties/{property}/media/{photo}', [PropertyDraftController::class, 'media'])->whereNumber(['property', 'photo']);
     Route::get('/account/businesses/{business}/jobs', [JobController::class, 'business'])->whereNumber('business');
-    Route::post('/account/businesses/{business}/jobs', [JobController::class, 'store'])->whereNumber('business')->middleware('throttle:6,1');
+    Route::post('/account/businesses/{business}/jobs', [JobController::class, 'store'])->whereNumber('business')->middleware('throttle:6,1,job-submit');
     Route::get('/account/businesses/{business}/jobs/{job}/duplicate', [JobController::class, 'duplicate'])->whereNumber(['business', 'job']);
     Route::get('/account/businesses/{business}/jobs/{job}/edit', [JobController::class, 'edit'])->whereNumber(['business', 'job']);
-    Route::put('/account/businesses/{business}/jobs/{job}', [JobController::class, 'update'])->whereNumber(['business', 'job'])->middleware('throttle:12,1');
+    Route::put('/account/businesses/{business}/jobs/{job}', [JobController::class, 'update'])->whereNumber(['business', 'job'])->middleware('throttle:12,1,job-edit');
     Route::post('/account/businesses/{business}/jobs/{job}/withdraw', [JobController::class, 'withdraw'])->whereNumber(['business', 'job']);
     Route::get('/account/job-searches', [JobSearchController::class, 'index']);
     Route::post('/account/job-searches', [JobSearchController::class, 'store'])->middleware('throttle:10,1,job-search-store');

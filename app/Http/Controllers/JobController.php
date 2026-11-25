@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Business;
 use App\Models\JobPosting;
+use App\Support\Audit;
 use App\Support\JobBoard;
 use App\Support\KeywordSearch;
 use App\Support\LocationScope;
@@ -11,6 +12,7 @@ use App\Support\NetworkUrl;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class JobController extends Controller
 {
@@ -50,8 +52,13 @@ class JobController extends Controller
         $filters = $request->validate([
             'status' => ['nullable', Rule::in($statuses)],
             'q' => 'nullable|string|max:100',
+            'branch' => 'nullable|integer|min:1',
         ]);
-        $owned = $this->jobs->scope($site->location_id)->whereIn('business_location_id', $branches->pluck('id'));
+        if (isset($filters['branch']) && ! $branches->contains('id', (int) $filters['branch'])) {
+            throw ValidationException::withMessages(['branch' => 'Choose a branch on this portal.']);
+        }
+        $owned = $this->jobs->scope($site->location_id)->whereIn('business_location_id', $branches->pluck('id'))
+            ->when($filters['branch'] ?? null, fn ($query, $branch) => $query->where('business_location_id', $branch));
         $counts = (clone $owned)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
         $items = $owned->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
             ->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'description']))
@@ -70,8 +77,11 @@ class JobController extends Controller
         LocationScope::forPublication($site, $branch->location_id);
         DB::transaction(function () use ($request, $employer, $data) {
             Business::lockForUpdate()->findOrFail($employer->id);
-            $this->managedBusiness($request, $employer->id);
-            JobPosting::create($data + ['author_id' => $request->user()->id]);
+            $current = $this->managedBusiness($request, $employer->id);
+            $branch = $current->locations()->findOrFail($data['business_location_id']);
+            LocationScope::forPublication($request->attributes->get('site'), $branch->location_id);
+            $job = JobPosting::create($data + ['author_id' => $request->user()->id]);
+            Audit::record('jobs.submitted', $request->user()->id, context: ['job' => $job->id]);
         });
 
         return redirect('/account/businesses/'.$business.'/jobs')->with('status', 'Job submitted for review.');
@@ -95,7 +105,7 @@ class JobController extends Controller
         abort_unless($this->jobs->enabled($site), 404);
         $employer = $this->managedBusiness($request, $business);
         $item = $this->managedJob($request, $employer->id, $job);
-        abort_unless(in_array($item->status, ['pending', 'approved', 'rejected'], true), 409);
+        abort_unless(in_array($item->status, ['pending', 'approved', 'rejected', 'expired'], true), 409);
 
         return view('jobs.edit', compact('employer', 'item'));
     }
@@ -106,12 +116,18 @@ class JobController extends Controller
         abort_unless($this->jobs->enabled($site), 404);
         $employer = $this->managedBusiness($request, $business);
         $data = $this->postingData($request, needsBranch: false);
-        DB::transaction(function () use ($request, $employer, $job, $data) {
+        $version = $request->validate(['version' => 'required|string|size:64'])['version'];
+        DB::transaction(function () use ($request, $employer, $job, $data, $version) {
             Business::lockForUpdate()->findOrFail($employer->id);
             $this->managedBusiness($request, $employer->id);
             $item = $this->managedJob($request, $employer->id, $job, lock: true);
-            abort_unless(in_array($item->status, ['pending', 'approved', 'rejected'], true), 409);
-            $item->fill($data)->forceFill(['status' => 'pending'])->save();
+            abort_unless(in_array($item->status, ['pending', 'approved', 'rejected', 'expired'], true), 409);
+            abort_unless(hash_equals($item->reviewVersion(), $version), 409, 'The posting changed. Reload the editor.');
+            $item->fill($data);
+            if ($item->isDirty() || in_array($item->status, ['rejected', 'expired'], true)) {
+                $item->forceFill(['status' => 'pending'])->save();
+                Audit::record('jobs.revised', $request->user()->id, context: ['job' => $job]);
+            }
         });
 
         return redirect('/account/businesses/'.$business.'/jobs')->with('status', 'Job changes submitted for review.');
@@ -127,6 +143,7 @@ class JobController extends Controller
             $item = $this->managedJob($request, $employer->id, $job, lock: true);
             abort_unless(in_array($item->status, ['pending', 'approved'], true), 409);
             $item->forceFill(['status' => 'withdrawn'])->save();
+            Audit::record('jobs.withdrawn', $request->user()->id, context: ['job' => $job]);
         });
 
         return redirect('/account/businesses/'.$business.'/jobs')->with('status', 'Job withdrawn.');
@@ -162,7 +179,17 @@ class JobController extends Controller
         }
         $items = $items->latest('published_at')->latest('id')->paginate(18)->withQueryString();
 
-        return view('jobs.saved', compact('items', 'filters', 'total'));
+        $site = $request->attributes->get('site');
+        $unavailable = DB::table('job_posting_bookmarks as bookmarks')->join('job_postings as jobs', 'jobs.id', '=', 'bookmarks.job_posting_id')
+            ->join('business_locations as branches', 'branches.id', '=', 'jobs.business_location_id')
+            ->join('businesses', 'businesses.id', '=', 'branches.business_id')
+            ->where('bookmarks.user_id', $request->user()->id)
+            ->when($site->location_id, fn ($query, $id) => $query->where('branches.location_id', $id))
+            ->where(fn ($query) => $query->where('jobs.status', '!=', 'approved')->orWhere('jobs.closing_on', '<', $this->jobs->closingToday())
+                ->orWhere('businesses.status', '!=', 'active'))
+            ->orderByDesc('bookmarks.job_posting_id')->paginate(15, ['bookmarks.job_posting_id'], 'unavailable_page')->withQueryString();
+
+        return view('jobs.saved', compact('items', 'filters', 'total', 'unavailable'));
     }
 
     private function visible(Request $request)
@@ -192,7 +219,7 @@ class JobController extends Controller
             'title' => 'required|string|max:140', 'description' => 'required|string|min:20|max:6000',
             'employment_type' => ['required', Rule::in(array_keys(JobBoard::TYPES))],
             'workplace' => ['required', Rule::in(array_keys(JobBoard::WORKPLACES))],
-            'apply_url' => 'required|url:https|max:1024', 'closing_on' => 'required|date_format:Y-m-d|after_or_equal:'.$today,
+            'apply_url' => 'required|url:https|max:1024', 'closing_on' => 'required|date_format:Y-m-d|after_or_equal:'.$today.'|before_or_equal:'.today('America/Winnipeg')->addYear()->toDateString(),
             'pay_unit' => 'required_with:pay_min,pay_max|nullable|in:hour,year',
             'pay_min' => 'required_with:pay_unit,pay_max|nullable|numeric|decimal:0,2|min:0|max:10000000',
             'pay_max' => 'required_with:pay_unit,pay_min|nullable|numeric|decimal:0,2|gte:pay_min|max:10000000',
