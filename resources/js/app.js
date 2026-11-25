@@ -459,6 +459,9 @@ if (chatPanel) {
     const history = chatPanel.querySelector('[data-chat-history]');
     const status = chatPanel.querySelector('[data-chat-status]');
     const send = chatPanel.querySelector('[data-chat-send]');
+    const jump = chatPanel.querySelector('[data-chat-jump]');
+    const goLatest = () => history.lastElementChild?.scrollIntoView({ block: 'end' });
+    jump?.addEventListener('click', () => { goLatest(); jump.textContent = 'Jump to latest message'; });
     let cursor = Number(chatPanel.dataset.chatCursor);
     let pending = false;
     let stopped = false;
@@ -514,7 +517,12 @@ if (chatPanel) {
             }
             if (!response.ok) throw new Error('Refresh failed');
             const data = await response.json();
+            const wasAtLatest = latestVisible() > 0;
             for (const item of data.messages) append(item);
+            if (data.messages.length && jump) {
+                if (wasAtLatest && !document.activeElement?.matches('textarea, input')) goLatest();
+                else jump.textContent = 'Jump to new messages';
+            }
             updateActivityCounts(data.counts);
             if (send) send.disabled = Boolean(data.blocked);
             if (data.blocked) status.textContent = 'New messages are blocked for this conversation.';

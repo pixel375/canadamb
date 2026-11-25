@@ -70,6 +70,8 @@
                         @else
                             @if($conversation)
                                 <a class="button button-primary seller-action" href="/account/messages/{{ $conversation->id }}"><x-icon name="messages" size="18"/> Continue conversation</a>
+                            @elseif($messagingBlocked)
+                                <p class="field-note">New messages are unavailable between these accounts.</p>
                             @else
                             <form class="form-stack seller-contact" method="post" action="/marketplace/{{ $item->id }}/message">
                                 @csrf
@@ -83,13 +85,14 @@
                                 <button class="button button-outline seller-action" aria-pressed="{{ $saved ? 'true' : 'false' }}"><x-icon :name="$saved ? 'check' : 'tag'" size="18"/> {{ $saved ? 'Remove from saved listings' : 'Save listing' }}</button>
                             </form>
                             @if($saved)<p class="field-note mt-2">Saved to your account. <a class="text-link" href="/account/saved">View saved listings</a></p>@endif
-                            <details class="seller-report"><summary>Report listing</summary>
+                            @if($reported)<p class="field-note">You have already reported this listing.</p>@else
+                            <details class="seller-report" @if($errors->has('reason')) open @endif><summary>Report listing</summary>
                                 <form class="form-stack mt-2" method="post" action="/marketplace/{{ $item->id }}/report">
                                     @csrf
-                                    <label>Reason<textarea name="reason" minlength="8" maxlength="500" required>{{ old('reason') }}</textarea></label>
+                                    <p class="field-note">Describe a suspected scam, prohibited item or misleading information. Do not include private financial details.</p><label>Reason<textarea data-character-count name="reason" minlength="8" maxlength="500" required>{{ old('reason') }}</textarea><small class="field-note" data-character-feedback></small></label>
                                     <button class="button button-outline">Submit report</button>
                                 </form>
-                            </details>
+                            </details>@endif
                         @endif
                     @else
                         <p class="field-note">To contact the seller, sign in to your CanadaMB account. Your email address is not displayed publicly.</p>

@@ -57,6 +57,8 @@ class JobPostingTest extends TestCase
         $this->delete("https://brandonmb.ca/jobs/$job->id/save", ['return_to' => 'job'])->assertRedirect('/jobs/'.$job->id);
         $this->post("https://brandonmb.ca/jobs/$job->id/save")->assertRedirect('/account/saved-jobs');
         $this->get('https://canadamb.ca/account/saved-jobs')->assertSee($input['title']);
+        $this->get('https://canadamb.ca/account/saved-jobs?q=STOREFRONT&sort=closing')->assertOk()->assertSee($input['title']);
+        $this->get('https://canadamb.ca/account/saved-jobs?q=zzmissing')->assertOk()->assertDontSee($input['title']);
         $this->actingAs($owner)->get($url)->assertOk()->assertSee($input['title']);
         $this->get("$url/$job->id/edit")->assertOk()->assertSee($input['title']);
         $oldVersion = $job->fresh()->reviewVersion();

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Conversation;
 use App\Models\User;
 use App\Support\AccountActivity;
+use App\Support\KeywordSearch;
 use App\Support\Marketplace;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -20,16 +21,18 @@ class MessagesController extends Controller
         $threads = Conversation::forMember($id)
             ->with(['listing:id,title', 'buyer:id,name', 'seller:id,name', 'latestMessage'])
             ->withCount(['messages as unread' => $unread])
+            ->addSelect(['blocked_by_me' => DB::table('user_blocks')->selectRaw('1')->where('user_id', $id)
+                ->whereRaw('blocked_id = CASE WHEN conversations.buyer_id = ? THEN conversations.seller_id ELSE conversations.buyer_id END', [$id])->limit(1)])
             ->when(($filters['view'] ?? null) === 'unread', fn ($query) => $query->whereHas('messages', $unread))
             ->when(filled($filters['q'] ?? null), function ($query) use ($filters, $id) {
-                $pattern = '%'.strtr($filters['q'], ['!' => '!!', '%' => '!%', '_' => '!_']).'%';
-
-                $query->where(fn ($match) => $match
-                    ->whereHas('listing', fn ($listing) => $listing->whereRaw("title LIKE ? ESCAPE '!'", [$pattern]))
-                    ->orWhere(fn ($buyer) => $buyer->where('buyer_id', '!=', $id)
-                        ->whereHas('buyer', fn ($user) => $user->whereRaw("name LIKE ? ESCAPE '!'", [$pattern])))
-                    ->orWhere(fn ($seller) => $seller->where('seller_id', '!=', $id)
-                        ->whereHas('seller', fn ($user) => $user->whereRaw("name LIKE ? ESCAPE '!'", [$pattern]))));
+                foreach (KeywordSearch::patterns($filters['q']) as $pattern) {
+                    $query->where(fn ($match) => $match
+                        ->whereHas('listing', fn ($listing) => $listing->whereRaw("LOWER(title) LIKE ? ESCAPE '!'", [$pattern]))
+                        ->orWhere(fn ($buyer) => $buyer->where('buyer_id', '!=', $id)
+                            ->whereHas('buyer', fn ($user) => $user->whereRaw("LOWER(name) LIKE ? ESCAPE '!'", [$pattern])))
+                        ->orWhere(fn ($seller) => $seller->where('seller_id', '!=', $id)
+                            ->whereHas('seller', fn ($user) => $user->whereRaw("LOWER(name) LIKE ? ESCAPE '!'", [$pattern]))));
+                }
             })
             ->latest('updated_at')->latest('id')->paginate(20)->withQueryString();
 
@@ -63,7 +66,7 @@ class MessagesController extends Controller
         $messages = $thread->messages()->with('sender:id,name')->latest('id')->paginate(30);
         if ($messages->onFirstPage() && $latest = $messages->first()?->id) {
             $marker = $thread->marker($id);
-            Conversation::whereKey($thread->id)->where($marker, '<', $latest)->update([$marker => $latest, 'updated_at' => $thread->updated_at]);
+            Conversation::whereKey($thread->id)->where($marker, '<', $latest)->update([$marker => $latest, 'updated_at' => DB::raw('updated_at')]);
         }
         $mine = DB::table('user_blocks')->where(['user_id' => $id, 'blocked_id' => $thread->other($id)])->exists();
 
@@ -109,6 +112,25 @@ class MessagesController extends Controller
         }, attempts: 3);
 
         return redirect('/account/messages/'.$conversation);
+    }
+
+    public function blockedMembers(Request $request)
+    {
+        $members = User::whereIn('id', DB::table('user_blocks')->where('user_id', $request->user()->id)->select('blocked_id'))
+            ->orderBy('name')->orderBy('id')->paginate(20, ['id', 'name']);
+
+        return view('messages.blocked', compact('members'));
+    }
+
+    public function unblockMember(Request $request, int $member)
+    {
+        $id = $request->user()->id;
+        DB::transaction(function () use ($id, $member) {
+            $this->lockParticipants($id, $member);
+            DB::table('user_blocks')->where(['user_id' => $id, 'blocked_id' => $member])->delete();
+        }, attempts: 3);
+
+        return redirect('/account/blocked-members')->with('status', 'Member unblocked.');
     }
 
     public function block(Request $request, int $conversation)

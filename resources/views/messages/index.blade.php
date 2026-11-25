@@ -1,6 +1,6 @@
 <x-layouts.site title="Messages">
     <div class="container page-shell message-workspace">
-        <div class="page-intro"><div><h1>Messages</h1><p>Private Marketplace conversations.</p></div><a class="text-link" href="/account/profile">My account</a></div>
+        <div class="page-intro"><div><h1>Messages</h1><p>Private Marketplace conversations.</p></div><div class="inline-actions"><a class="text-link" href="/account/profile">My account</a><a class="button button-outline" href="/account/blocked-members">Blocked members</a></div></div>
         <?php
             $unreadOnly = ($filters['view'] ?? null) === 'unread';
             $keyword = $filters['q'] ?? '';
@@ -24,7 +24,7 @@
                     <a class="message-thread @if($thread->unread) is-unread @endif" href="/account/messages/{{ $thread->id }}">
                         <span class="message-avatar" aria-hidden="true"><x-icon name="person" size="23"/></span>
                         <span class="message-thread-copy">
-                            <span class="message-thread-name">{{ $other->name }}</span>
+                            <span class="message-thread-name">{{ $other->name }} @if($thread->blocked_by_me)<small class="field-note"> · Blocked</small>@endif</span>
                             <strong>{{ $thread->listing->title }}</strong>
                             @if($thread->latestMessage)
                                 <span class="message-thread-preview">{{ $thread->latestMessage->sender_id === $member ? 'You: ' : '' }}{{ \Illuminate\Support\Str::limit(\Illuminate\Support\Str::squish($thread->latestMessage->body), 100) }}</span>

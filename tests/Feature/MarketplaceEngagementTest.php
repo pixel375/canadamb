@@ -130,8 +130,13 @@ class MarketplaceEngagementTest extends TestCase
         $this->get($base)->assertOk()->assertSee('aria-pressed="false"', false);
         $this->post("$base/save")->assertRedirect('/account/saved');
         $this->get('https://canadamb.ca/account/saved')->assertSee('Patio set');
+        $this->get('https://canadamb.ca/account/saved?q=CHAIRS&sort=price-low')->assertOk()->assertSee('Patio set');
+        $this->get('https://canadamb.ca/account/saved?q=missing')->assertOk()->assertDontSee('Patio set');
         $this->post("$base/report", ['reason' => 'The images seem to belong to another seller.'])->assertRedirect();
         $this->assertDatabaseHas('listing_reports', ['listing_id' => $item->id, 'reporter_id' => $buyer->id]);
+        $this->get($base)->assertSee('You have already reported this listing.');
+        $this->post("$base/report", ['reason' => 'Duplicate submitted report.'])->assertRedirect();
+        $this->assertDatabaseCount('listing_reports', 1);
         $this->post("$base/message", ['body' => 'Are the chairs included?'])->assertRedirect();
         $thread = Conversation::sole();
         $this->get($base)->assertOk()->assertSee('Continue conversation');
@@ -161,5 +166,12 @@ class MarketplaceEngagementTest extends TestCase
         $this->actingAs($seller)->post($url, ['body' => 'Can you still see this message?'])->assertForbidden();
         $this->postJson($url.'/sync', ['after' => $first->id])->assertOk()->assertJsonPath('blocked', true);
         $this->assertDatabaseCount('messages', 2);
+        $this->actingAs($buyer)->get('https://canadamb.ca/account/blocked-members')->assertOk()->assertSee($seller->name)->assertDontSee($seller->email);
+        $this->actingAs($stranger)->delete('https://canadamb.ca/account/blocked-members/'.$seller->id)->assertRedirect();
+        $this->assertDatabaseHas('user_blocks', ['user_id' => $buyer->id, 'blocked_id' => $seller->id]);
+        $this->actingAs($buyer)->delete('https://canadamb.ca/account/blocked-members/'.$seller->id)->assertRedirect();
+        $this->assertDatabaseCount('user_blocks', 0);
+        app(Marketplace::class)->changeStatus($item, 'sold', null);
+        $this->get('https://canadamb.ca/account/saved')->assertOk()->assertDontSee('Patio set');
     }
 }

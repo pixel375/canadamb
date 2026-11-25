@@ -7,7 +7,7 @@
                 <div class="chat-heading-copy">
                     <p class="section-label">Marketplace conversation</p>
                     <h1>{{ $thread->buyer_id === auth()->id() ? $thread->seller->name : $thread->buyer->name }}</h1>
-                    <p>{{ $thread->listing->title }}</p>
+                    <p>{{ $thread->listing->title }}</p><a class="text-link" href="/users/{{ $thread->other(auth()->id()) }}">View member profile</a>
                 </div>
                 <details class="chat-actions">
                     <summary>Options <x-icon name="chevron-down" size="16"/></summary>
@@ -15,7 +15,7 @@
                         @csrf @if($myBlock)@method('DELETE')@endif
                         <p class="field-note">{{ $myBlock ? 'Allow this member to contact you again.' : 'Blocking stops new messages between you and this member.' }}</p>
                         <button class="button button-outline">{{ $myBlock ? 'Unblock member' : 'Block member' }}</button>
-                    </form>
+                    </form><a class="text-link mt-2" href="/account/blocked-members">Manage blocked members</a>
                 </details>
             </header>
             <nav class="chat-history-nav" aria-label="Conversation history">
@@ -33,10 +33,10 @@
                     </article>
                 @endforeach
             </div>
-            @if($messages->onFirstPage())<p class="chat-sync-status field-note" data-chat-status role="status" aria-live="polite">Messages refresh automatically while this conversation is open.</p>@endif
+            @if($messages->onFirstPage())<button type="button" class="button button-outline chat-jump" data-chat-jump>Jump to latest message</button><p class="chat-sync-status field-note" data-chat-status role="status" aria-live="polite">Messages refresh automatically while this conversation is open.</p>@endif
             @if(!$blocked)
                 <form method="post" action="/account/messages/{{ $thread->id }}" class="chat-composer form-stack">@csrf
-                    <label>Reply<textarea name="body" maxlength="2000" rows="3" required placeholder="Write a message…">{{ old('body') }}</textarea></label>
+                    <label>Reply<textarea data-character-count name="body" maxlength="2000" rows="3" required placeholder="Write a message…">{{ old('body') }}</textarea><small class="field-note" data-character-feedback></small></label>
                     <div class="chat-composer-footer"><small class="field-note">Keep personal and payment information private.</small><button class="button button-primary" data-chat-send>Send reply <x-icon name="arrow" size="17"/></button></div>
                 </form>
             @else

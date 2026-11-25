@@ -142,10 +142,17 @@ class JobController extends Controller
 
     public function saved(Request $request)
     {
-        $items = $this->visible($request)->whereIn('id', DB::table('job_posting_bookmarks')
-            ->where('user_id', $request->user()->id)->select('job_posting_id'))->latest('published_at')->paginate(18);
+        $filters = $request->validate(['q' => 'nullable|string|max:100', 'sort' => 'nullable|in:recent,closing']);
+        $matching = $this->visible($request)->whereIn('id', DB::table('job_posting_bookmarks')
+            ->where('user_id', $request->user()->id)->select('job_posting_id'));
+        $total = (clone $matching)->count();
+        $items = $matching->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'description']));
+        if (($filters['sort'] ?? 'recent') === 'closing') {
+            $items->orderBy('closing_on');
+        }
+        $items = $items->latest('published_at')->latest('id')->paginate(18)->withQueryString();
 
-        return view('jobs.saved', compact('items'));
+        return view('jobs.saved', compact('items', 'filters', 'total'));
     }
 
     private function visible(Request $request)

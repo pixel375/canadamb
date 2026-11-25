@@ -117,9 +117,11 @@ class MarketplaceController extends Controller
         $conversation = $member && $member->id !== $item->user_id
             ? Conversation::where(['buyer_id' => $member->id, 'listing_id' => $item->id])->first()
             : null;
+        $reported = $member && DB::table('listing_reports')->where(['listing_id' => $item->id, 'reporter_id' => $member->id])->exists();
+        $messagingBlocked = $member && DB::table('user_blocks')->where(fn ($query) => $query->where(['user_id' => $member->id, 'blocked_id' => $item->user_id])->orWhere(['user_id' => $item->user_id, 'blocked_id' => $member->id]))->exists();
         $sellerListingCount = $this->marketplace->visible($site)->where('user_id', $item->user_id)->count();
 
-        return view('marketplace.show', compact('item', 'canonical', 'related', 'recent', 'saved', 'conversation', 'sellerListingCount'));
+        return view('marketplace.show', compact('item', 'canonical', 'related', 'recent', 'saved', 'conversation', 'sellerListingCount', 'reported', 'messagingBlocked'));
     }
 
     public function create(Request $request)

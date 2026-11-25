@@ -1753,3 +1753,15 @@ a.market-category-card:hover, a.market-category-card:focus-visible {
 .account-verification-notice > div { display:grid; gap:9px; }
 .account-verification-notice .button { justify-self:start; }
 @media(max-width:580px) { .password-input-wrap input { font-size:16px; } .auth-intro { align-items:flex-start; } }
+
+.saved-navigation { margin-bottom:14px; }
+.saved-navigation [aria-current=page] { border-color:var(--link); background:var(--soft); color:var(--link); }
+.saved-search { display:grid; grid-template-columns:minmax(0,2fr) minmax(0,1fr) auto auto; gap:10px; align-items:end; }
+.saved-listing-card { min-width:0; display:flex; flex-direction:column; }
+.saved-listing-card .listing-card { flex:1; }
+.saved-listing-card form .button { width:100%; }
+.listing-grid > .market-results-empty { grid-column:1/-1; }
+.chat-jump { align-self:flex-end; font-size:.8rem; margin-top:8px; }
+.blocked-member-row { flex-wrap:wrap; gap:12px; }
+.blocked-member-row .listing-seller-identity { margin-top:0; }
+@media(max-width:650px) { .saved-search { grid-template-columns:minmax(0,1fr); } .saved-search input { font-size:16px; } }
