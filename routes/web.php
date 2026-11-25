@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\TestAccountController;
 use App\Http\Controllers\Admin\ThemeController;
 use App\Http\Controllers\BusinessController;
+use App\Http\Controllers\BusinessTeamController;
 use App\Http\Controllers\CommunityEventController;
 use App\Http\Controllers\CommunityForumController;
 use App\Http\Controllers\IdentityController;
@@ -86,6 +87,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/account/properties/{property}/media/{photo}', [PropertyDraftController::class, 'media'])->whereNumber(['property', 'photo']);
     Route::get('/account/businesses/{business}/jobs', [JobController::class, 'business'])->whereNumber('business');
     Route::post('/account/businesses/{business}/jobs', [JobController::class, 'store'])->whereNumber('business')->middleware('throttle:6,1');
+    Route::get('/account/businesses/{business}/jobs/{job}/duplicate', [JobController::class, 'duplicate'])->whereNumber(['business', 'job']);
     Route::get('/account/businesses/{business}/jobs/{job}/edit', [JobController::class, 'edit'])->whereNumber(['business', 'job']);
     Route::put('/account/businesses/{business}/jobs/{job}', [JobController::class, 'update'])->whereNumber(['business', 'job'])->middleware('throttle:12,1');
     Route::post('/account/businesses/{business}/jobs/{job}/withdraw', [JobController::class, 'withdraw'])->whereNumber(['business', 'job']);
@@ -130,6 +132,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/account/businesses', [BusinessController::class, 'mine']);
     Route::get('/account/businesses/new', [BusinessController::class, 'create']);
     Route::post('/account/businesses', [BusinessController::class, 'store'])->middleware('throttle:5,1');
+    Route::get('/account/businesses/{business}/team', [BusinessTeamController::class, 'index'])->whereNumber('business');
+    Route::post('/account/businesses/{business}/team', [BusinessTeamController::class, 'store'])->whereNumber('business')->middleware('throttle:8,1');
+    Route::put('/account/businesses/{business}/team/{member}', [BusinessTeamController::class, 'update'])->whereNumber(['business', 'member'])->middleware('throttle:12,1');
+    Route::delete('/account/businesses/{business}/team/{member}', [BusinessTeamController::class, 'remove'])->whereNumber(['business', 'member'])->middleware('throttle:12,1');
     Route::get('/account/businesses/{business}', [BusinessController::class, 'edit'])->whereNumber('business');
     Route::put('/account/businesses/{business}', [BusinessController::class, 'update'])->whereNumber('business')->middleware('throttle:20,1');
     Route::post('/account/businesses/{business}/updates', [BusinessController::class, 'postUpdate'])->whereNumber('business')->middleware('throttle:8,1');

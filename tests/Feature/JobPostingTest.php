@@ -70,5 +70,10 @@ class JobPostingTest extends TestCase
         $this->get("https://brandonmb.ca/jobs/$job->id")->assertNotFound();
         $this->artisan('job-postings:expire')->assertSuccessful();
         $this->assertDatabaseHas('job_postings', ['id' => $job->id, 'status' => 'expired']);
+        $this->actingAs($stranger)->get("$url/$job->id/duplicate")->assertNotFound();
+        $this->actingAs($owner)->get("$url/$job->id/duplicate")->assertOk()->assertSee('Reuse job posting')->assertSee('Senior storefront supervisor');
+        $this->post($url, array_replace($input, ['business_location_id' => $brandon->id, 'closing_on' => today()->addWeek()->toDateString()]))->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertDatabaseCount('job_postings', 2);
+        $this->assertDatabaseHas('job_postings', ['id' => $job->id, 'status' => 'expired']);
     }
 }

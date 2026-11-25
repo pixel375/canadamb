@@ -16,6 +16,34 @@ class BusinessDirectoryTest extends TestCase
 
     protected $seeder = DatabaseSeeder::class;
 
+    public function test_business_team_permissions_are_owner_controlled_and_revocable(): void
+    {
+        $owner = User::factory()->create();
+        $member = User::factory()->create();
+        $stranger = User::factory()->create();
+        $business = Business::create(['slug' => 'team-test', 'name' => 'Team Test', 'category' => 'services', 'status' => 'active']);
+        $business->members()->attach($owner->id, ['role' => 'owner']);
+        $business->locations()->create(['location_id' => Location::where('slug', 'brandon')->sole()->id, 'address' => '1 Team Road']);
+        $path = 'https://canadamb.ca/account/businesses/'.$business->id.'/team';
+        $grant = ['email' => $member->email, 'role' => 'editor', 'consent' => '1'];
+        $this->actingAs($stranger)->get($path)->assertNotFound();
+        $this->post($path, $grant)->assertNotFound();
+        $this->actingAs($owner)->post($path, array_replace($grant, ['role' => 'owner']))->assertSessionHasErrors('role');
+        $this->post($path, $grant)->assertRedirect()->assertSessionHasNoErrors();
+        $this->get($path)->assertOk()->assertSee($member->name)->assertDontSee($member->email);
+        $this->actingAs($member)->get($path)->assertOk()->assertDontSee('Grant access');
+        $this->get('https://canadamb.ca/account/businesses/'.$business->id.'/jobs')->assertNotFound();
+        $this->put($path.'/'.$member->id, ['role' => 'manager'])->assertNotFound();
+        $this->actingAs($owner)->put($path.'/'.$member->id, ['role' => 'manager'])->assertRedirect()->assertSessionHasNoErrors();
+        $this->delete($path.'/'.$owner->id)->assertNotFound();
+        $this->actingAs($member)->get('https://canadamb.ca/account/businesses/'.$business->id.'/jobs')->assertOk();
+        $this->actingAs($owner)->delete($path.'/'.$member->id)->assertRedirect();
+        $this->actingAs($member)->get($path)->assertNotFound();
+        $this->put('https://canadamb.ca/account/businesses/'.$business->id, ['description' => 'Unauthorized change'])->assertNotFound();
+        $this->assertDatabaseHas('audit_logs', ['action' => 'business.member-removed', 'actor_id' => $owner->id]);
+        $this->assertDatabaseCount('business_memberships', 1);
+    }
+
     public function test_import_is_idempotent_and_directory_respects_physical_branch_location(): void
     {
         $file = tempnam(sys_get_temp_dir(), 'canadamb-business-');

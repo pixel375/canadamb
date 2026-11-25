@@ -177,9 +177,12 @@ class BusinessController extends Controller
 
     public function update(Request $request, int $business)
     {
-        $item = $this->managed($request, $business);
         $data = $request->validate($this->profileRules());
-        $item->update($data);
+        DB::transaction(function () use ($request, $business, $data) {
+            $item = Business::lockForUpdate()->findOrFail($business);
+            $this->managed($request, $business);
+            $item->update($data);
+        });
 
         return redirect('/account/businesses/'.$business)->with('status', 'Business profile saved.');
     }
@@ -196,6 +199,7 @@ class BusinessController extends Controller
 
         DB::transaction(function () use ($request, $item, $data) {
             $locked = Business::lockForUpdate()->findOrFail($item->id);
+            $this->managed($request, $locked->id);
             abort_unless($locked->status === 'active', 409);
             if (DB::table('business_updates')->whereIn('business_location_id', $locked->locations()->select('id'))
                 ->where('created_at', '>=', now()->subDay())->count() >= 5) {

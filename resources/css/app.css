@@ -1787,3 +1787,7 @@ a.market-category-card:hover, a.market-category-card:focus-visible {
 .admin-readiness { flex-wrap:wrap; }
 @media(max-width:700px) { .help-topic-grid { grid-template-columns:minmax(0,1fr); } .readiness-row > strong { width:100%; } }
 @media(prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto!important; } }
+
+.business-team-row { flex-wrap:wrap; gap:12px; align-items:start; }
+.business-team-row > details { flex:0 1 250px; }
+@media(max-width:580px) { .business-team-row > details { flex-basis:100%; } }

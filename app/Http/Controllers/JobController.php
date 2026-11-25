@@ -79,9 +79,25 @@ class JobController extends Controller
         $data = $this->postingData($request);
         $branch = $employer->locations()->findOrFail($data['business_location_id']);
         LocationScope::forPublication($site, $branch->location_id);
-        JobPosting::create($data + ['author_id' => $request->user()->id]);
+        DB::transaction(function () use ($request, $employer, $data) {
+            Business::lockForUpdate()->findOrFail($employer->id);
+            $this->managedBusiness($request, $employer->id);
+            JobPosting::create($data + ['author_id' => $request->user()->id]);
+        });
 
         return redirect('/account/businesses/'.$business.'/jobs')->with('status', 'Job submitted for review.');
+    }
+
+    public function duplicate(Request $request, int $business, int $job)
+    {
+        $site = $request->attributes->get('site');
+        abort_unless($this->jobs->enabled($site), 404);
+        $employer = $this->managedBusiness($request, $business);
+        $item = $this->managedJob($request, $employer->id, $job);
+        $branches = $employer->locations()->with('location')->when($site->location_id, fn ($query, $id) => $query->where('location_id', $id))->get();
+        $item->closing_on = null;
+
+        return view('jobs.duplicate', compact('employer', 'item', 'branches'));
     }
 
     public function edit(Request $request, int $business, int $job)
@@ -102,6 +118,8 @@ class JobController extends Controller
         $employer = $this->managedBusiness($request, $business);
         $data = $this->postingData($request, needsBranch: false);
         DB::transaction(function () use ($request, $employer, $job, $data) {
+            Business::lockForUpdate()->findOrFail($employer->id);
+            $this->managedBusiness($request, $employer->id);
             $item = $this->managedJob($request, $employer->id, $job, lock: true);
             abort_unless(in_array($item->status, ['pending', 'approved', 'rejected'], true), 409);
             $item->fill($data)->forceFill(['status' => 'pending'])->save();
@@ -112,8 +130,11 @@ class JobController extends Controller
 
     public function withdraw(Request $request, int $business, int $job)
     {
+        abort_unless($this->jobs->enabled($request->attributes->get('site')), 404);
         $employer = $this->managedBusiness($request, $business);
         DB::transaction(function () use ($request, $employer, $job) {
+            Business::lockForUpdate()->findOrFail($employer->id);
+            $this->managedBusiness($request, $employer->id);
             $item = $this->managedJob($request, $employer->id, $job, lock: true);
             abort_unless(in_array($item->status, ['pending', 'approved'], true), 409);
             $item->forceFill(['status' => 'withdrawn'])->save();

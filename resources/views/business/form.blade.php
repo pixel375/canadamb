@@ -5,6 +5,7 @@
         @if($business->exists)
             <section class="panel form-stack" aria-label="Business overview">
                 <div class="inline-actions"><span class="member-listing-status" data-status="{{ $business->status }}">{{ ucfirst($business->status) }}</span><span class="field-note">{{ $business->status === 'active' ? 'Your profile has been approved.' : 'This profile is not currently public.' }}</span></div>
+                <a class="button button-outline" href="/account/businesses/{{ $business->id }}/team">Business team and permissions</a>
                 <h2>Branches on this portal</h2>
                 @forelse($branches as $branch)<div><strong>{{ $branch->location->name }}</strong><p>{{ $branch->address }}</p></div>@empty<p>No branches on this portal. Manage other locations on CanadaMB.ca.</p>@endforelse
                 @if($business->status === 'active' && app(\App\Support\BusinessDirectory::class)->enabled($site) && $branches->isNotEmpty())<a class="text-link" href="/businesses/{{ $business->slug }}">View public profile <x-icon name="arrow" size="16"/></a>@endif
@@ -24,7 +25,7 @@
                     <p class="field-note">Posting for another Manitoba location? <a href="{{ \App\Support\NetworkUrl::to(\App\Support\NetworkUrl::main(), '/account/businesses/new') }}">Visit CanadaMB.ca to choose your community.</a></p>
                 @endif
             @endif
-            <label>Description<textarea name="description" rows="5" maxlength="2500">{{ old('description', $business->description) }}</textarea></label>
+            <label>Description<textarea data-character-count name="description" rows="5" maxlength="2500">{{ old('description', $business->description) }}</textarea><small class="field-note" data-character-feedback></small></label>
             <label>Hours<textarea name="hours" rows="3" maxlength="1000">{{ old('hours', $business->hours) }}</textarea></label>
             <label>Website<input type="url" name="website" maxlength="255" value="{{ old('website', $business->website) }}"></label>
             <p class="field-note">The following contact details will appear on the public directory profile. Do not enter private contact information.</p>

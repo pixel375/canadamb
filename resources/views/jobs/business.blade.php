@@ -48,6 +48,7 @@
                     <div class="inline-actions seller-listing-actions">
                         @if($item->status === 'approved' && $item->closing_on->toDateString() >= today('America/Winnipeg')->toDateString())<a class="button button-outline" href="/jobs/{{ $item->id }}">View posting</a>@endif
                         @if(in_array($item->status, ['pending', 'approved', 'rejected'], true))<a class="button button-outline" href="/account/businesses/{{ $employer->id }}/jobs/{{ $item->id }}/edit">Edit</a>@endif
+                        <a class="button button-outline" href="/account/businesses/{{ $employer->id }}/jobs/{{ $item->id }}/duplicate">Reuse posting</a>
                     </div>
                     @if(in_array($item->status, ['pending', 'approved'], true))
                         <details class="seller-remove-listing"><summary>Withdraw posting</summary><p class="field-note">Withdraw this job from publication and review.</p><form method="post" action="/account/businesses/{{ $employer->id }}/jobs/{{ $item->id }}/withdraw">@csrf<button class="button button-outline">Confirm withdrawal</button></form></details>

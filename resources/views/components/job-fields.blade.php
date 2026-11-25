@@ -11,4 +11,4 @@
     <label>Maximum pay (CAD)<input name="pay_max" type="number" min="0" step="0.01" value="{{ old('pay_max', $item?->pay_max === null ? '' : $item->pay_max / 100) }}"></label>
 </div>
 <label>Application page<input type="url" name="apply_url" required maxlength="1024" placeholder="https://" value="{{ old('apply_url', $item?->apply_url) }}"></label>
-<label>Job description<textarea name="description" required minlength="20" maxlength="6000" rows="7">{{ old('description', $item?->description) }}</textarea></label>
+<label>Job description<textarea data-character-count name="description" required minlength="20" maxlength="6000" rows="7">{{ old('description', $item?->description) }}</textarea><small class="field-note" data-character-feedback></small></label>

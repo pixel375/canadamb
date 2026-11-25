@@ -13,6 +13,7 @@
                     <p class="seller-lifecycle-note">{{ $business->status === 'active' ? 'Profile approved. Manage your business information and publish updates.' : 'This profile is not currently public. Open the profile to manage its details.' }}</p>
                     <div class="inline-actions seller-listing-actions">
                         <a class="button button-primary" href="/account/businesses/{{ $business->id }}">Manage profile</a>
+                        <a class="button button-outline" href="/account/businesses/{{ $business->id }}/team">Team</a>
                         @if($business->status === 'active' && in_array($role, ['owner','manager'], true) && app(\App\Support\JobBoard::class)->enabled($site))
                             <a class="button button-outline" href="/account/businesses/{{ $business->id }}/jobs"><x-icon name="briefcase" size="17"/> Manage jobs</a>
                         @endif

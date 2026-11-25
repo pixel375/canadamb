@@ -4,4 +4,4 @@ Validate the request host against configured domains before session handling. Tr
 
 Use independent host-only sessions and Passport PKCE for cross-domain sign-in. Use HTTPS, database sessions, secure cookies and private key files on the host. Use Laravel's hashed password storage and Fortify rate limiting. Keep account credentials, claims and messages private. Review relevant auditing, retention and account controls before promoting the system to production.
 
-Current launch gates include SMTP verification, admin MFA, abuse and privacy policy work, account lifecycle controls, plan-specific hosting verification, and restoration of a production-shaped backup in staging.
+Current launch gates include SMTP verification, abuse and privacy policy work, account lifecycle controls, plan-specific hosting verification, and restoration of a production-shaped backup in staging.
