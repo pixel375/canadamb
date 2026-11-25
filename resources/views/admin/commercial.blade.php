@@ -22,16 +22,7 @@
             </div>
             <button class="button button-outline">Preview placement</button>
         </form>
-        <div class="commercial-estimate"><div><p class="section-label">Planning estimate · {{ $weeks }} {{ \Illuminate\Support\Str::plural('week', $weeks) }}</p><h3>{{ $estimate === null ? 'Rate not set' : 'CAD 
-        <div class="commercial-preview-grid">
-            @foreach(['directory-sponsored' => 'Business directory', 'home-banner' => 'Community homepage', 'marketplace-banner' => 'Marketplace'] as $key => $label)
-                <div class="commercial-preview"><p class="section-label">{{ $label }} · private preview</p><div class="commercial-preview-content"><span class="commercial-sponsored-label">Sponsored · preview only</span><h3>{{ $preview?->name ?? 'Example local business' }}</h3><p>{{ \Illuminate\Support\Str::limit($preview?->description ?: 'A short message from a local advertiser.', 140) }}</p><span class="field-note">No live destination or impression tracking</span></div></div>
-            @endforeach
-        </div>
-    </section>
-    <section class="panel form-stack mt-4"><h2>Before accepting payments</h2><ul class="help-guidelines"><li>Approve pricing, tax and refund policies.</li><li>Implement isolated campaign and entitlement records, review workflow and expiry.</li><li>Verify payment-provider test mode, signed webhooks, retries and reconciliation.</li><li>Approve placement inventory and limits, privacy-conscious measurement, and advertiser terms.</li></ul><p>Public real estate advertising is outside this initial commercial release.</p></section>
-</x-layouts.admin>
-.number_format($estimate / 100, 2) }}</h3><p class="field-note">Based on proposed weekly rates, before taxes. Not an offer or reservation.</p></div><div><p class="section-label">Target</p><strong>{{ $portal?->name ?? 'Not selected' }}</strong><p>{{ $catalog[$placement]['name'] }}</p></div></div>
+        <div class="commercial-estimate"><div><p class="section-label">Planning estimate · {{ $weeks }} {{ \Illuminate\Support\Str::plural('week', $weeks) }}</p><h3>{{ $estimate === null ? 'Rate not set' : 'CAD $'.number_format($estimate / 100, 2) }}</h3><p class="field-note">Based on proposed weekly rates, before taxes. Not an offer or reservation.</p></div><div><p class="section-label">Target</p><strong>{{ $portal?->name ?? 'Not selected' }}</strong><p>{{ $catalog[$placement]['name'] }}</p></div></div>
         @if($warnings)<div class="notice">@foreach($warnings as $warning)<p>{{ $warning }}</p>@endforeach</div>@endif
         <div class="commercial-preview-grid">
             @foreach(['directory-sponsored' => 'Business directory', 'home-banner' => 'Community homepage', 'marketplace-banner' => 'Marketplace'] as $key => $label)
