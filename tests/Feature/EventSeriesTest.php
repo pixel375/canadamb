@@ -50,7 +50,12 @@ class EventSeriesTest extends TestCase
         $this->post($batch, $selection)->assertNotFound();
         $this->actingAs($member)->post($batch, ['events' => [$events[0]->id, $events[1]->id], 'confirm_cancel' => '1'])->assertConflict();
         $this->assertSame('pending', $events[1]->fresh()->status);
-        $this->post($batch, $selection)->assertRedirect()->assertSessionHasNoErrors();
+        $versions = [$events[1]->id => $events[1]->fresh()->contentVersion(), $events[2]->id => str_repeat('0', 64)];
+        $this->post($batch, $selection + ['versions' => $versions])->assertSessionHasErrors('version');
+        $this->assertSame('pending', $events[1]->fresh()->status);
+        $this->assertSame('pending', $events[2]->fresh()->status);
+        $versions[$events[2]->id] = $events[2]->fresh()->contentVersion();
+        $this->post($batch, $selection + ['versions' => $versions])->assertRedirect()->assertSessionHasNoErrors();
         $this->assertSame('withdrawn', $events[1]->fresh()->status);
         $this->assertSame('withdrawn', $events[2]->fresh()->status);
         $this->assertDatabaseCount('community_events', 3);

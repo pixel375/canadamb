@@ -3,14 +3,17 @@
         <div class="page-intro"><div><a class="text-link" href="/account/profile">My account</a><h1>My events</h1><p>Review your event submissions and publication status.</p></div><a class="button button-primary" href="/events/new"><x-icon name="plus" size="17"/> Submit an event</a></div>
         <nav class="seller-status-grid" aria-label="Event status">
             @foreach(array_merge(['all'], $statuses) as $status)
-                <?php $params = array_filter(['status' => $status === 'all' ? null : $status, 'q' => $filters['q'] ?? null]); ?>
+                <?php $params = array_filter(['status' => $status === 'all' ? null : $status, 'q' => $filters['q'] ?? null, 'sort' => $filters['sort'] ?? null], fn ($value) => $value !== null && $value !== ''); ?>
                 <a class="seller-status-tile" href="/account/events{{ $params ? '?'.http_build_query($params) : '' }}" @if(($filters['status'] ?? 'all') === $status) aria-current="page" @endif><strong>{{ $status === 'all' ? $counts->sum() : ($counts[$status] ?? 0) }}</strong><span>{{ ucfirst($status) }}</span></a>
             @endforeach
         </nav>
         <form class="panel seller-listing-search" method="get" action="/account/events">
             @if($filters['status'] ?? null)<input type="hidden" name="status" value="{{ $filters['status'] }}">@endif
-            <label for="owned-event-search" class="sr-only">Search your events</label><input type="search" id="owned-event-search" name="q" maxlength="100" value="{{ $filters['q'] ?? '' }}" placeholder="Search your events"><button class="button button-primary">Search</button>
+            <label for="owned-event-search" class="sr-only">Search your events</label><input type="search" id="owned-event-search" name="q" maxlength="100" value="{{ $filters['q'] ?? '' }}" placeholder="Search your events"><label>Dates<select name="sort"><option value="recent" @selected(($filters['sort'] ?? 'recent') === 'recent')>All dates, latest first</option><option value="upcoming" @selected(($filters['sort'] ?? '') === 'upcoming')>Upcoming and ongoing</option></select></label><button class="button button-primary">Search</button>
         </form>
+        @if(filled($filters['sort'] ?? null) || filled($filters['q'] ?? null) || filled($filters['status'] ?? null))
+            <a class="text-link" href="/account/events">Reset event filters</a>
+        @endif
         <p class="field-note seller-results-count">{{ $items->total() }} {{ \Illuminate\Support\Str::plural('event', $items->total()) }} found</p>
         <details class="panel form-stack mb-4"><summary>Cancel selected events</summary><form method="post" id="event-batch-cancel" action="/account/events/cancel-selected" class="form-stack mt-2">@csrf
             <p class="field-note">Choose up to eight upcoming events using the checkboxes below. Pending submissions are withdrawn; approved events are marked cancelled. Existing discussions remain intact.</p>
@@ -30,7 +33,7 @@
                     @endif
                     <a class="text-link" href="/events/new?reuse={{ $item->id }}">Reuse event details</a>
                     @if(in_array($item->status, ['pending', 'approved'], true))
-                        @if(!($item->localEnd() ?? $item->localStart())->isPast())<label class="checkbox-line"><input form="event-batch-cancel" type="checkbox" name="events[]" value="{{ $item->id }}"> Select for batch cancellation</label>@endif
+                        @if(!($item->localEnd() ?? $item->localStart())->isPast())<label class="checkbox-line"><input form="event-batch-cancel" type="checkbox" name="events[]" value="{{ $item->id }}"> Select for batch cancellation</label><input form="event-batch-cancel" type="hidden" name="versions[{{ $item->id }}]" value="{{ $item->contentVersion() }}">@endif
                         <details class="seller-remove-listing"><summary>{{ $item->status === 'pending' ? 'Withdraw submission' : 'Cancel event' }}</summary>
                             <form method="post" action="/account/events/{{ $item->id }}/cancel" class="form-stack mt-3">@csrf<input type="hidden" name="version" value="{{ $item->contentVersion() }}">
                                 <label>Private cancellation note<input name="cancellation_note" maxlength="300"></label><button class="button button-outline">{{ $item->status === 'pending' ? 'Confirm withdrawal' : 'Confirm cancellation' }}</button>
@@ -38,7 +41,7 @@
                         </details>
                     @endif
                 </article>
-            @empty<div class="panel market-results-empty"><h2>{{ ($filters['q'] ?? null) || ($filters['status'] ?? null) ? 'No events match these filters.' : 'No events submitted yet.' }}</h2><a class="button button-outline" href="/account/events">View all my events</a></div>@endforelse
+            @empty<div class="panel market-results-empty"><h2>{{ filled($filters['q'] ?? null) || filled($filters['status'] ?? null) || ($filters['sort'] ?? null) === 'upcoming' ? 'No events match these filters.' : 'No events submitted yet.' }}</h2><a class="button button-outline" href="/account/events">View all my events</a></div>@endforelse
         </section>
         {{ $items->links() }}
     </div>

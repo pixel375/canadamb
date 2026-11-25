@@ -44,5 +44,9 @@ class EventEditingTest extends TestCase
         $this->assertDatabaseCount('community_events', 1);
         $this->actingAs($owner)->post($path.'/cancel', ['version' => $data['version']])->assertSessionHasErrors('version');
         $this->assertSame('approved', $event->fresh()->status);
+        $past = $event->replicate();
+        $past->forceFill(['title' => 'Past community meetup', 'starts_at' => '2026-02-01 16:00:00'])->save();
+        $this->get('https://brandonmb.ca/account/events')->assertOk()->assertSee('Past community meetup');
+        $this->get('https://brandonmb.ca/account/events?sort=upcoming')->assertOk()->assertSee('Community meetup')->assertDontSee('Past community meetup');
     }
 }

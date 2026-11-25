@@ -174,12 +174,15 @@ class CommunityEventController extends Controller
         $site = $request->attributes->get('site');
         abort_unless($this->community->enabled($site, 'events'), 404);
         $statuses = ['pending', 'approved', 'rejected', 'cancelled', 'withdrawn'];
-        $filters = $request->validate(['status' => ['nullable', Rule::in($statuses)], 'q' => 'nullable|string|max:100']);
+        $filters = $request->validate(['status' => ['nullable', Rule::in($statuses)], 'q' => 'nullable|string|max:100', 'sort' => 'nullable|in:upcoming,recent']);
         $owned = $this->community->events($site->location_id)->where('author_id', $request->user()->id);
         $counts = (clone $owned)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
         $items = $owned->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
             ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'body', 'venue']))
-            ->orderByDesc('starts_at')->orderByDesc('id')->paginate(20)->withQueryString();
+            ->when(($filters['sort'] ?? null) === 'upcoming', fn ($query) => $query->where(fn ($dates) => $dates
+                ->where('starts_at', '>=', now('UTC'))->orWhere('ends_at', '>=', now('UTC')))
+                ->orderBy('starts_at')->orderBy('id'), fn ($query) => $query->orderByDesc('starts_at')->orderByDesc('id'))
+            ->paginate(20)->withQueryString();
 
         $linked = EventDiscussions::linkedEventIds($items->pluck('id')->all());
 
@@ -281,6 +284,7 @@ class CommunityEventController extends Controller
         $data = $request->validate([
             'events' => 'required|array|list|min:1|max:8', 'events.*' => 'required|integer|distinct|min:1',
             'confirm_cancel' => 'accepted', 'cancellation_note' => 'nullable|string|max:300',
+            'versions' => 'sometimes|array|max:20', 'versions.*' => 'required|string|size:64',
         ]);
         $author = $request->user()->id;
         DB::transaction(function () use ($site, $data, $author) {
@@ -290,6 +294,12 @@ class CommunityEventController extends Controller
             foreach ($items as $item) {
                 abort_unless(in_array($item->status, ['pending', 'approved'], true), 409);
                 abort_if(($item->localEnd() ?? $item->localStart())->isPast(), 409, 'Select only upcoming or ongoing events.');
+                if (isset($data['versions'])) {
+                    if (! isset($data['versions'][$item->id])) {
+                        throw ValidationException::withMessages(['versions' => 'Reload the event list before cancelling selected events.']);
+                    }
+                    $this->checkVersion($item, $data['versions'][$item->id]);
+                }
             }
             foreach ($items as $item) {
                 $this->cancelItem($item, $author, $data['cancellation_note'] ?? null);
