@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-25 — campaign duplicate-date regression
+
+Backend 45612984060 reached the full 126-test suite with one failing assertion: equivalent campaign submission was not detected on SQLite because Eloquent stores date casts with a time suffix. Compare using whereDate, as the existing campaign date filters do. Keep duplicate protection and its test. Final cumulative CI required.
+
 ## 2026-11-25 — Marketplace seller and saved-item lifecycle
 
 Added owner-only status history (no internal notes or staff identifiers), prefilled new-listing workflow for sold/expired/rejected items without copying photos or conversations, renewal after expiry even before the scheduled sweep, unavailable-bookmark cleanup with no hidden titles, and strict media path validation. Added owner and portal boundaries to regression checks. Existing review and public visibility rules remain.

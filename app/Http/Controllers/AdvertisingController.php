@@ -80,7 +80,7 @@ class AdvertisingController extends Controller
                 throw ValidationException::withMessages(['title' => 'At most ten open campaign requests are allowed.']);
             }
             $duplicate = AdvertisingCampaign::where('business_id', $business)->where('site_id', $site->id)->where('placement', $data['placement'])
-                ->where('starts_on', $data['starts_on'])->where('weeks', $data['weeks'])->where('title', $data['title'])
+                ->whereDate('starts_on', $data['starts_on'])->where('weeks', $data['weeks'])->where('title', $data['title'])
                 ->whereIn('status', ['pending', 'approved'])->exists();
             if ($duplicate) {
                 throw ValidationException::withMessages(['title' => 'An equivalent open campaign request already exists.']);
