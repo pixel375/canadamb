@@ -87,7 +87,7 @@ class CommunityController extends Controller
 
     public function readiness(Request $request, Site $site)
     {
-        $data = $request->validate(['dns' => 'nullable|accepted', 'tls' => 'nullable|accepted', 'version' => 'nullable|string|size:64']);
+        $data = $request->validate(['dns' => 'sometimes|accepted', 'tls' => 'sometimes|accepted', 'version' => 'nullable|string|size:64']);
         DB::transaction(function () use ($request, $site, $data) {
             $locked = Site::lockForUpdate()->findOrFail($site->id);
             $domain = $locked->domain()->lockForUpdate()->firstOrFail();
@@ -128,6 +128,10 @@ class CommunityController extends Controller
             }
             $from = $locked->status;
             if ($from === $data['status']) {
+                if ($from === 'active' && config('network.sso_enabled')) {
+                    Identity::provision($locked);
+                }
+
                 return;
             }
             $locked->update(['status' => $data['status']]);
