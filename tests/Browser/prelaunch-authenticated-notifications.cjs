@@ -270,7 +270,7 @@ const fs = require('node:fs');
             check((await page.locator('[data-character-feedback]').innerText()).includes('24 / 5000'), 'Character counter did not update');
             response = await page.goto(host + '/account/discussions');
             check(response.ok(), 'Private discussion dashboard failed');
-            check(await page.locator('.seller-status-tile').count() === 4, 'Discussion statuses missing');
+            check(await page.locator('.seller-status-tile').count() === 5, 'Discussion statuses missing');
             response = await page.goto(host + '/account/events');
             check(response.ok(), 'Private event dashboard failed');
             check(await page.locator('.seller-status-tile').count() === 6, 'Event statuses missing');

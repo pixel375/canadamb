@@ -30,7 +30,7 @@
                 </div>
                 <label>Event or tickets link (optional)<input type="url" name="event_url" maxlength="1024" value="{{ old('event_url') }}"></label>
                 <label>Event details<textarea data-character-count name="body" required minlength="10" maxlength="5000" rows="7">{{ old('body') }}</textarea><small class="field-note" data-character-feedback></small></label>
-                <div class="discussion-form-footer"><p>Events are reviewed before appearing in the calendar.</p><button class="button button-primary" type="submit">Submit event for review</button></div>
+                <div class="discussion-form-footer"><p>Events are reviewed before appearing in the calendar. @if(\App\Support\EventDiscussions::enabled()) A companion discussion will also be submitted for review.@endif</p><button class="button button-primary" type="submit">Submit event for review</button></div>
             </form>
         @else
             <form method="post" action="/community" class="panel form-stack">

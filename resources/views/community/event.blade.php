@@ -25,7 +25,7 @@
         <div class="public-profile-layout">
             <div class="public-profile-main"><section class="panel"><h2>About this event</h2><p class="prose-text">{{ $item->body }}</p></section></div>
             <aside class="public-profile-aside"><section class="panel form-stack">
-                <h2>Event details</h2><x-content-report-link type="event" :target="$item->id"/>
+                <h2>Event details</h2>@if($discussion)<a class="button button-outline" href="/community/{{ $discussion->id }}">Join event discussion</a>@endif<x-content-report-link type="event" :target="$item->id"/>
                 <div class="business-contact-row"><x-icon name="calendar" size="20"/><div><h3>When</h3><p><time datetime="{{ $item->localStart()->toAtomString() }}">{{ $item->localStart()->format('l, F j, Y · g:i a T') }}</time>@if($item->localEnd()) to <time datetime="{{ $item->localEnd()->toAtomString() }}">{{ $item->localEnd()->format('M j · g:i a T') }}</time>@endif</p></div></div>
                 <div class="business-contact-row"><x-icon name="pin" size="20"/><div><h3>Venue</h3><p>{{ $item->venue }} · {{ $item->location->name }}</p></div></div>
                 <div class="business-contact-row"><x-icon name="person" size="20"/><div><h3>Organizer</h3><p>{{ $item->organizer }}</p></div></div>

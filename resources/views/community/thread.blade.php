@@ -34,6 +34,13 @@
                         <time datetime="{{ $item->created_at->toIso8601String() }}">{{ $item->created_at->timezone('America/Winnipeg')->format('M j, Y · g:i a T') }}</time>
                     </div>
                 </div>
+                @if($event)
+                    <section class="panel form-stack"><p class="section-label">Linked community event</p><h2>{{ $event->title }}</h2>
+                        @if($event->status === 'cancelled')<p class="notice notice-error">This event has been cancelled.</p>@endif
+                        <p>{{ $event->localStart()->format('l, F j, Y · g:i a T') }}@if($event->localEnd()) – {{ $event->localEnd()->format('M j · g:i a T') }}@endif</p>
+                        <p>{{ $event->venue }} · {{ $event->organizer }}</p><a class="button button-outline" href="/events/{{ $event->id }}">Official event details</a>
+                    </section>
+                @endif
                 <div class="discussion-original-copy prose-text">{{ $item->body }}</div>
                 <div class="discussion-original-footer"><x-content-report-link type="discussion" :target="$item->id"/>
                     <a class="text-link" href="#discussion-replies"><x-icon name="messages" size="16"/> {{ $item->replies_count }} {{ \Illuminate\Support\Str::plural('reply', $item->replies_count) }}</a>

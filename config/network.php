@@ -8,6 +8,7 @@ return [
     'sso_enabled' => env('CANADAMB_SSO_ENABLED', true),
     'news_ingest_token' => env('CANADAMB_NEWS_INGEST_TOKEN'),
     'news_polling' => env('CANADAMB_NEWS_POLLING', false),
+    'event_discussions' => env('CANADAMB_EVENT_DISCUSSIONS', false),
     'content_reports' => env('CANADAMB_CONTENT_REPORTS', false),
     'commercial_test_checkout' => env('CANADAMB_COMMERCIAL_TEST_CHECKOUT', false),
     'commercial_trial_export' => env('CANADAMB_COMMERCIAL_TRIAL_EXPORT', false),

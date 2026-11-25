@@ -42,7 +42,7 @@
             </div>
             <aside class="public-profile-aside">
                 <section class="panel form-stack">
-                    <h2>Apply for this job</h2>
+                    <h2>Apply for this job</h2><x-content-report-link type="job" :target="$item->id"/>
                     <p>Applications close <strong>{{ $item->closing_on->format('F j, Y') }}</strong> (Manitoba time).</p>
                     <a href="{{ $item->apply_url }}" rel="nofollow ugc" class="button button-primary">Apply on the employer’s site <x-icon name="arrow" size="16"/></a>
                     <p class="field-note">Applications are handled by the employer, not CanadaMB. Do not pay application fees or share sensitive information before verifying the employer.</p><a class="text-link" href="/contact?topic=business">Raise a concern about this job</a>

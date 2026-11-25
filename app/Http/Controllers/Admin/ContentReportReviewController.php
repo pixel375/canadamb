@@ -33,7 +33,7 @@ class ContentReportReviewController extends Controller
             abort_unless($item->status === 'pending', 409);
             abort_if((int) $item->reporter_id === $request->user()->id, 403);
             $target = ContentReports::forReview($item->target_type, $item->target_id);
-            abort_if($target && (int) $target->author_id === $request->user()->id, 403);
+            abort_if($target && ContentReports::conflicts($target, $request->user()->id), 403);
             DB::table('content_reports')->where('id', $report)->update([
                 'status' => 'resolved', 'review_note' => $data['note'], 'reviewer_id' => $request->user()->id,
                 'resolved_at' => now(), 'updated_at' => now(),

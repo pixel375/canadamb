@@ -49,7 +49,7 @@
             @forelse($items as $item)
                 <article class="panel event-discovery-card"><div class="event-date-tile"><strong>{{ $item->localStart()->format('j') }}</strong><span>{{ $item->localStart()->format('M') }}</span></div><div>
                     <p class="section-label">{{ $item->localStart()->format('M j · g:i a T') }} · {{ $item->location->name }}</p>
-                    <h2><a href="/events/{{ $item->id }}">{{ $item->title }}</a></h2>
+                    <h2><a href="{{ \App\Support\EventDiscussions::eventPath($eventSite, $item) }}">{{ $item->title }}</a></h2>
                     <p>{{ $item->venue }} · {{ \App\Support\Community::EVENTS[$item->category] }}</p><p class="field-note">{{ \Illuminate\Support\Str::limit(\Illuminate\Support\Str::squish($item->body), 160) }}</p><a class="text-link" href="/events/{{ $item->id }}">Event details <x-icon name="arrow" size="16"/></a>
                 </div></article>
             @empty<div class="panel market-results-empty"><h3>No upcoming events match these filters.</h3><a class="button button-outline" href="{{ \App\Support\LocationScope::browseUrl(request()->attributes->get('site'), '/events', $place) }}">Clear filters</a></div>@endforelse

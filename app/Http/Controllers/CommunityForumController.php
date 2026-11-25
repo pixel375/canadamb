@@ -7,6 +7,7 @@ use App\Models\CommunityThread;
 use App\Models\Location;
 use App\Support\Audit;
 use App\Support\Community;
+use App\Support\EventDiscussions;
 use App\Support\KeywordSearch;
 use App\Support\LocationScope;
 use App\Support\NetworkUrl;
@@ -81,7 +82,9 @@ class CommunityForumController extends Controller
             ->when($item->location_id, fn ($query, $id) => $query->where('location_id', $id))
             ->orderByDesc('last_activity_at')->latest('id')->limit(3)->get();
 
-        return view('community.thread', compact('item', 'canonical', 'replies', 'following', 'related'));
+        $event = EventDiscussions::publicEvent($site, $item);
+
+        return view('community.thread', compact('item', 'canonical', 'replies', 'following', 'related', 'event'));
     }
 
     public function owned(Request $request)

@@ -26,14 +26,14 @@
                 @if($updates->isNotEmpty())
                     <section class="panel">
                         <h2>Business updates</h2>
-                        @foreach($updates as $update)<article class="item-row"><div><p class="section-label">{{ ucfirst($update->type) }} · {{ $update->published_at->format('M j, Y') }}</p><h3>{{ $update->title }}</h3><p class="prose-text">{{ $update->body }}</p></div></article>@endforeach
+                        @foreach($updates as $update)<article class="item-row"><div><p class="section-label">{{ ucfirst($update->type) }} · {{ $update->published_at->format('M j, Y') }}</p><h3>{{ $update->title }}</h3><p class="prose-text">{{ $update->body }}</p><x-content-report-link type="business-update" :target="$update->id"/></div></article>@endforeach
                         {{ $updates->links() }}
                     </section>
                 @endif
             </div>
             <aside class="public-profile-aside">
                 <section class="panel form-stack">
-                    <h2>Contact and locations</h2>
+                    <h2>Contact and locations</h2><x-content-report-link type="business" :target="$business->id"/>
                     @foreach($branches as $branch)<div class="business-contact-row"><x-icon name="pin" size="20"/><div><h3>{{ $branch->location->name }}</h3><p>{{ $branch->address }}</p></div></div>@endforeach
                     @if($business->hours)<div class="business-contact-row"><x-icon name="clock" size="20"/><div><h3>Hours</h3><p class="whitespace-pre-line">{{ $business->hours }}</p></div></div>@endif
                     @if($business->website)<a class="button button-primary" href="{{ $business->website }}" rel="nofollow ugc">Visit website <x-icon name="arrow" size="16"/></a>@endif

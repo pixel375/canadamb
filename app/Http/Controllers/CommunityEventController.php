@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\CommunityEvent;
 use App\Models\Location;
 use App\Support\Community;
+use App\Support\EventDiscussions;
 use App\Support\KeywordSearch;
 use App\Support\LocationScope;
 use App\Support\NetworkUrl;
@@ -69,7 +70,9 @@ class CommunityEventController extends Controller
             return redirect()->away($canonical, 301, ['Cache-Control' => 'no-store']);
         }
 
-        return view('community.event', compact('item', 'canonical'));
+        $discussion = EventDiscussions::publicThread($site, $item);
+
+        return view('community.event', compact('item', 'canonical', 'discussion'));
     }
 
     public function create(Request $request)
@@ -104,7 +107,12 @@ class CommunityEventController extends Controller
         }
         $data['starts_at'] = $starts->format('Y-m-d H:i:s');
         $data['ends_at'] = $ends?->format('Y-m-d H:i:s');
-        CommunityEvent::create($data + ['author_id' => $request->user()->id]);
+        DB::transaction(function () use ($request, $site, $data) {
+            $event = CommunityEvent::create($data + ['author_id' => $request->user()->id]);
+            if (EventDiscussions::enabled() && $this->community->enabled($site, 'community')) {
+                EventDiscussions::create($event);
+            }
+        });
 
         return redirect('/account/events')->with('status', 'Event submitted for review.');
     }
