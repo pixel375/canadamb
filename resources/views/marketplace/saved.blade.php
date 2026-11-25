@@ -16,6 +16,12 @@
         @if($unavailable->total())
             <section class="panel form-stack mt-4"><h2>Unavailable saved listings ({{ $unavailable->total() }})</h2>
                 <p class="field-note">These listings are no longer public or have expired. Private titles and photos are not shown. You may keep the bookmark or remove it.</p>
+                <details><summary>Remove all unavailable saved listings</summary>
+                    <form method="post" action="/account/saved/clear-unavailable" class="form-stack mt-2">@csrf
+                        <p class="field-note">Removes only your currently unavailable listing bookmarks on this portal, including those on other pages.</p>
+                        <label class="checkbox-line"><input type="checkbox" name="confirm_remove" value="1" required> Confirm removal</label><button class="button button-outline">Remove unavailable bookmarks</button>
+                    </form>
+                </details>
                 @foreach($unavailable as $record)
                     <div class="item-row"><span>Listing #{{ $record->listing_id }} · Unavailable</span><form method="post" action="/marketplace/{{ $record->listing_id }}/save">@csrf @method('DELETE')<button class="button button-outline">Unsave unavailable listing</button></form></div>
                 @endforeach

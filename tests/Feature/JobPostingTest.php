@@ -8,6 +8,7 @@ use App\Models\Location;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class JobPostingTest extends TestCase
@@ -15,6 +16,30 @@ class JobPostingTest extends TestCase
     use RefreshDatabase;
 
     protected $seeder = DatabaseSeeder::class;
+
+    public function test_bulk_job_bookmark_cleanup_preserves_open_and_other_portal_items(): void
+    {
+        $member = User::factory()->create();
+        $other = User::factory()->create();
+        $business = Business::create(['name' => 'Bookmark employer', 'slug' => 'bookmark-employer', 'category' => 'retail', 'status' => 'active']);
+        foreach ([['brandon', 'expired'], ['brandon', 'approved'], ['winnipeg', 'expired']] as [$place, $status]) {
+            $branch = $business->locations()->create(['location_id' => Location::where('slug', $place)->sole()->id, 'address' => $status.' test road']);
+            $job = JobPosting::create(['business_location_id' => $branch->id, 'title' => 'Saved '.$place.' '.$status,
+                'description' => 'A bookmarked job fixture.', 'employment_type' => 'full-time', 'workplace' => 'on-site',
+                'apply_url' => 'https://example.test/apply', 'closing_on' => today()->addWeek()->toDateString()]);
+            $job->forceFill(['status' => $status, 'published_at' => now()])->save();
+            foreach ([$member, $other] as $user) {
+                DB::table('job_posting_bookmarks')->insert(['user_id' => $user->id, 'job_posting_id' => $job->id]);
+            }
+        }
+        $url = 'https://brandonmb.ca/account/saved-jobs/clear-unavailable';
+        $this->actingAs($member)->post($url)->assertSessionHasErrors('confirm_remove');
+        $this->post($url, ['confirm_remove' => '1'])->assertRedirect('/account/saved-jobs');
+        $removed = JobPosting::where('title', 'Saved brandon expired')->sole();
+        $this->assertDatabaseMissing('job_posting_bookmarks', ['user_id' => $member->id, 'job_posting_id' => $removed->id]);
+        $this->assertSame(2, DB::table('job_posting_bookmarks')->where('user_id', $member->id)->count());
+        $this->assertSame(3, DB::table('job_posting_bookmarks')->where('user_id', $other->id)->count());
+    }
 
     public function test_business_jobs_are_authorized_moderated_scoped_and_expired(): void
     {

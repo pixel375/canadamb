@@ -124,6 +124,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/account/job-searches/{search}/read', [JobSearchController::class, 'read'])->whereNumber('search')->middleware('throttle:12,1,job-search-read');
     Route::delete('/account/job-searches/{search}', [JobSearchController::class, 'destroy'])->whereNumber('search')->middleware('throttle:12,1,job-search-delete');
     Route::get('/account/saved-jobs', [JobController::class, 'saved']);
+    Route::post('/account/saved-jobs/clear-unavailable', [JobController::class, 'clearUnavailable'])->middleware('throttle:5,1,clear-job-bookmarks');
     Route::post('/jobs/{job}/save', [JobController::class, 'save'])->whereNumber('job');
     Route::delete('/jobs/{job}/save', [JobController::class, 'remove'])->whereNumber('job');
     Route::get('/account/followed-discussions', [CommunityForumController::class, 'followed']);
@@ -169,6 +170,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/account/marketplace-searches/{search}/rename', [MarketplaceSearchController::class, 'rename'])->whereNumber('search')->middleware('throttle:10,1,market-search-rename');
     Route::delete('/account/marketplace-searches/{search}', [MarketplaceSearchController::class, 'destroy'])->whereNumber('search')->middleware('throttle:10,1,market-search-delete');
     Route::get('/account/saved', [ListingEngagementController::class, 'saved']);
+    Route::post('/account/saved/clear-unavailable', [ListingEngagementController::class, 'clearUnavailable'])->middleware('throttle:5,1,clear-listing-bookmarks');
     Route::get('/account/listing-reports', [ListingEngagementController::class, 'reports']);
     Route::post('/marketplace/{listing}/save', [ListingEngagementController::class, 'save'])->whereNumber('listing')->middleware('throttle:24,1');
     Route::delete('/marketplace/{listing}/save', [ListingEngagementController::class, 'remove'])->whereNumber('listing')->middleware('throttle:24,1');

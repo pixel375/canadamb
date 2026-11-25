@@ -20,6 +20,28 @@ class MarketplaceEngagementTest extends TestCase
 
     protected $seeder = DatabaseSeeder::class;
 
+    public function test_bulk_bookmark_cleanup_preserves_active_and_other_portal_items(): void
+    {
+        $member = User::factory()->create();
+        $other = User::factory()->create();
+        foreach ([['brandon', 'sold'], ['brandon', 'active'], ['winnipeg', 'sold']] as [$place, $status]) {
+            $item = Listing::create(['user_id' => $other->id, 'location_id' => Location::where('slug', $place)->sole()->id,
+                'title' => 'Saved '.$place.' '.$status, 'description' => 'A saved listing fixture.', 'category' => 'furniture',
+                'condition' => 'good', 'price_cents' => 100, 'status' => $status]);
+            $item->forceFill(['expires_at' => now()->addWeek(), 'published_at' => now()])->save();
+            foreach ([$member, $other] as $user) {
+                DB::table('listing_favourites')->insert(['user_id' => $user->id, 'listing_id' => $item->id]);
+            }
+        }
+        $url = 'https://brandonmb.ca/account/saved/clear-unavailable';
+        $this->actingAs($member)->post($url)->assertSessionHasErrors('confirm_remove');
+        $this->post($url, ['confirm_remove' => '1'])->assertRedirect('/account/saved');
+        $removed = Listing::where('title', 'Saved brandon sold')->sole();
+        $this->assertDatabaseMissing('listing_favourites', ['user_id' => $member->id, 'listing_id' => $removed->id]);
+        $this->assertSame(2, DB::table('listing_favourites')->where('user_id', $member->id)->count());
+        $this->assertSame(3, DB::table('listing_favourites')->where('user_id', $other->id)->count());
+    }
+
     public function test_listing_photo_access_follows_listing_visibility_and_does_not_leak_a_rural_photo(): void
     {
         Storage::fake('local');

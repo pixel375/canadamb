@@ -69,7 +69,7 @@ class ListingEngagementController extends Controller
             $query->selectRaw('1')->from('listing_favourites')->whereColumn('listing_id', 'listings.id')->where('user_id', $request->user()->id);
         });
         $total = (clone $matching)->count();
-        $items = $matching->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'description']));
+        $items = $matching->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'description']));
         match ($filters['sort'] ?? 'recent') {
             'price-low' => $items->orderBy('price_cents'),
             'price-high' => $items->orderByDesc('price_cents'),
@@ -78,6 +78,20 @@ class ListingEngagementController extends Controller
         $items = $items->latest('id')->paginate(18)->withQueryString();
 
         return view('marketplace.saved', compact('items', 'filters', 'total', 'unavailable'));
+    }
+
+    public function clearUnavailable(Request $request)
+    {
+        $request->validate(['confirm_remove' => 'accepted']);
+        $site = $request->attributes->get('site');
+        abort_unless($this->marketplace->enabled($site), 404);
+        $unavailable = Listing::query()->when($site->location_id, fn ($query, $id) => $query->where('location_id', $id))
+            ->where(fn ($query) => $query->where('status', '!=', 'active')->orWhereNull('expires_at')->orWhere('expires_at', '<=', now()))
+            ->select('id');
+        $removed = DB::table('listing_favourites')->where('user_id', $request->user()->id)
+            ->whereIn('listing_id', $unavailable)->delete();
+
+        return redirect('/account/saved')->with('status', $removed.' unavailable saved listings removed.');
     }
 
     public function reports(Request $request)

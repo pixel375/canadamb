@@ -56,7 +56,7 @@
             @empty
                 <div class="discussion-notifications-empty">
                     <x-icon name="discussions" size="28"/>
-                    <h2>{{ filled($filters['q'] ?? null) || filled($filters['category'] ?? null) ? 'No followed discussions match these filters' : "You're not following any discussions here" }}</h2>
+                    <h2>@if(filled($filters['q'] ?? null) || filled($filters['category'] ?? null))No followed discussions match these filters@else You're not following any discussions here @endif</h2>
                     <p>Open a discussion and choose Follow discussion to get notified about new approved replies.</p>
                     <a class="button button-primary" href="/community">Explore discussions</a>
                 </div>

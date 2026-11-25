@@ -15,6 +15,12 @@
         @if($unavailable->total())
             <section class="panel form-stack mt-4"><h2>Unavailable saved jobs ({{ $unavailable->total() }})</h2>
                 <p class="field-note">Closed or unpublished positions. Private titles and details are not shown.</p>
+                <details><summary>Remove all unavailable saved jobs</summary>
+                    <form method="post" action="/account/saved-jobs/clear-unavailable" class="form-stack mt-2">@csrf
+                        <p class="field-note">Removes only your currently unavailable job bookmarks on this portal, including those on other pages.</p>
+                        <label class="checkbox-line"><input type="checkbox" name="confirm_remove" value="1" required> Confirm removal</label><button class="button button-outline">Remove unavailable bookmarks</button>
+                    </form>
+                </details>
                 @foreach($unavailable as $record)
                     <div class="item-row"><span>Job #{{ $record->job_posting_id }} · Unavailable</span><form method="post" action="/jobs/{{ $record->job_posting_id }}/save">@csrf @method('DELETE')<button class="button button-outline">Remove unavailable job</button></form></div>
                 @endforeach

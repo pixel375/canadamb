@@ -214,6 +214,21 @@ class JobController extends Controller
         return view('jobs.saved', compact('items', 'filters', 'total', 'unavailable'));
     }
 
+    public function clearUnavailable(Request $request)
+    {
+        $request->validate(['confirm_remove' => 'accepted']);
+        $site = $request->attributes->get('site');
+        abort_unless($this->jobs->enabled($site), 404);
+        $unavailable = JobPosting::query()->whereHas('branch', fn ($query) => $query->when($site->location_id, fn ($branch, $id) => $branch->where('location_id', $id)))
+            ->where(fn ($query) => $query->where('status', '!=', 'approved')->orWhere('closing_on', '<', $this->jobs->closingToday())
+                ->orWhereHas('branch', fn ($branch) => $branch->where('location_status', 'closed')->orWhereHas('business', fn ($business) => $business->where('status', '!=', 'active'))))
+            ->select('id');
+        $removed = DB::table('job_posting_bookmarks')->where('user_id', $request->user()->id)
+            ->whereIn('job_posting_id', $unavailable)->delete();
+
+        return redirect('/account/saved-jobs')->with('status', $removed.' unavailable saved jobs removed.');
+    }
+
     private function visible(Request $request)
     {
         $site = $request->attributes->get('site');
