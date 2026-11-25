@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\CommunityEvent;
 use App\Models\Location;
 use App\Models\User;
+use App\Support\Audit;
 use App\Support\CalendarExport;
 use App\Support\Community;
 use App\Support\EventDiscussions;
@@ -101,9 +102,14 @@ class CommunityEventController extends Controller
         $site = $request->attributes->get('site');
         abort_unless($this->community->enabled($site, 'events'), 404);
 
+        $filters = $request->validate(['reuse' => 'nullable|integer|min:1']);
+        $source = isset($filters['reuse']) ? $this->community->events($site->location_id)
+            ->where('author_id', $request->user()->id)->findOrFail($filters['reuse']) : null;
+
         return view('community.new-event', [
+            'source' => $source,
             'places' => $site->isNetwork() ? Location::selectable()->orderBy('name')->get() : collect(),
-            'suggestedLocation' => LocationScope::forBrowsing($site, $request->query('location', $request->cookie(LocationScope::PREFERENCE_COOKIE))),
+            'suggestedLocation' => $source?->location ?? LocationScope::forBrowsing($site, $request->query('location', $request->cookie(LocationScope::PREFERENCE_COOKIE))),
         ]);
     }
 
@@ -127,6 +133,9 @@ class CommunityEventController extends Controller
         $data['location_id'] = LocationScope::forPublication($site, isset($data['location_id']) ? (int) $data['location_id'] : null);
         $starts = $this->community->localEventTime($data['starts_at'], 'starts_at');
         $ends = isset($data['ends_at']) ? $this->community->localEventTime($data['ends_at'], 'ends_at') : null;
+        if ($starts->greaterThan(now('UTC')->addYear())) {
+            throw ValidationException::withMessages(['starts_at' => 'Choose a date within the next year.']);
+        }
         if ($starts->isPast()) {
             throw ValidationException::withMessages(['starts_at' => 'Choose an upcoming date and time.']);
         }
@@ -145,11 +154,12 @@ class CommunityEventController extends Controller
             }
             foreach ($dates as $date) {
                 $eventData = array_replace($data, $date);
-                if ($count > 1 && CommunityEvent::where('author_id', $author)->where('location_id', $data['location_id'])
+                if (CommunityEvent::where('author_id', $author)->where('location_id', $data['location_id'])
                     ->where('title', $data['title'])->where('starts_at', $date['starts_at'])->whereIn('status', ['pending', 'approved'])->exists()) {
                     throw ValidationException::withMessages(['starts_at' => 'An occurrence already exists. No events were submitted.']);
                 }
                 $event = CommunityEvent::create($eventData + ['author_id' => $author]);
+                Audit::record('community.event.submitted', $author, context: ['event' => $event->id]);
                 if (EventDiscussions::enabled() && $this->community->enabled($site, 'community')) {
                     EventDiscussions::create($event);
                 }
@@ -182,12 +192,41 @@ class CommunityEventController extends Controller
         DB::transaction(function () use ($event, $request, $site, $data) {
             $item = $this->community->events($site->location_id)->where('author_id', $request->user()->id)->lockForUpdate()->findOrFail($event);
             abort_unless(in_array($item->status, ['pending', 'approved'], true), 409);
-            $item->forceFill([
-                'status' => $item->status === 'approved' ? 'cancelled' : 'withdrawn',
-                'cancelled_at' => now(), 'cancellation_note' => $data['cancellation_note'] ?? null,
-            ])->save();
+            $this->cancelItem($item, $request->user()->id, $data['cancellation_note'] ?? null);
         });
 
-        return redirect('/account/events')->with('status', 'Event cancelled.');
+        return redirect('/account/events')->with('status', 'Event cancellation recorded.');
+    }
+
+    public function cancelSelected(Request $request)
+    {
+        $site = $request->attributes->get('site');
+        abort_unless($this->community->enabled($site, 'events'), 404);
+        $data = $request->validate([
+            'events' => 'required|array|list|min:1|max:8', 'events.*' => 'required|integer|distinct|min:1',
+            'confirm_cancel' => 'accepted', 'cancellation_note' => 'nullable|string|max:300',
+        ]);
+        $author = $request->user()->id;
+        DB::transaction(function () use ($site, $data, $author) {
+            $items = $this->community->events($site->location_id)->where('author_id', $author)
+                ->whereIn('id', $data['events'])->orderBy('id')->lockForUpdate()->get();
+            abort_unless($items->count() === count($data['events']), 404);
+            foreach ($items as $item) {
+                abort_unless(in_array($item->status, ['pending', 'approved'], true), 409);
+                abort_if(($item->localEnd() ?? $item->localStart())->isPast(), 409, 'Select only upcoming or ongoing events.');
+            }
+            foreach ($items as $item) {
+                $this->cancelItem($item, $author, $data['cancellation_note'] ?? null);
+            }
+        }, attempts: 3);
+
+        return redirect('/account/events')->with('status', count($data['events']).' selected event cancellations recorded.');
+    }
+
+    private function cancelItem(CommunityEvent $item, int $author, ?string $note): void
+    {
+        $status = $item->status === 'approved' ? 'cancelled' : 'withdrawn';
+        $item->forceFill(['status' => $status, 'cancelled_at' => now(), 'cancellation_note' => $note])->save();
+        Audit::record('community.event.'.$status, $author, context: ['event' => $item->id]);
     }
 }

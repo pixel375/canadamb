@@ -42,5 +42,17 @@ class EventSeriesTest extends TestCase
         $this->get($file)->assertNotFound();
         $this->post($url, array_replace($input, ['title' => 'Invalid DST series', 'starts_at' => '2026-03-01T02:30', 'ends_at' => '2026-03-01T04:00']))->assertSessionHasErrors('starts_at');
         $this->assertDatabaseCount('community_events', 3);
+        $this->get('https://brandonmb.ca/events/new?reuse='.$events[1]->id)->assertOk()->assertSee('Weekly club, meeting')->assertSee('choose new dates');
+        $other = User::factory()->create();
+        $this->actingAs($other)->get('https://brandonmb.ca/events/new?reuse='.$events[1]->id)->assertNotFound();
+        $batch = 'https://brandonmb.ca/account/events/cancel-selected';
+        $selection = ['events' => [$events[1]->id, $events[2]->id], 'confirm_cancel' => '1'];
+        $this->post($batch, $selection)->assertNotFound();
+        $this->actingAs($member)->post($batch, ['events' => [$events[0]->id, $events[1]->id], 'confirm_cancel' => '1'])->assertConflict();
+        $this->assertSame('pending', $events[1]->fresh()->status);
+        $this->post($batch, $selection)->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame('withdrawn', $events[1]->fresh()->status);
+        $this->assertSame('withdrawn', $events[2]->fresh()->status);
+        $this->assertDatabaseCount('community_events', 3);
     }
 }

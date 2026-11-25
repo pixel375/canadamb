@@ -146,6 +146,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/events/new', [CommunityEventController::class, 'create']);
     Route::post('/events', [CommunityEventController::class, 'store'])->middleware('throttle:6,1,event-submission');
     Route::get('/account/events', [CommunityEventController::class, 'owned']);
+    Route::post('/account/events/cancel-selected', [CommunityEventController::class, 'cancelSelected'])->middleware('throttle:5,1,event-batch-cancel');
     Route::post('/account/events/{event}/cancel', [CommunityEventController::class, 'cancel'])->whereNumber('event');
     Route::get('/marketplace/new', [MarketplaceController::class, 'create']);
     Route::post('/marketplace', [MarketplaceController::class, 'store'])->middleware('throttle:12,1');

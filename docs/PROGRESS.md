@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-25 — event reuse and bounded batch cancellation
+
+Owner-only reuse prepopulates event details but never copies dates or discussion links. Added atomic selected-event cancellation (up to eight, same portal and author, explicit confirmation, no partial changes), audit records, single-event duplicate prevention and one-year submission horizon. No series identity schema or automatic republication.
+
 ## 2026-11-25 — business announcement lifecycle
 
 Added private portal-scoped update history with filters, version-bound revisions/withdrawal, independent version-bound moderation, audit transitions and paginated claim history. Revised public content returns to pending, and withdrawal preserves the historical row. Owner/manager may manage team posts; editors may manage their own posts. No migration.
