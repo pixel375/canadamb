@@ -25,6 +25,19 @@
             $wideFilters = array_diff_key($activeFilters, ['location' => true]);
             $wideUrl = '/jobs'.($wideFilters ? '?'.http_build_query($wideFilters) : '');
         @endphp
+        @auth
+            @if(auth()->user()->hasVerifiedEmail() && \App\Support\JobSearches::enabled(request()->attributes->get('site')))
+                <details class="panel mb-4"><summary>Save this job search</summary>
+                    <form class="form-stack mt-2" method="post" action="/account/job-searches">@csrf
+                        @foreach($activeFilters as $field => $value)<input type="hidden" name="{{ $field }}" value="{{ $value }}">@endforeach
+                        <label>Search name<input name="name" required maxlength="80" placeholder="My job search"></label>
+                        <label class="checkbox"><input type="checkbox" name="alerts" value="1" checked> Show new matching jobs in my account</label>
+                        <button class="button button-primary">Save search</button>
+                    </form>
+                    <a class="text-link" href="/account/job-searches">Manage saved searches</a>
+                </details>
+            @endif
+        @endauth
         <section class="market-results" aria-labelledby="jobs-results-title">
             <div class="market-results-heading">
                 <div>

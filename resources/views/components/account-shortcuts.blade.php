@@ -13,6 +13,7 @@
         ['path' => '/account/followed-discussions', 'icon' => 'discussions', 'label' => 'Following discussions', 'note' => 'Conversations you follow', 'enabled' => $networkSettings['modules']['community'] ?? false],
         ['path' => '/account/events', 'icon' => 'calendar', 'label' => 'My events', 'note' => 'Submitted community events', 'enabled' => $networkSettings['modules']['events'] ?? false],
         ['path' => '/account/saved-jobs', 'icon' => 'briefcase', 'label' => 'Saved jobs', 'note' => 'Employment opportunities', 'enabled' => $networkSettings['modules']['jobs'] ?? false],
+        ['path' => '/account/job-searches', 'icon' => 'briefcase', 'label' => 'Job searches and alerts', 'note' => 'Saved employment filters', 'enabled' => \App\Support\JobSearches::enabled($site)],
         ['path' => '/account/businesses', 'icon' => 'building', 'label' => 'My businesses', 'note' => 'Manage business profiles', 'enabled' => $networkSettings['modules']['businesses'] ?? false],
         ['path' => '/account/properties', 'icon' => 'house', 'label' => 'Private property drafts', 'note' => 'Manage unpublished properties', 'enabled' => config('network.property_drafts')],
         ['path' => '/account/settings', 'icon' => 'settings', 'label' => 'Settings', 'note' => 'Account and privacy', 'enabled' => true],

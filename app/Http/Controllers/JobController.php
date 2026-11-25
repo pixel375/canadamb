@@ -20,19 +20,8 @@ class JobController extends Controller
     {
         $site = $request->attributes->get('site');
         $query = $this->visible($request);
-        $filters = $request->validate([
-            'q' => 'nullable|string|max:100', 'type' => ['nullable', Rule::in(array_keys(JobBoard::TYPES))],
-            'workplace' => ['nullable', Rule::in(array_keys(JobBoard::WORKPLACES))], 'location' => 'nullable|string|max:150',
-            'pay_unit' => 'required_with:minimum_pay|nullable|in:hour,year', 'minimum_pay' => 'nullable|numeric|decimal:0,2|min:0|max:10000000',
-        ]);
-        $items = $query
-            ->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'description']))
-            ->when($filters['type'] ?? null, fn ($query, $type) => $query->where('employment_type', $type))
-            ->when($filters['workplace'] ?? null, fn ($query, $workplace) => $query->where('workplace', $workplace))
-            ->when($filters['pay_unit'] ?? null, fn ($query, $unit) => $query->where('pay_unit', $unit))
-            ->when(isset($filters['minimum_pay']), fn ($query) => $query->where('pay_max', '>=', (int) round($filters['minimum_pay'] * 100)))
-            ->when($site->isNetwork() && filled($filters['location'] ?? null), fn ($query) => $query->whereHas('branch.location',
-                fn ($location) => $location->whereLike('name', '%'.$filters['location'].'%')))
+        $filters = $request->validate(JobBoard::searchRules());
+        $items = $this->jobs->filter($query, $site, $filters)
             ->latest('published_at')->latest('id')->paginate(18)->withQueryString();
 
         return view('jobs.index', compact('items', 'filters'));

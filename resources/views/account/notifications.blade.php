@@ -32,6 +32,9 @@
                 </div>
             </section>
         </div>
+        @if(\App\Support\JobSearches::enabled(request()->attributes->get('site')))
+            <section class="panel form-stack"><h2>Job alerts</h2><p>Check new matches and manage alerts for saved employment searches on this portal.</p><a class="button button-outline" href="/account/job-searches">Open job alerts</a></section>
+        @endif
         @if($discussionsEnabled)
             <section class="homepage-section activity-panel" aria-labelledby="recent-replies-title">
                 <div class="section-heading">

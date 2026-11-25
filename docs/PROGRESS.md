@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-25 — saved job searches and in-app alerts
+
+Prior business changes `c45e223` passed [backend](https://github.com/pixel375/canadamb/actions/runs/45553503749), [browser](https://github.com/pixel375/canadamb/actions/runs/45553503763) and [deployment plus independent audits](https://github.com/pixel375/canadamb/actions/runs/45553789528). This pass stages portal-scoped saved searches, shared public filters, bounded ten-search limit, per-search alert opt-in/pause, new matches since last checked and account navigation. Counts are computed on demand only; no scheduler, push, email or global unread badge change. Proposed migration and feature switch remain off.
+
 ## 2026-11-24 — production gate recovery and business changes
 
 `ff48c94` passed exact backend/browser checks and activated; initial deployment audit reported transient HTTP 503 after activation. Read-only main audit [45553330607](https://github.com/pixel375/canadamb/actions/runs/45553330607) independently confirmed active SHA, DB and expected HTTP 403 on both domains. No access gate bypass. This source pass stages moderated branch additions/address correction and exact-email manual verification with invalidation on change. No proposed migrations applied and no feature activation; no automatic email or public verification badge.
