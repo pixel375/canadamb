@@ -34,6 +34,7 @@
             <p class="field-note">Your email address is not displayed on your public member profile.</p>
             <a class="text-link" href="/account/profile">View my public profile</a>
             <a class="text-link" href="/account/notifications">View notifications</a>
+            <a class="text-link" href="/account/data-export">Download my data</a>
         </div>
         <section class="panel form-stack" aria-labelledby="account-security-heading">
             <h2 id="account-security-heading">Account security</h2>

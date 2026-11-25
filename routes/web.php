@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AccountExportController;
 use App\Http\Controllers\AccountNotificationsController;
 use App\Http\Controllers\Admin\AdvertisingReviewController;
 use App\Http\Controllers\Admin\BusinessEntitlementController;
@@ -47,6 +48,8 @@ Route::get('/users/{user}', [UserProfileController::class, 'show'])->whereNumber
 Route::middleware('auth')->group(function () {
     Route::get('/account/profile', [UserProfileController::class, 'mine']);
     Route::get('/account/settings', [UserProfileController::class, 'settings']);
+    Route::get('/account/data-export', [AccountExportController::class, 'index']);
+    Route::post('/account/data-export', [AccountExportController::class, 'download'])->middleware('throttle:6,1,account-export')->block(8, 8);
     Route::post('/account/settings', [UserProfileController::class, 'update'])->middleware('throttle:8,1');
     Route::post('/account/settings/password', [UserProfileController::class, 'changePassword'])->middleware('throttle:5,1')->block(8, 8);
 });

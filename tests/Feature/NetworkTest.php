@@ -49,7 +49,7 @@ class NetworkTest extends TestCase
     {
         foreach (['canadamb.ca', 'brandonmb.ca'] as $host) {
             $this->get("https://$host/safety")->assertOk()->assertSee('Safety and community guidance')->assertSee('Reporting limitations during prelaunch');
-            $this->get("https://$host/privacy-overview")->assertOk()->assertSee('Automated account export and deletion are not yet available');
+            $this->get("https://$host/privacy-overview")->assertOk()->assertSee('Full account export and automated deletion are not yet available');
             $this->get("https://$host/contact?topic=news")->assertOk()->assertSee('value="news" selected', false);
             $this->get("https://$host/contact?topic%5B%5D=invalid")->assertOk();
         }
