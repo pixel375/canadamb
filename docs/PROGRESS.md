@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-24 — business access and ownership lifecycle
+
+Prior reply lifecycle `7515f79fdeba52c2c015e73c8e7348a06d887e2f` passed backend and browser CI ([backend](https://github.com/pixel375/canadamb/actions/runs/45549036272), [browser](https://github.com/pixel375/canadamb/actions/runs/45549036293)). Reporting deployment [45548974394](https://github.com/pixel375/canadamb/actions/runs/45548974394) succeeded. This pass stages recipient-accepted team invitations and independent ownership transfer review, with expiry, cancellation, password checks and a proposed additive schema. No live migration or feature switch changes. Disputes remain separate.
+
 ## 2026-11-24 — reply lifecycle and moderation
 
 Prior profile/private-message reporting source `aac294331540e83f9a16fb30a37485e039fe4b15` passed [backend CI](https://github.com/pixel375/canadamb/actions/runs/45548693682) and [browser QA](https://github.com/pixel375/canadamb/actions/runs/45548693671); deployment was queued. This pass adds scoped My replies history, author editing and withdrawal, stale-version protection in moderation, and duplicate-safe notifications on reapproval. Existing notification read state is preserved. Hidden parent titles are not shown in reply history. No migrations or feature switches are changed. New release verification remains separate.

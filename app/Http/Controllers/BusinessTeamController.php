@@ -22,6 +22,7 @@ class BusinessTeamController extends Controller
 
     public function store(Request $request, int $business)
     {
+        abort_if(config('network.business_access_requests'), 404);
         $data = $request->validate([
             'email' => 'required|email|max:254',
             'role' => 'required|in:manager,editor',

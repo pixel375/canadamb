@@ -12,7 +12,19 @@
             @endforeach
         </section>
         <section class="panel form-stack"><h2>Permissions</h2><dl class="job-detail-facts"><div><dt>Owner</dt><dd>Manage team, profile, updates and jobs.</dd></div><div><dt>Manager</dt><dd>Manage profile, updates and jobs.</dd></div><div><dt>Editor</dt><dd>Manage profile and updates only.</dd></div></dl><p class="field-note">Ownership changes and disputes require independent review. Owners cannot be removed or demoted here.</p><a class="text-link" href="/contact?topic=business">Contact about ownership</a></section>
-        @if($isOwner && $item->status === 'active')
+        @if(\App\Support\BusinessAccess::enabled())
+            <section class="panel form-stack"><h2>Access requests</h2><a class="text-link" href="/account/business-access">My invitations and transfers</a>
+                @if($isOwner && $item->status === 'active')
+                    <form method="post" action="/account/businesses/{{ $item->id }}/access-requests" class="form-stack">@csrf
+                        <label>Verified account email<input name="email" type="email" maxlength="254" required autocomplete="off"></label>
+                        <label>Request type<select name="kind"><option value="editor">Invite editor</option><option value="manager">Invite manager</option><option value="transfer">Transfer ownership</option></select></label>
+                        <p class="field-note">The recipient must accept in their account. Transfers also require independent review and remove your own membership on approval. Requests expire in seven days.</p>
+                        <label>Current password<input name="current_password" type="password" required maxlength="72" autocomplete="current-password"></label>
+                        <button class="button button-primary">Send access request</button>
+                    </form>
+                @endif
+            </section>
+        @elseif(!config('network.business_access_requests') && $isOwner && $item->status === 'active')
             <section class="panel form-stack"><h2>Add a team member</h2><p>Grant access to an existing verified CanadaMB account. Confirm the account holder agrees before granting access. No invitation email is sent.</p>
                 <form method="post" action="/account/businesses/{{ $item->id }}/team" class="form-stack">@csrf
                     <label>Account email<input name="email" type="email" maxlength="254" required autocomplete="off"></label>
