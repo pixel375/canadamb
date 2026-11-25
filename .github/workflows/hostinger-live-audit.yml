@@ -138,6 +138,26 @@ jobs:
             backup=no; [[ ! -s "$app/shared/backups/$id/checksums.sha256" ]] || backup=yes
             printf '%s %s active=%s backup=%s\n' "$id" "$(du -sk "$dir" | awk '{print $1}')" "$active" "$backup"
           done
+          echo 'Read-only retained exception classification'
+          target=b5f16a6c08eefcd804deb1970f52490220af67f5
+          root="$app/releases/$target"
+          log="$app/shared/storage/logs/release-$target.log"
+          if [[ -d "$root" && ! -L "$root" && "$root" != "$old" ]]; then
+            for marker in .prepared .preflight .last-preflight storage/framework/down storage/framework/maintenance.php; do
+              if [[ -e "$root/$marker" ]]; then printf 'Retained exception marker %s present\n' "$marker"; else printf 'Retained exception marker %s absent\n' "$marker"; fi
+            done
+            for part in .env storage/app storage/logs storage/oauth-private.key storage/oauth-public.key; do
+              if [[ -L "$root/$part" ]]; then printf 'Retained exception %s is a symlink\n' "$part"; elif [[ -e "$root/$part" ]]; then printf 'Retained exception %s is local\n' "$part"; else printf 'Retained exception %s absent\n' "$part"; fi
+            done
+            if [[ -f "$log" && ! -L "$log" ]]; then
+              for pattern in 'production-initial prepare' 'production-initial preflight' 'production-initial activate' 'production-update prepare' 'production-update preflight' 'production-update activate' 'Prepared ' 'Activated ' 'Release step failed'; do
+                printf 'Retained exception log count %s: %s\n' "$pattern" "$(grep -Fc "$pattern" "$log" || true)"
+              done
+            else
+              echo 'Retained exception log absent'
+            fi
+            if [[ -e "$app/shared/backups/$target" ]]; then echo 'Retained exception backup directory present'; else echo 'Retained exception backup directory absent'; fi
+          fi
           echo 'Checking active Laravel production configuration and database read-only'
           /usr/bin/php "$old/artisan" network:deployment-check --hostinger --production-database=u713153343_canadamb --database --migration-state
           echo 'LIVE PREDEPLOY AUDIT OK'
