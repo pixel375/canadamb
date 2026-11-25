@@ -8,6 +8,7 @@ use App\Support\Audit;
 use App\Support\Identity;
 use App\Support\JobBoard;
 use App\Support\Marketplace;
+use App\Support\MessageFileInventory;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schedule;
@@ -61,6 +62,16 @@ Artisan::command('job-postings:expire', function (JobBoard $board) {
     $this->info("Expired $count job posting(s).");
 })->purpose('Expire a batch of job postings after their Manitoba closing date');
 Schedule::command('job-postings:expire')->hourly()->withoutOverlapping(5);
+Artisan::command('messages:attachment-inventory {--limit=500}', function (MessageFileInventory $inventory) {
+    $limit = filter_var($this->option('limit'), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 5000]]);
+    if ($limit === false) {
+        $this->error('Choose a limit between 1 and 5000.');
+
+        return 1;
+    }
+    $this->line(json_encode($inventory->inspect($limit), JSON_THROW_ON_ERROR));
+})->purpose('Read-only bounded private attachment inventory; never delete or print file paths');
+
 Schedule::command('passport:purge --hours=24')->daily()->withoutOverlapping(10);
 if (config('network.news_polling') && ! config('network.prelaunch')) {
     Schedule::command('news:poll')->everyFiveMinutes()->withoutOverlapping(2);

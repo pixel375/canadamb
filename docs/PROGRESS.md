@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-25 — privacy intake, export expansion and attachment inventory
+
+Expanded owned-record and bookmark exports, including optional schema-aware sections; added proposed password-confirmed deletion/data-review intake and super-admin-only triage without destructive actions. Added a bounded, read-only private attachment inventory command (aggregate counts only; no filenames, automatic deletion or scheduling). Retention and legal holds, actual account erasure and export fulfillment remain unresolved. Previous attachment commit `ce2f4d7` was still in CI at start of pass. No production migrations or feature changes.
+
 ## 2026-11-25 — private message photos and owner inquiry preferences
 
 Prior source `ba1ee92` passed backend/browser and [deployment with independent audits](https://github.com/pixel375/canadamb/actions/runs/45602126083). Stages single re-encoded photos in existing replies, participant-only noncached download, sync links, per-sender/day and conversation quotas, and owner-bound independent opt-in for business and job inquiries. The dedicated private disk lies within shared storage backed up by the existing release process. No document uploads, public file serving, attachment-specific reviewer access, automatic retention or live schema/flag changes. Review retention and orphan cleanup before enabling.

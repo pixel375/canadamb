@@ -6,6 +6,7 @@ use App\Models\CommunityThread;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class AccountExportTest extends TestCase
@@ -31,6 +32,11 @@ class AccountExportTest extends TestCase
         $this->post($url, $data + ['section' => 'discussions', 'user_id' => $other->id])->assertOk()
             ->assertJsonCount(1, 'records')->assertJsonPath('records.0.id', $mine->id)->assertJsonPath('next_after_id', null);
         $this->post($url, $data + ['section' => 'discussions', 'after_id' => $mine->id])->assertOk()->assertJsonCount(0, 'records');
+        DB::table('user_blocks')->insert(['user_id' => $member->id, 'blocked_id' => $other->id]);
+        DB::table('user_blocks')->insert(['user_id' => $other->id, 'blocked_id' => $member->id]);
+        $this->post($url, $data + ['section' => 'blocked-members'])->assertOk()->assertJsonCount(1, 'records')
+            ->assertJsonPath('records.0.blocked_id', $other->id)->assertJsonMissingPath('records.0.email');
+        $this->post($url, $data + ['section' => 'blocked-members', 'after_id' => $other->id])->assertOk()->assertJsonCount(0, 'records');
         $this->assertDatabaseHas('audit_logs', ['action' => 'user.data-exported', 'actor_id' => $member->id]);
     }
 }

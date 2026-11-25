@@ -35,6 +35,7 @@
             <a class="text-link" href="/account/profile">View my public profile</a>
             <a class="text-link" href="/account/notifications">View notifications</a>
             <a class="text-link" href="/account/data-export">Download my data</a>
+            @if(\App\Support\PrivacyRequests::enabled())<a class="text-link" href="/account/privacy-requests">Request account deletion or data review</a>@endif
         </div>
         <section class="panel form-stack" aria-labelledby="account-security-heading">
             <h2 id="account-security-heading">Account security</h2>

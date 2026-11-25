@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AccountExportController;
 use App\Http\Controllers\AccountNotificationsController;
+use App\Http\Controllers\AccountPrivacyController;
 use App\Http\Controllers\Admin\AdvertisingReviewController;
 use App\Http\Controllers\Admin\BusinessEntitlementController;
 use App\Http\Controllers\Admin\BusinessReviewController;
@@ -54,6 +55,9 @@ Route::get('/users/{user}', [UserProfileController::class, 'show'])->whereNumber
 Route::middleware('auth')->group(function () {
     Route::get('/account/profile', [UserProfileController::class, 'mine']);
     Route::get('/account/settings', [UserProfileController::class, 'settings']);
+    Route::get('/account/privacy-requests', [AccountPrivacyController::class, 'index']);
+    Route::post('/account/privacy-requests', [AccountPrivacyController::class, 'store'])->middleware('throttle:4,1,privacy-submit')->block(8, 8);
+    Route::post('/account/privacy-requests/{privacy}/withdraw', [AccountPrivacyController::class, 'withdraw'])->whereNumber('privacy')->middleware('throttle:6,1,privacy-withdraw');
     Route::get('/account/data-export', [AccountExportController::class, 'index']);
     Route::post('/account/data-export', [AccountExportController::class, 'download'])->middleware('throttle:6,1,account-export')->block(8, 8);
     Route::post('/account/settings', [UserProfileController::class, 'update'])->middleware('throttle:8,1');
@@ -201,6 +205,8 @@ Route::prefix('api/v1')->middleware('throttle:api-network')->group(function () {
 });
 
 Route::prefix('admin')->middleware(['auth', 'verified', 'can:manage-network'])->group(function () {
+    Route::get('/privacy-requests', [AccountPrivacyController::class, 'queue'])->middleware('can:manage-theme');
+    Route::post('/privacy-requests/{privacy}', [AccountPrivacyController::class, 'review'])->whereNumber('privacy')->middleware(['can:manage-theme', 'throttle:6,1,privacy-review']);
     Route::get('/properties', [PropertyReviewController::class, 'index']);
     Route::get('/properties/{property}', [PropertyReviewController::class, 'show'])->whereNumber('property');
     Route::post('/properties/{property}', [PropertyReviewController::class, 'update'])->whereNumber('property');

@@ -10,6 +10,6 @@
                 <button class="button button-primary">Download JSON</button>
             </form>
         </section>
-        <section class="panel form-stack"><h2>What is included?</h2><p>Your account profile, authored listings, discussions, replies, events, sent messages and private property details. This initial export excludes received messages, images, business team records, bookmarks, reports, internal moderation notes, credentials and security tokens. For a more complete access request or account deletion, contact the team.</p><a class="text-link" href="/contact?topic=privacy">Privacy and account requests</a></section>
+        <section class="panel form-stack"><h2>What is included?</h2><p>Your account profile, authored content, sent messages, private property details, saved listings and jobs, business memberships, claims, blocked-member IDs and your own reports. Additional sections appear when their database tables are available. Received messages, image files, other people’s records, internal review notes, credentials and security tokens are excluded. For a more complete access request or account deletion, contact the team.</p><a class="text-link" href="/contact?topic=privacy">Privacy and account requests</a></section>
     </div>
 </x-layouts.site>
