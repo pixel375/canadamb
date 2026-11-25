@@ -13,7 +13,7 @@
 @endphp
 <x-layouts.site :title="$title">
     <div class="container page-shell auth-shell">
-        <h1>{{ $title }}</h1>
+        <div class="auth-intro"><span class="member-profile-avatar"><x-icon name="person" size="27"/></span><div><p class="section-label">One CanadaMB account</p><h1>{{ $title }}</h1><p>{{ match($mode) { 'register' => 'Use one account across participating Manitoba communities.', 'login' => 'Sign in to access your listings, messages and community activity.', 'verify' => 'Verify your account before posting or messaging.', default => 'Manage access to your CanadaMB account.' } }}</p></div></div>
         @if(session('status'))<p class="panel" role="status">{{ session('status') }}</p>@endif
         @if($errors->any())
             <div class="panel" role="alert">
@@ -38,16 +38,14 @@
             @if($mode === 'register' && config('network.prelaunch'))
                 <p>Prelaunch does not send verification email. Your testing administrator will review your account before you can post or use verified features.</p>
             @endif
-            @if($mode === 'register')<label>Name<input name="name" value="{{ is_string($name) ? $name : '' }}" required maxlength="80" autocomplete="name"></label>@endif
+            @if($mode === 'register')<label>Public display name<input name="name" value="{{ is_string($name) ? $name : '' }}" required maxlength="80" autocomplete="name"></label>@endif
             @if($mode !== 'verify')<label>Email<input type="email" name="email" value="{{ is_string($email) ? $email : '' }}" required maxlength="254" autocomplete="email"></label>@endif
             @if($mode === 'reset')<input type="hidden" name="token" value="{{ $token }}">@endif
             @if(in_array($mode, ['login', 'register', 'reset'], true))
-                <div>
-                    <label>Password<input type="password" name="password" required autocomplete="{{ $mode === 'login' ? 'current-password' : 'new-password' }}" @if($mode !== 'login') minlength="12" aria-describedby="password-rules" @endif></label>
-                    @if($mode !== 'login')<small id="password-rules" class="field-note">Use at least 12 characters, including a letter and a number.</small>@endif
-                </div>
+                <x-password-field name="password" label="Password" :autocomplete="$mode === 'login' ? 'current-password' : 'new-password'" :minimum="$mode === 'login' ? null : 12"/>
+                @if($mode !== 'login')<small id="password-rules" class="field-note">Use at least 12 characters, including a letter and a number. Maximum 72 bytes.</small>@endif
             @endif
-            @if(in_array($mode, ['register', 'reset'], true))<label>Confirm password<input type="password" name="password_confirmation" autocomplete="new-password" required></label>@endif
+            @if(in_array($mode, ['register', 'reset'], true))<x-password-field name="password_confirmation" label="Confirm password" autocomplete="new-password" :minimum="12"/>@endif
             @if($mode === 'verify')<p>Open the verification link in your email. You can request a new link here.</p>@endif
             <div><button class="button button-primary">{{ match($mode) { 'forgot' => 'Send reset link', 'verify' => 'Resend verification link', default => $title } }}</button></div>
         </form>

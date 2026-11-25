@@ -7,6 +7,9 @@
             @if($isOwn)<a class="button button-outline" href="/account/settings">Edit my profile</a>@endif
         </div>
         @if($isOwn)
+            @unless($member->hasVerifiedEmail())
+                <section class="panel account-verification-notice"><x-icon name="shield" size="24"/><div><h2>Verify your email to get started</h2><p>{{ config('network.prelaunch') ? 'During prelaunch, your testing administrator verifies your account.' : 'Complete email verification to post listings, join discussions and send messages.' }}</p><a class="button button-primary" href="{{ \App\Support\NetworkUrl::to(\App\Support\NetworkUrl::main(), '/email/verify') }}">Check verification</a></div></section>
+            @endunless
             <x-account-shortcuts/>
             <details class="panel account-private-details">
                 <summary>Private account details</summary>

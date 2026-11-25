@@ -39,6 +39,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/account/profile', [UserProfileController::class, 'mine']);
     Route::get('/account/settings', [UserProfileController::class, 'settings']);
     Route::post('/account/settings', [UserProfileController::class, 'update'])->middleware('throttle:8,1');
+    Route::post('/account/settings/password', [UserProfileController::class, 'changePassword'])->middleware('throttle:5,1')->block(8, 8);
 });
 Route::get('/communities', [PublicController::class, 'communities']);
 Route::post('/communities/preference', [PublicController::class, 'rememberCommunity'])->middleware('throttle:12,1');

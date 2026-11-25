@@ -330,9 +330,8 @@
             <div class="pwa-install" id="pwa-install" hidden>
                 <button class="button button-outline" type="button" id="pwa-install-button"
                     aria-controls="pwa-install-help">Install App</button>
-                <p id="pwa-install-help" class="pwa-install-help" hidden>
-                    In Safari, tap Share, then Add to Home Screen. Enable "Open as Web App" if offered.
-                </p>
+                <p id="pwa-install-help" class="pwa-install-help" role="status" aria-live="polite" hidden></p>
+                <noscript><p>App installation requires JavaScript and a supported browser.</p></noscript>
             </div>
         @endif
         <nav aria-label="Footer">

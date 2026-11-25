@@ -70,6 +70,24 @@ class PassOneAuthSecurityTest extends TestCase
         $this->assertDatabaseCount('users', 2);
     }
 
+    public function test_authenticated_password_change_requires_current_password_and_revokes_network_sessions(): void
+    {
+        $user = User::factory()->create();
+        $url = 'https://canadamb.ca/account/settings/password';
+        $replacement = ['password' => 'Replacement-test-42', 'password_confirmation' => 'Replacement-test-42'];
+        $this->post($url, $replacement)->assertRedirect('/login');
+        $this->actingAs($user)->post($url, ['current_password' => 'incorrect'] + $replacement)->assertSessionHasErrors('current_password');
+        $this->assertTrue(Hash::check('password', $user->fresh()->password));
+        $this->post($url, ['current_password' => 'password', 'password' => 'short', 'password_confirmation' => 'short'])->assertSessionHasErrors('password');
+        $this->post($url, ['current_password' => 'password'] + $replacement)->assertRedirect('/login');
+        $this->assertGuest();
+        $this->assertSame(1, $user->fresh()->session_version);
+        $this->assertTrue(Hash::check('Replacement-test-42', $user->fresh()->password));
+        $this->assertDatabaseHas('audit_logs', ['action' => 'user.password-changed', 'actor_id' => $user->id]);
+        $this->actingAs($user->fresh())->withSession(['session_version' => 0, 'session_host' => 'brandonmb.ca'])
+            ->get('https://brandonmb.ca/account/profile')->assertRedirect('/auth/start');
+    }
+
     public function test_malformed_credentials_render_validation_and_login_is_throttled(): void
     {
         $url = 'https://canadamb.ca/login';

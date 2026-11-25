@@ -1,6 +1,6 @@
 <x-layouts.site title="My settings">
     <div class="container page-shell narrow">
-        <div class="page-intro"><div><h1>My settings</h1><p>Manage your CanadaMB identity across Manitoba communities.</p></div></div>
+        <div class="page-intro"><div><a class="text-link" href="/account/profile">My account</a><h1>My settings</h1><p>Manage your CanadaMB identity across Manitoba communities.</p></div></div>
         <form class="panel form-stack" method="post" action="/account/settings">
             @csrf
             <h2>Public display name</h2>
@@ -29,11 +29,26 @@
         </section>
         <div class="panel form-stack">
             <h2>Account and privacy</h2>
+            <div><strong>Email verification</strong><p>{{ $member->hasVerifiedEmail() ? 'Verified' : 'Not verified' }}</p>@unless($member->hasVerifiedEmail())<a class="text-link" href="{{ \App\Support\NetworkUrl::to(\App\Support\NetworkUrl::main(), '/email/verify') }}">Complete email verification</a>@endunless</div>
             <div><strong>Email address</strong><p>{{ $member->email }} (visible only to you)</p></div>
             <p class="field-note">Your email address is not displayed on your public member profile.</p>
             <a class="text-link" href="/account/profile">View my public profile</a>
             <a class="text-link" href="/account/notifications">View notifications</a>
-            <form method="post" action="/account/logout">@csrf<button class="button button-outline">Sign out everywhere</button></form>
         </div>
+        <section class="panel form-stack" aria-labelledby="account-security-heading">
+            <h2 id="account-security-heading">Account security</h2>
+            <details @if($errors->has('current_password') || $errors->has('password')) open @endif>
+                <summary>Change password</summary>
+                <form method="post" action="/account/settings/password" class="form-stack mt-3">@csrf
+                    <p class="field-note">Changing your password signs you out on every device and community website, including this one.</p>
+                    <x-password-field name="current_password" label="Current password" autocomplete="current-password"/>
+                    <x-password-field name="password" label="New password" autocomplete="new-password" :minimum="12"/>
+                    <small class="field-note">At least 12 characters, including a letter and a number. Maximum 72 bytes.</small>
+                    <x-password-field name="password_confirmation" label="Confirm new password" autocomplete="new-password" :minimum="12"/>
+                    <button class="button button-primary">Change password and sign out</button>
+                </form>
+            </details>
+            <details><summary>Sign out everywhere</summary><p class="field-note">End your CanadaMB sessions on all devices and community websites.</p><form method="post" action="/account/logout">@csrf<button class="button button-outline">Confirm sign out everywhere</button></form></details>
+        </section>
     </div>
 </x-layouts.site>

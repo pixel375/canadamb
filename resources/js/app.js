@@ -284,39 +284,53 @@ if (installWrap && installButton) {
         if (installHelp) installHelp.hidden = true;
     };
 
-    if (standalone()) {
-        hide();
-    } else if (safari) {
+    const help = message => {
+        if (installHelp) {
+            installHelp.textContent = message;
+            installHelp.hidden = false;
+        }
+    };
+    const android = /Android/i.test(navigator.userAgent);
+    const updateInstall = () => {
+        if (standalone()) { hide(); return; }
         reveal();
-    }
+        installButton.textContent = pendingInstall ? 'Install App' : 'App installation help';
+    };
+    updateInstall();
 
     window.addEventListener('beforeinstallprompt', event => {
         if (standalone()) return;
         event.preventDefault();
         pendingInstall = event;
-        reveal();
+        if (installHelp) installHelp.hidden = true;
+        updateInstall();
     });
 
     installButton.addEventListener('click', async () => {
-        if (standalone()) {
-            hide();
-            return;
-        }
+        if (standalone()) { hide(); return; }
         if (pendingInstall) {
             const request = pendingInstall;
             pendingInstall = null;
             try {
                 await request.prompt();
                 const choice = await request.userChoice;
-                if (choice?.outcome === 'accepted') hide();
+                if (choice?.outcome === 'accepted') {
+                    help('Installation requested. Your browser and device will finish the installation.');
+                } else {
+                    help('Installation was dismissed. You can also check your browser’s app installation menu.');
+                }
             } catch {
-                // Browser/OS may withdraw the prompt; never claim installation.
-                hide();
+                help('The browser withdrew the installation prompt. Try again from the browser menu.');
             }
-        } else if (safari && installHelp) {
-            installHelp.hidden = !installHelp.hidden;
+            updateInstall();
+        } else if (installHelp && !installHelp.hidden) {
+            installHelp.hidden = true;
+        } else if (safari) {
+            help('In Safari, tap Share, then Add to Home Screen. Enable "Open as Web App" if offered.');
+        } else if (android) {
+            help('Open this website in Chrome and check its menu for Install app. If it only offers Add to Home screen or Create shortcut, a full app installation is not currently available. Private prelaunch access can limit installation.');
         } else {
-            hide();
+            help('In a supported browser such as Chrome or Edge, look for the install icon or Install app in the browser menu. A shortcut is not necessarily an installed app.');
         }
     });
 
@@ -600,4 +614,17 @@ for (const field of document.querySelectorAll('[data-character-count]')) {
     const update = () => { feedback.textContent = field.value.length + ' / ' + field.maxLength + ' characters'; };
     field.addEventListener('input', update);
     update();
+}
+
+// Password visibility remains local; password values are never persisted.
+for (const toggle of document.querySelectorAll('[data-password-toggle]')) {
+    const field = document.getElementById(toggle.getAttribute('aria-controls'));
+    if (!field) continue;
+    toggle.hidden = false;
+    toggle.addEventListener('click', () => {
+        const visible = field.type === 'password';
+        field.type = visible ? 'text' : 'password';
+        toggle.textContent = visible ? 'Hide' : 'Show';
+        toggle.setAttribute('aria-pressed', String(visible));
+    });
 }
