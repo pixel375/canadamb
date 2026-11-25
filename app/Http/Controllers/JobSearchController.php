@@ -53,9 +53,10 @@ class JobSearchController extends Controller
         $filters = $request->validate(['view' => 'nullable|in:new,all']);
         $onlyNew = $item->alerts && ($filters['view'] ?? 'new') === 'new';
         $query = $onlyNew ? JobSearches::newMatches($item, $site) : JobSearches::matching($item, $site);
-        $jobs = $query->latest('published_at')->latest('id')->paginate(18)->withQueryString();
+        $cutoff = now()->startOfSecond();
+        $jobs = $query->where('published_at', '<=', $cutoff)->latest('published_at')->latest('id')->paginate(18)->withQueryString();
 
-        return view('jobs.search-matches', compact('item', 'jobs', 'onlyNew'));
+        return view('jobs.search-matches', compact('item', 'jobs', 'onlyNew', 'cutoff'));
     }
 
     public function edit(Request $request, int $search)
@@ -68,12 +69,15 @@ class JobSearchController extends Controller
     public function revise(Request $request, int $search)
     {
         $this->owned($request)->findOrFail($search);
-        $data = $request->validate(JobBoard::searchRules() + ['name' => 'required|string|max:80']);
+        $data = $request->validate(JobBoard::searchRules() + ['name' => 'required|string|max:80', 'version' => 'nullable|string|size:64']);
         $filters = $this->normalizedFilters($request, $data);
         $key = hash('sha256', json_encode($filters, JSON_THROW_ON_ERROR));
         DB::transaction(function () use ($request, $search, $data, $filters, $key) {
             User::lockForUpdate()->findOrFail($request->user()->id);
             $item = $this->owned($request)->lockForUpdate()->findOrFail($search);
+            if (isset($data['version']) && ! hash_equals($item->editVersion(), $data['version'])) {
+                throw ValidationException::withMessages(['version' => 'This saved search changed. Reload before continuing.']);
+            }
             if ($this->owned($request)->where('id', '!=', $search)->where('filter_key', $key)->exists()) {
                 throw ValidationException::withMessages(['name' => 'You already saved these filters on this portal.']);
             }
@@ -88,9 +92,12 @@ class JobSearchController extends Controller
 
     public function preferences(Request $request, int $search)
     {
-        $data = $request->validate(['name' => 'required|string|max:80', 'alerts' => 'required|boolean']);
+        $data = $request->validate(['name' => 'required|string|max:80', 'alerts' => 'required|boolean', 'version' => 'nullable|string|size:64']);
         DB::transaction(function () use ($request, $search, $data) {
             $item = $this->owned($request)->lockForUpdate()->findOrFail($search);
+            if (isset($data['version']) && ! hash_equals($item->editVersion(), $data['version'])) {
+                throw ValidationException::withMessages(['version' => 'This saved search changed. Reload before continuing.']);
+            }
             $alerts = (bool) $data['alerts'];
             if ($alerts !== $item->alerts) {
                 $item->checked_at = now();
@@ -103,10 +110,17 @@ class JobSearchController extends Controller
 
     public function read(Request $request, int $search)
     {
-        DB::transaction(function () use ($request, $search) {
+        $data = $request->validate(['version' => 'nullable|string|size:64', 'cutoff' => 'nullable|integer|min:0|max:'.now()->timestamp]);
+        DB::transaction(function () use ($request, $search, $data) {
             $item = $this->owned($request)->lockForUpdate()->findOrFail($search);
             abort_unless($item->alerts, 409);
-            $item->forceFill(['checked_at' => now()])->save();
+            if (isset($data['version']) && ! hash_equals($item->editVersion(), $data['version'])) {
+                throw ValidationException::withMessages(['version' => 'This saved search changed. Reload before continuing.']);
+            }
+            $cutoff = isset($data['cutoff']) ? \Illuminate\Support\Carbon::createFromTimestampUTC((int) $data['cutoff']) : now();
+            if ($cutoff->greaterThan($item->checked_at)) {
+                $item->forceFill(['checked_at' => $cutoff])->save();
+            }
         }, attempts: 3);
 
         return $this->done();
@@ -114,7 +128,14 @@ class JobSearchController extends Controller
 
     public function destroy(Request $request, int $search)
     {
-        $this->owned($request)->findOrFail($search)->delete();
+        $data = $request->validate(['version' => 'nullable|string|size:64']);
+        DB::transaction(function () use ($request, $search, $data) {
+            $item = $this->owned($request)->lockForUpdate()->findOrFail($search);
+            if (isset($data['version']) && ! hash_equals($item->editVersion(), $data['version'])) {
+                throw ValidationException::withMessages(['version' => 'This saved search changed. Reload before continuing.']);
+            }
+            $item->delete();
+        }, attempts: 3);
 
         return $this->done();
     }

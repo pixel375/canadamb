@@ -8,12 +8,12 @@
                     <div><h2>{{ $item->name }}</h2><p>{{ $item->alerts ? $counts[$item->id].' new '.\Illuminate\Support\Str::plural('match', $counts[$item->id]) : 'Alerts paused' }}</p></div>
                     <x-saved-filter-summary :filters="$item->filters" kind="jobs"/>
                     <div class="inline-actions"><a class="button button-primary" href="/account/job-searches/{{ $item->id }}">View matches</a><a class="text-link" href="/jobs?{{ http_build_query($item->filters) }}">Open original search</a><a class="button button-outline" href="/account/job-searches/{{ $item->id }}/edit">Edit filters</a></div>
-                    <details><summary>Search and alert preferences</summary><form class="form-stack mt-2" method="post" action="/account/job-searches/{{ $item->id }}/preferences">@csrf
+                    <details><summary>Search and alert preferences</summary><form class="form-stack mt-2" method="post" action="/account/job-searches/{{ $item->id }}/preferences">@csrf<input type="hidden" name="version" value="{{ $item->editVersion() }}">
                         <label>Name<input name="name" required maxlength="80" value="{{ $item->name }}"></label>
                         <label>New job alerts<select name="alerts"><option value="1" @selected($item->alerts)>On</option><option value="0" @selected(!$item->alerts)>Paused</option></select></label>
                         <p class="field-note">Resuming alerts starts a fresh matching window.</p><button class="button button-outline">Save preferences</button>
                     </form></details>
-                    <details><summary>Remove saved search</summary><form method="post" action="/account/job-searches/{{ $item->id }}">@csrf @method('DELETE')<button class="button button-outline">Confirm removal</button></form></details>
+                    <details><summary>Remove saved search</summary><form method="post" action="/account/job-searches/{{ $item->id }}">@csrf<input type="hidden" name="version" value="{{ $item->editVersion() }}"> @method('DELETE')<button class="button button-outline">Confirm removal</button></form></details>
                 </article>
             @empty<div class="panel"><h2>No saved searches on this portal.</h2><p>Filter the job board and select Save this job search.</p></div>@endforelse
         </section>

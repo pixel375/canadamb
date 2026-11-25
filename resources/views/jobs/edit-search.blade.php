@@ -2,6 +2,7 @@
     <div class="container page-shell narrow">
         <div class="page-intro"><div><a class="text-link" href="/account/job-searches">Job searches and alerts</a><h1>Edit saved job search</h1><p>Changing filters starts a new alert window. Existing alert preferences remain unchanged.</p></div></div>
         <form method="post" action="/account/job-searches/{{ $item->id }}" class="panel form-stack">@csrf @method('PUT')
+            <input type="hidden" name="version" value="{{ old('version', $item->editVersion()) }}">
             <label>Search name<input name="name" required maxlength="80" value="{{ old('name', $item->name) }}"></label>
             <label>Keywords<input name="q" maxlength="100" value="{{ old('q', $item->filters['q'] ?? '') }}"></label>
             @if(request()->attributes->get('site')->isNetwork())<label>Location<input name="location" maxlength="150" value="{{ old('location', $item->filters['location'] ?? '') }}"></label>@endif

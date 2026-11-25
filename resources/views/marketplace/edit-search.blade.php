@@ -2,6 +2,7 @@
     <div class="container page-shell narrow">
         <div class="page-intro"><div><a class="text-link" href="/account/marketplace-searches">Saved Marketplace searches</a><h1>Edit saved Marketplace search</h1><p>Choose the filters you want to reuse on this portal.</p></div></div>
         <form method="post" action="/account/marketplace-searches/{{ $item->id }}" class="panel form-stack">@csrf @method('PUT')
+            <input type="hidden" name="version" value="{{ old('version', $item->editVersion()) }}">
             <label>Search name<input name="name" required maxlength="80" value="{{ old('name', $item->name) }}"></label>
             <label>Keywords<input name="q" maxlength="100" value="{{ old('q', $item->filters['q'] ?? '') }}"></label>
             @if(request()->attributes->get('site')->isNetwork())<label>Location<select name="location"><option value="">All Manitoba</option>@foreach($places as $place)<option value="{{ $place->slug }}" @selected(old('location', $item->filters['location'] ?? '') === $place->slug)>{{ $place->name }}</option>@endforeach</select></label>@endif

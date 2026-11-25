@@ -60,11 +60,16 @@ class JobSearchesTest extends TestCase
         $this->get('https://canadamb.ca/account/job-searches/'.$search->id)->assertNotFound();
         $this->actingAs($stranger)->get($url)->assertNotFound();
         $this->post($url.'/read')->assertNotFound();
-        $this->actingAs($member)->post($url.'/read')->assertRedirect();
-        $this->get($url)->assertDontSee('Matching clerk');
+        $cutoff = now()->timestamp;
+        $version = $search->fresh()->editVersion();
+        $this->travel(2)->minutes();
+        $make($branch, 'Later clerk', 'approved');
+        $this->actingAs($member)->post($url.'/read', ['cutoff' => $cutoff, 'version' => $version])->assertRedirect()->assertSessionHasNoErrors();
+        $this->get($url)->assertDontSee('Matching clerk')->assertSee('Later clerk');
         $this->get($url.'?view=all')->assertSee('Matching clerk');
         $this->post($url.'/preferences', ['name' => 'Retail search', 'alerts' => '0'])->assertRedirect();
         $this->get($base)->assertSee('Alerts paused');
+        $this->post($url.'/preferences', ['name' => 'Stale change', 'alerts' => '1', 'version' => $version])->assertSessionHasErrors('version');
         $this->travel(2)->minutes();
         $make($branch, 'While paused clerk', 'approved');
         $this->post($url.'/preferences', ['name' => 'Retail search', 'alerts' => '1'])->assertRedirect();

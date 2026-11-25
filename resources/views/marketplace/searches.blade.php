@@ -7,8 +7,8 @@
                 <x-saved-filter-summary :filters="$item->filters" kind="marketplace" :categories="$categories" :groups="$groups" :places="$places"/>
                 <a class="button button-primary" href="/marketplace?{{ http_build_query($item->filters + ['view' => 'all']) }}">Run search</a>
                 <a class="button button-outline" href="/account/marketplace-searches/{{ $item->id }}/edit">Edit filters</a>
-                <details><summary>Rename search</summary><form method="post" class="form-stack mt-2" action="/account/marketplace-searches/{{ $item->id }}/rename">@csrf<label>Name<input name="name" required maxlength="80" value="{{ $item->name }}"></label><button class="button button-outline">Save name</button></form></details>
-                <details><summary>Remove search</summary><form method="post" class="mt-2" action="/account/marketplace-searches/{{ $item->id }}">@csrf @method('DELETE')<button class="button button-outline">Confirm removal</button></form></details>
+                <details><summary>Rename search</summary><form method="post" class="form-stack mt-2" action="/account/marketplace-searches/{{ $item->id }}/rename">@csrf<input type="hidden" name="version" value="{{ $item->editVersion() }}"><label>Name<input name="name" required maxlength="80" value="{{ $item->name }}"></label><button class="button button-outline">Save name</button></form></details>
+                <details><summary>Remove search</summary><form method="post" class="mt-2" action="/account/marketplace-searches/{{ $item->id }}">@csrf<input type="hidden" name="version" value="{{ $item->editVersion() }}"> @method('DELETE')<button class="button button-outline">Confirm removal</button></form></details>
             </article>
         @empty<div class="panel"><h2>No saved searches on this portal.</h2><p>Browse Marketplace results and select Save this Marketplace search.</p></div>@endforelse</section>
         <p class="field-note">15 searches across the network. These are reusable filters, not email or push alerts.</p>
