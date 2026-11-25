@@ -19,6 +19,7 @@
                 <strong class="admin-nav-group-label">Content review</strong>
                 <a href="/admin/moderation" @if(request()->is('admin/moderation*')) aria-current="page" @endif>Marketplace review</a>
                 <a href="/admin/community" @if(request()->is('admin/community')) aria-current="page" @endif>Discussions &amp; events</a>
+                @if(\App\Support\ContentReports::enabled())<a href="/admin/content-reports" @if(request()->is('admin/content-reports*')) aria-current="page" @endif>Content reports</a>@endif
                 <a href="/admin/jobs" @if(request()->is('admin/jobs')) aria-current="page" @endif>Job moderation</a>
                 @if(config('network.property_drafts'))<a href="/admin/properties" @if(request()->is('admin/properties*')) aria-current="page" @endif>Private property review</a>@endif
                 <a href="/admin/business-review" @if(request()->is('admin/business-review')) aria-current="page" @endif>Business review</a>

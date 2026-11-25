@@ -1,4 +1,4 @@
-# Proposed broader content reporting — not implemented or approved for production
+# Broader content reporting — review-staged
 
 The existing Marketplace report workflow stays intact. Help pages explain the current limitation and direct members to configured contact channels.
 
@@ -11,4 +11,4 @@ The existing Marketplace report workflow stays intact. Help pages explain the cu
 - Add authorization, cross-community isolation, unpublished target, duplicate, race, message participant, retention and both SQLite/MariaDB migration tests.
 - Review migration SQL and rollback/restore evidence before allowing database changes. The guarded production workflow defaults to no migrations; do not change this default or apply schema changes implicitly.
 
-No reports for other content types are currently captured by the website. Contact guidance is not a moderation queue.
+Implemented in the review-staged release: discussions, approved replies to approved threads, and approved/cancelled events, with owner-private history and network-admin resolution. The proposed migration is outside normal migration discovery; CANADAMB_CONTENT_REPORTS defaults false. Resolution is separate from content moderation and no private message data is collected. Jobs, businesses, profiles, business updates and messages remain outstanding. Contact guidance remains the fallback until activation.

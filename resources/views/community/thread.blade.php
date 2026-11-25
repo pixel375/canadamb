@@ -35,7 +35,7 @@
                     </div>
                 </div>
                 <div class="discussion-original-copy prose-text">{{ $item->body }}</div>
-                <div class="discussion-original-footer">
+                <div class="discussion-original-footer"><x-content-report-link type="discussion" :target="$item->id"/>
                     <a class="text-link" href="#discussion-replies"><x-icon name="messages" size="16"/> {{ $item->replies_count }} {{ \Illuminate\Support\Str::plural('reply', $item->replies_count) }}</a>
                     @if($canParticipate && !$item->locked && (int) $item->author_id === auth()->id())<a class="button button-outline" href="/account/discussions/{{ $item->id }}/edit">Edit my discussion</a>@endif
                     @if(! $item->locked && $canParticipate)
@@ -107,7 +107,7 @@
                                 <time datetime="{{ $reply->created_at->toIso8601String() }}">{{ $reply->created_at->timezone('America/Winnipeg')->format('M j, Y · g:i a T') }}</time>
                             </div>
                             <p class="prose-text">{{ $reply->body }}</p>
-                            <a class="text-link reply-permalink" href="/community/{{ $item->id }}/replies/{{ $reply->id }}">Link to this reply</a>
+                            <a class="text-link reply-permalink" href="/community/{{ $item->id }}/replies/{{ $reply->id }}">Link to this reply</a> <x-content-report-link type="reply" :target="$reply->id"/>
                         </div>
                     </article>
                 @empty

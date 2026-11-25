@@ -37,7 +37,7 @@
         </div>
         <section class="panel form-stack" aria-labelledby="account-security-heading">
             <h2 id="account-security-heading">Account security</h2>
-            @if($member->hasVerifiedEmail())<a class="text-link" href="/account/blocked-members">Manage blocked members</a><a class="text-link" href="/account/listing-reports">My listing reports</a>@endif
+            @if($member->hasVerifiedEmail())<a class="text-link" href="/account/blocked-members">Manage blocked members</a><a class="text-link" href="/account/listing-reports">My listing reports</a>@if(\App\Support\ContentReports::enabled())<a class="text-link" href="/account/content-reports">My content reports</a>@endif @endif
             <details @if($errors->has('current_password') || $errors->has('password')) open @endif>
                 <summary>Change password</summary>
                 <form method="post" action="/account/settings/password" class="form-stack mt-3">@csrf
