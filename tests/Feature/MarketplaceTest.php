@@ -28,7 +28,7 @@ class MarketplaceTest extends TestCase
         $item = Listing::sole();
         $this->assertSame('brandon', $item->location->slug);
         $this->get(self::CITY.'/marketplace')->assertDontSee('Oak table');
-        $this->actingAs($admin)->post(self::MAIN."/admin/moderation/$item->id", ['status' => 'active'])->assertRedirect();
+        $this->actingAs($admin)->post(self::MAIN."/admin/moderation/$item->id", ['status' => 'active', 'version' => $item->fresh()->reviewVersion()])->assertRedirect();
         $this->get(self::CITY.'/marketplace?q=Oak&category=furniture')->assertOk()->assertSee('Oak table');
         $this->get(self::MAIN.'/marketplace?view=all')->assertOk()->assertSee('Oak table');
         $this->get(self::CITY."/marketplace/$item->id")->assertOk()->assertSee('Oak table');
@@ -44,9 +44,12 @@ class MarketplaceTest extends TestCase
         $this->get(self::MAIN.'/sitemap.xml')->assertDontSee("/marketplace/$item->id");
 
         $this->actingAs(User::factory()->create())->put(self::CITY."/account/listings/$item->id", $this->listing('Changed by outsider'))->assertNotFound();
+        $oldReview = $item->fresh()->reviewVersion();
         $this->actingAs($seller)->put(self::CITY."/account/listings/$item->id", $this->listing('Oak dining table'))->assertRedirect();
+        $this->actingAs($admin)->post(self::MAIN."/admin/moderation/$item->id", ['status' => 'active', 'version' => $oldReview])->assertConflict();
+        $this->actingAs($seller);
         $this->get(self::MAIN.'/marketplace')->assertDontSee('Oak table');
-        $this->actingAs($admin)->post(self::MAIN."/admin/moderation/$item->id", ['status' => 'active'])->assertRedirect();
+        $this->actingAs($admin)->post(self::MAIN."/admin/moderation/$item->id", ['status' => 'active', 'version' => $item->fresh()->reviewVersion()])->assertRedirect();
         $this->get(self::MAIN.'/marketplace?view=all')->assertSee('Oak dining table');
         $this->get(self::CITY.'/marketplace?view=all')->assertSee('Oak dining table');
 
@@ -65,7 +68,7 @@ class MarketplaceTest extends TestCase
             ->assertCreated()->assertJsonPath('data.location', 'Elkhorn');
         $item = Listing::sole();
         $this->actingAs(User::factory()->create(['role' => 'network_admin']))
-            ->post(self::MAIN."/admin/moderation/$item->id", ['status' => 'active'])->assertRedirect();
+            ->post(self::MAIN."/admin/moderation/$item->id", ['status' => 'active', 'version' => $item->fresh()->reviewVersion()])->assertRedirect();
         $this->get(self::MAIN.'/marketplace?view=all&location=elkhorn')->assertSee('Elkhorn patio set');
         $this->get(self::MAIN.'/?location=elkhorn')->assertSee('Elkhorn patio set');
         $this->get(self::CITY.'/marketplace?location=elkhorn')->assertDontSee('Elkhorn patio set');
@@ -91,7 +94,7 @@ class MarketplaceTest extends TestCase
         $item = Listing::sole();
         $this->getJson(self::MAIN.'/api/v1/marketplace?q=chairs%20OAK')->assertJsonCount(0, 'data');
 
-        $this->actingAs($admin)->post(self::MAIN."/admin/moderation/$item->id", ['status' => 'active'])->assertRedirect();
+        $this->actingAs($admin)->post(self::MAIN."/admin/moderation/$item->id", ['status' => 'active', 'version' => $item->fresh()->reviewVersion()])->assertRedirect();
         $this->getJson(self::MAIN.'/api/v1/marketplace?q=chairs%20OAK')->assertOk()->assertJsonCount(1, 'data');
         $this->getJson(self::MAIN.'/api/v1/marketplace?q=oak%20missingword')->assertOk()->assertJsonCount(0, 'data');
         $this->getJson(self::MAIN.'/api/v1/marketplace?q=%25')->assertOk()->assertJsonCount(0, 'data');

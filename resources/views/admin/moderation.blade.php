@@ -1,5 +1,5 @@
 <x-layouts.admin title="Marketplace moderation">
-    <div class="page-intro"><div><h1>Marketplace moderation</h1><p>Review new listings and remove approved listings when needed.</p></div></div>
+    <div class="page-intro"><div><h1>Marketplace moderation</h1><p>Review new listings and remove approved listings when needed. Your own listings and reports involving your account require an independent reviewer.</p></div></div>
     <x-admin-queue-filters path="/admin/moderation" :filters="$filters" :counts="$counts" :statuses="['pending','active']" search-label="Search listing title or description"/>
     @if($reports->isNotEmpty())
         <div class="panel" id="reports">
@@ -28,6 +28,7 @@
             <p class="prose-text">{{ $item->description }}</p>
             <form action="/admin/moderation/{{ $item->id }}" method="post" class="form-stack">
                 @csrf
+                <input type="hidden" name="version" value="{{ $item->reviewVersion() }}">
                 <label>Reason for rejection or removal<input name="reason" maxlength="240"></label>
                 <div class="inline-actions">
                     @if($item->status === 'pending')

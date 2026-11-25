@@ -68,6 +68,7 @@ jobs:
         env:
           APP_URL: http://canadamb.localhost:8001
           CANADAMB_JOB_SEARCHES: 'true'
+          CANADAMB_MARKETPLACE_SEARCHES: 'true'
           CANADAMB_EXTENDED_MESSAGING: 'true'
           CANADAMB_MESSAGE_ATTACHMENTS: 'true'
           CANADAMB_BUSINESS_ACCESS_REQUESTS: 'true'

@@ -93,7 +93,7 @@ class NetworkController extends Controller
     public function moderation(Request $request)
     {
         $filters = $request->validate(['status' => 'nullable|in:pending,active', 'q' => 'nullable|string|max:100']);
-        $matching = Listing::whereIn('status', ['pending', 'active'])
+        $matching = Listing::whereIn('status', ['pending', 'active'])->where('user_id', '!=', $request->user()->id)
             ->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'description']));
         $counts = (clone $matching)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
 
@@ -102,7 +102,8 @@ class NetworkController extends Controller
             ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")
             ->latest('updated_at')->paginate(25)->withQueryString(), 'reports' => DB::table('listing_reports')
             ->join('listings', 'listings.id', '=', 'listing_reports.listing_id')
-            ->whereNull('resolved_at')->latest('listing_reports.id')
+            ->whereNull('resolved_at')->where('listings.user_id', '!=', $request->user()->id)
+            ->where('listing_reports.reporter_id', '!=', $request->user()->id)->latest('listing_reports.id')
             ->paginate(15, ['listing_reports.*', 'listings.title'], 'reports_page')->withQueryString()]);
     }
 
@@ -110,8 +111,12 @@ class NetworkController extends Controller
     {
         $data = $request->validate(['note' => 'required|string|max:240']);
         DB::transaction(function () use ($request, $report, $data) {
-            abort_unless(DB::table('listing_reports')->where('id', $report)->whereNull('resolved_at')
-                ->update(['resolved_at' => now(), 'updated_at' => now()]), 404);
+            $initial = DB::table('listing_reports')->where('id', $report)->firstOrFail();
+            $listing = Listing::lockForUpdate()->findOrFail($initial->listing_id);
+            $row = DB::table('listing_reports')->where('id', $report)->lockForUpdate()->firstOrFail();
+            abort_if($listing->user_id === $request->user()->id || (int) $row->reporter_id === $request->user()->id, 403);
+            abort_unless($row->resolved_at === null, 409);
+            DB::table('listing_reports')->where('id', $report)->update(['resolved_at' => now(), 'updated_at' => now()]);
             Audit::record('listing.report-resolved', $request->user()->id, context: [
                 'report' => $report, 'note' => $data['note'],
             ]);
@@ -125,10 +130,13 @@ class NetworkController extends Controller
         $data = $request->validate([
             'status' => ['required', Rule::in(['active', 'rejected', 'removed'])],
             'reason' => ['required_unless:status,active', 'nullable', 'string', 'max:240'],
+            'version' => 'required|string|size:64',
         ]);
 
         DB::transaction(function () use ($request, $listing, $data, $marketplace) {
             $item = Listing::lockForUpdate()->findOrFail($listing);
+            abort_if($item->user_id === $request->user()->id, 403);
+            abort_unless(hash_equals($item->reviewVersion(), $data['version']), 409, 'Listing changed. Reload before reviewing.');
             abort_unless(in_array($item->status, ['pending', 'active'], true), 409);
             abort_if($data['status'] === 'active' && $item->status !== 'pending', 409);
             $marketplace->changeStatus($item, $data['status'], $request->user()->id, $data['reason'] ?? null);

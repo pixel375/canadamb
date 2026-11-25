@@ -4,6 +4,8 @@
 
 ## Outstanding launch blockers and acceptance
 
+- Hostinger quota incident: exact source `8851bdd` passed CI but deployment 45613737993 failed before activation. Audit 45655286097 verified `ba1ee92` remained active and classified the failure as disk quota exceeded. Storage reclaim 45655814730 succeeded; cumulative release verification and deployment must still be confirmed. Rebuildable dependencies of 20 inactive releases were removed; all backups and shared media remain intact.
+
 - The read-only staged feature inventory and [migration review checklist](STAGED_FEATURES.md) track proposed migrations and switches. Enabled-but-unrecorded or missing schemas fail the deployment database check. No migration promotion or activation is implied.
 
 - Business/job inquiries and participant-local archiving are review-staged; the proposed nullable-listing migration requires backup, migration and rollback review. Private re-encoded photo attachments and owner-specific inquiry opt-in are review-staged. Attachment-specific report review is staged with restricted audited access. Arbitrary files, attachment deletion/retention policy and a shared business inbox remain outstanding. Existing private chat history is never assigned to a new owner.

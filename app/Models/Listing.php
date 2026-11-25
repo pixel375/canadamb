@@ -36,6 +36,14 @@ class Listing extends Model
         return $this->hasMany(ListingMedia::class)->orderBy('position');
     }
 
+    public function reviewVersion(): string
+    {
+        $attributes = $this->getRawOriginal();
+        ksort($attributes);
+
+        return hash('sha256', json_encode([$attributes, $this->photoVersion()], JSON_THROW_ON_ERROR));
+    }
+
     public function photoVersion(): string
     {
         return hash('sha256', $this->media()->pluck('id')->implode(','));

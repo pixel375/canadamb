@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-25 — moderation concurrency and production dependency reclaim
+
+Marketplace reviews now require a current content/photo version and reject self-review. Listing report resolution excludes the reporter and seller, rejects repeated decisions and uses consistent listing/report locks. Added stale-review regression and staged saved-search browser acceptance. The Hostinger read-only inventory found about 4.7 GiB of accumulated release files; trusted-main workflow 45655814730 reclaimed 2,020,852 KiB of Composer dependencies from 20 explicitly verified inactive releases, retaining all source, backups, shared storage and recent rollback copies. Live DB checks and both domain access gates passed after reclaim. Retired vendor directories require dependency reinstall before rollback. No database changes or public access changes.
+
 ## 2026-11-25 — private saved Marketplace searches
 
 Shared existing public filter validation and matching logic, added a default-off private saved-search store, duplicate normalization, per-account limit, rename/delete, current public result counts and links, account export and impact inventory. No email, push or background alerts; no production migration applied.

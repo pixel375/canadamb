@@ -37,6 +37,19 @@ const password = 'New-browser-qa-42';
         await page.getByText('Alerts paused', { exact: true }).waitFor();
         console.log('PASS: save job search and pause alerts');
 
+        await visit(page, '/marketplace?q=oak');
+        await page.getByText('Save this Marketplace search', { exact: true }).click();
+        await page.locator('form[action="/account/marketplace-searches"] input[name="name"]').fill('Mobile Marketplace search');
+        await submit(page, page.getByRole('button', { name: 'Save search', exact: true }), '/account/marketplace-searches');
+        const marketSearch = page.locator('article').filter({ has: page.getByRole('heading', { name: 'Mobile Marketplace search' }) });
+        await marketSearch.getByText('Rename search', { exact: true }).click();
+        await marketSearch.locator('input[name="name"]').fill('Oak furniture search');
+        await marketSearch.getByRole('button', { name: 'Save name' }).click();
+        await page.getByRole('heading', { name: 'Oak furniture search' }).waitFor();
+        await page.getByRole('link', { name: 'Run search', exact: true }).click();
+        await page.waitForURL(url => url.pathname === '/marketplace' && url.searchParams.get('q') === 'oak');
+        console.log('PASS: saved Marketplace search, rename and run');
+
         await visit(page, '/account/notifications');
         await page.locator('select[name="discussion_replies"]').selectOption('0');
         await page.locator('select[name="job_summary"]').selectOption('0');

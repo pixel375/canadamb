@@ -10,6 +10,7 @@ use App\Support\Marketplace;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -35,7 +36,7 @@ class MarketplaceEngagementTest extends TestCase
         $path = "/marketplace/$item->id/photo/$photo->id";
         $this->actingAs(User::factory()->create())->get('https://canadamb.ca'.$path)->assertNotFound();
         $this->actingAs(User::factory()->create(['role' => 'network_admin']))
-            ->post("https://canadamb.ca/admin/moderation/$item->id", ['status' => 'active'])->assertRedirect();
+            ->post("https://canadamb.ca/admin/moderation/$item->id", ['status' => 'active', 'version' => $item->fresh()->reviewVersion()])->assertRedirect();
         $this->actingAs(User::factory()->create())->get('https://canadamb.ca'.$path)->assertOk()->assertHeader('Content-Type', 'image/webp');
         $this->get("https://canadamb.ca/marketplace/$item->id")
             ->assertOk()
@@ -85,7 +86,7 @@ class MarketplaceEngagementTest extends TestCase
         $this->assertSame([800, 1200], array_slice($full, 0, 2));
         $this->assertSame([320, 480], array_slice($thumbnail, 0, 2));
 
-        $this->actingAs($admin)->post("https://canadamb.ca/admin/moderation/$item->id", ['status' => 'active'])->assertRedirect();
+        $this->actingAs($admin)->post("https://canadamb.ca/admin/moderation/$item->id", ['status' => 'active', 'version' => $item->fresh()->reviewVersion()])->assertRedirect();
         $this->get("https://brandonmb.ca/marketplace/$item->id")
             ->assertOk()
             ->assertSee("src=\"/marketplace/$item->id/photo/{$images[0]->id}\"", false)
@@ -172,6 +173,11 @@ class MarketplaceEngagementTest extends TestCase
         $this->assertDatabaseCount('listing_reports', 1);
         $this->get('https://canadamb.ca/account/listing-reports')->assertOk()->assertSee('Patio set')->assertSee('Awaiting review');
         $this->actingAs($stranger)->get('https://canadamb.ca/account/listing-reports')->assertOk()->assertDontSee('The images seem to belong to another seller.');
+        $report = DB::table('listing_reports')->value('id');
+        $reviewer = User::factory()->create(['role' => 'network_admin']);
+        $this->actingAs($reviewer)->post('https://canadamb.ca/admin/moderation/reports/'.$report, ['note' => 'Reviewed the submitted report.'])->assertRedirect();
+        $this->post('https://canadamb.ca/admin/moderation/reports/'.$report, ['note' => 'Repeated decision.'])->assertConflict();
+        $this->actingAs($buyer);
         $this->actingAs($buyer);
         $this->post("$base/message", ['body' => 'Are the chairs included?'])->assertRedirect();
         $thread = Conversation::sole();
