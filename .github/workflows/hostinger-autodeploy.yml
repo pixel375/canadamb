@@ -8,7 +8,7 @@ name: CanadaMB automatic guarded deploy after green CI
 # always disabled for automation.
 on:
   workflow_run:
-    workflows: ['Verify CanadaMB']
+    workflows: ['Verify CanadaMB', 'Prelaunch desktop navigation hotfix browser QA']
     types: [completed]
 
 permissions:
@@ -36,12 +36,32 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TARGET_SHA: ${{ github.event.workflow_run.head_sha }}
+          TRIGGER_RUN_ID: ${{ github.event.workflow_run.id }}
         run: |
           set -Eeuo pipefail
           [[ "$GITHUB_REPOSITORY" == 'pixel375/canadamb' && "$TARGET_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
           latest=$(gh api "/repos/$GITHUB_REPOSITORY/git/ref/heads/implementation/network-foundation" --jq '.object.sha')
           if [[ "$latest" != "$TARGET_SHA" ]]; then
             echo "A newer implementation commit superseded $TARGET_SHA; skipping old CI result."
+            exit 0
+          fi
+
+          # Both exact-SHA push checks must be green. Select the last completed
+          # check to avoid dispatching twice when both completion events queue.
+          runs=$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$TARGET_SHA&event=push&per_page=100")
+          ready=$(jq -r '
+            [.workflow_runs[] | select(.head_branch == "implementation/network-foundation" and
+              (.name == "Verify CanadaMB" or .name == "Prelaunch desktop navigation hotfix browser QA"))]
+            | group_by(.name) | map(max_by([.run_number,.run_attempt]))
+            | if length == 2 and all(.[]; .status == "completed" and .conclusion == "success")
+              then (max_by([.updated_at,.id]) | .id) else "" end
+          ' <<<"$runs")
+          if [[ -z "$ready" ]]; then
+            echo "Waiting for both exact-SHA verification and browser QA to pass."
+            exit 0
+          fi
+          if [[ "$ready" != "$TRIGGER_RUN_ID" ]]; then
+            echo "The later successful check owns the deployment dispatch."
             exit 0
           fi
 

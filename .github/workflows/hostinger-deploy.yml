@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       commit_sha:
-        description: "Full 40-character implementation branch commit SHA, with green Verify CanadaMB CI"
+        description: "Full 40-character implementation branch commit SHA, with green verification and browser QA"
         required: true
         type: string
       allow_reviewed_database_changes:
@@ -60,16 +60,18 @@ jobs:
           done
           bash -n deploy/hostinger-upgrade.sh
           bash -n deploy/hostinger-release.sh
-      - name: Require successful Verify CanadaMB CI on exact SHA
+      - name: Require successful verification and browser QA on exact SHA
         shell: bash
         run: |
           set -Eeuo pipefail
-          # Verify GitHub Actions recorded a successful PUSH run of the exact commit
-          # in the existing verification workflow (no PR-only approvals).
-          result=$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$DEPLOY_SHA&per_page=50" \
-            --jq '[.workflow_runs[] | select(.name == "Verify CanadaMB" and .event == "push" and .conclusion == "success" and .head_sha == "'"$DEPLOY_SHA"'" and .head_branch == "implementation/network-foundation")] | length')
-          [[ "$result" =~ ^[0-9]+$ ]] && (( result >= 1 )) || {
-            echo "::error::No green Verify CanadaMB push run for requested SHA."; exit 1;
+          runs=$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$DEPLOY_SHA&event=push&per_page=100")
+          jq -e '
+            [.workflow_runs[] | select(.head_branch == "implementation/network-foundation" and
+              (.name == "Verify CanadaMB" or .name == "Prelaunch desktop navigation hotfix browser QA"))]
+            | group_by(.name) | map(max_by([.run_number,.run_attempt]))
+            | length == 2 and all(.[]; .status == "completed" and .conclusion == "success")
+          ' <<<"$runs" >/dev/null || {
+            echo "::error::Both exact-SHA verification and browser QA must pass."; exit 1;
           }
       - uses: actions/setup-node@v5
         with:
