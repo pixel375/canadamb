@@ -34,6 +34,7 @@
                 @foreach($claims as $claim)<div class="item-row"><div><h3>{{ $claim->name }}</h3><p>Submitted {{ \Illuminate\Support\Carbon::parse($claim->created_at)->format('M j, Y') }}</p></div><div class="form-stack"><span class="member-listing-status" data-status="{{ $claim->status }}">{{ ucfirst($claim->status) }}</span>
                     @if($claim->status === 'pending')<form method="post" action="/account/business-claims/{{ $claim->id }}/withdraw">@csrf<button class="button button-outline">Withdraw claim</button></form>@endif
                     </div></div>@endforeach
+                {{ $claims->links() }}
             </section>
         @endif
     </div>

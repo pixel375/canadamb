@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-25 — business announcement lifecycle
+
+Added private portal-scoped update history with filters, version-bound revisions/withdrawal, independent version-bound moderation, audit transitions and paginated claim history. Revised public content returns to pending, and withdrawal preserves the historical row. Owner/manager may manage team posts; editors may manage their own posts. No migration.
+
 ## 2026-11-25 — member discovery and unified inbox filters
 
 Added conversation-type filtering across all/unread/archived views, visible context labels and preserved query parameters, with no private message content used as search filters. Saved Marketplace searches are directly linked from account shortcuts; both saved-search types join the shared saved-content navigation. Added scope and navigation regressions.

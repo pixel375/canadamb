@@ -14,6 +14,14 @@ class BusinessUpdate extends Model
         return ['published_at' => 'datetime'];
     }
 
+    public function reviewVersion(): string
+    {
+        $attributes = $this->getRawOriginal();
+        ksort($attributes);
+
+        return hash('sha256', json_encode($attributes, JSON_THROW_ON_ERROR));
+    }
+
     public function branch(): BelongsTo
     {
         return $this->belongsTo(BusinessLocation::class, 'business_location_id');

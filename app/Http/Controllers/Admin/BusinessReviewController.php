@@ -19,7 +19,8 @@ class BusinessReviewController extends Controller
     public function index(Request $request)
     {
         return view('admin.business-review', [
-            'businesses' => Business::with('locations.location')->where('status', 'pending')->latest()->paginate(15),
+            'businesses' => Business::with('locations.location')->where('status', 'pending')
+                ->whereDoesntHave('members', fn ($members) => $members->whereKey($request->user()->id))->latest()->paginate(15),
             'claims' => DB::table('business_claims')->join('businesses', 'businesses.id', '=', 'business_claims.business_id')
                 ->join('users', 'users.id', '=', 'business_claims.user_id')->where('business_claims.status', 'pending')
                 ->where('business_claims.user_id', '!=', $request->user()->id)
@@ -28,7 +29,10 @@ class BusinessReviewController extends Controller
                         ->where('business_memberships.user_id', $request->user()->id);
                 })
                 ->latest('business_claims.id')->paginate(15, ['business_claims.*', 'businesses.name', 'users.email'], 'claims_page'),
-            'updates' => BusinessUpdate::with('branch.business')->where('status', 'pending')->latest()->paginate(15, ['*'], 'updates_page'),
+            'updates' => BusinessUpdate::with('branch.business')->where('status', 'pending')
+                ->where(fn ($query) => $query->whereNull('author_id')->orWhere('author_id', '!=', $request->user()->id))
+                ->whereHas('branch.business', fn ($query) => $query->whereDoesntHave('members', fn ($members) => $members->whereKey($request->user()->id)))
+                ->latest()->paginate(15, ['*'], 'updates_page'),
             'imports' => DB::table('business_import_runs')->join('business_sources', 'business_sources.id', '=', 'business_import_runs.source_id')
                 ->latest('business_import_runs.id')->paginate(15, ['business_import_runs.*', 'business_sources.name'], 'imports_page'),
         ]);
@@ -51,6 +55,7 @@ class BusinessReviewController extends Controller
         $data = $this->decision($request);
         DB::transaction(function () use ($business, $request, $data) {
             $item = Business::lockForUpdate()->findOrFail($business);
+            abort_if($item->members()->whereKey($request->user()->id)->exists(), 403);
             abort_unless($item->status === 'pending', 409);
             $item->update(['status' => $data['decision'] === 'approved' ? 'active' : 'rejected']);
             Audit::record('business.'.$data['decision'], $request->user()->id, context: ['business' => $business, 'notes' => $data['notes']]);
@@ -95,13 +100,14 @@ class BusinessReviewController extends Controller
 
     public function update(Request $request, int $update)
     {
-        $data = $this->decision($request);
+        $data = $this->decision($request) + $request->validate(['version' => 'required|string|size:64']);
         DB::transaction(function () use ($update, $request, $data) {
             $initial = BusinessUpdate::with('branch')->findOrFail($update);
             $business = Business::lockForUpdate()->findOrFail($initial->branch->business_id);
             $item = BusinessUpdate::with('branch')->lockForUpdate()->findOrFail($update);
             abort_unless($item->status === 'pending', 409);
             abort_if($item->author_id === $request->user()->id || $business->members()->whereKey($request->user()->id)->exists(), 403);
+            abort_unless(hash_equals($item->reviewVersion(), $data['version']), 409, 'This update changed. Reload before reviewing.');
             abort_if($data['decision'] === 'approved' && (! $item->branch->isOpen() || $business->status !== 'active'), 409);
             $item->update(['status' => $data['decision'], 'published_at' => $data['decision'] === 'approved' ? now() : null]);
             Audit::record('business.update-'.$data['decision'], $request->user()->id, context: ['update' => $update, 'notes' => $data['notes']]);

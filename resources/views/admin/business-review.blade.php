@@ -26,7 +26,7 @@
         <h2>Business updates</h2>
         @forelse($updates as $update)
             <article class="admin-review-card form-stack"><div><h3>{{ $update->title }}</h3><p>{{ $update->branch->business->name }} · {{ ucfirst($update->type) }}</p></div>
-                <p class="prose-text">{{ $update->body }}</p><x-review-decision :action="'/admin/business-updates/'.$update->id"/>
+                <p class="prose-text">{{ $update->body }}</p><x-review-decision :action="'/admin/business-updates/'.$update->id" :version="$update->reviewVersion()"/>
             </article>
         @empty<p>No updates waiting for review.</p>@endforelse
         {{ $updates->links() }}

@@ -59,6 +59,7 @@
                 <div><button class="button button-primary">Submit update for review</button></div>
             </form>
         @endif
+        @if($business->exists)<div class="panel"><a class="button button-outline" href="/account/businesses/{{ $business->id }}/updates">Manage all business updates</a></div>@endif
         @if($business->exists && ($recentUpdates ?? collect())->isNotEmpty())
             <section class="panel mt-4"><h2>Recent business updates</h2><p class="field-note">Only approved updates are visible publicly.</p>
                 @foreach($recentUpdates as $update)<article class="item-row"><div><h3>{{ $update->title }}</h3><p>{{ ucfirst($update->type) }} · {{ \Illuminate\Support\Carbon::parse($update->created_at)->format('M j, Y') }}</p></div><span class="member-listing-status" data-status="{{ $update->status }}">{{ ucfirst($update->status) }}</span></article>@endforeach

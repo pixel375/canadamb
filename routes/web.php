@@ -205,7 +205,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/account/businesses/{business}/team/{member}', [BusinessTeamController::class, 'remove'])->whereNumber(['business', 'member'])->middleware('throttle:12,1');
     Route::get('/account/businesses/{business}', [BusinessController::class, 'edit'])->whereNumber('business');
     Route::put('/account/businesses/{business}', [BusinessController::class, 'update'])->whereNumber('business')->middleware('throttle:20,1');
-    Route::post('/account/businesses/{business}/updates', [BusinessController::class, 'postUpdate'])->whereNumber('business')->middleware('throttle:8,1');
+    Route::get('/account/businesses/{business}/updates', [BusinessController::class, 'manageUpdates'])->whereNumber('business');
+    Route::post('/account/businesses/{business}/updates', [BusinessController::class, 'postUpdate'])->whereNumber('business')->middleware('throttle:8,1,business-update-submit');
+    Route::put('/account/businesses/{business}/updates/{update}', [BusinessController::class, 'reviseUpdate'])->whereNumber(['business', 'update'])->middleware('throttle:12,1,business-update-edit');
+    Route::post('/account/businesses/{business}/updates/{update}/withdraw', [BusinessController::class, 'withdrawUpdate'])->whereNumber(['business', 'update'])->middleware('throttle:12,1,business-update-withdraw');
 });
 
 // Stateful routes keep CSRF protection for browser mutations.

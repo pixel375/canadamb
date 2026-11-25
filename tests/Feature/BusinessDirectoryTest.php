@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Business;
+use App\Models\BusinessUpdate;
 use App\Models\Location;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
@@ -117,7 +118,7 @@ class BusinessDirectoryTest extends TestCase
         $this->get("https://brandonmb.ca/account/businesses/$business->id")->assertOk()->assertSee('Recent business updates')->assertSee('Workshop opens Saturday')->assertSee('Pending');
         $update = DB::table('business_updates')->value('id');
         $this->actingAs($admin)->post("https://canadamb.ca/admin/business-updates/$update", [
-            'decision' => 'approved', 'notes' => 'Reviewed the update.',
+            'decision' => 'approved', 'notes' => 'Reviewed the update.', 'version' => BusinessUpdate::findOrFail($update)->reviewVersion(),
         ])->assertSessionHasNoErrors()->assertRedirect();
         $this->get('https://brandonmb.ca/')->assertSee('Workshop opens Saturday');
         $this->get('https://canadamb.ca/')->assertSee('Workshop opens Saturday');
@@ -125,5 +126,19 @@ class BusinessDirectoryTest extends TestCase
         $this->get('https://canadamb.ca/business-updates?location=elkhorn&q=Workshop')->assertOk()->assertDontSee('Workshop opens Saturday');
         $this->get('https://brandonmb.ca/business-updates?type=promotion')->assertOk()->assertDontSee('Workshop opens Saturday');
         $this->assertDatabaseCount('business_updates', 1);
+        $record = BusinessUpdate::findOrFail($update);
+        $version = $record->reviewVersion();
+        $manage = "https://brandonmb.ca/account/businesses/$business->id/updates";
+        $revision = ['type' => 'announcement', 'title' => 'Workshop opens Sunday', 'body' => 'Updated public workshop hours.', 'version' => $version];
+        $this->actingAs($competitor)->put($manage.'/'.$update, $revision)->assertNotFound();
+        $this->actingAs($claimant)->get($manage)->assertOk()->assertSee('Workshop opens Saturday');
+        $this->put($manage.'/'.$update, $revision)->assertRedirect()->assertSessionHasNoErrors();
+        $this->get('https://brandonmb.ca/')->assertDontSee('Workshop opens Sunday')->assertDontSee('Workshop opens Saturday');
+        $this->actingAs($admin)->post("https://canadamb.ca/admin/business-updates/$update", ['decision' => 'approved', 'notes' => 'Old approval attempt.', 'version' => $version])->assertConflict();
+        $this->post("https://canadamb.ca/admin/business-updates/$update", ['decision' => 'approved', 'notes' => 'Reviewed revised content.', 'version' => $record->fresh()->reviewVersion()])->assertRedirect();
+        $this->get('https://brandonmb.ca/')->assertSee('Workshop opens Sunday');
+        $this->actingAs($claimant)->post($manage.'/'.$update.'/withdraw', ['version' => $record->fresh()->reviewVersion()])->assertRedirect();
+        $this->get('https://brandonmb.ca/')->assertDontSee('Workshop opens Sunday');
+        $this->get($manage.'?status=withdrawn')->assertSee('Workshop opens Sunday');
     }
 }

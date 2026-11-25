@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Business;
+use App\Models\BusinessUpdate;
 use App\Models\Location;
 use App\Support\Audit;
 use App\Support\BusinessChanges;
@@ -136,8 +137,7 @@ class BusinessController extends Controller
         $businesses = Business::managedBy($user)->with(['locations.location', 'members' => fn ($query) => $query->whereKey($user)])
             ->orderBy('name')->paginate(20);
         $claims = DB::table('business_claims')->join('businesses', 'businesses.id', '=', 'business_claims.business_id')
-            ->where('business_claims.user_id', $user)->latest('business_claims.id')->take(15)
-            ->get(['business_claims.id', 'businesses.name', 'business_claims.status', 'business_claims.created_at']);
+            ->where('business_claims.user_id', $user)->latest('business_claims.id')->paginate(15, ['business_claims.id', 'businesses.name', 'business_claims.status', 'business_claims.created_at'], 'claims_page');
 
         return view('business.mine', compact('businesses', 'claims'));
     }
@@ -229,12 +229,73 @@ class BusinessController extends Controller
                 ->where('created_at', '>=', now()->subDay())->count() >= 5) {
                 throw ValidationException::withMessages(['title' => 'This profile has reached its daily update limit.']);
             }
-            DB::table('business_updates')->insert($data + [
-                'author_id' => $request->user()->id, 'status' => 'pending', 'created_at' => now(), 'updated_at' => now(),
-            ]);
+            $update = BusinessUpdate::create($data + ['author_id' => $request->user()->id, 'status' => 'pending']);
+            Audit::record('business.update-submitted', $request->user()->id, context: ['business' => $locked->id, 'update' => $update->id]);
         });
 
         return redirect('/account/businesses/'.$business)->with('status', 'Business update submitted for review.');
+    }
+
+    public function manageUpdates(Request $request, int $business)
+    {
+        $item = $this->managed($request, $business);
+        $site = $request->attributes->get('site');
+        $filters = $request->validate(['status' => 'nullable|in:pending,approved,rejected,withdrawn', 'q' => 'nullable|string|max:100']);
+        $updates = BusinessUpdate::with('branch.location')->whereHas('branch', fn ($branch) => $branch->where('business_id', $business)
+            ->when($site->location_id, fn ($query, $location) => $query->where('location_id', $location)))
+            ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
+            ->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'body']))
+            ->latest('id')->paginate(20)->withQueryString();
+        $canManageAll = $item->members()->whereKey($request->user()->id)->wherePivotIn('role', ['owner', 'manager'])->exists();
+
+        return view('business.manage-updates', compact('item', 'updates', 'filters', 'canManageAll'));
+    }
+
+    public function reviseUpdate(Request $request, int $business, int $update)
+    {
+        $data = $request->validate([
+            'type' => 'required|in:announcement,promotion,update', 'title' => 'required|string|max:140',
+            'body' => 'required|string|max:3000', 'version' => 'required|string|size:64',
+        ]);
+        DB::transaction(function () use ($request, $business, $update, $data) {
+            $record = $this->lockedUpdate($request, $business, $update);
+            abort_unless($record->branch->isOpen() && $record->branch->business->status === 'active'
+                && in_array($record->status, ['pending', 'approved', 'rejected'], true), 409);
+            abort_unless(hash_equals($record->reviewVersion(), $data['version']), 409, 'This update changed. Reload before editing.');
+            $record->fill(collect($data)->except('version')->all());
+            if ($record->isDirty() || $record->status === 'rejected') {
+                $record->forceFill(['status' => 'pending', 'published_at' => null])->save();
+                Audit::record('business.update-revised', $request->user()->id, context: ['business' => $business, 'update' => $update]);
+            }
+        }, attempts: 3);
+
+        return redirect('/account/businesses/'.$business.'/updates')->with('status', 'Business update saved.');
+    }
+
+    public function withdrawUpdate(Request $request, int $business, int $update)
+    {
+        $data = $request->validate(['version' => 'required|string|size:64']);
+        DB::transaction(function () use ($request, $business, $update, $data) {
+            $record = $this->lockedUpdate($request, $business, $update);
+            abort_unless(in_array($record->status, ['pending', 'approved', 'rejected'], true), 409);
+            abort_unless(hash_equals($record->reviewVersion(), $data['version']), 409, 'This update changed. Reload before withdrawing.');
+            $record->update(['status' => 'withdrawn', 'published_at' => null]);
+            Audit::record('business.update-withdrawn', $request->user()->id, context: ['business' => $business, 'update' => $update]);
+        }, attempts: 3);
+
+        return redirect('/account/businesses/'.$business.'/updates')->with('status', 'Business update withdrawn.');
+    }
+
+    private function lockedUpdate(Request $request, int $business, int $update): BusinessUpdate
+    {
+        Business::lockForUpdate()->findOrFail($business);
+        $item = $this->managed($request, $business);
+        $record = BusinessUpdate::with('branch.business')->whereHas('branch', fn ($branch) => $branch->where('business_id', $business))
+            ->lockForUpdate()->findOrFail($update);
+        abort_unless($record->author_id === $request->user()->id || $item->members()->whereKey($request->user()->id)->wherePivotIn('role', ['owner', 'manager'])->exists(), 404);
+        LocationScope::forPublication($request->attributes->get('site'), $record->branch->location_id);
+
+        return $record;
     }
 
     private function managed(Request $request, int $id): Business
