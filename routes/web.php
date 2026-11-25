@@ -250,6 +250,7 @@ Route::prefix('admin')->middleware(['auth', 'verified', 'can:manage-network'])->
         Route::get('/advertising/schedule', [AdvertisingReviewController::class, 'schedule']);
         Route::post('/advertising/{campaign}', [AdvertisingReviewController::class, 'decide'])->whereNumber('campaign')->middleware('throttle:12,1,campaign-review');
         Route::get('/commercial', [CommercialController::class, 'index']);
+        Route::get('/commercial/test-ledger', [CommercialController::class, 'ledger'])->middleware('throttle:20,1,test-ledger');
         Route::post('/commercial', [CommercialController::class, 'save'])->middleware('throttle:8,1,commercial-rate-card');
         Route::get('/settings', [SettingsController::class, 'edit']);
         Route::post('/settings', [SettingsController::class, 'save']);

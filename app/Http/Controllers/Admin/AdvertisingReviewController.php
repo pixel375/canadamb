@@ -10,6 +10,7 @@ use App\Support\AdvertisingSchedule;
 use App\Support\Audit;
 use App\Support\CommercialCatalog;
 use App\Support\CommercialRecords;
+use App\Support\KeywordSearch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -19,11 +20,17 @@ class AdvertisingReviewController extends Controller
     public function index(Request $request)
     {
         abort_unless(CommercialRecords::enabled(), 404);
-        $filters = $request->validate(['status' => 'nullable|in:pending,approved,rejected,withdrawn']);
+        $filters = $request->validate([
+            'status' => 'nullable|in:pending,approved,rejected,withdrawn', 'q' => 'nullable|string|max:100',
+            'site_id' => 'nullable|integer|exists:sites,id',
+        ]);
+        $portals = Site::orderBy('name')->get(['id', 'name']);
         $items = AdvertisingCampaign::with(['business', 'site'])->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
+            ->when($filters['site_id'] ?? null, fn ($query, $site) => $query->where('site_id', $site))
+            ->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'body']))
             ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")->latest('id')->paginate(20)->withQueryString();
 
-        return view('admin.advertising-review', compact('items', 'filters'));
+        return view('admin.advertising-review', compact('items', 'filters', 'portals'));
     }
 
     public function schedule(Request $request, AdvertisingSchedule $schedule)

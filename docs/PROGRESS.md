@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-25 — commercial planning and sandbox ledger visibility
+
+Added campaign search and portal filtering, duplicate guard, one-year start horizon, bounded trial exports and a read-only, gated test-payment ledger with grouped outcome counts. Tests check the ledger omits provider references and rejects members. No checkout route, real provider call, payment or ad renderer.
+
 ## 2026-11-25 — privacy request triage and record impact inventory
 
 Added restricted request filters, withdrawn history and audited aggregate-only impact inspection for open requests (including shared conversations, ownership, security and optional schema records). Expanded self-export with follows, notification history and access-request status, excluding other account identities and review notes. No deletion, automatic retention or fulfillment.

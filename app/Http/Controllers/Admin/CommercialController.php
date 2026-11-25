@@ -7,7 +7,9 @@ use App\Models\Business;
 use App\Models\Site;
 use App\Support\CommercialCatalog;
 use App\Support\NetworkSettings;
+use App\Support\TestCheckoutAttempts;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class CommercialController extends Controller
@@ -44,6 +46,25 @@ class CommercialController extends Controller
         }
 
         return view('admin.commercial', compact('state', 'catalog', 'published', 'businesses', 'preview', 'portals', 'portal', 'placement', 'weeks', 'estimate', 'warnings'));
+    }
+
+    public function ledger(Request $request)
+    {
+        abort_unless(TestCheckoutAttempts::enabled(), 404);
+        $filters = $request->validate(['status' => 'nullable|in:created,paid,expired,failed', 'campaign' => 'nullable|integer|min:1']);
+        $query = DB::table('commercial_payment_attempts as attempts')
+            ->join('advertising_campaigns as campaigns', 'campaigns.id', '=', 'attempts.campaign_id')
+            ->where('attempts.provider', 'stripe-test')->where('attempts.currency', 'cad')
+            ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('attempts.status', $status))
+            ->when($filters['campaign'] ?? null, fn ($query, $campaign) => $query->where('attempts.campaign_id', $campaign));
+        $items = $query->orderByDesc('attempts.id')->paginate(25, [
+            'attempts.id', 'attempts.campaign_id', 'attempts.amount_cents', 'attempts.status', 'attempts.created_at',
+            'attempts.settled_at', 'campaigns.status as campaign_status',
+        ])->withQueryString();
+        $events = DB::table('commercial_payment_events')->whereIn('attempt_id', $items->pluck('id'))
+            ->selectRaw('attempt_id, outcome, COUNT(*) as total')->groupBy('attempt_id', 'outcome')->get()->groupBy('attempt_id');
+
+        return view('admin.test-payment-ledger', compact('items', 'events', 'filters'));
     }
 
     public function save(Request $request, NetworkSettings $settings)

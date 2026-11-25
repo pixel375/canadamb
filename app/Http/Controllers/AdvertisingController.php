@@ -8,6 +8,7 @@ use App\Models\Site;
 use App\Support\Audit;
 use App\Support\CommercialCatalog;
 use App\Support\CommercialRecords;
+use App\Support\KeywordSearch;
 use App\Support\NetworkSettings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -21,9 +22,10 @@ class AdvertisingController extends Controller
         $item = $this->owned($request, $business);
         $locations = $item->locations()->pluck('location_id');
         $portals = Site::where('status', 'active')->where(fn ($query) => $query->whereNull('location_id')->orWhereIn('location_id', $locations))->orderBy('name')->get();
-        $filters = $request->validate(['status' => 'nullable|in:pending,approved,rejected,withdrawn']);
+        $filters = $request->validate(['status' => 'nullable|in:pending,approved,rejected,withdrawn', 'q' => 'nullable|string|max:100']);
         $campaigns = AdvertisingCampaign::where('business_id', $business)->with('site')
-            ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))->latest('id')->paginate(15)->withQueryString();
+            ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
+            ->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'body']))->latest('id')->paginate(15)->withQueryString();
         $catalog = CommercialCatalog::fromSettings(app(NetworkSettings::class)->published());
         $trial = CommercialRecords::hasTrial($item);
         $canExport = $trial && config('network.commercial_trial_export');
@@ -35,8 +37,11 @@ class AdvertisingController extends Controller
     {
         $item = $this->owned($request, $business);
         abort_unless(config('network.commercial_trial_export') && CommercialRecords::hasTrial($item), 404);
-        $records = AdvertisingCampaign::where('business_id', $business)->with('site:id,name')->orderBy('id')->get()
-            ->map(fn ($campaign) => [
+        $filters = $request->validate(['after_id' => 'nullable|integer|min:0']);
+        $after = (int) ($filters['after_id'] ?? 0);
+        $page = AdvertisingCampaign::where('business_id', $business)->where('id', '>', $after)->with('site:id,name')->orderBy('id')->limit(501)->get();
+        $next = $page->count() > 500 ? $page->take(500)->last()->id : null;
+        $records = $page->take(500)->values()->map(fn ($campaign) => [
                 'id' => $campaign->id, 'portal' => $campaign->site->name,
                 'placement' => $campaign->placement, 'headline' => $campaign->title, 'text' => $campaign->body,
                 'start_date' => $campaign->starts_on->toDateString(), 'end_date_exclusive' => $campaign->endsOn()->toDateString(),
@@ -44,7 +49,7 @@ class AdvertisingController extends Controller
                 'planning_phase' => $campaign->planningPhase(), 'review_note' => $campaign->review_note,
             ]);
 
-        return response()->json(['business_id' => $business, 'planning_only' => true, 'campaigns' => $records])
+        return response()->json(['business_id' => $business, 'planning_only' => true, 'after_id' => $after, 'next_after_id' => $next, 'campaigns' => $records])
             ->header('Content-Disposition', 'attachment; filename="campaign-planning.json"')
             ->header('Cache-Control', 'private, no-store');
     }
@@ -57,7 +62,7 @@ class AdvertisingController extends Controller
             'placement' => ['required', Rule::in(array_keys(CommercialCatalog::PLACEMENTS))],
             'title' => 'required|string|max:120',
             'body' => 'required|string|max:500',
-            'starts_on' => 'required|date_format:Y-m-d|after_or_equal:'.today('America/Winnipeg')->toDateString(),
+            'starts_on' => 'required|date_format:Y-m-d|after_or_equal:'.today('America/Winnipeg')->toDateString().'|before_or_equal:'.today('America/Winnipeg')->addYear()->toDateString(),
             'weeks' => 'required|integer|min:1|max:12',
         ]);
         DB::transaction(function () use ($request, $business, $settings, $data) {
@@ -73,6 +78,11 @@ class AdvertisingController extends Controller
                 ->filter(fn ($campaign) => in_array($campaign->planningPhase($today), ['pending', 'scheduled', 'in-window'], true))->count();
             if ($open >= 10) {
                 throw ValidationException::withMessages(['title' => 'At most ten open campaign requests are allowed.']);
+            }
+            if (AdvertisingCampaign::where('business_id', $business)->where('site_id', $site->id)->where('placement', $data['placement'])
+                ->where('starts_on', $data['starts_on'])->where('weeks', $data['weeks'])->where('title', $data['title'])
+                ->whereIn('status', ['pending', 'approved'])->exists()) {
+                throw ValidationException::withMessages(['title' => 'An equivalent open campaign request already exists.']);
             }
             $revision = $settings->state()->published_id;
             $catalog = CommercialCatalog::fromSettings($settings->revision($revision));

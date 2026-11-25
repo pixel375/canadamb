@@ -55,6 +55,7 @@ class CommercialRecordsTest extends TestCase
         $this->actingAs($stranger)->post($path, $data)->assertNotFound();
         $this->actingAs($owner)->get($path)->assertOk()->assertSee('No active trial record');
         $this->post($path, $data)->assertRedirect()->assertSessionHasNoErrors();
+        $this->post($path, $data)->assertSessionHasErrors('title');
         $campaign = AdvertisingCampaign::sole();
         $this->assertSame('pending', $campaign->status);
         $this->assertNull($campaign->estimated_cents);
@@ -98,6 +99,10 @@ class CommercialRecordsTest extends TestCase
         $this->assertSame('paid', $ledger->reconcile($raw, $signature, $secret, $timestamp));
         $this->assertSame('duplicate', $ledger->reconcile($raw, $signature, $secret, $timestamp));
         $this->assertDatabaseCount('commercial_payment_events', 1);
+        $ledgerUrl = 'https://canadamb.ca/admin/commercial/test-ledger';
+        $this->get($ledgerUrl.'?status=paid&campaign='.$campaign->id)->assertOk()->assertSee('CAD 30.00')->assertSee('Paid')->assertDontSee($reference)->assertDontSee('cs_test_example');
+        $this->actingAs($owner)->get($ledgerUrl)->assertForbidden();
+        $this->actingAs($admin);
         $this->assertDatabaseHas('commercial_payment_attempts', ['reference' => $reference, 'status' => 'paid']);
         $this->assertDatabaseCount('business_entitlements', 0);
         try {
