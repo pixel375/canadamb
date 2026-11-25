@@ -43,7 +43,7 @@ class CommunityEventController extends Controller
         if ($month) {
             $nextMonth = $month->addMonth();
             $this->community->overlapping($query, $month, $nextMonth);
-            foreach ((clone $query)->toBase()->select(['starts_at', 'ends_at', 'id', 'title', 'venue'])->cursor() as $result) {
+            foreach ((clone $query)->toBase()->select(['starts_at', 'ends_at', 'id', 'title', 'venue'])->orderBy('starts_at')->orderBy('id')->cursor() as $result) {
                 $start = CarbonImmutable::parse($result->starts_at, 'UTC')->setTimezone('America/Winnipeg')->startOfDay();
                 $last = $result->ends_at
                     ? CarbonImmutable::parse($result->ends_at, 'UTC')->subSecond()->setTimezone('America/Winnipeg')->startOfDay()

@@ -16,13 +16,13 @@ class EventSeriesTest extends TestCase
 
     public function test_bounded_repeat_preserves_local_time_and_exports_only_approved_occurrences(): void
     {
-        $this->travelTo(now()->setDate(2027, 3, 1)->startOfDay());
+        $this->travelTo('2026-02-25 12:00:00');
         $member = User::factory()->create();
         $admin = User::factory()->create(['role' => 'network_admin']);
         $url = 'https://brandonmb.ca/events';
         $input = ['title' => 'Weekly club, meeting', 'body' => "Agenda\nBEGIN:VEVENT", 'category' => 'community',
-            'venue' => 'Club hall', 'organizer' => 'Local club', 'starts_at' => '2027-03-07T10:00',
-            'ends_at' => '2027-03-07T11:00', 'repeat' => 'weekly', 'occurrences' => 3];
+            'venue' => 'Club hall', 'organizer' => 'Local club', 'starts_at' => '2026-03-01T10:00',
+            'ends_at' => '2026-03-01T11:00', 'repeat' => 'weekly', 'occurrences' => 3];
         $this->actingAs($member)->post($url, $input)->assertNotFound();
         config(['network.recurring_events' => true]);
         $this->post($url, $input)->assertRedirect()->assertSessionHasNoErrors();
@@ -37,10 +37,10 @@ class EventSeriesTest extends TestCase
         $this->actingAs($admin)->post('https://canadamb.ca/admin/community/events/'.$events[0]->id, ['action' => 'approve'])->assertRedirect();
         $this->get($file)->assertOk()->assertHeader('Content-Type', 'text/calendar; charset=UTF-8')
             ->assertSee('SUMMARY:Weekly club\\, meeting', false)->assertSee('DESCRIPTION:Agenda\\nBEGIN:VEVENT', false);
-        $this->get($url.'?month=2027-03')->assertOk()->assertSee('Day-by-day agenda')->assertSee('Weekly club, meeting');
+        $this->get($url.'?month=2026-03')->assertOk()->assertSee('Day-by-day agenda')->assertSee('Weekly club, meeting');
         $this->actingAs($member)->post('https://brandonmb.ca/account/events/'.$events[0]->id.'/cancel')->assertRedirect();
         $this->get($file)->assertNotFound();
-        $this->post($url, array_replace($input, ['title' => 'Invalid DST series', 'starts_at' => '2027-03-07T02:30', 'ends_at' => '2027-03-07T04:00']))->assertSessionHasErrors('starts_at');
+        $this->post($url, array_replace($input, ['title' => 'Invalid DST series', 'starts_at' => '2026-03-01T02:30', 'ends_at' => '2026-03-01T04:00']))->assertSessionHasErrors('starts_at');
         $this->assertDatabaseCount('community_events', 3);
     }
 }

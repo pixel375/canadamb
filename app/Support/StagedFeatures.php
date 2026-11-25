@@ -30,7 +30,7 @@ final class StagedFeatures
         $migrationTable = config('database.migrations.table', 'migrations');
         $history = Schema::hasTable($migrationTable) ? DB::table($migrationTable)->pluck('migration')->all() : [];
         $rows = [];
-        foreach (self::DEFINITIONS as [$migration, $label, $flag, $tables, $columns, $dependencies, $note]) {
+        foreach (self::DEFINITIONS as [$migration, $label, $flag, $tables, $columns, , $note]) {
             $checks = [];
             foreach ($tables as $table) {
                 $checks[] = Schema::hasTable($table);

@@ -46,6 +46,7 @@
                 <div class="form-stack mt-4" aria-label="Events by day">
                     <h3>Day-by-day agenda</h3>
                     @foreach(collect($agenda)->sortKeys() as $date => $entries)
+                        @if(isset($filters['day']) && $filters['day'] !== $date) @continue @endif
                         <details @if(($filters['day'] ?? null) === $date) open @endif>
                             <summary>{{ \Carbon\CarbonImmutable::parse($date, 'America/Winnipeg')->format('l, M j') }} · {{ $calendar[$date] }} {{ \Illuminate\Support\Str::plural('event', $calendar[$date]) }}</summary>
                             <div class="form-stack mt-2">@foreach($entries as $entry)
@@ -54,7 +55,7 @@
                             <a class="text-link" href="{{ $calendarUrl(['month' => $currentMonth, 'day' => $date]) }}">View all events this day</a></div>
                         </details>
                     @endforeach
-                    @if(!$agenda)<p class="field-note">No upcoming events this month.</p>@endif
+                    @if(!$agenda || (isset($filters['day']) && !isset($agenda[$filters['day']])))<p class="field-note">No upcoming events in this selection.</p>@endif
                 </div>
             </section>
         @else<a class="button button-outline mb-4" href="/events?{{ http_build_query(array_filter($filters) + ['month' => now('America/Winnipeg')->format('Y-m')]) }}">Open this month’s calendar</a>@endif

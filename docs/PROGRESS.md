@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-25 — cumulative calendar regression fixes
+
+Backend CI `45605838934` reached the full suite and reported two calendar failures. The monthly agenda now respects an explicit day selection rather than exposing other days' event titles. The repeat test uses Manitoba's known March 2026 clock change (the existing event test already fixes this historical fixture), rather than assuming future March 2027 changes. Agenda previews now have deterministic chronological order. Exact latest SHA checks still required.
+
 ## 2026-11-25 — staged schema inventory and launch safeguards
 
 Added read-only inventory for all 13 proposed migration files, dependency flags, presence of expected tables/columns and recorded migration history. Exposes readiness indicators and a CLI report without secrets; deployment database checks reject configured features with missing/unrecorded schema. Added tests for manifest coverage and mismatch detection. Does not apply migrations or switch features on. Review actual schema details, retention, backups and acceptance separately.
