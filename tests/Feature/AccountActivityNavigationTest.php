@@ -65,6 +65,30 @@ class AccountActivityNavigationTest extends TestCase
         $this->actingAs($buyer)->get('https://brandonmb.ca/')->assertOk()->assertDontSee('aria-label="1 unread messages"', false);
     }
 
+    public function test_bulk_message_read_keeps_later_messages_and_other_members_unread(): void
+    {
+        $member = User::factory()->create();
+        $other = User::factory()->create();
+        $stranger = User::factory()->create();
+        $listing = Listing::create(['user_id' => $other->id, 'location_id' => Location::where('slug', 'brandon')->sole()->id,
+            'category' => 'furniture', 'title' => 'Bulk read fixture', 'description' => 'A table for sale.', 'condition' => 'good', 'price_cents' => 100]);
+        $thread = Conversation::create(['listing_id' => $listing->id, 'buyer_id' => $member->id, 'seller_id' => $other->id]);
+        $unrelated = Conversation::create(['listing_id' => $listing->id, 'buyer_id' => $stranger->id, 'seller_id' => $other->id]);
+        $first = $thread->messages()->create(['sender_id' => $other->id, 'body' => 'First incoming message']);
+        $unrelated->messages()->create(['sender_id' => $other->id, 'body' => 'Other member message']);
+        $url = 'https://canadamb.ca/account/messages';
+        $this->actingAs($member)->get($url)->assertOk()->assertSee('Mark all messages as read')->assertSee('name="cutoff" value="'.$first->id.'"', false);
+        $later = $thread->messages()->create(['sender_id' => $other->id, 'body' => 'Later incoming message']);
+        $this->post($url.'/read-all', ['cutoff' => $first->id])->assertSessionHasErrors('confirm_read');
+        $this->post($url.'/read-all', ['cutoff' => $first->id, 'confirm_read' => '1'])->assertRedirect('/account/messages?view=unread');
+        $this->assertSame($first->id, $thread->fresh()->buyer_last_read_id);
+        $this->assertSame(0, $unrelated->fresh()->buyer_last_read_id);
+        $this->getJson('https://brandonmb.ca/account/activity-counts')->assertJsonPath('messages', 1);
+        $this->post($url.'/read-all', ['cutoff' => $later->id, 'confirm_read' => '1'])->assertRedirect();
+        $this->getJson('https://brandonmb.ca/account/activity-counts')->assertJsonPath('messages', 0);
+        $this->assertDatabaseCount('messages', 3);
+    }
+
     public function test_discussion_unread_counts_respect_site_visibility_and_read_actions(): void
     {
         $member = User::factory()->create();

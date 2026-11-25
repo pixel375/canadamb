@@ -183,6 +183,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/account/messages/{conversation}/archive', [MessagesController::class, 'unarchive'])->whereNumber('conversation')->middleware('throttle:15,1,message-archive');
     Route::post('/marketplace/{listing}/message', [MessagesController::class, 'start'])->whereNumber('listing')->middleware('throttle:15,1');
     Route::get('/account/messages', [MessagesController::class, 'index']);
+    Route::post('/account/messages/read-all', [MessagesController::class, 'readAll'])->middleware('throttle:5,1,message-read-all');
     Route::get('/account/blocked-members', [MessagesController::class, 'blockedMembers']);
     Route::delete('/account/blocked-members/{member}', [MessagesController::class, 'unblockMember'])->whereNumber('member')->middleware('throttle:20,1');
     Route::get('/account/messages/{conversation}', [MessagesController::class, 'show'])->whereNumber('conversation');

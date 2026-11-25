@@ -58,7 +58,36 @@ class MessagesController extends Controller
             })
             ->latest('updated_at')->latest('id')->paginate(20)->withQueryString();
 
-        return view('messages.index', ['threads' => $threads, 'member' => $id, 'filters' => $filters]);
+        $unreadThreads = $this->activeInbox($id)->whereHas('messages', $unread);
+        $readCutoff = Message::whereIn('conversation_id', $unreadThreads->select('id'))->where('sender_id', '!=', $id)->max('id');
+
+        return view('messages.index', ['threads' => $threads, 'member' => $id, 'filters' => $filters, 'readCutoff' => $readCutoff]);
+    }
+
+    private function activeInbox(int $member)
+    {
+        return Conversation::forMember($member)->when(MessagingExtensions::enabled(), fn ($query) => $query
+            ->whereRaw('CASE WHEN buyer_id = ? THEN buyer_archived_at ELSE seller_archived_at END IS NULL', [$member]));
+    }
+
+    public function readAll(Request $request)
+    {
+        $data = $request->validate(['cutoff' => 'required|integer|min:1', 'confirm_read' => 'accepted']);
+        $member = $request->user()->id;
+        $cutoff = (int) $data['cutoff'];
+        $incoming = fn ($query) => $query->where('sender_id', '!=', $member)->where('id', '<=', $cutoff);
+        $this->activeInbox($member)->whereHas('messages', fn ($query) => $incoming($query)
+            ->whereRaw('messages.id > CASE WHEN conversations.buyer_id = ? THEN conversations.buyer_last_read_id ELSE conversations.seller_last_read_id END', [$member]))
+            ->withMax(['messages as seen_through' => $incoming], 'id')
+            ->chunkById(100, function ($threads) use ($member) {
+                foreach ($threads as $thread) {
+                    $marker = $thread->marker($member);
+                    DB::table('conversations')->where('id', $thread->id)->where($marker, '<', $thread->seen_through)
+                        ->update([$marker => $thread->seen_through]);
+                }
+            });
+
+        return redirect('/account/messages?view=unread')->with('status', 'Messages received before the inbox was opened have been marked read. Newer messages remain unread.');
     }
 
     public function start(Request $request, int $listing, Marketplace $marketplace)
