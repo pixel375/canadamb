@@ -1,9 +1,6 @@
 name: CanadaMB one-time inactive release dependency reclaim
 
 on:
-  push:
-    branches: [main]
-    paths: ['.github/workflows/hostinger-reclaim-release-dependencies.yml']
   workflow_dispatch:
 
 permissions:

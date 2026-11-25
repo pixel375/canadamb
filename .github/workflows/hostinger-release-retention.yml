@@ -1,0 +1,131 @@
+name: CanadaMB bounded inactive dependency retention
+
+# The trusted deployment is a SHA-verified workflow on main. No untrusted
+# implementation code is executed here. Only generated Composer dependencies
+# of old inactive releases may be reclaimed, never backups or shared files.
+on:
+  workflow_run:
+    workflows: ['Deploy CanadaMB Prelaunch']
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      reclaim:
+        description: 'Reclaim up to four eligible old vendor trees (otherwise inventory only)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: canadamb-release-retention
+  cancel-in-progress: false
+
+jobs:
+  retention:
+    if: >-
+      github.repository == 'pixel375/canadamb' &&
+      (github.event_name == 'workflow_dispatch' ||
+        (github.event.workflow_run.conclusion == 'success' &&
+         github.event.workflow_run.head_branch == 'main' &&
+         github.event.workflow_run.head_repository.full_name == 'pixel375/canadamb'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    environment: hostinger-prelaunch
+    env:
+      SSH_HOST: ${{ vars.HOSTINGER_HOST }}
+      SSH_PORT: ${{ vars.HOSTINGER_PORT }}
+      SSH_USER: ${{ vars.HOSTINGER_USER }}
+      SSH_PRIVATE_KEY: ${{ secrets.HOSTINGER_SSH_PRIVATE_KEY }}
+      SSH_KNOWN_HOSTS: ${{ secrets.HOSTINGER_KNOWN_HOSTS }}
+      RECLAIM: ${{ github.event_name == 'workflow_run' || inputs.reclaim }}
+    steps:
+      - name: Retain newest complete releases and verify older dependency candidates
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          [[ "$SSH_HOST" =~ ^[A-Za-z0-9.-]+$ && "$SSH_USER" =~ ^[A-Za-z0-9_-]+$ &&
+             "$SSH_PORT" =~ ^[0-9]{1,5}$ && ( "$RECLAIM" == true || "$RECLAIM" == false ) ]] || exit 1
+          [[ -n "$SSH_PRIVATE_KEY" && -n "$SSH_KNOWN_HOSTS" ]] || exit 1
+          umask 077
+          dir=$(mktemp -d)
+          trap 'rm -rf -- "$dir"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$dir/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$dir/known_hosts"
+          chmod 600 "$dir/key" "$dir/known_hosts"
+          ssh-keygen -y -P '' -f "$dir/key" >/dev/null
+          ssh -T -o BatchMode=yes -o ConnectTimeout=20 -o StrictHostKeyChecking=yes \
+            -o "UserKnownHostsFile=$dir/known_hosts" -o IdentitiesOnly=yes \
+            -i "$dir/key" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" bash -se -- "$RECLAIM" <<'REMOTE'
+          set -Eeuo pipefail
+          reclaim=$1
+          [[ "$reclaim" == true || "$reclaim" == false ]] || exit 1
+          app="$HOME/domains/canadamb.ca/canadamb-app"
+          [[ -d "$app" && ! -L "$app" && -d "$app/releases" && ! -L "$app/releases" && -d "$app/source/.git" ]] || exit 1
+          exec 8>"$app/update.lock"
+          if ! flock -n 8; then
+            echo 'An update is active; no retention action taken.'
+            exit 0
+          fi
+          [[ ! -e "$app/update.pause" ]] || { echo 'Maintenance pause present; refusing cleanup'; exit 1; }
+          active=$(readlink -e "$app/current")
+          current=${active##*/}
+          [[ "$current" =~ ^[a-f0-9]{40}$ && "$active" == "$app/releases/$current" && -s "$active/vendor/autoload.php" ]] || exit 1
+          [[ ! -e "$active/storage/framework/down" && ! -e "$active/storage/framework/maintenance.php" ]] || exit 1
+          git -C "$app/source" cat-file -e "$current^{commit}"
+          # First-parent history establishes newest-first order without trusting
+          # mutable directory timestamps. Incomplete and unrecorded releases
+          # are not candidates; no other application or shared path is scanned.
+          count=0
+          candidates=()
+          while IFS= read -r id; do
+            [[ "$id" =~ ^[a-f0-9]{40}$ ]] || exit 1
+            root="$app/releases/$id"
+            [[ -d "$root" && ! -L "$root" && -s "$root/vendor/autoload.php" && ! -L "$root/vendor" ]] || continue
+            [[ $(readlink -e "$root") == "$root" && $(readlink -e "$root/vendor") == "$root/vendor" ]] || exit 1
+            count=$((count + 1))
+            if (( count <= 12 )); then
+              printf 'Protected complete release: %s\n' "$id"
+              continue
+            fi
+            [[ "$id" != "$current" && -s "$root/composer.lock" && -s "$root/artisan" ]] || continue
+            receipt="$app/shared/backups/$id/checksums.sha256"
+            [[ -s "$receipt" && ! -L "$receipt" ]] || continue
+            candidates+=("$id")
+          done < <(git -C "$app/source" rev-list --first-parent "$current")
+          printf 'Complete ancestor dependency trees: %s; eligible older candidates: %s\n' "$count" "${#candidates[@]}"
+          if [[ "$reclaim" != true || "$count" -le 16 ]]; then
+            echo 'Inventory only or below 17 complete trees; no dependencies removed.'
+            exit 0
+          fi
+          # Oldest first, bounded to four per successful deployment.
+          removed=0
+          total=0
+          for ((i=${#candidates[@]}-1; i>=0 && removed<4; i--)); do
+            id=${candidates[i]}
+            root="$app/releases/$id"
+            [[ $(readlink -e "$app/current") == "$active" && ! -e "$app/update.pause" ]] || exit 1
+            [[ "$id" != "$current" && -d "$root" && ! -L "$root" &&
+               -d "$root/vendor" && ! -L "$root/vendor" &&
+               $(readlink -e "$root/vendor") == "$root/vendor" ]] || exit 1
+            receipt="$app/shared/backups/$id/checksums.sha256"
+            if ! sha256sum --check --status "$receipt"; then
+              printf 'Backup check failed; preserving %s\n' "$id"
+              continue
+            fi
+            size=$(du -sk "$root/vendor" | awk '{print $1}')
+            rm -rf -- "$root/vendor"
+            [[ ! -e "$root/vendor" ]] || exit 1
+            printf 'Reclaimed rebuildable dependencies: %s (%s KiB)\n' "$id" "$size"
+            removed=$((removed + 1))
+            total=$((total + size))
+          done
+          printf 'Removed %s inactive vendor trees (%s KiB). No backups or shared storage touched.\n' "$removed" "$total"
+          [[ $(readlink -e "$app/current") == "$active" && -s "$active/vendor/autoload.php" && ! -e "$app/update.pause" ]] || exit 1
+          /usr/bin/php "$active/artisan" network:deployment-check --hostinger --production-database=u713153343_canadamb --database --migration-state
+          REMOTE
+          for host in canadamb.ca brandonmb.ca; do
+            code=$(curl -sS --max-time 15 -o /dev/null -w '%{http_code}' "https://$host/?retention_audit=${GITHUB_RUN_ID}")
+            printf '%s prelaunch access HTTP %s\n' "$host" "$code"
+            [[ "$code" == 403 ]] || exit 1
+          done
