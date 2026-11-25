@@ -531,6 +531,26 @@ const fs = require('node:fs');
             check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Reuse posting overflow');
         }
         console.log('PASS: owner team grants, role changes and removals, reusable job forms at two widths');
+        await page.setViewportSize({ width: 390, height: 900 });
+        await page.goto(host + '/account/businesses');
+        await page.getByRole('link', { name: 'Manage profile' }).click();
+        await page.getByRole('link', { name: 'Advertising requests' }).click();
+        await page.locator('select[name="site_id"]').selectOption({ index: 1 });
+        await page.locator('select[name="placement"]').selectOption('home-banner');
+        await page.locator('input[name="title"]').fill('Private browser campaign');
+        await page.locator('textarea[name="body"]').fill('A private advertisement proposal.');
+        const start = new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10);
+        await page.locator('input[name="starts_on"]').fill(start);
+        await page.getByRole('button', { name: 'Submit private request' }).click();
+        check(await page.getByRole('heading', { name: 'Private browser campaign' }).isVisible(), 'Campaign was not persisted');
+        check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Advertising dashboard overflow');
+        await page.locator('summary').filter({ hasText: 'Withdraw request' }).click();
+        await page.getByRole('button', { name: 'Confirm withdrawal' }).click();
+        check(await page.getByText(/Withdrawn/).isVisible(), 'Campaign withdrawal failed');
+        await page.goto(host);
+        check(await page.getByText('Private browser campaign', { exact: true }).count() === 0, 'Private campaign leaked onto homepage');
+        console.log('PASS: private persistent campaign submission and withdrawal, no public delivery');
+
 
 
 

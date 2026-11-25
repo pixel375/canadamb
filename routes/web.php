@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AccountNotificationsController;
 use App\Http\Controllers\Admin\AdvertisingReviewController;
+use App\Http\Controllers\Admin\BusinessEntitlementController;
 use App\Http\Controllers\Admin\BusinessReviewController;
 use App\Http\Controllers\Admin\CommercialController;
 use App\Http\Controllers\Admin\CommunityController;
@@ -179,6 +180,9 @@ Route::prefix('admin')->middleware(['auth', 'verified', 'can:manage-network'])->
     Route::middleware('can:manage-theme')->group(function () {
         Route::get('/test-accounts', [TestAccountController::class, 'index']);
         Route::post('/test-accounts/{account}/verify', [TestAccountController::class, 'verify'])->whereNumber('account');
+        Route::get('/entitlements', [BusinessEntitlementController::class, 'index']);
+        Route::post('/entitlements', [BusinessEntitlementController::class, 'grant'])->middleware('throttle:8,1');
+        Route::post('/entitlements/{entitlement}/revoke', [BusinessEntitlementController::class, 'revoke'])->whereNumber('entitlement')->middleware('throttle:8,1');
         Route::get('/advertising', [AdvertisingReviewController::class, 'index']);
         Route::post('/advertising/{campaign}', [AdvertisingReviewController::class, 'decide'])->whereNumber('campaign')->middleware('throttle:12,1');
         Route::get('/commercial', [CommercialController::class, 'index']);

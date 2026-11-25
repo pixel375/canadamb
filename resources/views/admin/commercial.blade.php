@@ -1,6 +1,6 @@
 <x-layouts.admin title="Commercial planning">
     <div class="page-intro"><div><p class="section-label">Monetization</p><h1>Advertising and subscriptions</h1><p>Prepare proposed CAD rates and inspect placement layouts before accepting payments.</p></div><a class="button button-outline" href="/admin/settings">Global settings</a></div>
-    @if(\App\Support\CommercialRecords::enabled())<div class="inline-actions"><a class="button button-outline" href="/admin/advertising">Review campaign requests</a></div>@else<p class="field-note">Persistent campaign requests are disabled pending schema review and explicit configuration.</p>@endif
+    @if(\App\Support\CommercialRecords::enabled())<div class="inline-actions"><a class="button button-outline" href="/admin/advertising">Review campaign requests</a><a class="button button-outline" href="/admin/entitlements">Business Pro trials</a></div>@else<p class="field-note">Persistent campaign requests are disabled pending schema review and explicit configuration.</p>@endif
     <p class="notice"><strong>Planning only.</strong> There is no live billing, ad delivery, checkout, subscription entitlement or paid ranking. Saving or publishing a rate card cannot activate these features.</p>
     <section class="panel form-stack"><h2>Proposed rate card</h2><p class="field-note">Blank means unpriced. Prices are Canadian dollars before applicable taxes. These are internal planning amounts, not customer offers.</p>
         <form method="post" action="/admin/commercial" class="form-stack">@csrf

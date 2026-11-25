@@ -32,7 +32,7 @@ class AdvertisingReviewController extends Controller
             $business = Business::lockForUpdate()->findOrFail($record->business_id);
             $item = AdvertisingCampaign::lockForUpdate()->findOrFail($campaign);
             abort_unless($item->status === 'pending', 409);
-            abort_if($business->members()->whereKey($request->user()->id)->exists(), 403);
+            abort_if((int) $item->author_id === $request->user()->id || $business->members()->whereKey($request->user()->id)->exists(), 403);
             if ($data['decision'] === 'approved' && (! CommercialRecords::eligible($business, $item->site, $item->placement)
                 || $item->starts_on->toDateString() < today('America/Winnipeg')->toDateString())) {
                 throw ValidationException::withMessages(['decision' => 'The request is no longer eligible. Reject it and ask the owner to submit a new request.']);

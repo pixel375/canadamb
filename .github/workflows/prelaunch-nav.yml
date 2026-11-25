@@ -19,6 +19,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
+      CANADAMB_COMMERCIAL_PLANNING_RECORDS: 'true'
       CANADAMB_PROPERTY_DRAFTS_ENABLED: 'true'
       CANADAMB_REAL_ESTATE_PUBLIC_LISTINGS: 'false'
     steps:
@@ -44,6 +45,7 @@ jobs:
           php artisan key:generate --force
           touch database/database.sqlite
           php artisan migrate:fresh --seed --force
+          php artisan migrate --path=database/proposed-migrations --force
           git rev-parse HEAD > public/build/source-commit
       - name: Start disposable server
         run: |
