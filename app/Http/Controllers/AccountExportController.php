@@ -27,6 +27,7 @@ class AccountExportController extends Controller
     ];
 
     private const OPTIONAL = [
+        'marketplace-searches' => ['marketplace_searches', 'user_id', ['id', 'site_id', 'name', 'filters', 'created_at', 'updated_at']],
         'job-searches' => ['job_searches', 'user_id', ['id', 'site_id', 'name', 'filters', 'alerts', 'checked_at', 'created_at', 'updated_at']],
         'content-reports' => ['content_reports', 'reporter_id', ['id', 'site_id', 'target_type', 'target_id', 'reason', 'explanation', 'status', 'created_at', 'updated_at']],
         'business-disputes' => ['business_disputes', 'claimant_id', ['id', 'business_id', 'site_id', 'contact_email', 'explanation', 'status', 'created_at', 'updated_at']],

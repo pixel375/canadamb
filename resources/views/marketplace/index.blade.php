@@ -151,6 +151,18 @@
         </details>
         <div class="browse-results-column">
         @unless($isDiscovery)
+            @auth
+                @if(auth()->user()->hasVerifiedEmail() && \App\Support\MarketplaceSearches::enabled(request()->attributes->get('site')))
+                    <details class="panel mb-4"><summary>Save this Marketplace search</summary>
+                        <form method="post" action="/account/marketplace-searches" class="form-stack mt-2">@csrf
+                            @foreach($filters as $field => $value)<input type="hidden" name="{{ $field }}" value="{{ $value }}">@endforeach
+                            <label>Search name<input name="name" required maxlength="80" placeholder="My Marketplace search"></label>
+                            <button class="button button-primary">Save search</button>
+                        </form>
+                        <a class="text-link" href="/account/marketplace-searches">Manage saved searches</a>
+                    </details>
+                @endif
+            @endauth
             <section class="market-results" aria-labelledby="market-results-title">
                 <div class="market-results-heading">
                     <div>

@@ -22,6 +22,7 @@ final class PrivacyImpact
         'Content reports' => ['content_reports', 'reporter_id'],
         'Business disputes' => ['business_disputes', 'claimant_id'],
         'Business change requests' => ['business_change_requests', 'requester_id'],
+        'Saved Marketplace searches' => ['marketplace_searches', 'user_id'],
         'Saved job searches' => ['job_searches', 'user_id'],
         'Privacy requests' => ['account_privacy_requests', 'user_id'],
         'Sessions' => ['sessions', 'user_id'],

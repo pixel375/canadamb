@@ -22,6 +22,7 @@ final class StagedFeatures
         ['2026_11_25_000010_create_message_attachments_and_inquiry_settings', 'Business inquiry controls', 'business_inquiry_controls', ['message_attachments', 'business_inquiry_settings'], [], ['extended_messaging'], 'Owner-bound consent; depends on extended messaging.'],
         ['2026_11_25_000011_create_account_privacy_requests', 'Account privacy requests', 'privacy_requests', ['account_privacy_requests'], [], [], 'Intake only; verified fulfillment and retention required.'],
         ['2026_11_25_000012_create_notification_preferences', 'Notification preferences', 'notification_preferences', ['notification_preferences'], [], [], 'In-app preferences, no email or push delivery.'],
+        ['2026_11_25_000014_create_marketplace_searches', 'Saved Marketplace searches', 'marketplace_searches', ['marketplace_searches'], [], [], 'Private portal-specific searches; no external alerts.'],
         ['2026_11_25_000013_create_news_candidate_reviews', 'News candidate reviews', 'news_candidate_review', ['news_candidate_reviews'], [], [], 'Candidate triage; no automated publication.'],
     ];
 

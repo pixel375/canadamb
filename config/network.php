@@ -16,6 +16,7 @@ return [
     'message_attachments' => env('CANADAMB_MESSAGE_ATTACHMENTS', false),
     'business_inquiry_controls' => env('CANADAMB_BUSINESS_INQUIRY_CONTROLS', false),
     'extended_messaging' => env('CANADAMB_EXTENDED_MESSAGING', false),
+    'marketplace_searches' => env('CANADAMB_MARKETPLACE_SEARCHES', false),
     'job_searches' => env('CANADAMB_JOB_SEARCHES', false),
     'business_changes' => env('CANADAMB_BUSINESS_CHANGES', false),
     'business_disputes' => env('CANADAMB_BUSINESS_DISPUTES', false),

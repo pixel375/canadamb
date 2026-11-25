@@ -32,6 +32,7 @@ use App\Http\Controllers\JobController;
 use App\Http\Controllers\JobSearchController;
 use App\Http\Controllers\ListingEngagementController;
 use App\Http\Controllers\MarketplaceController;
+use App\Http\Controllers\MarketplaceSearchController;
 use App\Http\Controllers\MessagesController;
 use App\Http\Controllers\NewsController;
 use App\Http\Controllers\PropertyDraftController;
@@ -154,6 +155,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/account/listings/{listing}/edit', [MarketplaceController::class, 'edit'])->whereNumber('listing');
     Route::put('/account/listings/{listing}', [MarketplaceController::class, 'update'])->whereNumber('listing')->middleware('throttle:20,1');
     Route::post('/account/listings/{listing}/status', [MarketplaceController::class, 'status'])->whereNumber('listing');
+    Route::get('/account/marketplace-searches', [MarketplaceSearchController::class, 'index']);
+    Route::post('/account/marketplace-searches', [MarketplaceSearchController::class, 'store'])->middleware('throttle:10,1,market-search-save');
+    Route::post('/account/marketplace-searches/{search}/rename', [MarketplaceSearchController::class, 'rename'])->whereNumber('search')->middleware('throttle:10,1,market-search-rename');
+    Route::delete('/account/marketplace-searches/{search}', [MarketplaceSearchController::class, 'destroy'])->whereNumber('search')->middleware('throttle:10,1,market-search-delete');
     Route::get('/account/saved', [ListingEngagementController::class, 'saved']);
     Route::get('/account/listing-reports', [ListingEngagementController::class, 'reports']);
     Route::post('/marketplace/{listing}/save', [ListingEngagementController::class, 'save'])->whereNumber('listing')->middleware('throttle:24,1');

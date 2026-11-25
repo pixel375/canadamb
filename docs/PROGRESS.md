@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-25 — private saved Marketplace searches
+
+Shared existing public filter validation and matching logic, added a default-off private saved-search store, duplicate normalization, per-account limit, rename/delete, current public result counts and links, account export and impact inventory. No email, push or background alerts; no production migration applied.
+
 ## 2026-11-25 — hiring lifecycle and deployment incident
 
 Prior `8851bdd` passed exact backend and browser CI but production preparation failed before activation. Read-only audit 45655286097 classified the private log as Disk quota exceeded; prior `ba1ee92` remains active and both domain gates passed. Added branch filters, version-bound job edits, expired job re-review, conflict-free job review, audited hiring transitions, one-year closing horizon and private unavailable bookmark cleanup. No schema changes.

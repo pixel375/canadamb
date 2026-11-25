@@ -15,6 +15,7 @@ Review batches in dependency order:
 | 000011 | Privacy request intake | Staff, response procedure and fulfillment; not deletion execution |
 | 000012 | Notification preferences | Existing history and follows preserved |
 | 000013 | News candidate reviews | Editorial rights, retention and no auto-publication |
+| 000014 | Saved Marketplace searches | Portal scope, data export and privacy |
 
 For each approved batch: freeze the reviewed commit, rehearse schema changes on disposable SQLite and MariaDB, inspect rollback and populated-data preservation, capture verified production database and private storage backups, review the exact migration diff, and use the existing guarded release process only with explicit database approval. Preserve prelaunch allowlist, suppressed outbound mail and polling, and registration controls. Keep feature flags off until the exact recorded schema, postdeployment checks and operational acceptance are confirmed. Test all active portals and real devices separately.
 
