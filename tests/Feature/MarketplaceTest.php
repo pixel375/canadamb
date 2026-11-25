@@ -190,6 +190,30 @@ class MarketplaceTest extends TestCase
         $this->assertDatabaseCount('listing_status_history', 2);
     }
 
+    public function test_member_inventory_is_paginated_searchable_and_never_includes_private_or_other_portal_listings(): void
+    {
+        $seller = User::factory()->create();
+        $other = User::factory()->create();
+        $brandon = Location::where('slug', 'brandon')->sole()->id;
+        $rural = Location::where('slug', 'elkhorn')->sole()->id;
+        foreach (range(1, 13) as $index) {
+            $listing = Listing::create(['user_id' => $seller->id, 'location_id' => $brandon, 'title' => 'Local item '.str_pad((string) $index, 2, '0', STR_PAD_LEFT),
+                'description' => 'A public item for sale.', 'category' => 'furniture', 'condition' => 'good', 'price_cents' => $index * 100]);
+            $listing->forceFill(['status' => 'active', 'expires_at' => now()->addDay(), 'published_at' => now()])->save();
+        }
+        foreach ([[$seller, $brandon, 'Hidden pending listing', 'pending'], [$seller, $rural, 'Rural public listing', 'active'], [$other, $brandon, 'Different seller listing', 'active']] as [$owner, $place, $title, $status]) {
+            $listing = Listing::create(['user_id' => $owner->id, 'location_id' => $place, 'title' => $title, 'description' => 'A fixture listing.',
+                'category' => 'furniture', 'condition' => 'good', 'price_cents' => 100]);
+            $listing->forceFill(['status' => $status, 'expires_at' => now()->addDay(), 'published_at' => now()])->save();
+        }
+        $url = self::CITY.'/users/'.$seller->id;
+        $this->get($url.'?sort=price-low')->assertOk()->assertSee('13 active listings')->assertSee('Local item 01')->assertDontSee('Local item 13')
+            ->assertDontSee('Hidden pending listing')->assertDontSee('Rural public listing')->assertDontSee('Different seller listing')->assertDontSee($seller->email);
+        $this->get($url.'?sort=price-low&listing_page=2')->assertOk()->assertSee('Local item 13')->assertDontSee('Local item 01');
+        $this->get($url.'?q=Local%2003')->assertOk()->assertSee('Local item 03')->assertDontSee('Local item 04');
+        $this->get(self::MAIN.'/users/'.$seller->id.'?q=Rural')->assertOk()->assertSee('Rural public listing');
+    }
+
     private function listing(string $title): array
     {
         return ['title' => $title, 'description' => 'Includes the table and chairs.', 'category' => 'furniture',

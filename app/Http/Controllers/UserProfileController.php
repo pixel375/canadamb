@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ListingCategory;
 use App\Models\User;
 use App\Support\Audit;
 use App\Support\Identity;
+use App\Support\KeywordSearch;
 use App\Support\Marketplace;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -19,15 +21,31 @@ class UserProfileController extends Controller
     public function show(Request $request, User $user, Marketplace $marketplace): View
     {
         $site = $request->attributes->get('site');
-        $listings = $marketplace->enabled($site)
-            ? $marketplace->visible($site)->where('user_id', $user->id)
-                ->latest('published_at')->limit(6)->get()
-            : collect();
+        $marketEnabled = $marketplace->enabled($site);
+        $filters = $request->validate(['q' => 'nullable|string|max:100', 'category' => 'nullable|string|max:64|exists:listing_categories,slug',
+            'sort' => 'nullable|in:recent,price-low,price-high']);
+        $listings = null;
+        $categories = collect();
+        $listingCount = 0;
+        if ($marketEnabled) {
+            $inventory = $marketplace->visible($site)->where('user_id', $user->id);
+            $listingCount = (clone $inventory)->count();
+            $categoryIds = (clone $inventory)->reorder()->select('category')->distinct()->pluck('category');
+            $categories = ListingCategory::whereIn('slug', $categoryIds)->orderBy('name')->pluck('name', 'slug');
+            $matching = $inventory->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'description']))
+                ->when($filters['category'] ?? null, fn ($query, $category) => $query->where('category', $category));
+            match ($filters['sort'] ?? 'recent') {
+                'price-low' => $matching->orderBy('price_cents'),
+                'price-high' => $matching->orderByDesc('price_cents'),
+                default => null,
+            };
+            $listings = $matching->latest('published_at')->latest('id')->paginate(12, pageName: 'listing_page')->withQueryString();
+        }
 
         return view('account.profile', [
             'member' => $user,
             'isOwn' => $request->user()?->is($user) ?? false,
-            'listings' => $listings,
+            'listings' => $listings, 'categories' => $categories, 'filters' => $filters, 'listingCount' => $listingCount, 'marketEnabled' => $marketEnabled,
         ]);
     }
 

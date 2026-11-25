@@ -18,15 +18,27 @@
                 <a class="text-link mt-2" href="/account/settings">Manage account settings</a>
             </details>
         @endif
-        <section class="homepage-section" aria-labelledby="member-listings-heading">
-            <div class="section-heading"><h2 id="member-listings-heading">Public Marketplace listings</h2></div>
+        @if($marketEnabled)
+        <section class="homepage-section" id="member-listings" aria-labelledby="member-listings-heading">
+            <div class="section-heading"><h2 id="member-listings-heading">Public Marketplace listings</h2><span class="field-note">{{ $listingCount }} active {{ \Illuminate\Support\Str::plural('listing', $listingCount) }}</span></div>
+            @if($listingCount || array_filter($filters))
+                <form method="get" action="{{ $isOwn ? '/account/profile' : '/users/'.$member->id }}#member-listings" class="panel filter-bar mb-3">
+                    <label>Search listings<input type="search" name="q" maxlength="100" value="{{ $filters['q'] ?? '' }}"></label>
+                    <label>Category<select name="category"><option value="">All categories</option>@foreach($categories as $slug => $label)<option value="{{ $slug }}" @selected(($filters['category'] ?? '') === $slug)>{{ $label }}</option>@endforeach</select></label>
+                    <label>Sort<select name="sort"><option value="recent" @selected(($filters['sort'] ?? 'recent') === 'recent')>Newest</option><option value="price-low" @selected(($filters['sort'] ?? '') === 'price-low')>Price: low to high</option><option value="price-high" @selected(($filters['sort'] ?? '') === 'price-high')>Price: high to low</option></select></label>
+                    <div class="inline-actions"><button class="button button-primary">Filter listings</button><a class="text-link" href="{{ $isOwn ? '/account/profile' : '/users/'.$member->id }}#member-listings">Reset</a></div>
+                </form>
+                <p class="field-note">{{ $listings->total() }} matching listings</p>
+            @endif
             @if($listings->isNotEmpty())
                 <div class="listing-grid">
                     @foreach($listings as $item)<x-listing-card :item="$item"/>@endforeach
                 </div>
             @else
-                <div class="panel"><p>No publicly visible listings from this member in this community.</p></div>
+                <div class="panel"><p>{{ $listingCount ? 'No public listings match these filters.' : 'No publicly visible listings from this member in this community.' }}</p></div>
             @endif
+            {{ $listings->fragment('member-listings')->links() }}
         </section>
+        @endif
     </div>
 </x-layouts.site>
