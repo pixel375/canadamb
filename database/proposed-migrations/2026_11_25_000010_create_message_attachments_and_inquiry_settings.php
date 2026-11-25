@@ -11,13 +11,13 @@ return new class extends Migration
     {
         Schema::create('message_attachments', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('message_id')->constrained()->cascadeOnDelete()->unique();
+            $table->foreignId('message_id')->unique()->constrained()->cascadeOnDelete();
             $table->string('image_path')->unique();
             $table->string('thumbnail_path')->unique();
             $table->timestamps();
         });
         Schema::create('business_inquiry_settings', function (Blueprint $table) {
-            $table->foreignId('business_id')->constrained()->cascadeOnDelete()->primary();
+            $table->foreignId('business_id')->primary()->constrained()->cascadeOnDelete();
             $table->foreignId('owner_id')->constrained('users')->cascadeOnDelete();
             $table->boolean('business_inquiries')->default(false);
             $table->boolean('job_inquiries')->default(false);

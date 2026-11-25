@@ -13,6 +13,13 @@ final class BusinessInquirySettings
         return MessagingExtensions::enabled() && (bool) config('network.business_inquiry_controls') && Schema::hasTable('business_inquiry_settings');
     }
 
+    public static function reset(int $business): void
+    {
+        if (Schema::hasTable('business_inquiry_settings')) {
+            DB::table('business_inquiry_settings')->where('business_id', $business)->delete();
+        }
+    }
+
     public static function accepts(Business $business, bool $job): bool
     {
         if (! config('network.business_inquiry_controls')) {

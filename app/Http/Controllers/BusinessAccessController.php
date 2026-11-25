@@ -6,6 +6,8 @@ use App\Models\Business;
 use App\Models\User;
 use App\Support\Audit;
 use App\Support\BusinessAccess;
+use App\Support\BusinessChanges;
+use App\Support\BusinessInquirySettings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -138,6 +140,8 @@ class BusinessAccessController extends Controller
                 abort_unless($business->members()->wherePivot('role', 'owner')->count() === 1, 409);
                 $business->members()->detach($row->requester_id);
                 $business->members()->syncWithoutDetaching([$row->recipient_id => ['role' => 'owner']]);
+                BusinessInquirySettings::reset($business->id);
+                BusinessChanges::invalidateContact($business->id);
                 DB::table('business_access_requests')->where('business_id', $business->id)->where('id', '!=', $access)
                     ->whereIn('status', ['pending', 'accepted'])->update(['status' => 'cancelled', 'updated_at' => now()]);
             }

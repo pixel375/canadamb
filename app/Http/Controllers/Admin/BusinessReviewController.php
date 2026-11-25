@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Business;
 use App\Models\BusinessUpdate;
 use App\Support\Audit;
+use App\Support\BusinessChanges;
+use App\Support\BusinessInquirySettings;
 use App\Support\KeywordSearch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -66,6 +68,8 @@ class BusinessReviewController extends Controller
                 }
 
                 $business->members()->syncWithoutDetaching([$row->user_id => ['role' => 'owner']]);
+                BusinessInquirySettings::reset($business->id);
+                BusinessChanges::invalidateContact($business->id);
             }
             DB::table('business_claims')->where('id', $claim)->update([
                 'status' => $data['decision'], 'notes' => $data['notes'], 'reviewer_id' => $request->user()->id,

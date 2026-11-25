@@ -227,7 +227,7 @@ class MessagesController extends Controller
                 }
                 $this->lockParticipants($id, $thread->other($id));
                 abort_if($this->isBlocked($id, $thread->other($id)) || ! MessagingExtensions::canReply($thread), 403, 'Messaging is blocked for this conversation.');
-                if ($media && (! MessageAttachments::enabled() || MessageAttachments::quotaExceeded($id, $conversation))) {
+                if ($media && (! MessageAttachments::enabled() || MessageAttachments::quotaExceeded($id, $conversation, lock: true))) {
                     throw ValidationException::withMessages(['photo' => 'Photo attachments are unavailable or the limit has been reached.']);
                 }
                 $message = $this->write($thread, $id, $data['body']);
