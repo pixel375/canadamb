@@ -94,6 +94,7 @@ Route::get('/marketplace/{listing}/photo/{photo}', [ListingEngagementController:
 Route::get('/marketplace/{listing}/thumbnail/{photo}', [ListingEngagementController::class, 'photo'])
     ->whereNumber(['listing', 'photo'])->defaults('thumbnail', true);
 Route::middleware(['auth', 'verified'])->group(function () {
+    Route::post('/account/notifications/preferences', [AccountNotificationsController::class, 'preferences'])->middleware('throttle:8,1,notification-preferences');
     Route::get('/account/notifications', [AccountNotificationsController::class, 'index']);
     Route::get('/account/activity-counts', [AccountNotificationsController::class, 'counts'])->middleware('throttle:20,1');
     Route::get('/account/properties', [PropertyDraftController::class, 'index']);

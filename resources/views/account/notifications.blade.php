@@ -33,7 +33,20 @@
             </section>
         </div>
         @if(\App\Support\JobSearches::enabled(request()->attributes->get('site')))
-            <section class="panel form-stack"><h2>Job alerts</h2><p>Check new matches and manage alerts for saved employment searches on this portal.</p><a class="button button-outline" href="/account/job-searches">Open job alerts</a></section>
+            <section class="panel form-stack"><h2>Job alerts</h2>
+                <p>{{ $jobAlertsEnabled ? ($matchingSearches ? $matchingSearches.' saved searches have new matches.' : 'No saved searches have new matches on this portal.') : 'Job alert summaries are hidden by your preferences.' }}</p>
+                <a class="button button-outline" href="/account/job-searches">Open job alerts</a>
+            </section>
+        @endif
+        @if($preferencesEnabled)
+            <section class="panel form-stack"><h2>Notification preferences</h2><p>These settings apply across CanadaMB communities. Existing notification history and private messages are preserved.</p>
+                <form class="form-stack" method="post" action="/account/notifications/preferences">@csrf
+                    <label>New replies to followed discussions<select name="discussion_replies"><option value="1" @selected($preferences['discussion_replies'])>Notify me</option><option value="0" @selected(!$preferences['discussion_replies'])>Pause new notifications</option></select></label>
+                    <label>Job alerts in this dashboard<select name="job_summary"><option value="1" @selected($preferences['job_summary'])>Show summary</option><option value="0" @selected(!$preferences['job_summary'])>Hide summary</option></select></label>
+                    <p class="field-note">Pausing discussion notifications does not unfollow discussions. Missed alerts are not backfilled. Job summary settings do not change individual saved searches.</p>
+                    <button class="button button-primary">Save notification preferences</button>
+                </form>
+            </section>
         @endif
         @if($discussionsEnabled)
             <section class="homepage-section activity-panel" aria-labelledby="recent-replies-title">

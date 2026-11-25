@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-25 — notification preferences and moderation template repair
+
+Added default-off account-wide preferences for new discussion notifications and job-alert dashboard summaries. Existing unread counts/history and follows remain unchanged, and no email or push delivery is added. Added bounded on-demand new-match search summary and optional export of notification preferences. Corrected adjacent Blade conditionals causing the photo moderation queue to fail compilation in CI `45605372175`. No migration or feature activation.
+
 ## 2026-11-25 — recurring event submissions and calendar usability
 
 Added atomic bounded weekly/biweekly submissions (up to eight dates, individually reviewed, 24 pending per member when enabled), wall-clock DST validation and duplicate rollback, monthly day agenda, scoped approved-only iCalendar downloads and regression tests. No schema changes or scheduled recurrence expansion. Recurrence switch defaults off; existing one-time events and moderation remain intact.

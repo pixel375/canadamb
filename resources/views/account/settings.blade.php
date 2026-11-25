@@ -33,7 +33,7 @@
             <div><strong>Email address</strong><p>{{ $member->email }} (visible only to you)</p></div>
             <p class="field-note">Your email address is not displayed on your public member profile.</p>
             <a class="text-link" href="/account/profile">View my public profile</a>
-            <a class="text-link" href="/account/notifications">View notifications</a>
+            <a class="text-link" href="/account/notifications">Notifications and preferences</a>
             <a class="text-link" href="/account/data-export">Download my data</a>
             @if(\App\Support\PrivacyRequests::enabled())<a class="text-link" href="/account/privacy-requests">Request account deletion or data review</a>@endif
         </div>

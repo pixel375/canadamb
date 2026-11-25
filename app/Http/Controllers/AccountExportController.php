@@ -53,6 +53,9 @@ class AccountExportController extends Controller
             $counts[$key] = DB::table($table)->where($owner, $request->user()->id)->count();
         }
 
+        if (Schema::hasTable('notification_preferences')) {
+            $counts['notification-preferences'] = DB::table('notification_preferences')->where('user_id', $request->user()->id)->count();
+        }
         foreach (self::BOOKMARKS as $key => [$table]) {
             $counts[$key] = DB::table($table)->where('user_id', $request->user()->id)->count();
         }
@@ -63,9 +66,10 @@ class AccountExportController extends Controller
     public function download(Request $request)
     {
         $sections = $this->sections();
+        $preferenceSections = Schema::hasTable('notification_preferences') ? ['notification-preferences'] : [];
         $data = $request->validate([
             'current_password' => 'required|string|max:72',
-            'section' => ['required', Rule::in(['profile', ...array_keys($sections), ...array_keys(self::BOOKMARKS)])],
+            'section' => ['required', Rule::in(['profile', ...array_keys($sections), ...array_keys(self::BOOKMARKS), ...$preferenceSections])],
             'after_id' => 'nullable|integer|min:0',
         ]);
         $user = User::findOrFail($request->user()->id);
@@ -77,6 +81,9 @@ class AccountExportController extends Controller
         $next = null;
         if ($section === 'profile') {
             $records = collect([$user->only(['id', 'name', 'email', 'email_verified_at', 'created_at', 'updated_at'])]);
+        } elseif ($section === 'notification-preferences') {
+            $records = DB::table('notification_preferences')->where('user_id', $user->id)->where('user_id', '>', $after)
+                ->get(['user_id', 'discussion_replies', 'job_summary', 'updated_at']);
         } elseif (isset(self::BOOKMARKS[$section])) {
             [$table, $key] = self::BOOKMARKS[$section];
             $columns = $section === 'business-memberships' ? [$key, 'role', 'created_at', 'updated_at'] : [$key, 'created_at'];

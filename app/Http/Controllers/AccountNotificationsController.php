@@ -4,10 +4,29 @@ namespace App\Http\Controllers;
 
 use App\Support\AccountActivity;
 use App\Support\Community;
+use App\Support\JobSearches;
+use App\Support\NotificationPreferences;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 final class AccountNotificationsController extends Controller
 {
+    public function preferences(Request $request)
+    {
+        abort_unless(NotificationPreferences::enabled(), 404);
+        $data = $request->validate([
+            'discussion_replies' => 'required|boolean',
+            'job_summary' => 'required|boolean',
+        ]);
+        DB::table('notification_preferences')->updateOrInsert(['user_id' => $request->user()->id], [
+            'discussion_replies' => (bool) $data['discussion_replies'],
+            'job_summary' => (bool) $data['job_summary'],
+            'updated_at' => now(),
+        ]);
+
+        return redirect('/account/notifications')->with('status', 'Notification preferences saved across the network.');
+    }
+
     public function counts(Request $request, AccountActivity $activity)
     {
         return response()->json($activity->counts($request->user(), $request->attributes->get('site')))
@@ -26,6 +45,11 @@ final class AccountNotificationsController extends Controller
                 ->orderByDesc('notification.id')->limit(8)->get()
             : collect();
 
-        return view('account.notifications', compact('counts', 'discussionsEnabled', 'recent'));
+        $preferencesEnabled = NotificationPreferences::enabled();
+        $preferences = NotificationPreferences::forMember($user->id);
+        $jobAlertsEnabled = JobSearches::enabled($site) && $preferences['job_summary'];
+        $matchingSearches = $jobAlertsEnabled ? JobSearches::alertingSearchCount($user->id, $site) : 0;
+
+        return view('account.notifications', compact('counts', 'discussionsEnabled', 'recent', 'preferencesEnabled', 'preferences', 'jobAlertsEnabled', 'matchingSearches'));
     }
 }

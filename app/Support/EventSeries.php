@@ -9,8 +9,6 @@ final class EventSeries
 {
     public static function dates(Community $community, string $start, ?string $end, string $frequency, int $count): array
     {
-        $localStart = $community->localEventTime($start, 'starts_at')->setTimezone('America/Winnipeg');
-        $localEnd = $end ? $community->localEventTime($end, 'ends_at')->setTimezone('America/Winnipeg') : null;
         $dates = [];
         $weeks = $frequency === 'biweekly' ? 2 : 1;
         for ($i = 0; $i < $count; $i++) {
@@ -19,7 +17,7 @@ final class EventSeries
             $wallStart = CarbonImmutable::createFromFormat('!Y-m-d\TH:i', $start, 'UTC')->addWeeks($i * $weeks)->format('Y-m-d\TH:i');
             $utcStart = $community->localEventTime($wallStart, 'starts_at');
             $utcEnd = null;
-            if ($localEnd) {
+            if ($end !== null) {
                 $wallEnd = CarbonImmutable::createFromFormat('!Y-m-d\TH:i', $end, 'UTC')->addWeeks($i * $weeks)->format('Y-m-d\TH:i');
                 $utcEnd = $community->localEventTime($wallEnd, 'ends_at');
             }
