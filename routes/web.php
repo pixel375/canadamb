@@ -117,6 +117,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/account/job-searches', [JobSearchController::class, 'index']);
     Route::post('/account/job-searches', [JobSearchController::class, 'store'])->middleware('throttle:10,1,job-search-store');
     Route::get('/account/job-searches/{search}', [JobSearchController::class, 'show'])->whereNumber('search');
+    Route::get('/account/job-searches/{search}/edit', [JobSearchController::class, 'edit'])->whereNumber('search');
+    Route::put('/account/job-searches/{search}', [JobSearchController::class, 'revise'])->whereNumber('search')->middleware('throttle:12,1,job-search-revise');
     Route::post('/account/job-searches/{search}/preferences', [JobSearchController::class, 'preferences'])->whereNumber('search')->middleware('throttle:12,1,job-search-pref');
     Route::post('/account/job-searches/{search}/read', [JobSearchController::class, 'read'])->whereNumber('search')->middleware('throttle:12,1,job-search-read');
     Route::delete('/account/job-searches/{search}', [JobSearchController::class, 'destroy'])->whereNumber('search')->middleware('throttle:12,1,job-search-delete');
@@ -158,6 +160,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/account/listings/{listing}/status', [MarketplaceController::class, 'status'])->whereNumber('listing');
     Route::get('/account/marketplace-searches', [MarketplaceSearchController::class, 'index']);
     Route::post('/account/marketplace-searches', [MarketplaceSearchController::class, 'store'])->middleware('throttle:10,1,market-search-save');
+    Route::get('/account/marketplace-searches/{search}/edit', [MarketplaceSearchController::class, 'edit'])->whereNumber('search');
+    Route::put('/account/marketplace-searches/{search}', [MarketplaceSearchController::class, 'revise'])->whereNumber('search')->middleware('throttle:12,1,market-search-revise');
     Route::post('/account/marketplace-searches/{search}/rename', [MarketplaceSearchController::class, 'rename'])->whereNumber('search')->middleware('throttle:10,1,market-search-rename');
     Route::delete('/account/marketplace-searches/{search}', [MarketplaceSearchController::class, 'destroy'])->whereNumber('search')->middleware('throttle:10,1,market-search-delete');
     Route::get('/account/saved', [ListingEngagementController::class, 'saved']);

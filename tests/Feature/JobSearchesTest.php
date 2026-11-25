@@ -69,6 +69,11 @@ class JobSearchesTest extends TestCase
         $make($branch, 'While paused clerk', 'approved');
         $this->post($url.'/preferences', ['name' => 'Retail search', 'alerts' => '1'])->assertRedirect();
         $this->get($url)->assertDontSee('While paused clerk');
+        $this->get($url.'/edit')->assertOk()->assertSee('Retail search');
+        $this->actingAs($stranger)->put($url, $filters)->assertNotFound();
+        $this->actingAs($member)->put($url, array_replace($filters, ['name' => 'Lower pay search', 'minimum_pay' => '15']))->assertRedirect()->assertSessionHasNoErrors();
+        $this->get($url.'?view=all')->assertSee('Low pay clerk');
+        $this->assertSame('15.00', $search->fresh()->filters['minimum_pay']);
         $this->delete($url)->assertRedirect();
         $this->assertDatabaseCount('job_searches', 0);
     }

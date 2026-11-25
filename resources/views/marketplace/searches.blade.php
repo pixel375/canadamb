@@ -5,6 +5,7 @@
         <section class="seller-listing-grid">@forelse($items as $item)
             <article class="panel seller-listing-card form-stack"><h2>{{ $item->name }}</h2><p>{{ $counts[$item->id] }} {{ \Illuminate\Support\Str::plural('matching listing', $counts[$item->id]) }}</p>
                 <a class="button button-primary" href="/marketplace?{{ http_build_query($item->filters + ['view' => 'all']) }}">Run search</a>
+                <a class="button button-outline" href="/account/marketplace-searches/{{ $item->id }}/edit">Edit filters</a>
                 <details><summary>Rename search</summary><form method="post" class="form-stack mt-2" action="/account/marketplace-searches/{{ $item->id }}/rename">@csrf<label>Name<input name="name" required maxlength="80" value="{{ $item->name }}"></label><button class="button button-outline">Save name</button></form></details>
                 <details><summary>Remove search</summary><form method="post" class="mt-2" action="/account/marketplace-searches/{{ $item->id }}">@csrf @method('DELETE')<button class="button button-outline">Confirm removal</button></form></details>
             </article>

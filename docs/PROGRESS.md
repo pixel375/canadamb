@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-25 — saved search revision
+
+Added private portal-bound edit forms for Marketplace and job saved filters, shared normalized validation with creation, serialized duplicate checks and job alert watermark reset only on changed filters. Added edit authorization and matching regressions. No schema or feature activation.
+
 ## 2026-11-25 — event reuse and bounded batch cancellation
 
 Owner-only reuse prepopulates event details but never copies dates or discussion links. Added atomic selected-event cancellation (up to eight, same portal and author, explicit confirmation, no partial changes), audit records, single-event duplicate prevention and one-year submission horizon. No series identity schema or automatic republication.

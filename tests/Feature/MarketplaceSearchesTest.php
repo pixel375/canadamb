@@ -61,6 +61,10 @@ class MarketplaceSearchesTest extends TestCase
         $this->actingAs($member)->post($path.'/rename', ['name' => 'Updated furniture'])->assertRedirect();
         $this->get($base)->assertSee('Updated furniture');
         $this->delete('https://canadamb.ca/account/marketplace-searches/'.$search->id)->assertNotFound();
+        $this->get($path.'/edit')->assertOk()->assertSee('Updated furniture');
+        $this->actingAs($seller)->put($path, $filters)->assertNotFound();
+        $this->actingAs($member)->put($path, array_replace($filters, ['name' => 'Expanded furniture', 'max_price' => '100']))->assertRedirect()->assertSessionHasNoErrors();
+        $this->get($base)->assertSee('2 matching listings')->assertSee('Expanded furniture');
         $this->delete($path)->assertRedirect();
         $this->assertDatabaseCount('marketplace_searches', 0);
     }

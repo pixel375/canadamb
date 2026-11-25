@@ -26,15 +26,7 @@ class JobSearchController extends Controller
         $this->owned($request);
         $data = $request->validate(JobBoard::searchRules() + ['name' => 'required|string|max:80', 'alerts' => 'nullable|boolean']);
         $site = $request->attributes->get('site');
-        $filters = array_intersect_key($data, JobBoard::searchRules());
-        $filters = array_filter($filters, fn ($value) => $value !== null && $value !== '');
-        if (! $site->isNetwork()) {
-            unset($filters['location']);
-        }
-        if (isset($filters['minimum_pay'])) {
-            $filters['minimum_pay'] = number_format((float) $filters['minimum_pay'], 2, '.', '');
-        }
-        ksort($filters);
+        $filters = $this->normalizedFilters($request, $data);
         $key = hash('sha256', json_encode($filters, JSON_THROW_ON_ERROR));
         DB::transaction(function () use ($request, $site, $data, $filters, $key) {
             User::lockForUpdate()->findOrFail($request->user()->id);
@@ -64,6 +56,34 @@ class JobSearchController extends Controller
         $jobs = $query->latest('published_at')->latest('id')->paginate(18)->withQueryString();
 
         return view('jobs.search-matches', compact('item', 'jobs', 'onlyNew'));
+    }
+
+    public function edit(Request $request, int $search)
+    {
+        $item = $this->owned($request)->findOrFail($search);
+
+        return view('jobs.edit-search', compact('item'));
+    }
+
+    public function revise(Request $request, int $search)
+    {
+        $this->owned($request)->findOrFail($search);
+        $data = $request->validate(JobBoard::searchRules() + ['name' => 'required|string|max:80']);
+        $filters = $this->normalizedFilters($request, $data);
+        $key = hash('sha256', json_encode($filters, JSON_THROW_ON_ERROR));
+        DB::transaction(function () use ($request, $search, $data, $filters, $key) {
+            User::lockForUpdate()->findOrFail($request->user()->id);
+            $item = $this->owned($request)->lockForUpdate()->findOrFail($search);
+            if ($this->owned($request)->where('id', '!=', $search)->where('filter_key', $key)->exists()) {
+                throw ValidationException::withMessages(['name' => 'You already saved these filters on this portal.']);
+            }
+            if ($item->filter_key !== $key) {
+                $item->checked_at = now();
+            }
+            $item->fill(['name' => $data['name'], 'filters' => $filters, 'filter_key' => $key])->save();
+        }, attempts: 3);
+
+        return $this->done();
     }
 
     public function preferences(Request $request, int $search)
@@ -97,6 +117,22 @@ class JobSearchController extends Controller
         $this->owned($request)->findOrFail($search)->delete();
 
         return $this->done();
+    }
+
+    private function normalizedFilters(Request $request, array $data): array
+    {
+        $site = $request->attributes->get('site');
+        $filters = array_intersect_key($data, JobBoard::searchRules());
+        $filters = array_filter($filters, fn ($value) => $value !== null && $value !== '');
+        if (! $site->isNetwork()) {
+            unset($filters['location']);
+        }
+        if (isset($filters['minimum_pay'])) {
+            $filters['minimum_pay'] = number_format((float) $filters['minimum_pay'], 2, '.', '');
+        }
+        ksort($filters);
+
+        return $filters;
     }
 
     private function owned(Request $request)
