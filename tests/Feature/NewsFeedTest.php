@@ -43,6 +43,8 @@ class NewsFeedTest extends TestCase
         $this->actingAs(User::factory()->create(['role' => 'news_editor']))
             ->get("https://canadamb.ca/admin/news?candidate=$id")->assertOk()->assertSee('City publishes meeting schedule')
             ->assertSee('https://news.example.test/meeting')->assertDontSee('Full publisher description');
+        $this->get('https://canadamb.ca/admin/news?feed_q=city%20schedule&feed_source='.$source->id)->assertOk()->assertSee('City publishes meeting schedule');
+        $this->get('https://canadamb.ca/admin/news?feed_q=%25')->assertOk()->assertDontSee('City publishes meeting schedule')->assertSee('Filter candidates');
         $draft = [
             'candidate_id' => $id, 'category' => 'municipal', 'title' => 'Council will meet next week',
             'source_date' => '2026-04-20', 'body' => 'Council has posted the next public meeting notice and schedule.',
@@ -84,7 +86,9 @@ class NewsFeedTest extends TestCase
             ->post($uri, ['feed_url' => 'https://news.example.test/feed'])->assertForbidden();
         $this->actingAs(User::factory()->create(['role' => 'network_admin']))
             ->post($uri, ['feed_url' => 'https://different.example.test/feed'])->assertSessionHasErrors('feed_url');
-        $this->post($uri, ['feed_url' => 'https://news.example.test/new-feed'])->assertSessionHasNoErrors();
+        $version = $source->fresh()->configurationVersion();
+        $this->post($uri, ['feed_url' => 'https://news.example.test/new-feed', 'version' => $version])->assertSessionHasNoErrors();
+        $this->post($uri, ['feed_url' => 'https://news.example.test/stale-feed', 'version' => $version])->assertSessionHasErrors('version');
         $this->assertDatabaseHas('news_sources', ['id' => $source->id, 'feed_url' => 'https://news.example.test/new-feed']);
     }
 

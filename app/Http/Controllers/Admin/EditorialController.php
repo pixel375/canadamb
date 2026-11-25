@@ -24,20 +24,28 @@ class EditorialController extends Controller
         $input = $request->validate([
             'candidate' => 'nullable|integer|min:1', 'status' => 'nullable|in:draft,published,withdrawn',
             'q' => 'nullable|string|max:100', 'source_id' => 'nullable|integer|exists:news_sources,id',
-            'feed_view' => 'nullable|in:pending,dismissed',
+            'feed_view' => 'nullable|in:pending,dismissed', 'feed_q' => 'nullable|string|max:100',
+            'feed_source' => 'nullable|integer|exists:news_sources,id',
+            'location' => 'nullable|integer|exists:locations,id',
         ]);
 
         return view('admin.editorial', [
             'articles' => NewsArticle::with(['source', 'location'])
                 ->when($input['status'] ?? null, fn ($query, $status) => $query->where('status', $status), fn ($query) => $query->whereIn('status', ['draft', 'published']))
                 ->when($input['source_id'] ?? null, fn ($query, $source) => $query->where('source_id', $source))
-                ->when($input['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'body']))
-                ->orderByRaw("CASE WHEN status = 'draft' THEN 0 ELSE 1 END")->latest()->paginate(12)->withQueryString(),
+                ->when(filled($input['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $input['q'], ['title', 'body']))
+                ->when($input['location'] ?? null, fn ($query, $id) => $query->where('location_id', $id))
+                ->orderByRaw("CASE WHEN status = 'draft' THEN 0 ELSE 1 END")->latest()->latest('id')->paginate(12)->withQueryString(),
             'filters' => $input, 'candidateReviewEnabled' => NewsReview::enabled(),
             'sources' => NewsSource::orderBy('name')->get(),
             'places' => Location::selectable()->orderBy('name')->get(),
             'feedCandidates' => $this->feedCandidates(dismissed: ($input['feed_view'] ?? null) === 'dismissed')
-                ->orderByDesc('news_feed_candidates.id')->paginate(12, pageName: 'feeds')->withQueryString(),
+                ->when($input['feed_source'] ?? null, fn ($query, $id) => $query->where('news_feed_candidates.source_id', $id))
+                ->when(filled($input['feed_q'] ?? null), function ($query) use ($input) {
+                    foreach (KeywordSearch::patterns($input['feed_q']) as $pattern) {
+                        $query->whereRaw("LOWER(news_feed_candidates.title) LIKE ? ESCAPE '!'", [$pattern]);
+                    }
+                })->orderByDesc('news_feed_candidates.id')->paginate(12, pageName: 'feeds')->withQueryString(),
             'candidate' => isset($input['candidate'])
                 ? $this->feedCandidates()->where('news_feed_candidates.id', $input['candidate'])->firstOrFail()
                 : null,
@@ -66,10 +74,14 @@ class EditorialController extends Controller
 
     public function sourceStatus(Request $request, NewsSource $source)
     {
-        $data = $request->validate(['enabled' => 'required|boolean']);
+        $data = $request->validate(['enabled' => 'required|boolean', 'version' => 'nullable|string|size:64']);
         DB::transaction(function () use ($request, $source, $data) {
             $source = NewsSource::lockForUpdate()->findOrFail($source->id);
-            $source->forceFill($data + ['poll_claim' => null])->save();
+            $this->checkSourceVersion($source, $data['version'] ?? null);
+            if ($source->enabled === (bool) $data['enabled']) {
+                return;
+            }
+            $source->forceFill(['enabled' => $data['enabled'], 'poll_claim' => null])->save();
             Audit::record('news.source-status', $request->user()->id, context: ['source' => $source->id, 'enabled' => $source->enabled]);
         });
 
@@ -78,10 +90,14 @@ class EditorialController extends Controller
 
     public function sourceRights(Request $request, NewsSource $source)
     {
-        $data = $request->validate(['reuse' => 'required|in:summary-permitted,link-only,unreviewed', 'reuse_notes' => 'required|string|max:2000']);
+        $data = $request->validate(['reuse' => 'required|in:summary-permitted,link-only,unreviewed', 'reuse_notes' => 'required|string|max:2000', 'version' => 'nullable|string|size:64']);
         DB::transaction(function () use ($request, $source, $data) {
             $current = NewsSource::lockForUpdate()->findOrFail($source->id);
-            $current->forceFill($data + ['poll_claim' => null, 'next_poll_at' => null])->save();
+            $this->checkSourceVersion($current, $data['version'] ?? null);
+            if ($current->reuse === $data['reuse'] && $current->reuse_notes === $data['reuse_notes']) {
+                return;
+            }
+            $current->forceFill(['reuse' => $data['reuse'], 'reuse_notes' => $data['reuse_notes'], 'poll_claim' => null, 'next_poll_at' => null])->save();
             Audit::record('news.source-rights-updated', $request->user()->id, context: ['source' => $current->id, 'reuse' => $data['reuse']]);
         }, attempts: 3);
 
@@ -90,15 +106,16 @@ class EditorialController extends Controller
 
     public function sourceFeed(Request $request, NewsSource $source)
     {
-        $data = $request->validate(['feed_url' => 'present|nullable|url:https|max:1024']);
+        $data = $request->validate(['feed_url' => 'present|nullable|url:https|max:1024', 'version' => 'nullable|string|size:64']);
         $host = parse_url($source->url, PHP_URL_HOST);
         $url = isset($data['feed_url']) && is_string($host) ? FeedUrl::normalize($data['feed_url'], $host) : null;
         if (isset($data['feed_url']) && $url === null) {
             throw ValidationException::withMessages(['feed_url' => 'Use an HTTPS feed on the approved source hostname.']);
         }
 
-        DB::transaction(function () use ($request, $source, $url) {
+        DB::transaction(function () use ($request, $source, $url, $data) {
             $current = NewsSource::lockForUpdate()->findOrFail($source->id);
+            $this->checkSourceVersion($current, $data['version'] ?? null);
             if ($current->feed_url !== $url) {
                 $current->forceFill(['feed_url' => $url, 'next_poll_at' => null, 'poll_claim' => null, 'poll_failures' => 0])->save();
                 Audit::record('news.source-feed-updated', $request->user()->id, context: ['source' => $current->id, 'configured' => $url !== null]);
@@ -106,6 +123,13 @@ class EditorialController extends Controller
         });
 
         return redirect('/admin/news')->with('status', 'Source feed saved.');
+    }
+
+    private function checkSourceVersion(NewsSource $source, ?string $version): void
+    {
+        if ($version !== null && ! hash_equals($source->configurationVersion(), $version)) {
+            throw ValidationException::withMessages(['version' => 'Source settings changed. Reload before saving.']);
+        }
     }
 
     public function draft(Request $request, News $news)

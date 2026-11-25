@@ -7,18 +7,18 @@
             <div class="item-row"><div><h3>{{ $source->name }}</h3><p>{{ $source->url }} · {{ $source->reuse }}</p>
                 @if($source->feed_url)<p>Feed configured · {{ $source->poll_failures }} consecutive poll failures</p>@endif
             </div>
-                @can('manage-network')<form method="post" action="/admin/news/source/{{ $source->id }}">@csrf
+                @can('manage-network')<form method="post" action="/admin/news/source/{{ $source->id }}">@csrf<input type="hidden" name="version" value="{{ $source->configurationVersion() }}">
                     <button class="button button-outline" name="enabled" value="{{ $source->enabled ? 0 : 1 }}">{{ $source->enabled ? 'Disable' : 'Enable' }}</button>
                 </form>
                 <details><summary>Review reuse rights</summary>
-                    <form class="form-stack mt-2" method="post" action="/admin/news/source/{{ $source->id }}/rights">@csrf
+                    <form class="form-stack mt-2" method="post" action="/admin/news/source/{{ $source->id }}/rights">@csrf<input type="hidden" name="version" value="{{ $source->configurationVersion() }}">
                         <label>Reuse rights<select name="reuse">@foreach(['unreviewed','link-only','summary-permitted'] as $right)<option value="{{ $right }}" @selected($source->reuse === $right)>{{ ucfirst(str_replace('-', ' ', $right)) }}</option>@endforeach</select></label>
                         <label>Permission notes<textarea name="reuse_notes" maxlength="2000" required>{{ $source->reuse_notes }}</textarea></label>
                         <p class="field-note">Changes affect new intake and publication. Review already published articles separately.</p><button class="button button-outline">Save rights</button>
                     </form>
                 </details>
                 <details><summary>Configure feed</summary>
-                    <form class="form-stack mt-2" method="post" action="/admin/news/source/{{ $source->id }}/feed">@csrf
+                    <form class="form-stack mt-2" method="post" action="/admin/news/source/{{ $source->id }}/feed">@csrf<input type="hidden" name="version" value="{{ $source->configurationVersion() }}">
                         <label>RSS or Atom URL<input name="feed_url" type="url" maxlength="1024" value="{{ $source->feed_url }}"></label>
                         <p class="field-note">Leave blank to remove the feed.</p>
                         <button class="button button-outline">Save feed</button>
@@ -60,10 +60,19 @@
         </details>
     @endif
 
-    @if($candidateReviewEnabled || $feedCandidates->isNotEmpty() || $feedChecks->isNotEmpty())
+    @if($candidateReviewEnabled || $feedCandidates->isNotEmpty() || $feedChecks->isNotEmpty() || filled($filters['feed_q'] ?? null) || filled($filters['feed_source'] ?? null))
         <section class="panel" id="feed-candidates">
             <h2>Feed candidates</h2>
-            @if($candidateReviewEnabled)<nav class="inline-actions mb-3"><a class="button button-outline" href="/admin/news?feed_view=pending#feed-candidates">Pending</a><a class="button button-outline" href="/admin/news?feed_view=dismissed#feed-candidates">Dismissed</a></nav>@endif
+            <form method="get" action="/admin/news#feed-candidates" class="form-stack mb-4">
+                @foreach(['q','status','source_id','location'] as $field)
+                    @if(filled($filters[$field] ?? null))<input type="hidden" name="{{ $field }}" value="{{ $filters[$field] }}">@endif
+                @endforeach
+                <div class="form-grid"><label>Search candidates<input type="search" name="feed_q" maxlength="100" value="{{ $filters['feed_q'] ?? '' }}"></label><label>Source<select name="feed_source"><option value="">All sources</option>@foreach($sources as $source)<option value="{{ $source->id }}" @selected((int) ($filters['feed_source'] ?? 0) === $source->id)>{{ $source->name }}</option>@endforeach</select></label>
+                @if($candidateReviewEnabled)
+                    <label>Review state<select name="feed_view"><option value="pending" @selected(($filters['feed_view'] ?? 'pending') === 'pending')>Pending</option><option value="dismissed" @selected(($filters['feed_view'] ?? '') === 'dismissed')>Dismissed</option></select></label>
+                @endif
+                </div><div class="inline-actions"><button class="button button-primary">Filter candidates</button><a class="button button-outline" href="/admin/news#feed-candidates">Reset</a></div>
+            </form>
             @forelse($feedCandidates as $item)
                 <div class="item-row"><div><h3>{{ $item->title }}</h3><p>{{ $item->source_name }}@if($item->source_date) · {{ $item->source_date }}@endif</p></div>
                     @if(($filters['feed_view'] ?? 'pending') !== 'dismissed')<a class="button button-outline" href="/admin/news?candidate={{ $item->id }}">Review candidate</a>@endif
@@ -89,11 +98,15 @@
 
     <section class="panel" id="editorial-queue">
         <h2>Editorial queue</h2>
-        <form method="get" class="form-stack mb-4">
+        <form method="get" action="/admin/news#editorial-queue" class="form-stack mb-4">
+            @foreach(['feed_q','feed_source','feed_view'] as $field)
+                @if(filled($filters[$field] ?? null))<input type="hidden" name="{{ $field }}" value="{{ $filters[$field] }}">@endif
+            @endforeach
             <label>Search articles<input name="q" type="search" value="{{ $filters['q'] ?? '' }}" maxlength="100"></label>
             <div class="form-grid"><label>Status<select name="status"><option value="">Active queue</option>@foreach(['draft','published','withdrawn'] as $state)<option value="{{ $state }}" @selected(($filters['status'] ?? '') === $state)>{{ ucfirst($state) }}</option>@endforeach</select></label>
-            <label>Source<select name="source_id"><option value="">All sources</option>@foreach($sources as $source)<option value="{{ $source->id }}" @selected((int) ($filters['source_id'] ?? 0) === $source->id)>{{ $source->name }}</option>@endforeach</select></label></div>
-            <button class="button button-primary">Filter queue</button>
+            <label>Source<select name="source_id"><option value="">All sources</option>@foreach($sources as $source)<option value="{{ $source->id }}" @selected((int) ($filters['source_id'] ?? 0) === $source->id)>{{ $source->name }}</option>@endforeach</select></label>
+            <label>Community<select name="location"><option value="">All locations</option>@foreach($places as $place)<option value="{{ $place->id }}" @selected((int) ($filters['location'] ?? 0) === $place->id)>{{ $place->name }}</option>@endforeach</select></label></div>
+            <div class="inline-actions"><button class="button button-primary">Filter queue</button><a class="button button-outline" href="/admin/news#editorial-queue">Reset</a></div>
         </form>
         @forelse($articles as $article)
             <article class="admin-review-card form-stack">
