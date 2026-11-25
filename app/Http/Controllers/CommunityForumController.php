@@ -360,7 +360,9 @@ class CommunityForumController extends Controller
     public function notifications(Request $request)
     {
         $view = $request->validate(['view' => 'sometimes|in:all,unread'])['view'] ?? 'all';
-        $unreadCount = $this->visibleNotifications($request)->whereNull('notifications.read_at')->count();
+        $unread = $this->visibleNotifications($request)->whereNull('notifications.read_at');
+        $unreadCount = (clone $unread)->count();
+        $readCutoff = $unread->max('notifications.id');
         $notifications = $this->visibleNotifications($request)
             ->when($view === 'unread', fn (Builder $query) => $query->whereNull('notifications.read_at'))
             ->orderByRaw('CASE WHEN notifications.read_at IS NULL THEN 0 ELSE 1 END')
@@ -368,7 +370,7 @@ class CommunityForumController extends Controller
             ->paginate(20, ['notifications.id', 'notifications.reply_id', 'notifications.read_at', 'notifications.created_at', 'threads.id as thread_id', 'threads.title'])
             ->withQueryString();
 
-        return view('community.notifications', compact('notifications', 'view', 'unreadCount'));
+        return view('community.notifications', compact('notifications', 'view', 'unreadCount', 'readCutoff'));
     }
 
     public function readNotification(Request $request, int $notification)
@@ -390,7 +392,8 @@ class CommunityForumController extends Controller
         // Only mark the current user's approved, visible replies on this portal.
         // Use bounded updates to avoid large SQL parameter lists.
         $visible = $this->visibleNotifications($request)->whereNull('notifications.read_at');
-        $latest = (clone $visible)->max('notifications.id');
+        $data = $request->validate(['cutoff' => 'nullable|integer|min:1']);
+        $latest = $data['cutoff'] ?? (clone $visible)->max('notifications.id');
         if ($latest !== null) {
             $visible->where('notifications.id', '<=', $latest)->select('notifications.id as id')
                 ->chunkById(250, function ($rows) use ($request) {

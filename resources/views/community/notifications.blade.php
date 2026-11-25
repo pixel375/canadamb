@@ -21,7 +21,9 @@
             @if($unreadCount > 0)
                 <form action="/account/community-notifications/read-all" method="post">
                     @csrf
+                    <input type="hidden" name="cutoff" value="{{ $readCutoff }}">
                     <button type="submit" class="button button-outline"><x-icon name="check" size="16"/> Mark all as read</button>
+                    <p class="field-note">Only notifications received before this page loaded.</p>
                 </form>
             @endif
         </div>

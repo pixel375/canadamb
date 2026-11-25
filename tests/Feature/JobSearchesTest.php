@@ -66,6 +66,7 @@ class JobSearchesTest extends TestCase
         $make($branch, 'Later clerk', 'approved');
         $this->assertGreaterThan($cutoff, JobPosting::where('title', 'Later clerk')->sole()->published_at->timestamp);
         $this->actingAs($member)->post($url.'/read', ['cutoff' => $cutoff, 'version' => $version])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame($cutoff, $search->fresh()->checked_at->timestamp);
         $this->get($url)->assertDontSee('Matching clerk')->assertSee('Later clerk');
         $this->get($url.'?view=all')->assertSee('Matching clerk');
         $this->post($url.'/preferences', ['name' => 'Retail search', 'alerts' => '0'])->assertRedirect();

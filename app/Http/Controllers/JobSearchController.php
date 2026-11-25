@@ -118,7 +118,7 @@ class JobSearchController extends Controller
             if (isset($data['version']) && ! hash_equals($item->editVersion(), $data['version'])) {
                 throw ValidationException::withMessages(['version' => 'This saved search changed. Reload before continuing.']);
             }
-            $cutoff = isset($data['cutoff']) ? Carbon::createFromTimestampUTC((int) $data['cutoff']) : now();
+            $cutoff = isset($data['cutoff']) ? Carbon::createFromTimestamp((int) $data['cutoff'], config('app.timezone')) : now();
             if ($cutoff->greaterThan($item->checked_at)) {
                 $item->forceFill(['checked_at' => $cutoff])->save();
             }

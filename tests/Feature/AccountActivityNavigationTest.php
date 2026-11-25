@@ -121,6 +121,24 @@ class AccountActivityNavigationTest extends TestCase
         $this->get('https://canadamb.ca/')->assertOk()->assertSee('aria-label="1 unread notifications"', false);
     }
 
+    public function test_discussion_bulk_read_preserves_new_notifications_and_other_portals(): void
+    {
+        $member = User::factory()->create();
+        $author = User::factory()->create();
+        $brandon = Location::where('slug', 'brandon')->sole()->id;
+        $winnipeg = Location::where('slug', 'winnipeg')->sole()->id;
+        $first = $this->notification($member, $author, $brandon, 'First local notification');
+        $other = $this->notification($member, $author, $winnipeg, 'Other portal notification');
+        $url = 'https://brandonmb.ca/account/community-notifications';
+        $this->actingAs($member)->get($url)->assertOk()->assertSee('name="cutoff" value="'.$first.'"', false);
+        $later = $this->notification($member, $author, $brandon, 'Later local notification');
+        $this->post($url.'/read-all', ['cutoff' => $first])->assertRedirect('/account/community-notifications');
+        $this->assertNotNull(DB::table('community_notifications')->where('id', $first)->value('read_at'));
+        $this->assertNull(DB::table('community_notifications')->where('id', $later)->value('read_at'));
+        $this->assertNull(DB::table('community_notifications')->where('id', $other)->value('read_at'));
+        $this->getJson('https://brandonmb.ca/account/activity-counts')->assertJsonPath('notifications', 1);
+    }
+
     private function notification(User $member, User $author, int $location, string $title, bool $approved = true): int
     {
         $thread = CommunityThread::create([
