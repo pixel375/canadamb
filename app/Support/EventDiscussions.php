@@ -15,6 +15,14 @@ final class EventDiscussions
         return (bool) config('network.event_discussions') && Schema::hasTable('community_event_discussions');
     }
 
+    /** Check existing links even when the feature is currently switched off. */
+    public static function linkedEventIds(array $ids): array
+    {
+        return Schema::hasTable('community_event_discussions')
+            ? DB::table('community_event_discussions')->whereIn('event_id', $ids)->pluck('event_id')->all()
+            : [];
+    }
+
     public static function create(CommunityEvent $event): void
     {
         $thread = CommunityThread::create([

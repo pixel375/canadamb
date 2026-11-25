@@ -24,11 +24,15 @@
                     <p class="seller-lifecycle-note">{{ match($item->status) { 'pending' => 'Waiting for moderator approval.', 'approved' => 'Approved for the community calendar.', 'rejected' => 'Not approved for publication.', 'cancelled' => 'Public event marked cancelled.', 'withdrawn' => 'Submission withdrawn before publication.', default => ucfirst($item->status) } }}</p>
                     @if($item->cancellation_note)<p class="field-note">Private cancellation note · {{ $item->cancellation_note }}</p>@endif
                     @if(in_array($item->status, ['approved','cancelled'], true))<a class="button button-outline" href="/events/{{ $item->id }}">View event</a>@endif
+                    @if(in_array($item->status, ['pending', 'approved', 'rejected'], true) && !$item->localStart()->isPast())
+                        @if(!in_array($item->id, $linked, true))<a class="button button-outline" href="/account/events/{{ $item->id }}/edit">Edit event</a>
+                        @else<p class="field-note">Linked discussion: cancel and reuse the event if details need correcting.</p>@endif
+                    @endif
                     <a class="text-link" href="/events/new?reuse={{ $item->id }}">Reuse event details</a>
                     @if(in_array($item->status, ['pending', 'approved'], true))
                         @if(!($item->localEnd() ?? $item->localStart())->isPast())<label class="checkbox-line"><input form="event-batch-cancel" type="checkbox" name="events[]" value="{{ $item->id }}"> Select for batch cancellation</label>@endif
                         <details class="seller-remove-listing"><summary>{{ $item->status === 'pending' ? 'Withdraw submission' : 'Cancel event' }}</summary>
-                            <form method="post" action="/account/events/{{ $item->id }}/cancel" class="form-stack mt-3">@csrf
+                            <form method="post" action="/account/events/{{ $item->id }}/cancel" class="form-stack mt-3">@csrf<input type="hidden" name="version" value="{{ $item->contentVersion() }}">
                                 <label>Private cancellation note<input name="cancellation_note" maxlength="300"></label><button class="button button-outline">{{ $item->status === 'pending' ? 'Confirm withdrawal' : 'Confirm cancellation' }}</button>
                             </form>
                         </details>

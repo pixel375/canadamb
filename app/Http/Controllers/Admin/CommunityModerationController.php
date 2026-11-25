@@ -107,9 +107,12 @@ class CommunityModerationController extends Controller
 
     public function events(Request $request, int $event)
     {
-        $data = $request->validate(['action' => 'required|in:approve,reject', 'reason' => 'required_if:action,reject|nullable|string|max:300']);
+        $data = $request->validate(['action' => 'required|in:approve,reject', 'version' => 'nullable|string|size:64', 'reason' => 'required_if:action,reject|nullable|string|max:300']);
         DB::transaction(function () use ($request, $event, $data) {
             $item = CommunityEvent::lockForUpdate()->findOrFail($event);
+            if (isset($data['version']) && ! hash_equals($item->contentVersion(), $data['version'])) {
+                throw ValidationException::withMessages(['version' => 'The event changed. Reload the moderation queue before reviewing it.']);
+            }
             if ($data['action'] === 'approve') {
                 abort_unless($item->status === 'pending', 409);
                 abort_if(($item->localEnd() ?? $item->localStart())->isPast(), 409, 'This event has already ended.');

@@ -28,7 +28,7 @@
                 @if($item->event_url)<a class="text-link" rel="noreferrer" href="{{ $item->event_url }}">{{ $item->event_url }}</a>@endif
                 <p>{{ ucfirst($item->status) }}</p>
                 @if($item->cancellation_note)<p>Private cancellation note · {{ $item->cancellation_note }}</p>@endif
-                <x-community-moderation-form :path="'/admin/community/events/'.$item->id" :approved="$item->status !== 'pending'"/>
+                <x-community-moderation-form :path="'/admin/community/events/'.$item->id" :approved="$item->status !== 'pending'" :version="$item->contentVersion()"/>
             </article>
         @empty<p>No events awaiting review.</p>@endforelse
         {{ $events->links() }}

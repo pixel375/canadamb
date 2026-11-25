@@ -12,6 +12,13 @@ class CommunityEvent extends Model
 {
     protected $attributes = ['status' => 'pending'];
 
+    public function contentVersion(): string
+    {
+        return hash('sha256', json_encode([$this->title, $this->body, $this->category, $this->organizer,
+            $this->venue, $this->event_url, $this->location_id, $this->starts_at, $this->ends_at,
+            $this->status, $this->updated_at?->toIso8601String()], JSON_THROW_ON_ERROR));
+    }
+
     public function location(): BelongsTo
     {
         return $this->belongsTo(Location::class);

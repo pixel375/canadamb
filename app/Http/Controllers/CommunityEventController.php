@@ -37,7 +37,7 @@ class CommunityEventController extends Controller
         $places = $site->isNetwork() ? Location::selectable()->orderBy('name')->get() : collect();
         $month = isset($filters['month']) ? CarbonImmutable::createFromFormat('!Y-m', $filters['month'], 'America/Winnipeg') : null;
         $query = $this->community->upcoming($this->community->events($place?->id))
-            ->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'body', 'venue', 'organizer']))
+            ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'body', 'venue', 'organizer']))
             ->when($filters['category'] ?? null, fn ($query, $category) => $query->where('category', $category));
         $calendar = [];
         $agenda = [];
@@ -178,20 +178,96 @@ class CommunityEventController extends Controller
         $owned = $this->community->events($site->location_id)->where('author_id', $request->user()->id);
         $counts = (clone $owned)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
         $items = $owned->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
-            ->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'body', 'venue']))
+            ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'body', 'venue']))
             ->orderByDesc('starts_at')->orderByDesc('id')->paginate(20)->withQueryString();
 
-        return view('community.own-events', compact('items', 'statuses', 'filters', 'counts'));
+        $linked = EventDiscussions::linkedEventIds($items->pluck('id')->all());
+
+        return view('community.own-events', compact('items', 'statuses', 'filters', 'counts', 'linked'));
+    }
+
+    public function edit(Request $request, int $event)
+    {
+        $item = $this->ownedEvent($request)->findOrFail($event);
+        $this->ensureEditable($item);
+
+        return view('community.edit-event', compact('item'));
+    }
+
+    public function update(Request $request, int $event)
+    {
+        $this->ownedEvent($request)->findOrFail($event);
+        $data = $request->validate([
+            'title' => 'required|string|max:140', 'body' => 'required|string|min:10|max:5000',
+            'category' => ['required', Rule::in(array_keys(Community::EVENTS))],
+            'organizer' => 'required|string|max:150', 'venue' => 'required|string|max:180', 'event_url' => 'nullable|url:https|max:1024',
+            'starts_at' => 'required|date_format:Y-m-d\\TH:i', 'ends_at' => 'nullable|date_format:Y-m-d\\TH:i',
+            'version' => 'required|string|size:64',
+        ]);
+        $start = $this->community->localEventTime($data['starts_at'], 'starts_at');
+        if ($start->isPast() || $start->greaterThan(now('UTC')->addYear())) {
+            throw ValidationException::withMessages(['starts_at' => 'Choose an upcoming date within the next year.']);
+        }
+        $date = EventSeries::dates($this->community, $data['starts_at'], $data['ends_at'] ?? null, 'none', 1)[0];
+        DB::transaction(function () use ($request, $event, $data, $date) {
+            $author = $request->user()->id;
+            User::lockForUpdate()->findOrFail($author);
+            $item = $this->ownedEvent($request)->lockForUpdate()->findOrFail($event);
+            $this->ensureEditable($item);
+            $this->checkVersion($item, $data['version']);
+            $changes = array_replace(collect($data)->except('version')->all(), $date, ['event_url' => $data['event_url'] ?? null]);
+            $item->fill($changes);
+            if (! $item->isDirty()) {
+                return;
+            }
+            if (CommunityEvent::where('author_id', $author)->where('location_id', $item->location_id)
+                ->whereKeyNot($item->id)->where('title', $item->title)->where('starts_at', $item->starts_at)
+                ->whereIn('status', ['pending', 'approved'])->exists()) {
+                throw ValidationException::withMessages(['starts_at' => 'An occurrence with this title and start time already exists.']);
+            }
+            if ($item->status !== 'pending' && config('network.recurring_events')
+                && CommunityEvent::where('author_id', $author)->where('status', 'pending')->count() >= 24) {
+                throw ValidationException::withMessages(['starts_at' => 'You can have up to 24 pending event submissions.']);
+            }
+            $item->forceFill(['status' => 'pending'])->save();
+            Audit::record('community.event.edited', $author, context: ['event' => $event]);
+        }, attempts: 3);
+
+        return redirect('/account/events')->with('status', 'Event saved. Changed details require moderation before publication.');
+    }
+
+    private function ownedEvent(Request $request)
+    {
+        $site = $request->attributes->get('site');
+        abort_unless($this->community->enabled($site, 'events'), 404);
+
+        return $this->community->events($site->location_id)->where('author_id', $request->user()->id);
+    }
+
+    private function ensureEditable(CommunityEvent $item): void
+    {
+        abort_if(! in_array($item->status, ['pending', 'approved', 'rejected'], true) || $item->localStart()->isPast(), 409);
+        abort_if(EventDiscussions::linkedEventIds([$item->id]) !== [], 409, 'Linked events must be cancelled and reused for corrections.');
+    }
+
+    private function checkVersion(CommunityEvent $item, string $version): void
+    {
+        if (! hash_equals($item->contentVersion(), $version)) {
+            throw ValidationException::withMessages(['version' => 'This event changed. Reload before continuing.']);
+        }
     }
 
     public function cancel(Request $request, int $event)
     {
         $site = $request->attributes->get('site');
         abort_unless($this->community->enabled($site, 'events'), 404);
-        $data = $request->validate(['cancellation_note' => 'nullable|string|max:300']);
+        $data = $request->validate(['cancellation_note' => 'nullable|string|max:300', 'version' => 'nullable|string|size:64']);
         DB::transaction(function () use ($event, $request, $site, $data) {
             $item = $this->community->events($site->location_id)->where('author_id', $request->user()->id)->lockForUpdate()->findOrFail($event);
             abort_unless(in_array($item->status, ['pending', 'approved'], true), 409);
+            if (isset($data['version'])) {
+                $this->checkVersion($item, $data['version']);
+            }
             $this->cancelItem($item, $request->user()->id, $data['cancellation_note'] ?? null);
         });
 
