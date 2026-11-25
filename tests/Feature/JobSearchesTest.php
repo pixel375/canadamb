@@ -42,7 +42,7 @@ class JobSearchesTest extends TestCase
         $search = JobSearch::sole();
         $url = $base.'/'.$search->id;
         $this->post($base, array_replace($filters, ['minimum_pay' => '25.00']))->assertSessionHasErrors('name');
-        $this->travel(2)->minutes();
+        $this->travelTo(now()->addMinutes(2)->startOfSecond());
         $make = function ($location, string $title, string $status, int $pay = 3000) {
             $job = JobPosting::create([
                 'business_location_id' => $location->id, 'title' => $title, 'description' => 'A retail employment opportunity.',
@@ -62,15 +62,16 @@ class JobSearchesTest extends TestCase
         $this->post($url.'/read')->assertNotFound();
         $cutoff = now()->timestamp;
         $version = $search->fresh()->editVersion();
-        $this->travel(2)->minutes();
+        $this->travelTo(now()->addMinutes(2)->startOfSecond());
         $make($branch, 'Later clerk', 'approved');
+        $this->assertGreaterThan($cutoff, JobPosting::where('title', 'Later clerk')->sole()->published_at->timestamp);
         $this->actingAs($member)->post($url.'/read', ['cutoff' => $cutoff, 'version' => $version])->assertRedirect()->assertSessionHasNoErrors();
         $this->get($url)->assertDontSee('Matching clerk')->assertSee('Later clerk');
         $this->get($url.'?view=all')->assertSee('Matching clerk');
         $this->post($url.'/preferences', ['name' => 'Retail search', 'alerts' => '0'])->assertRedirect();
         $this->get($base)->assertSee('Alerts paused');
         $this->post($url.'/preferences', ['name' => 'Stale change', 'alerts' => '1', 'version' => $version])->assertSessionHasErrors('version');
-        $this->travel(2)->minutes();
+        $this->travelTo(now()->addMinutes(2)->startOfSecond());
         $make($branch, 'While paused clerk', 'approved');
         $this->post($url.'/preferences', ['name' => 'Retail search', 'alerts' => '1'])->assertRedirect();
         $this->get($url)->assertDontSee('While paused clerk');

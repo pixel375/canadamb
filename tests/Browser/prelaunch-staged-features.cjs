@@ -70,7 +70,7 @@ const password = 'New-browser-qa-42';
         console.log('PASS: account-wide notification settings');
 
         await visit(page, '/account/privacy-requests');
-        const intake = page.locator('form[action="/account/privacy-requests"]');
+        const intake = page.locator('form[method="post"][action="/account/privacy-requests"]');
         await intake.locator('select[name="kind"]').selectOption('data-review');
         await intake.locator('input[name="confirm_request"]').check();
         await intake.locator('input[name="current_password"]').fill(password);
