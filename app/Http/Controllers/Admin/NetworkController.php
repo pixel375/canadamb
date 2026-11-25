@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Listing;
 use App\Models\Location;
+use App\Models\PropertyListing;
 use App\Models\Site;
 use App\Models\User;
 use App\Support\Audit;
@@ -31,7 +32,7 @@ class NetworkController extends Controller
             ['label' => 'Business updates', 'count' => DB::table('business_updates')->where('status', 'pending')->count(), 'url' => '/admin/business-review#updates', 'icon' => 'news'],
         ];
         if (config('network.property_drafts')) {
-            $queues[] = ['label' => 'Private property reviews', 'count' => \App\Models\PropertyListing::where('status', 'submitted')->count(), 'url' => '/admin/properties', 'icon' => 'house'];
+            $queues[] = ['label' => 'Private property reviews', 'count' => PropertyListing::where('status', 'submitted')->count(), 'url' => '/admin/properties', 'icon' => 'house'];
         }
         if (auth()->user()->can('manage-news')) {
             $queues[] = ['label' => 'News drafts', 'count' => DB::table('news_articles')->where('status', 'draft')->count(), 'url' => '/admin/news#editorial-queue', 'icon' => 'news'];
@@ -72,7 +73,7 @@ class NetworkController extends Controller
             ->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'description']));
         $counts = (clone $matching)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
 
-        return view('admin.moderation', ['filters' => $filters, 'counts' => $counts, 'items' => $matching->with(['location', 'seller', 'categoryRecord', 'media'])
+        return view('admin.moderation', ['filters' => $filters, 'counts' => $counts, 'items' => $matching->with(['location', 'seller', 'categoryRecord'])
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
             ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")
             ->latest('updated_at')->paginate(25)->withQueryString(), 'reports' => DB::table('listing_reports')

@@ -69,4 +69,20 @@ DB::table('community_notifications')->insert([
     'created_at' => now(),
 ]);
 
-echo "Disposable authenticated notification fixtures seeded.\n";
+User::factory()->create([
+    'name' => 'Browser QA Administrator',
+    'email' => 'browser-admin@example.test',
+    'password' => 'browser-qa-admin-password-only',
+    'email_verified_at' => now(),
+    'role' => 'super_admin',
+]);
+
+CommunityThread::create([
+    'author_id' => $member->id,
+    'location_id' => $brandon->id,
+    'title' => 'Pending local garden discussion for moderation',
+    'category' => 'general',
+    'body' => 'A pending discussion visible only to its author and moderators.',
+]);
+
+echo "Disposable authenticated notification and administrator fixtures seeded.\n";

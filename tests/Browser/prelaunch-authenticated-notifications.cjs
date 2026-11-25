@@ -359,6 +359,40 @@ const fs = require('node:fs');
 
 
         console.log('PASS: authenticated notification hub, unread filters and followed conversations at five widths');
+
+        const adminPage = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+        await adminPage.goto(host + '/login');
+        await adminPage.getByLabel('Email').fill('browser-admin@example.test');
+        await adminPage.getByLabel('Password').fill('browser-qa-admin-password-only');
+        await adminPage.getByRole('button', { name: 'Sign in' }).click();
+        await adminPage.waitForURL(url => !url.pathname.startsWith('/login'));
+        for (const width of [320, 390, 768, 1024, 1440]) {
+            await adminPage.setViewportSize({ width, height: 900 });
+            for (const path of ['/admin', '/admin/moderation?status=pending', '/admin/community?status=pending',
+                '/admin/jobs?status=pending', '/admin/business-review', '/admin/news', '/admin/audit']) {
+                const response = await adminPage.goto(host + path);
+                check(response.ok(), 'Admin page failed: ' + path + ' at ' + width);
+                check(await adminPage.locator('.admin-shell').isVisible(), 'Admin layout missing: ' + path);
+                check(await adminPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+                    'Admin page overflow: ' + path + ' at ' + width);
+                if (path === '/admin') {
+                    check(await adminPage.locator('.admin-queue-card').count() >= 9, 'Dashboard review counts missing');
+                    check(await adminPage.locator('.admin-queue-card').filter({ hasText: 'Discussions' }).locator('strong').innerText() === '1',
+                        'Pending discussion count incorrect');
+                    if (width === 390 || width === 1440) {
+                        await adminPage.screenshot({ path: 'test-results/admin-overview-' + width + '.png', fullPage: true });
+                    }
+                }
+            }
+        }
+        await adminPage.goto(host + '/admin/community?status=pending&q=local+garden');
+        check(await adminPage.getByText('Pending local garden discussion for moderation', { exact: true }).count() === 1,
+            'Pending review search did not find the seeded discussion');
+        check(await adminPage.getByText('Community garden neighbours', { exact: true }).count() === 0,
+            'Approved topic leaked into the pending review filter');
+        await adminPage.close();
+        console.log('PASS: admin overview, moderation and audit layouts at five widths, with filtered pending review');
+
     } catch (error) {
         try {
             await page.screenshot({ path: 'test-results/auth-qa-failure.png', fullPage: true });

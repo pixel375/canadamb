@@ -15,6 +15,8 @@
             @endforeach
             {{ $reports->links() }}
         </div>
+    @else
+        <section class="panel mb-4" id="reports"><h2>Open listing reports</h2><p>No unresolved listing reports.</p></section>
     @endif
     @forelse($items as $item)
         <article class="panel form-stack admin-review-card">
