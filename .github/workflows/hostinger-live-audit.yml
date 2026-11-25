@@ -54,6 +54,15 @@ jobs:
              echo 'FAIL: live release is in maintenance mode'
              exit 1
           fi
+          for marker in down maintenance.php; do
+            if [[ -e "$old/storage/framework/$marker" ]]; then
+              echo "Maintenance artifact present: $marker"
+              exit 1
+            fi
+          done
+          for file in "$web/index.php" "$old/vendor/autoload.php" "$old/bootstrap/app.php"; do
+            [[ -r "$file" ]] || { echo 'Required entry point unreadable'; exit 1; }
+          done
           if [[ -e "$app/update.pause" ]]; then
              echo 'FAIL: pre-existing update.pause marker found'
              exit 1
@@ -98,8 +107,18 @@ jobs:
           /usr/bin/php "$old/artisan" network:deployment-check --hostinger --production-database=u713153343_canadamb --database --migration-state
           echo 'LIVE PREDEPLOY AUDIT OK'
           REMOTE
+          failed=0
           for host in canadamb.ca brandonmb.ca; do
-            code=$(curl --silent --show-error --max-time 15 -o /dev/null -w '%{http_code}' "https://$host/")
-            [[ "$code" == 403 ]] || { echo "::error::$host should deny external runner (got $code)"; exit 1; }
-            echo "$host prelaunch gate returned HTTP 403"
+            for path in / "/?prelaunch_audit=${GITHUB_RUN_ID}" "/robots.txt?prelaunch_audit=${GITHUB_RUN_ID}"; do
+              code=$(curl --silent --show-error --max-time 15 --header 'Cache-Control: no-cache' \
+                --dump-header "$dir/headers" -o /dev/null -w '%{http_code}' "https://$host$path") || code=000
+              printf '%s%s returned HTTP %s\n' "$host" "$path" "$code"
+              grep -Ei '^(server|age|cache-control|retry-after|x-litespeed-cache|x-cache|via):' "$dir/headers" || true
+              expected=403
+              [[ "$path" == /robots.txt* ]] && expected=200
+              if [[ "$code" != "$expected" ]]; then
+                failed=1
+              fi
+            done
           done
+          [[ "$failed" == 0 ]] || { echo '::error::External prelaunch audit failed; do not approve release.'; exit 1; }
