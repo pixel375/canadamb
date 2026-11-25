@@ -42,12 +42,12 @@ class AdvertisingController extends Controller
         $page = AdvertisingCampaign::where('business_id', $business)->where('id', '>', $after)->with('site:id,name')->orderBy('id')->limit(501)->get();
         $next = $page->count() > 500 ? $page->take(500)->last()->id : null;
         $records = $page->take(500)->values()->map(fn ($campaign) => [
-                'id' => $campaign->id, 'portal' => $campaign->site->name,
-                'placement' => $campaign->placement, 'headline' => $campaign->title, 'text' => $campaign->body,
-                'start_date' => $campaign->starts_on->toDateString(), 'end_date_exclusive' => $campaign->endsOn()->toDateString(),
-                'estimate_cad_cents' => $campaign->estimated_cents, 'status' => $campaign->status,
-                'planning_phase' => $campaign->planningPhase(), 'review_note' => $campaign->review_note,
-            ]);
+            'id' => $campaign->id, 'portal' => $campaign->site->name,
+            'placement' => $campaign->placement, 'headline' => $campaign->title, 'text' => $campaign->body,
+            'start_date' => $campaign->starts_on->toDateString(), 'end_date_exclusive' => $campaign->endsOn()->toDateString(),
+            'estimate_cad_cents' => $campaign->estimated_cents, 'status' => $campaign->status,
+            'planning_phase' => $campaign->planningPhase(), 'review_note' => $campaign->review_note,
+        ]);
 
         return response()->json(['business_id' => $business, 'planning_only' => true, 'after_id' => $after, 'next_after_id' => $next, 'campaigns' => $records])
             ->header('Content-Disposition', 'attachment; filename="campaign-planning.json"')
@@ -79,9 +79,10 @@ class AdvertisingController extends Controller
             if ($open >= 10) {
                 throw ValidationException::withMessages(['title' => 'At most ten open campaign requests are allowed.']);
             }
-            if (AdvertisingCampaign::where('business_id', $business)->where('site_id', $site->id)->where('placement', $data['placement'])
+            $duplicate = AdvertisingCampaign::where('business_id', $business)->where('site_id', $site->id)->where('placement', $data['placement'])
                 ->where('starts_on', $data['starts_on'])->where('weeks', $data['weeks'])->where('title', $data['title'])
-                ->whereIn('status', ['pending', 'approved'])->exists()) {
+                ->whereIn('status', ['pending', 'approved'])->exists();
+            if ($duplicate) {
                 throw ValidationException::withMessages(['title' => 'An equivalent open campaign request already exists.']);
             }
             $revision = $settings->state()->published_id;

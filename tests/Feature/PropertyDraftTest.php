@@ -144,4 +144,39 @@ class PropertyDraftTest extends TestCase
         $this->get($path)->assertNotFound();
         $this->get('https://brandonmb.ca/real-estate/'.$draft->id)->assertNotFound();
     }
+    public function test_retained_property_photos_are_private_scoped_and_version_bound(): void
+    {
+        Storage::fake('local');
+        config(['network.property_drafts' => true]);
+        $owner = User::factory()->create();
+        $admin = User::factory()->create(['role' => 'network_admin']);
+        $base = 'https://brandonmb.ca/account/properties';
+        $data = [
+            'title' => 'Property photo management', 'description' => 'A sufficiently detailed private property description.',
+            'transaction' => 'sale', 'property_type' => 'house', 'seller_type' => 'owner', 'price' => '250000',
+        ];
+        $this->actingAs($owner)->post($base, $data + ['photos' => [
+            UploadedFile::fake()->image('first.jpg'), UploadedFile::fake()->image('second.jpg'),
+        ]])->assertRedirect()->assertSessionHasNoErrors();
+        $draft = PropertyListing::sole();
+        $path = $base.'/'.$draft->id;
+        $initial = $draft->photos()->get();
+        $version = $draft->contentVersion();
+        $this->put($path, $data + ['version' => $version, 'manage_photos' => 1, 'keep_photos' => [$initial[1]->id, 999999]])
+            ->assertSessionHasErrors('photos');
+        $this->assertCount(2, $draft->photos()->get());
+        $this->put($path, $data + ['version' => $version, 'manage_photos' => 1, 'keep_photos' => [$initial[1]->id],
+            'photos' => [UploadedFile::fake()->image('third.jpg')]])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame($initial[1]->id, $draft->photos()->first()->id);
+        $this->assertCount(2, $draft->photos()->get());
+        Storage::disk('local')->assertMissing($initial[0]->image_path);
+        Storage::disk('local')->assertExists($initial[1]->image_path);
+        $this->put($path, $data + ['version' => $version])->assertConflict();
+        $this->post($path.'/submit', ['version' => $draft->fresh()->contentVersion(), 'authorization_capacity' => 'owner', 'advertising_consent' => '1'])->assertRedirect();
+        $reviewVersion = $draft->fresh()->contentVersion();
+        $this->actingAs($admin)->get('https://canadamb.ca/admin/properties/'.$draft->id)->assertOk();
+        $this->actingAs($owner)->post($path.'/withdraw-review', ['version' => $reviewVersion])->assertRedirect();
+        $this->assertCount(2, $draft->photos()->get());
+        $this->assertSame('draft', $draft->fresh()->status);
+    }
 }

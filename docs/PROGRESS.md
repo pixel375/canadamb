@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-25 — commercial formatting and property photo regression coverage
+
+Corrected campaign export indentation and isolated duplicate query for Pint; added explicit retained-photo scope, stale edit and non-destructive property withdrawal coverage. Earlier property and privacy suites passed their backend test steps; final cumulative QA remains required.
+
 ## 2026-11-25 — staged event browser diagnostics
 
 Chat menu repair passed the expanded browser flow through archive and restoration. Recurrence form timed out at redirect; isolate the event submission rate-limit bucket (still six per minute), capture the POST status, validation page and screenshot on failure. The cause remains to be confirmed by exact-SHA QA.
