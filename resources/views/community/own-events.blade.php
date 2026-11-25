@@ -28,8 +28,11 @@
                     @if($item->cancellation_note)<p class="field-note">Private cancellation note · {{ $item->cancellation_note }}</p>@endif
                     @if(in_array($item->status, ['approved','cancelled'], true))<a class="button button-outline" href="/events/{{ $item->id }}">View event</a>@endif
                     @if(in_array($item->status, ['pending', 'approved', 'rejected'], true) && !$item->localStart()->isPast())
-                        @if(!in_array($item->id, $linked, true))<a class="button button-outline" href="/account/events/{{ $item->id }}/edit">Edit event</a>
-                        @else<p class="field-note">Linked discussion: cancel and reuse the event if details need correcting.</p>@endif
+                        @if(!array_key_exists($item->id, $linked) || ($linked[$item->id] && \App\Support\EventDiscussions::editable($item, $linked[$item->id])))
+                            <a class="button button-outline" href="/account/events/{{ $item->id }}/edit">Edit event</a>
+                        @else
+                            <p class="field-note">The linked discussion cannot currently be edited. You can cancel and reuse the event.</p>
+                        @endif
                     @endif
                     <a class="text-link" href="/events/new?reuse={{ $item->id }}">Reuse event details</a>
                     @if(in_array($item->status, ['pending', 'approved'], true))

@@ -102,13 +102,17 @@ class CommunityForumController extends Controller
             ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'body']))
             ->latest('id')->paginate(18)->withQueryString();
 
-        return view('community.owned', compact('items', 'counts', 'statuses', 'filters'));
+        $linkedEvents = EventDiscussions::eventIdsForThreads($items->pluck('id')->all());
+
+        return view('community.owned', compact('items', 'counts', 'statuses', 'filters', 'linkedEvents'));
     }
 
     public function edit(Request $request, int $thread)
     {
         $item = $this->ownedThread($request)->findOrFail($thread);
         abort_if($item->locked || ! in_array($item->status, ['pending', 'approved', 'rejected'], true), 409);
+
+        abort_if(EventDiscussions::eventIdsForThreads([$item->id]) !== [], 409, 'Edit official event details through My events.');
 
         return view('community.edit-thread', compact('item'));
     }
@@ -123,6 +127,7 @@ class CommunityForumController extends Controller
         DB::transaction(function () use ($request, $thread, $data) {
             $item = $this->ownedThread($request)->lockForUpdate()->findOrFail($thread);
             abort_if($item->locked || ! in_array($item->status, ['pending', 'approved', 'rejected'], true), 409);
+            abort_if(EventDiscussions::eventIdsForThreads([$item->id]) !== [], 409, 'Edit official event details through My events.');
             if (! hash_equals($item->contentVersion(), $data['version'])) {
                 throw ValidationException::withMessages(['version' => 'This discussion changed. Reload the editor before saving.']);
             }

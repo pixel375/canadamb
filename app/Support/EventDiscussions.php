@@ -23,6 +23,40 @@ final class EventDiscussions
             : [];
     }
 
+    public static function eventIdsForThreads(array $ids): array
+    {
+        return Schema::hasTable('community_event_discussions')
+            ? DB::table('community_event_discussions')->whereIn('thread_id', $ids)->pluck('event_id', 'thread_id')->all()
+            : [];
+    }
+
+    public static function linkedThreads(array $ids): array
+    {
+        if (! Schema::hasTable('community_event_discussions')) {
+            return [];
+        }
+        $links = DB::table('community_event_discussions')->whereIn('event_id', $ids)->pluck('thread_id', 'event_id');
+        $threads = CommunityThread::whereIn('id', $links->values())->get()->keyBy('id');
+
+        return $links->map(fn ($id) => $threads->get($id))->all();
+    }
+
+    public static function linkedThread(CommunityEvent $event, bool $lock = false): ?CommunityThread
+    {
+        if (! Schema::hasTable('community_event_discussions')) {
+            return null;
+        }
+        $id = DB::table('community_event_discussions')->where('event_id', $event->id)->value('thread_id');
+
+        return $id ? CommunityThread::when($lock, fn ($query) => $query->lockForUpdate())->findOrFail($id) : null;
+    }
+
+    public static function editable(CommunityEvent $event, CommunityThread $thread): bool
+    {
+        return self::enabled() && ! $thread->locked && in_array($thread->status, ['pending', 'approved', 'rejected'], true)
+            && $event->author_id === $thread->author_id && $event->location_id === $thread->location_id;
+    }
+
     public static function create(CommunityEvent $event): void
     {
         $thread = CommunityThread::create([

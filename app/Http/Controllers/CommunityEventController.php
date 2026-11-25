@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\CommunityEvent;
+use App\Models\CommunityThread;
 use App\Models\Location;
 use App\Models\User;
 use App\Support\Audit;
@@ -184,7 +185,7 @@ class CommunityEventController extends Controller
                 ->orderBy('starts_at')->orderBy('id'), fn ($query) => $query->orderByDesc('starts_at')->orderByDesc('id'))
             ->paginate(20)->withQueryString();
 
-        $linked = EventDiscussions::linkedEventIds($items->pluck('id')->all());
+        $linked = EventDiscussions::linkedThreads($items->pluck('id')->all());
 
         return view('community.own-events', compact('items', 'statuses', 'filters', 'counts', 'linked'));
     }
@@ -192,9 +193,10 @@ class CommunityEventController extends Controller
     public function edit(Request $request, int $event)
     {
         $item = $this->ownedEvent($request)->findOrFail($event);
-        $this->ensureEditable($item);
+        $linkedThread = EventDiscussions::linkedThread($item);
+        $this->ensureEditable($item, $linkedThread);
 
-        return view('community.edit-event', compact('item'));
+        return view('community.edit-event', compact('item', 'linkedThread'));
     }
 
     public function update(Request $request, int $event)
@@ -205,7 +207,7 @@ class CommunityEventController extends Controller
             'category' => ['required', Rule::in(array_keys(Community::EVENTS))],
             'organizer' => 'required|string|max:150', 'venue' => 'required|string|max:180', 'event_url' => 'nullable|url:https|max:1024',
             'starts_at' => 'required|date_format:Y-m-d\\TH:i', 'ends_at' => 'nullable|date_format:Y-m-d\\TH:i',
-            'version' => 'required|string|size:64',
+            'version' => 'required|string|size:64', 'thread_version' => 'nullable|string|size:64',
         ]);
         $start = $this->community->localEventTime($data['starts_at'], 'starts_at');
         if ($start->isPast() || $start->greaterThan(now('UTC')->addYear())) {
@@ -216,9 +218,13 @@ class CommunityEventController extends Controller
             $author = $request->user()->id;
             User::lockForUpdate()->findOrFail($author);
             $item = $this->ownedEvent($request)->lockForUpdate()->findOrFail($event);
-            $this->ensureEditable($item);
+            $linkedThread = EventDiscussions::linkedThread($item, lock: true);
+            $this->ensureEditable($item, $linkedThread);
             $this->checkVersion($item, $data['version']);
-            $changes = array_replace(collect($data)->except('version')->all(), $date, ['event_url' => $data['event_url'] ?? null]);
+            if ($linkedThread && (! isset($data['thread_version']) || ! hash_equals($linkedThread->contentVersion(), $data['thread_version']))) {
+                throw ValidationException::withMessages(['thread_version' => 'The linked discussion changed. Reload the event editor before saving.']);
+            }
+            $changes = array_replace(collect($data)->except(['version', 'thread_version'])->all(), $date, ['event_url' => $data['event_url'] ?? null]);
             $item->fill($changes);
             if (! $item->isDirty()) {
                 return;
@@ -234,6 +240,10 @@ class CommunityEventController extends Controller
             }
             $item->forceFill(['status' => 'pending'])->save();
             Audit::record('community.event.edited', $author, context: ['event' => $event]);
+            if ($linkedThread && ($linkedThread->title !== $item->title || $linkedThread->body !== $item->body)) {
+                $linkedThread->forceFill(['title' => $item->title, 'body' => $item->body, 'status' => 'pending', 'pinned' => false])->save();
+                Audit::record('community.thread.edited', $author, context: ['thread' => $linkedThread->id, 'event' => $event]);
+            }
         }, attempts: 3);
 
         return redirect('/account/events')->with('status', 'Event saved. Changed details require moderation before publication.');
@@ -247,10 +257,10 @@ class CommunityEventController extends Controller
         return $this->community->events($site->location_id)->where('author_id', $request->user()->id);
     }
 
-    private function ensureEditable(CommunityEvent $item): void
+    private function ensureEditable(CommunityEvent $item, ?CommunityThread $linkedThread): void
     {
         abort_if(! in_array($item->status, ['pending', 'approved', 'rejected'], true) || $item->localStart()->isPast(), 409);
-        abort_if(EventDiscussions::linkedEventIds([$item->id]) !== [], 409, 'Linked events must be cancelled and reused for corrections.');
+        abort_if($linkedThread && ! EventDiscussions::editable($item, $linkedThread), 409, 'The linked discussion cannot currently be edited.');
     }
 
     private function checkVersion(CommunityEvent $item, string $version): void
