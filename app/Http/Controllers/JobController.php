@@ -62,7 +62,7 @@ class JobController extends Controller
             ->when($filters['branch'] ?? null, fn ($query, $branch) => $query->where('business_location_id', $branch));
         $counts = (clone $owned)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
         $items = $owned->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
-            ->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'description']))
+            ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'description']))
             ->latest('id')->paginate(12)->withQueryString();
 
         return view('jobs.business', compact('employer', 'branches', 'openBranches', 'items', 'statuses', 'filters', 'counts'));
@@ -195,7 +195,7 @@ class JobController extends Controller
         $matching = $this->visible($request)->whereIn('id', DB::table('job_posting_bookmarks')
             ->where('user_id', $request->user()->id)->select('job_posting_id'));
         $total = (clone $matching)->count();
-        $items = $matching->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'description']));
+        $items = $matching->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'description']));
         if (($filters['sort'] ?? 'recent') === 'closing') {
             $items->orderBy('closing_on');
         }

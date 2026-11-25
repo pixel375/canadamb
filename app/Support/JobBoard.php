@@ -54,7 +54,7 @@ class JobBoard
             ->when($filters['pay_unit'] ?? null, fn ($query, $unit) => $query->where('pay_unit', $unit))
             ->when(isset($filters['minimum_pay']), fn ($query) => $query->where('pay_max', '>=', (int) round($filters['minimum_pay'] * 100)))
             ->when($site->isNetwork() && filled($filters['location'] ?? null), function ($query) use ($filters) {
-                $query->whereHas('branch.location', fn ($location) => $location->whereLike('name', '%'.$filters['location'].'%'));
+                $query->whereHas('branch.location', fn ($location) => KeywordSearch::apply($location, $filters['location'], ['name']));
             });
     }
 

@@ -11,6 +11,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable(['slug', 'name', 'category', 'description', 'website', 'public_email', 'phone', 'hours', 'status'])]
 class Business extends Model
 {
+    public function profileVersion(): string
+    {
+        return hash('sha256', json_encode([$this->name, $this->category, $this->description, $this->website,
+            $this->public_email, $this->phone, $this->hours, $this->status, $this->updated_at?->toIso8601String()], JSON_THROW_ON_ERROR));
+    }
+
     public function locations(): HasMany
     {
         return $this->hasMany(BusinessLocation::class);

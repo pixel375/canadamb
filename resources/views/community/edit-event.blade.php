@@ -2,7 +2,7 @@
     <div class="container page-shell narrow">
         <div class="page-intro"><div><a class="text-link" href="/account/events">My events</a><h1>Edit event</h1><p>Correct an upcoming occurrence in {{ $item->location->name }}. Changes return the event to moderation; unchanged submissions retain their status.</p></div></div>
         <form method="post" action="/account/events/{{ $item->id }}" class="panel form-stack">@csrf @method('PUT')
-            <input type="hidden" name="version" value="{{ $item->contentVersion() }}">
+            <input type="hidden" name="version" value="{{ old('version', $item->contentVersion()) }}">
             <label>Title<input name="title" required maxlength="140" value="{{ old('title', $item->title) }}"></label>
             <label>Category<select name="category" required>@foreach(\App\Support\Community::EVENTS as $id => $label)<option value="{{ $id }}" @selected(old('category', $item->category) === $id)>{{ $label }}</option>@endforeach</select></label>
             <label>Venue<input name="venue" required maxlength="180" value="{{ old('venue', $item->venue) }}"></label>

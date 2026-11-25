@@ -139,9 +139,13 @@ class CommunityForumController extends Controller
 
     public function withdraw(Request $request, int $thread)
     {
-        DB::transaction(function () use ($request, $thread) {
+        $data = $request->validate(['version' => 'nullable|string|size:64']);
+        DB::transaction(function () use ($request, $thread, $data) {
             $item = $this->ownedThread($request)->lockForUpdate()->findOrFail($thread);
             abort_if($item->locked || ! in_array($item->status, ['pending', 'approved', 'rejected'], true), 409);
+            if (isset($data['version']) && ! hash_equals($item->contentVersion(), $data['version'])) {
+                throw ValidationException::withMessages(['version' => 'This discussion changed. Reload before withdrawing.']);
+            }
             $item->forceFill(['status' => 'withdrawn', 'pinned' => false])->save();
             Audit::record('community.thread.withdrawn', $request->user()->id, context: ['thread' => $thread]);
         }, attempts: 3);

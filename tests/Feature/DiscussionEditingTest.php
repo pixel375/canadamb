@@ -91,7 +91,8 @@ class DiscussionEditingTest extends TestCase
         $this->actingAs($owner)->get($url.'/edit')->assertConflict();
         $this->post($url.'/withdraw')->assertConflict();
         $thread->forceFill(['locked' => false])->save();
-        $this->post($url.'/withdraw')->assertRedirect();
+        $this->post($url.'/withdraw', ['version' => $data['version']])->assertSessionHasErrors('version');
+        $this->post($url.'/withdraw', ['version' => $thread->fresh()->contentVersion()])->assertRedirect();
         $this->get($public)->assertNotFound();
         $this->get('https://brandonmb.ca/account/discussions?status=withdrawn')->assertOk()->assertSee('Edited discussion');
         $this->assertDatabaseHas('audit_logs', ['action' => 'community.thread.withdrawn', 'actor_id' => $owner->id]);

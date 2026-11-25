@@ -75,6 +75,17 @@ const fs = require('node:fs');
             }
         }
 
+        await page.goto(host + '/account/followed-discussions');
+        const followingForm = page.locator('form[action="/account/followed-discussions"]');
+        await followingForm.locator('input[name="q"]').fill('garden');
+        await followingForm.getByRole('button', { name: 'Search followed discussions' }).click();
+        await page.waitForURL(url => url.pathname === '/account/followed-discussions' && url.searchParams.get('q') === 'garden');
+        check(await page.getByRole('link', { name: 'Community garden neighbours' }).isVisible(), 'Follow search lost matching discussion');
+        await followingForm.locator('input[name="q"]').fill('zzmissingfollow');
+        await followingForm.getByRole('button', { name: 'Search followed discussions' }).click();
+        await page.getByRole('heading', { name: 'No followed discussions match these filters' }).waitFor();
+        console.log('PASS: followed discussion search and empty state');
+
         // Cross-section search uses real GET navigation and preserves the
         // location despite Jobs using a community name rather than a slug.
         for (const width of [320, 390, 768, 1024, 1440]) {

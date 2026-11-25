@@ -48,6 +48,25 @@ class BusinessDirectoryTest extends TestCase
         $this->get('https://canadamb.ca/admin/business-ownership?q=Team&ownership=unclaimed')->assertOk()->assertSee('No matching businesses.');
     }
 
+    public function test_business_profile_editor_preserves_concurrent_changes_and_audits_real_edits(): void
+    {
+        $owner = User::factory()->create();
+        $editor = User::factory()->create();
+        $business = Business::create(['slug' => 'concurrent-profile', 'name' => 'Concurrent Profile', 'category' => 'services', 'status' => 'active', 'description' => 'Original profile']);
+        $business->members()->attach($owner->id, ['role' => 'owner']);
+        $business->members()->attach($editor->id, ['role' => 'editor']);
+        $business->locations()->create(['location_id' => Location::where('slug', 'brandon')->sole()->id, 'address' => '1 Test Road']);
+        $url = 'https://canadamb.ca/account/businesses/'.$business->id;
+        $version = $business->profileVersion();
+        $this->actingAs($owner)->get($url)->assertOk()->assertSee($version);
+        $this->put($url, ['description' => 'Original profile', 'version' => $version])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertDatabaseMissing('audit_logs', ['action' => 'business.profile-updated']);
+        $this->actingAs($editor)->put($url, ['description' => 'Editor changed profile', 'version' => $version])->assertRedirect()->assertSessionHasNoErrors();
+        $this->actingAs($owner)->put($url, ['description' => 'Stale owner edit', 'version' => $version])->assertSessionHasErrors('version');
+        $this->assertSame('Editor changed profile', $business->fresh()->description);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'business.profile-updated', 'actor_id' => $editor->id]);
+    }
+
     public function test_import_is_idempotent_and_directory_respects_physical_branch_location(): void
     {
         $file = tempnam(sys_get_temp_dir(), 'canadamb-business-');

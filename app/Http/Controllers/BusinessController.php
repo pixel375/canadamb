@@ -31,7 +31,7 @@ class BusinessController extends Controller
             'location' => 'nullable|string|max:100',
         ]);
         $matching = $this->directory->visible($site)
-            ->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['name', 'description']))
+            ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['name', 'description']))
             ->when($site->isNetwork() && filled($filters['location'] ?? null), fn ($query) => $query->whereHas('openLocations.location', fn ($location) => $location->where('slug', $filters['location'])));
         $categoryCounts = (clone $matching)->selectRaw('category, COUNT(*) as total')->groupBy('category')->pluck('total', 'category');
         $businesses = $matching->with(['openLocations.location'])
@@ -81,7 +81,7 @@ class BusinessController extends Controller
         $place = LocationScope::forBrowsing($site, $filters['location'] ?? null);
         $updates = $this->directory->updates($place?->id)
             ->when($filters['type'] ?? null, fn ($query, $type) => $query->where('type', $type))
-            ->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'body']))
+            ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'body']))
             ->paginate(18)->withQueryString();
 
         return view('business.updates', [
@@ -195,14 +195,21 @@ class BusinessController extends Controller
 
     public function update(Request $request, int $business)
     {
-        $data = $request->validate($this->profileRules());
+        $data = $request->validate($this->profileRules() + ['version' => 'nullable|string|size:64']);
         DB::transaction(function () use ($request, $business, $data) {
             $item = Business::lockForUpdate()->findOrFail($business);
             $this->managed($request, $business);
+            if (isset($data['version']) && ! hash_equals($item->profileVersion(), $data['version'])) {
+                throw ValidationException::withMessages(['version' => 'The business profile changed. Reload before saving.']);
+            }
             $previousEmail = $item->public_email;
-            $item->update($data);
-            if ($previousEmail !== $item->public_email) {
-                BusinessChanges::invalidateContact($item->id);
+            $item->fill(collect($data)->except('version')->all());
+            if ($item->isDirty()) {
+                $item->save();
+                if ($previousEmail !== $item->public_email) {
+                    BusinessChanges::invalidateContact($item->id);
+                }
+                Audit::record('business.profile-updated', $request->user()->id, context: ['business' => $item->id]);
             }
         });
 
@@ -244,7 +251,7 @@ class BusinessController extends Controller
         $updates = BusinessUpdate::with('branch.location')->whereHas('branch', fn ($branch) => $branch->where('business_id', $business)
             ->when($site->location_id, fn ($query, $location) => $query->where('location_id', $location)))
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
-            ->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'body']))
+            ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'body']))
             ->latest('id')->paginate(20)->withQueryString();
         $canManageAll = $item->members()->whereKey($request->user()->id)->wherePivotIn('role', ['owner', 'manager'])->exists();
 

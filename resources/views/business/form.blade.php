@@ -26,7 +26,7 @@
         <form class="panel form-stack" method="post" action="{{ $business->exists ? '/account/businesses/'.$business->id : '/account/businesses' }}">
             @csrf
             <h2>{{ $business->exists ? 'Profile information' : 'Business information' }}</h2>
-            @if($business->exists)@method('PUT')
+            @if($business->exists)@method('PUT')<input type="hidden" name="version" value="{{ old('version', $business->profileVersion()) }}">
             @else
                 <label>Business name<input name="name" value="{{ old('name') }}" required maxlength="140"></label>
                 <label>Category<select name="category" required><option value="">Choose a category</option>@foreach($categories as $key => $category)<option value="{{ $key }}" @selected(old('category') === $key)>{{ $category }}</option>@endforeach</select></label>
