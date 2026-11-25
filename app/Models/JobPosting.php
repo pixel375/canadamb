@@ -35,6 +35,9 @@ class JobPosting extends Model
 
     public function reviewVersion(): string
     {
-        return hash('sha256', json_encode($this->getRawOriginal(), JSON_THROW_ON_ERROR));
+        $attributes = $this->getRawOriginal();
+        ksort($attributes);
+
+        return hash('sha256', json_encode($attributes, JSON_THROW_ON_ERROR));
     }
 }

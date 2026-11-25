@@ -36,6 +36,8 @@ class JobPostingTest extends TestCase
         $this->actingAs($owner)->post($url, $input + ['business_location_id' => $winnipeg->id])->assertSessionHasErrors('location_id');
         $this->post($url, $input + ['business_location_id' => $brandon->id])->assertSessionHasNoErrors()->assertRedirect();
         $job = JobPosting::sole();
+        $this->post($url, $input + ['business_location_id' => $brandon->id])->assertSessionHasErrors('title');
+        $this->assertDatabaseCount('job_postings', 1);
         $this->get($url.'?status=pending&q=Storefront')->assertOk()->assertSee('1 job found')->assertSee($input['title']);
         $this->get($url.'?status=approved')->assertOk()->assertSee('No jobs match these filters.');
         $this->actingAs($stranger)->get($url)->assertNotFound();
@@ -65,6 +67,7 @@ class JobPostingTest extends TestCase
         $this->put("$url/$job->id", array_replace($input, ['title' => 'Senior storefront supervisor', 'version' => $oldVersion]))->assertSessionHasNoErrors();
         $this->get("https://brandonmb.ca/jobs/$job->id")->assertNotFound();
         $this->put("$url/$job->id", $input + ['version' => $oldVersion])->assertConflict();
+        $this->post("$url/$job->id/withdraw", ['version' => $oldVersion])->assertConflict();
         $this->actingAs($admin)->post("https://canadamb.ca/admin/jobs/$job->id", ['action' => 'approve', 'version' => $oldVersion])->assertConflict();
         $this->post("https://canadamb.ca/admin/jobs/$job->id", ['action' => 'approve', 'version' => $job->fresh()->reviewVersion()])->assertRedirect();
         $this->travel(8)->days();
@@ -78,5 +81,10 @@ class JobPostingTest extends TestCase
         $this->post($url, array_replace($input, ['business_location_id' => $brandon->id, 'closing_on' => today()->addWeek()->toDateString()]))->assertRedirect()->assertSessionHasNoErrors();
         $this->assertDatabaseCount('job_postings', 2);
         $this->assertDatabaseHas('job_postings', ['id' => $job->id, 'status' => 'expired']);
+        $published = $job->fresh()->published_at;
+        $this->put("$url/$job->id", array_replace($input, ['title' => 'Senior storefront supervisor', 'closing_on' => today()->addWeek()->toDateString(), 'version' => $job->fresh()->reviewVersion()]))->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertNull($job->fresh()->published_at);
+        $this->actingAs($admin)->post("https://canadamb.ca/admin/jobs/$job->id", ['action' => 'approve', 'version' => $job->fresh()->reviewVersion()])->assertRedirect();
+        $this->assertTrue($job->fresh()->published_at->greaterThan($published));
     }
 }

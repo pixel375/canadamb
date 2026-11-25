@@ -52,7 +52,7 @@
                         @if($openBranches->isNotEmpty())<a class="button button-outline" href="/account/businesses/{{ $employer->id }}/jobs/{{ $item->id }}/duplicate">Reuse posting</a>@endif
                     </div>
                     @if(in_array($item->status, ['pending', 'approved'], true))
-                        <details class="seller-remove-listing"><summary>Withdraw posting</summary><p class="field-note">Withdraw this job from publication and review.</p><form method="post" action="/account/businesses/{{ $employer->id }}/jobs/{{ $item->id }}/withdraw">@csrf<button class="button button-outline">Confirm withdrawal</button></form></details>
+                        <details class="seller-remove-listing"><summary>Withdraw posting</summary><p class="field-note">Withdraw this job from publication and review.</p><form method="post" action="/account/businesses/{{ $employer->id }}/jobs/{{ $item->id }}/withdraw">@csrf<input type="hidden" name="version" value="{{ $item->reviewVersion() }}"><button class="button button-outline">Confirm withdrawal</button></form></details>
                     @endif
                 </article>
             @empty<div class="panel market-results-empty"><x-icon name="briefcase" size="30"/><h2>{{ ($filters['status'] ?? null) || ($filters['q'] ?? null) ? 'No jobs match these filters.' : 'No jobs have been posted for these branches.' }}</h2><a class="button button-outline" href="/account/businesses/{{ $employer->id }}/jobs">View all jobs</a></div>@endforelse

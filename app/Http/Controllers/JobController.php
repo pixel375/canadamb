@@ -81,6 +81,12 @@ class JobController extends Controller
             $current = $this->managedBusiness($request, $employer->id);
             $branch = $current->openLocations()->findOrFail($data['business_location_id']);
             LocationScope::forPublication($request->attributes->get('site'), $branch->location_id);
+            if (JobPosting::where('business_location_id', $branch->id)->where('title', $data['title'])
+                ->where('employment_type', $data['employment_type'])->where('workplace', $data['workplace'])
+                ->where('apply_url', $data['apply_url'])->whereIn('status', ['pending', 'approved'])
+                ->where('closing_on', '>=', $this->jobs->closingToday())->exists()) {
+                throw ValidationException::withMessages(['title' => 'A matching open or pending posting already exists at this branch. Edit the existing posting instead.']);
+            }
             $job = JobPosting::create($data + ['author_id' => $request->user()->id]);
             Audit::record('jobs.submitted', $request->user()->id, context: ['job' => $job->id]);
         });
@@ -124,25 +130,40 @@ class JobController extends Controller
             $item = $this->managedJob($request, $employer->id, $job, lock: true);
             abort_unless($item->branch->isOpen() && in_array($item->status, ['pending', 'approved', 'rejected', 'expired'], true), 409);
             abort_unless(hash_equals($item->reviewVersion(), $version), 409, 'The posting changed. Reload the editor.');
+            $renewal = $item->status === 'expired' || $item->closing_on->toDateString() < $this->jobs->closingToday();
             $item->fill($data);
             if ($item->isDirty() || in_array($item->status, ['rejected', 'expired'], true)) {
-                $item->forceFill(['status' => 'pending'])->save();
+                if (JobPosting::where('business_location_id', $item->business_location_id)->whereKeyNot($item->id)
+                    ->where('title', $item->title)->where('employment_type', $item->employment_type)
+                    ->where('workplace', $item->workplace)->where('apply_url', $item->apply_url)
+                    ->whereIn('status', ['pending', 'approved'])->where('closing_on', '>=', $this->jobs->closingToday())->exists()) {
+                    throw ValidationException::withMessages(['title' => 'A matching open or pending posting already exists at this branch.']);
+                }
+                $item->forceFill(['status' => 'pending']);
+                if ($renewal) {
+                    $item->published_at = null;
+                }
+                $item->save();
                 Audit::record('jobs.revised', $request->user()->id, context: ['job' => $job]);
             }
         });
 
-        return redirect('/account/businesses/'.$business.'/jobs')->with('status', 'Job changes submitted for review.');
+        return redirect('/account/businesses/'.$business.'/jobs')->with('status', 'Job saved. Changed content requires review.');
     }
 
     public function withdraw(Request $request, int $business, int $job)
     {
         abort_unless($this->jobs->enabled($request->attributes->get('site')), 404);
         $employer = $this->managedBusiness($request, $business);
-        DB::transaction(function () use ($request, $employer, $job) {
+        $data = $request->validate(['version' => 'nullable|string|size:64']);
+        DB::transaction(function () use ($request, $employer, $job, $data) {
             Business::lockForUpdate()->findOrFail($employer->id);
             $this->managedBusiness($request, $employer->id);
             $item = $this->managedJob($request, $employer->id, $job, lock: true);
             abort_unless(in_array($item->status, ['pending', 'approved'], true), 409);
+            if (isset($data['version'])) {
+                abort_unless(hash_equals($item->reviewVersion(), $data['version']), 409, 'The posting changed. Reload before withdrawing.');
+            }
             $item->forceFill(['status' => 'withdrawn'])->save();
             Audit::record('jobs.withdrawn', $request->user()->id, context: ['job' => $job]);
         });

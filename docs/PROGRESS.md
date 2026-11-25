@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-25 — hiring duplicate and renewal integrity
+
+Under the business lock, reject matching open/pending job submissions and revisions at the same branch (title, type, workplace and application URL). Renewed expired postings get a fresh publication timestamp after independent approval, while ordinary edits preserve original publication. Browser withdrawals use revision tokens, with legacy callers still supported. Regression coverage for duplicate, stale withdrawal and renewal transitions.
+
 ## 2026-11-25 — private data export coverage
 
 Added bounded password-confirmed participant-local conversation metadata and sent-photo metadata exports without other participants' read markers, identity fields, received content or storage paths. Expanded read-only privacy impact counts and regression coverage. No deletion or retention execution.
