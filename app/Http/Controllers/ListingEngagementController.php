@@ -97,15 +97,21 @@ class ListingEngagementController extends Controller
     public function reports(Request $request)
     {
         $site = $request->attributes->get('site');
-        $items = DB::table('listing_reports')->join('listings', 'listings.id', '=', 'listing_reports.listing_id')
+        $filters = $request->validate(['status' => 'nullable|in:pending,resolved', 'reference' => 'nullable|integer|min:1']);
+        $owned = DB::table('listing_reports')->join('listings', 'listings.id', '=', 'listing_reports.listing_id')
             ->where('listing_reports.reporter_id', $request->user()->id)
-            ->when($site->location_id, fn ($query, $id) => $query->where('listings.location_id', $id))
+            ->when($site->location_id, fn ($query, $id) => $query->where('listings.location_id', $id));
+        $pending = (clone $owned)->whereNull('listing_reports.resolved_at')->count();
+        $resolved = (clone $owned)->whereNotNull('listing_reports.resolved_at')->count();
+        $items = $owned->when(($filters['status'] ?? null) === 'pending', fn ($query) => $query->whereNull('listing_reports.resolved_at'))
+            ->when(($filters['status'] ?? null) === 'resolved', fn ($query) => $query->whereNotNull('listing_reports.resolved_at'))
+            ->when($filters['reference'] ?? null, fn ($query, $id) => $query->where('listing_reports.id', $id))
             ->select('listing_reports.id', 'listing_reports.listing_id', 'listing_reports.reason', 'listing_reports.created_at', 'listing_reports.resolved_at')
             ->selectRaw("CASE WHEN listings.status = 'active' AND listings.expires_at > ? THEN listings.title ELSE NULL END AS public_title", [now()])
-            ->latest('listing_reports.id')->paginate(20);
+            ->latest('listing_reports.id')->paginate(20)->withQueryString();
         $marketEnabled = $this->marketplace->enabled($site);
 
-        return view('marketplace.reports', compact('items', 'marketEnabled'));
+        return view('marketplace.reports', compact('items', 'marketEnabled', 'filters', 'pending', 'resolved'));
     }
 
     public function report(Request $request, int $listing)

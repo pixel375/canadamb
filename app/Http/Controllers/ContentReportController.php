@@ -14,11 +14,17 @@ class ContentReportController extends Controller
     {
         abort_unless(ContentReports::enabled(), 404);
         $site = $request->attributes->get('site');
-        $items = DB::table('content_reports')->where('reporter_id', $request->user()->id)
-            ->when(! $site->isNetwork(), fn ($query) => $query->where('site_id', $site->id))
-            ->latest('id')->paginate(20);
+        $filters = $request->validate(['status' => 'nullable|in:pending,resolved',
+            'type' => ['nullable', Rule::in(array_keys(ContentReports::TYPES))], 'reference' => 'nullable|integer|min:1']);
+        $owned = DB::table('content_reports')->where('reporter_id', $request->user()->id)
+            ->when(! $site->isNetwork(), fn ($query) => $query->where('site_id', $site->id));
+        $counts = (clone $owned)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
+        $items = $owned->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
+            ->when($filters['type'] ?? null, fn ($query, $type) => $query->where('target_type', $type))
+            ->when($filters['reference'] ?? null, fn ($query, $id) => $query->where('id', $id))
+            ->latest('id')->paginate(20, ['id', 'target_type', 'target_id', 'reason', 'explanation', 'status', 'created_at', 'resolved_at'])->withQueryString();
 
-        return view('account.content-reports', compact('items'));
+        return view('account.content-reports', compact('items', 'filters', 'counts'));
     }
 
     public function create(Request $request, string $type, int $target)

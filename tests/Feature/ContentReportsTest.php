@@ -181,6 +181,8 @@ class ContentReportsTest extends TestCase
         $this->get($url)->assertOk()->assertSee('already reported');
         $history = 'https://brandonmb.ca/account/content-reports';
         $this->get($history)->assertOk()->assertSee($data['explanation']);
+        $this->get($history.'?status=pending&type=discussion')->assertOk()->assertSee($data['explanation']);
+        $this->get($history.'?type=job')->assertOk()->assertDontSee($data['explanation'])->assertSee('No reports match these filters.');
         $this->actingAs($author)->get($history)->assertOk()->assertDontSee($data['explanation']);
         $this->get('https://canadamb.ca/admin/content-reports')->assertForbidden();
         $this->actingAs($admin)->get('https://canadamb.ca/admin/content-reports')->assertOk()->assertSee($data['explanation'])->assertSee($thread->title);
@@ -188,5 +190,7 @@ class ContentReportsTest extends TestCase
         $this->post('https://canadamb.ca/admin/content-reports/'.$id, ['note' => 'Internal review completed.'])->assertRedirect()->assertSessionHasNoErrors();
         $this->assertSame('approved', $thread->fresh()->status);
         $this->actingAs($reporter)->get($history)->assertOk()->assertSee('Review completed')->assertDontSee('Internal review completed.');
+        $this->get($history.'?status=resolved&reference='.$id)->assertOk()->assertSee($data['explanation'])->assertDontSee('Internal review completed.');
+        $this->get($history.'?status=pending')->assertOk()->assertDontSee($data['explanation']);
     }
 }

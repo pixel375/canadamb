@@ -194,11 +194,15 @@ class MarketplaceEngagementTest extends TestCase
         $this->post("$base/report", ['reason' => 'Duplicate submitted report.'])->assertRedirect();
         $this->assertDatabaseCount('listing_reports', 1);
         $this->get('https://canadamb.ca/account/listing-reports')->assertOk()->assertSee('Patio set')->assertSee('Awaiting review');
+        $this->get('https://canadamb.ca/account/listing-reports?status=pending')->assertOk()->assertSee('Patio set');
+        $this->get('https://canadamb.ca/account/listing-reports?status=resolved')->assertOk()->assertDontSee('Patio set')->assertSee('No listing reports match these filters.');
         $this->actingAs($stranger)->get('https://canadamb.ca/account/listing-reports')->assertOk()->assertDontSee('The images seem to belong to another seller.');
         $report = DB::table('listing_reports')->value('id');
         $reviewer = User::factory()->create(['role' => 'network_admin']);
         $this->actingAs($reviewer)->post('https://canadamb.ca/admin/moderation/reports/'.$report, ['note' => 'Reviewed the submitted report.'])->assertRedirect();
         $this->post('https://canadamb.ca/admin/moderation/reports/'.$report, ['note' => 'Repeated decision.'])->assertConflict();
+        $this->actingAs($buyer)->get('https://canadamb.ca/account/listing-reports?status=resolved&reference='.$report)->assertOk()->assertSee('Patio set')->assertDontSee('Reviewed the submitted report.');
+        $this->get('https://canadamb.ca/account/listing-reports?status=pending')->assertOk()->assertDontSee('Patio set');
         $this->actingAs($buyer);
         $this->actingAs($buyer);
         $this->post("$base/message", ['body' => 'Are the chairs included?'])->assertRedirect();
