@@ -131,7 +131,7 @@ class MarketplaceController extends Controller
         $counts = (clone $owned)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
         $items = $owned->with(['location', 'media'])
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
-            ->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'description']))
+            ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'description']))
             ->latest()->latest('id')->paginate(18)->withQueryString();
 
         return view('marketplace.mine', compact('items', 'counts', 'statuses', 'filters'));
@@ -242,6 +242,42 @@ class MarketplaceController extends Controller
         });
 
         return redirect('/account/listings')->with('status', 'Listing status updated.');
+    }
+
+    public function batchStatus(Request $request)
+    {
+        $site = $request->attributes->get('site');
+        abort_unless($this->marketplace->enabled($site), 404);
+        $data = $request->validate([
+            'status' => 'required|in:sold,pending',
+            'listings' => 'required|array|list|min:1|max:10',
+            'listings.*' => 'required|integer|distinct|min:1',
+            'versions' => 'required|array|max:18', 'versions.*' => 'required|string|size:64',
+            'confirm_batch' => 'accepted',
+        ]);
+        $member = $request->user()->id;
+        DB::transaction(function () use ($data, $member, $site) {
+            $items = Listing::where('user_id', $member)->where('status', '!=', 'removed')
+                ->when($site->location_id, fn ($query, $id) => $query->where('location_id', $id))
+                ->whereIn('id', $data['listings'])->orderBy('id')->lockForUpdate()->get();
+            abort_unless($items->count() === count($data['listings']), 404);
+            foreach ($items as $item) {
+                if (! isset($data['versions'][$item->id]) || ! hash_equals($item->reviewVersion(), $data['versions'][$item->id])) {
+                    throw ValidationException::withMessages(['listings' => 'A selected listing changed. Reload and select again.']);
+                }
+                $eligible = $data['status'] === 'sold'
+                    ? $item->status === 'active' && $item->expires_at?->isFuture()
+                    : $item->status === 'expired' || ($item->status === 'active' && $item->expires_at?->isPast());
+                if (! $eligible) {
+                    throw ValidationException::withMessages(['listings' => 'All selected listings must be eligible for the requested action. No listings changed.']);
+                }
+            }
+            foreach ($items as $item) {
+                $this->marketplace->changeStatus($item, $data['status'], $member);
+            }
+        }, attempts: 3);
+
+        return redirect('/account/listings')->with('status', count($data['listings']).' listing statuses updated.');
     }
 
     private function form(Request $request, Listing $item, ?Location $duplicateLocation = null)

@@ -7,7 +7,7 @@
         <nav class="seller-status-grid" aria-label="Filter listings by status">
             @foreach(array_merge(['all'], $statuses) as $status)
                 <?php $selected = ($filters['status'] ?? 'all') === $status; ?>
-                <a class="seller-status-tile" href="/account/listings{{ ($query = http_build_query(array_filter(['status' => $status === 'all' ? null : $status, 'q' => $filters['q'] ?? null]))) ? '?'.$query : '' }}" @if($selected) aria-current="page" @endif>
+                <a class="seller-status-tile" href="/account/listings{{ ($query = http_build_query(array_filter(['status' => $status === 'all' ? null : $status, 'q' => $filters['q'] ?? null], fn ($value) => $value !== null && $value !== ''))) ? '?'.$query : '' }}" @if($selected) aria-current="page" @endif>
                     <strong>{{ $status === 'all' ? $counts->sum() : ($counts[$status] ?? 0) }}</strong>
                     <span>{{ $status === 'all' ? 'All listings' : ucfirst($status) }}</span>
                 </a>
@@ -18,9 +18,19 @@
             <label for="seller-listing-q" class="sr-only">Search my listings</label>
             <input id="seller-listing-q" type="search" name="q" maxlength="100" value="{{ $filters['q'] ?? '' }}" placeholder="Search your listings">
             <button class="button button-primary"><x-icon name="search" size="16"/> Search</button>
-            @if($filters['q'] ?? null)<a class="text-link" href="/account/listings{{ isset($filters['status']) ? '?status='.$filters['status'] : '' }}">Clear</a>@endif
+            @if(filled($filters['q'] ?? null))<a class="text-link" href="/account/listings{{ isset($filters['status']) ? '?status='.$filters['status'] : '' }}">Clear</a>@endif
         </form>
         <p class="field-note seller-results-count">{{ $items->total() }} {{ \Illuminate\Support\Str::plural('listing', $items->total()) }} found</p>
+        @if($items->contains(fn ($item) => in_array($item->status, ['active', 'expired'], true)))
+            <details class="panel form-stack mb-4"><summary>Manage selected listings</summary>
+                <form method="post" id="listing-batch-status" action="/account/listings/batch-status" class="form-stack mt-3">@csrf
+                    <p class="field-note">Select up to ten listings below. All must be eligible for the same action; renewal returns them to moderation.</p>
+                    <label>Action<select name="status"><option value="sold">Mark active listings sold</option><option value="pending">Renew expired listings</option></select></label>
+                    <label class="checkbox-line"><input type="checkbox" name="confirm_batch" value="1" required> Confirm changes to selected listings</label>
+                    <button class="button button-outline">Apply to selected listings</button>
+                </form>
+            </details>
+        @endif
         <div class="member-listing-manager seller-listing-grid">
             @forelse($items as $item)
                 <article class="panel seller-listing-card">
@@ -65,6 +75,10 @@
                             </form>
                         @endif
                     </div>
+                    @if(in_array($item->status, ['active', 'expired'], true))
+                        <label class="checkbox-line"><input form="listing-batch-status" type="checkbox" name="listings[]" value="{{ $item->id }}"> Select for batch action</label>
+                        <input form="listing-batch-status" type="hidden" name="versions[{{ $item->id }}]" value="{{ $item->reviewVersion() }}">
+                    @endif
                     <details class="seller-remove-listing">
                         <summary>Remove listing</summary>
                         <p class="field-note">This will permanently remove this listing from your dashboard and public Marketplace. It cannot be restored here.</p>
@@ -73,7 +87,7 @@
                 </article>
             @empty
                 <div class="panel market-results-empty"><span class="empty-icon"><x-icon name="marketplace" size="24"/></span>
-                    @if(($filters['q'] ?? null) || ($filters['status'] ?? null))
+                    @if(filled($filters['q'] ?? null) || filled($filters['status'] ?? null))
                         <h3>No listings match these filters.</h3><a class="button button-outline" href="/account/listings">View all my listings</a>
                     @else
                         <h3>You have no listings on this portal.</h3><p>Post your first item to reach local buyers.</p><a class="button button-primary" href="/marketplace/new">Post a listing</a>

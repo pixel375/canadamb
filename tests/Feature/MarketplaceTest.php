@@ -159,6 +159,34 @@ class MarketplaceTest extends TestCase
         $this->assertSame('pending', $item->fresh()->status);
     }
 
+    public function test_bulk_listing_status_changes_are_atomic_versioned_and_portal_scoped(): void
+    {
+        $seller = User::factory()->create();
+        $other = User::factory()->create();
+        $items = collect();
+        foreach ([[$seller, 'brandon'], [$seller, 'brandon'], [$seller, 'elkhorn'], [$other, 'brandon']] as [$member, $place]) {
+            $item = Listing::create(['user_id' => $member->id, 'location_id' => Location::where('slug', $place)->sole()->id,
+                'title' => 'Batch listing', 'description' => 'Local furniture', 'category' => 'furniture',
+                'condition' => 'good', 'price_cents' => 1000, 'status' => 'active']);
+            $item->forceFill(['expires_at' => now()->addDay()])->save();
+            $items->push($item->fresh());
+        }
+        $url = self::CITY.'/account/listings/batch-status';
+        $versions = $items->mapWithKeys(fn ($item) => [$item->id => $item->reviewVersion()])->all();
+        $input = ['status' => 'sold', 'listings' => [$items[0]->id, $items[1]->id], 'versions' => $versions, 'confirm_batch' => '1'];
+        $this->actingAs($seller)->get(self::CITY.'/account/listings')->assertOk()->assertSee('Manage selected listings');
+        $this->post($url, array_replace($input, ['listings' => [$items[0]->id, $items[2]->id]]))->assertNotFound();
+        $this->post($url, array_replace($input, ['listings' => [$items[0]->id, $items[3]->id]]))->assertNotFound();
+        $this->post($url, array_replace($input, ['versions' => array_replace($versions, [$items[1]->id => str_repeat('0', 64)])]))->assertSessionHasErrors('listings');
+        $this->assertSame('active', $items[0]->fresh()->status);
+        $this->post($url, $input)->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame('sold', $items[0]->fresh()->status);
+        $this->assertSame('sold', $items[1]->fresh()->status);
+        $this->assertSame('active', $items[2]->fresh()->status);
+        $this->assertSame('active', $items[3]->fresh()->status);
+        $this->assertDatabaseCount('listing_status_history', 2);
+    }
+
     private function listing(string $title): array
     {
         return ['title' => $title, 'description' => 'Includes the table and chairs.', 'category' => 'furniture',

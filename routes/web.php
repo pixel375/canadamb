@@ -158,6 +158,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/marketplace/new', [MarketplaceController::class, 'create']);
     Route::post('/marketplace', [MarketplaceController::class, 'store'])->middleware('throttle:12,1');
     Route::get('/account/listings', [MarketplaceController::class, 'mine']);
+    Route::post('/account/listings/batch-status', [MarketplaceController::class, 'batchStatus'])->middleware('throttle:5,1,listing-batch');
     Route::get('/account/listings/{listing}/history', [MarketplaceController::class, 'history'])->whereNumber('listing');
     Route::get('/account/listings/{listing}/duplicate', [MarketplaceController::class, 'duplicate'])->whereNumber('listing');
     Route::get('/account/listings/{listing}/edit', [MarketplaceController::class, 'edit'])->whereNumber('listing');
