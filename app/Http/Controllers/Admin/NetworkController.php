@@ -13,6 +13,7 @@ use App\Support\KeywordSearch;
 use App\Support\Marketplace;
 use App\Support\NetworkSettings;
 use App\Support\NetworkUrl;
+use App\Support\StagedFeatures;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -67,7 +68,9 @@ class NetworkController extends Controller
         ];
         $unverified = User::whereNull('email_verified_at')->count();
 
-        return view('admin.readiness', compact('checks', 'unverified'));
+        $staged = StagedFeatures::inspect();
+
+        return view('admin.readiness', compact('checks', 'unverified', 'staged'));
     }
 
     public function audit(Request $request)

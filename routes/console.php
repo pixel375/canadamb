@@ -9,6 +9,7 @@ use App\Support\Identity;
 use App\Support\JobBoard;
 use App\Support\Marketplace;
 use App\Support\MessageFileInventory;
+use App\Support\StagedFeatures;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schedule;
@@ -62,6 +63,13 @@ Artisan::command('job-postings:expire', function (JobBoard $board) {
     $this->info("Expired $count job posting(s).");
 })->purpose('Expire a batch of job postings after their Manitoba closing date');
 Schedule::command('job-postings:expire')->hourly()->withoutOverlapping(5);
+Artisan::command('network:staged-features', function () {
+    $features = StagedFeatures::inspect();
+    $this->line(json_encode($features, JSON_THROW_ON_ERROR));
+
+    return collect($features)->contains(fn ($feature) => $feature['configured'] && ! $feature['ready']) ? 1 : 0;
+})->purpose('Read-only inventory of proposed migrations, schema and activation switches');
+
 Artisan::command('messages:attachment-inventory {--limit=500}', function (MessageFileInventory $inventory) {
     $limit = filter_var($this->option('limit'), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 5000]]);
     if ($limit === false) {

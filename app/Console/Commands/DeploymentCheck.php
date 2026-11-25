@@ -6,6 +6,7 @@ use App\Models\CommunityOAuthClient;
 use App\Models\Site;
 use App\Support\NetworkSettings;
 use App\Support\NetworkUrl;
+use App\Support\StagedFeatures;
 use Illuminate\Console\Command;
 use Illuminate\Encryption\Encrypter;
 use Illuminate\Support\Facades\DB;
@@ -101,6 +102,11 @@ class DeploymentCheck extends Command
 
         if ($this->option('database')) {
             DB::connection()->getPdo();
+            foreach (StagedFeatures::inspect() as $feature) {
+                if ($feature['configured'] && ! $feature['ready']) {
+                    $issues[] = 'Staged feature configuration requires recorded schema: '.$feature['label'].'.';
+                }
+            }
             app(NetworkSettings::class)->published();
             $main = Site::with('domain')->where('code', 'network')->firstOrFail();
             if ($main->domain->host !== parse_url(config('app.url'), PHP_URL_HOST)) {

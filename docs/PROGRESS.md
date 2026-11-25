@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-25 — staged schema inventory and launch safeguards
+
+Added read-only inventory for all 13 proposed migration files, dependency flags, presence of expected tables/columns and recorded migration history. Exposes readiness indicators and a CLI report without secrets; deployment database checks reject configured features with missing/unrecorded schema. Added tests for manifest coverage and mismatch detection. Does not apply migrations or switch features on. Review actual schema details, retention, backups and acceptance separately.
+
 ## 2026-11-25 — editorial workflow and event lint repair
 
 Added article-version checks, source-rights editing and locking, keyword/source/status queue filters, staged candidate dismissal/restore and audit logging. Polling remains off in prelaunch and automatic publication is not introduced. Fixed event controller import/negation style and calendar string formatting flagged by CI `45605521848`. Exact-SHA verification required.
