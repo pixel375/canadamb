@@ -1,4 +1,4 @@
-name: CanadaMB three-release retention
+name: CanadaMB two-release retention
 
 # Trusted main; cleanup runs only after the live deployment audits or an explicit
 # main update to this reviewed retention policy.
@@ -44,7 +44,7 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-      - name: Inventory and retain three complete releases
+      - name: Inventory and retain two complete releases
         shell: bash
         run: |
           set -Eeuo pipefail

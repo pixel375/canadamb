@@ -78,10 +78,10 @@ for id in $history; do
         keep["$id"]=1
         protected=$((protected + 1))
         echo "Protected rollback-ready release: $id"
-        [[ "$protected" -lt 3 ]] || break
+        [[ "$protected" -lt 2 ]] || break
     fi
 done
-[[ "$protected" -eq 3 ]] || { echo 'Fewer than two verified rollback candidates; refusing cleanup.'; exit 1; }
+[[ "$protected" -eq 2 ]] || { echo 'No verified rollback candidate; refusing cleanup.'; exit 1; }
 receipt_ok "$current"
 # The initial deployment predates the generated checksum file. Its original
 # .last-preflight records both relative-path checksums. Verify those exact
@@ -218,4 +218,4 @@ echo "Release entries reclaimed: $((before-after))"
 echo "Unverified entries preserved: $unknown"
 echo "Release directories remaining: $(find -P "$releases" -mindepth 1 -maxdepth 1 -type d -printf '.' | wc -c)"
 /usr/bin/php "$active/artisan" network:deployment-check --hostinger --production-database=u713153343_canadamb --database --migration-state
-echo 'Active release and rollback candidates preserved; shared storage and backups untouched.'
+echo 'Active release and one verified rollback preserved; shared storage and backups untouched.'

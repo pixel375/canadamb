@@ -257,7 +257,7 @@ jobs:
     uses: ./.github/workflows/pwa-external-installability-smoke.yml
 
   retain_releases:
-    name: Retain active release plus two rollback copies
+    name: Retain active release plus one rollback copy
     needs: [verify_private, verify_public]
     uses: ./.github/workflows/hostinger-release-retention.yml
     with:
