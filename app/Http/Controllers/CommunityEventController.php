@@ -7,8 +7,8 @@ use App\Models\Location;
 use App\Models\User;
 use App\Support\CalendarExport;
 use App\Support\Community;
-use App\Support\EventSeries;
 use App\Support\EventDiscussions;
+use App\Support\EventSeries;
 use App\Support\KeywordSearch;
 use App\Support\LocationScope;
 use App\Support\NetworkUrl;
@@ -123,7 +123,7 @@ class CommunityEventController extends Controller
         ]);
         $frequency = $repeat['repeat'] ?? 'none';
         $count = $frequency === 'none' ? 1 : (int) ($repeat['occurrences'] ?? 2);
-        abort_if($count > 1 && ! config('network.recurring_events'), 404);
+        abort_unless($count === 1 || config('network.recurring_events'), 404);
         $data['location_id'] = LocationScope::forPublication($site, isset($data['location_id']) ? (int) $data['location_id'] : null);
         $starts = $this->community->localEventTime($data['starts_at'], 'starts_at');
         $ends = isset($data['ends_at']) ? $this->community->localEventTime($data['ends_at'], 'ends_at') : null;

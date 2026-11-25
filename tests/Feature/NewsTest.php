@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Location;
+use App\Models\NewsArticle;
 use App\Models\NewsSource;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
@@ -42,7 +43,10 @@ class NewsTest extends TestCase
 
         $this->actingAs(User::factory()->create(['role' => 'news_editor']))
             ->get('https://canadamb.ca/admin/news')->assertOk()->assertSee($payload['title']);
-        $this->post("https://canadamb.ca/admin/news/$id/publish", ['verification' => 'Checked the stated date and details against the original public notice.'])->assertRedirect();
+        $version = NewsArticle::findOrFail($id)->reviewVersion();
+        $review = ['version' => $version, 'verification' => 'Checked the stated date and details against the original public notice.'];
+        $this->post("https://canadamb.ca/admin/news/$id/publish", $review)->assertRedirect();
+        $this->post("https://canadamb.ca/admin/news/$id/publish", $review)->assertConflict();
         $this->get('https://brandonmb.ca/news')->assertSee($payload['title'])->assertSee('Browse news topics');
         $this->get('https://canadamb.ca/news?location=brandon&category=municipal&period=7&source='.$source->id)
             ->assertOk()->assertSee($payload['title'])->assertSee($source->name);

@@ -7,8 +7,10 @@ use App\Models\Location;
 use App\Models\NewsArticle;
 use App\Models\NewsSource;
 use App\Support\Audit;
+use App\Support\KeywordSearch;
 use App\Support\News;
 use App\Support\NewsFeeds\FeedUrl;
+use App\Support\NewsReview;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -19,14 +21,23 @@ class EditorialController extends Controller
 {
     public function index(Request $request)
     {
-        $input = $request->validate(['candidate' => 'nullable|integer|min:1']);
+        $input = $request->validate([
+            'candidate' => 'nullable|integer|min:1', 'status' => 'nullable|in:draft,published,withdrawn',
+            'q' => 'nullable|string|max:100', 'source_id' => 'nullable|integer|exists:news_sources,id',
+            'feed_view' => 'nullable|in:pending,dismissed',
+        ]);
 
         return view('admin.editorial', [
-            'articles' => NewsArticle::with(['source', 'location'])->whereIn('status', ['draft', 'published'])
-                ->orderByRaw("CASE WHEN status = 'draft' THEN 0 ELSE 1 END")->latest()->paginate(12),
+            'articles' => NewsArticle::with(['source', 'location'])
+                ->when($input['status'] ?? null, fn ($query, $status) => $query->where('status', $status), fn ($query) => $query->whereIn('status', ['draft', 'published']))
+                ->when($input['source_id'] ?? null, fn ($query, $source) => $query->where('source_id', $source))
+                ->when($input['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'body']))
+                ->orderByRaw("CASE WHEN status = 'draft' THEN 0 ELSE 1 END")->latest()->paginate(12)->withQueryString(),
+            'filters' => $input, 'candidateReviewEnabled' => NewsReview::enabled(),
             'sources' => NewsSource::orderBy('name')->get(),
             'places' => Location::selectable()->orderBy('name')->get(),
-            'feedCandidates' => $this->feedCandidates()->orderByDesc('news_feed_candidates.id')->paginate(12, pageName: 'feeds'),
+            'feedCandidates' => $this->feedCandidates(dismissed: ($input['feed_view'] ?? null) === 'dismissed')
+                ->orderByDesc('news_feed_candidates.id')->paginate(12, pageName: 'feeds')->withQueryString(),
             'candidate' => isset($input['candidate'])
                 ? $this->feedCandidates()->where('news_feed_candidates.id', $input['candidate'])->firstOrFail()
                 : null,
@@ -57,11 +68,24 @@ class EditorialController extends Controller
     {
         $data = $request->validate(['enabled' => 'required|boolean']);
         DB::transaction(function () use ($request, $source, $data) {
+            $source = NewsSource::lockForUpdate()->findOrFail($source->id);
             $source->forceFill($data + ['poll_claim' => null])->save();
             Audit::record('news.source-status', $request->user()->id, context: ['source' => $source->id, 'enabled' => $source->enabled]);
         });
 
         return redirect('/admin/news')->with('status', 'Source availability updated.');
+    }
+
+    public function sourceRights(Request $request, NewsSource $source)
+    {
+        $data = $request->validate(['reuse' => 'required|in:summary-permitted,link-only,unreviewed', 'reuse_notes' => 'required|string|max:2000']);
+        DB::transaction(function () use ($request, $source, $data) {
+            $current = NewsSource::lockForUpdate()->findOrFail($source->id);
+            $current->forceFill($data + ['poll_claim' => null, 'next_poll_at' => null])->save();
+            Audit::record('news.source-rights-updated', $request->user()->id, context: ['source' => $current->id, 'reuse' => $data['reuse']]);
+        }, attempts: 3);
+
+        return redirect('/admin/news')->with('status', 'Reuse rights updated. Review existing published articles separately.');
     }
 
     public function sourceFeed(Request $request, NewsSource $source)
@@ -87,22 +111,59 @@ class EditorialController extends Controller
     public function draft(Request $request, News $news)
     {
         $data = $request->validate(['candidate_id' => 'nullable|integer|min:1']);
-        if (isset($data['candidate_id'])) {
-            $candidate = $this->feedCandidates(pendingOnly: false)->where('news_feed_candidates.id', $data['candidate_id'])->firstOrFail();
-            $request->merge([
-                'source_id' => $candidate->source_id,
-                'source_url' => $candidate->source_url,
-                'external_key' => 'feed:'.$candidate->source_hash,
-            ]);
-        }
-        $draft = $news->intake($request->validate($news->rules()));
+        $draft = DB::transaction(function () use ($request, $news, $data) {
+            if (isset($data['candidate_id'])) {
+                $initial = DB::table('news_feed_candidates')->where('id', $data['candidate_id'])->firstOrFail();
+                NewsSource::lockForUpdate()->findOrFail($initial->source_id);
+                $candidate = $this->feedCandidates(pendingOnly: false)->where('news_feed_candidates.id', $data['candidate_id'])->firstOrFail();
+                $request->merge([
+                    'source_id' => $candidate->source_id,
+                    'source_url' => $candidate->source_url,
+                    'external_key' => 'feed:'.$candidate->source_hash,
+                ]);
+            }
+
+            return $news->intake($request->validate($news->rules()));
+        }, attempts: 3);
 
         return redirect('/admin/news')->with('status', 'Article '.$draft->id.' is available for review.');
     }
 
-    private function feedCandidates(bool $pendingOnly = true): Builder
+    public function candidateReview(Request $request, int $candidate)
     {
+        abort_unless(NewsReview::enabled(), 404);
+        $data = $request->validate(['decision' => 'required|in:dismiss,restore', 'reason' => 'required|string|min:8|max:300']);
+        DB::transaction(function () use ($request, $candidate, $data) {
+            $initial = DB::table('news_feed_candidates')->where('id', $candidate)->firstOrFail();
+            NewsSource::lockForUpdate()->findOrFail($initial->source_id);
+            $row = DB::table('news_feed_candidates')->where('id', $candidate)->lockForUpdate()->firstOrFail();
+            abort_if(DB::table('news_articles')->where('source_hash', $row->source_hash)->exists(), 409);
+            $existing = DB::table('news_candidate_reviews')->where('candidate_id', $candidate)->first();
+            $dismissed = $data['decision'] === 'dismiss';
+            abort_if($dismissed === (bool) ($existing->dismissed ?? false), 409);
+            DB::table('news_candidate_reviews')->updateOrInsert(['candidate_id' => $candidate], [
+                'dismissed' => $dismissed, 'reviewer_id' => $request->user()->id,
+                'reason' => $data['reason'], 'updated_at' => now(),
+            ]);
+            Audit::record('news.candidate-'.$data['decision'], $request->user()->id, context: ['candidate' => $candidate]);
+        }, attempts: 3);
+
+        return redirect('/admin/news')->with('status', 'Candidate review saved.');
+    }
+
+    private function feedCandidates(bool $pendingOnly = true, bool $dismissed = false): Builder
+    {
+        abort_if($dismissed && ! NewsReview::enabled(), 404);
+
         return DB::table('news_feed_candidates')->join('news_sources', 'news_sources.id', '=', 'news_feed_candidates.source_id')
+            ->when(NewsReview::enabled(), function ($query) use ($dismissed) {
+                $query->leftJoin('news_candidate_reviews', 'news_candidate_reviews.candidate_id', '=', 'news_feed_candidates.id');
+                if ($dismissed) {
+                    $query->where('news_candidate_reviews.dismissed', true);
+                } else {
+                    $query->where(fn ($state) => $state->whereNull('news_candidate_reviews.dismissed')->orWhere('news_candidate_reviews.dismissed', false));
+                }
+            })
             ->select(['news_feed_candidates.*', 'news_sources.name as source_name'])
             ->where('news_sources.enabled', true)->where('news_sources.reuse', 'summary-permitted')
             ->whereNotNull('news_sources.feed_url')
@@ -113,13 +174,17 @@ class EditorialController extends Controller
     public function publish(Request $request, int $article)
     {
         $data = $request->validate([
+            'version' => 'required|string|size:64',
             'verification' => 'required|string|min:20|max:3000', 'corroboration_url' => 'nullable|url:https|max:1024',
             'title' => 'nullable|string|max:140', 'body' => 'nullable|string|min:20|max:2500',
         ]);
         DB::transaction(function () use ($article, $request, $data) {
-            $item = NewsArticle::with('source')->lockForUpdate()->findOrFail($article);
+            $initial = NewsArticle::findOrFail($article);
+            $source = NewsSource::lockForUpdate()->findOrFail($initial->source_id);
+            $item = NewsArticle::lockForUpdate()->findOrFail($article);
+            abort_unless(hash_equals($item->reviewVersion(), $data['version']), 409, 'Article changed. Reload before reviewing.');
             abort_unless(in_array($item->status, ['draft', 'published'], true), 409);
-            if (! $item->source->enabled || $item->source->reuse !== 'summary-permitted') {
+            if (! $source->enabled || $source->reuse !== 'summary-permitted') {
                 throw ValidationException::withMessages(['verification' => 'Publication requires an enabled source approved for summary reuse.']);
             }
             if ($item->sensitive && (empty($data['corroboration_url'])
@@ -127,7 +192,7 @@ class EditorialController extends Controller
                 throw ValidationException::withMessages(['corroboration_url' => 'Sensitive coverage needs corroboration from another source hostname.']);
             }
             $this->revision($item, $request->user()->id);
-            $item->update(array_filter($data, fn ($value) => $value !== null) + [
+            $item->update(array_filter(collect($data)->except('version')->all(), fn ($value) => $value !== null) + [
                 'status' => 'published', 'editor_id' => $request->user()->id, 'published_at' => $item->published_at ?? now(),
             ]);
             Audit::record('news.published', $request->user()->id, context: ['article' => $item->id]);
@@ -138,9 +203,10 @@ class EditorialController extends Controller
 
     public function withdraw(Request $request, int $article)
     {
-        $data = $request->validate(['verification' => 'required|string|min:10|max:3000']);
+        $data = $request->validate(['version' => 'required|string|size:64', 'verification' => 'required|string|min:10|max:3000']);
         DB::transaction(function () use ($article, $request, $data) {
             $item = NewsArticle::lockForUpdate()->findOrFail($article);
+            abort_unless(hash_equals($item->reviewVersion(), $data['version']), 409, 'Article changed. Reload before reviewing.');
             abort_unless(in_array($item->status, ['draft', 'published'], true), 409);
             $this->revision($item, $request->user()->id);
             $item->update(['status' => 'withdrawn', 'editor_id' => $request->user()->id, 'verification' => $data['verification']]);

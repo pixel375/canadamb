@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-25 — editorial workflow and event lint repair
+
+Added article-version checks, source-rights editing and locking, keyword/source/status queue filters, staged candidate dismissal/restore and audit logging. Polling remains off in prelaunch and automatic publication is not introduced. Fixed event controller import/negation style and calendar string formatting flagged by CI `45605521848`. Exact-SHA verification required.
+
 ## 2026-11-25 — notification preferences and moderation template repair
 
 Added default-off account-wide preferences for new discussion notifications and job-alert dashboard summaries. Existing unread counts/history and follows remain unchanged, and no email or push delivery is added. Added bounded on-demand new-match search summary and optional export of notification preferences. Corrected adjacent Blade conditionals causing the photo moderation queue to fail compilation in CI `45605372175`. No migration or feature activation.

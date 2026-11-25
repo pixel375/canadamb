@@ -10,6 +10,13 @@
                 @can('manage-network')<form method="post" action="/admin/news/source/{{ $source->id }}">@csrf
                     <button class="button button-outline" name="enabled" value="{{ $source->enabled ? 0 : 1 }}">{{ $source->enabled ? 'Disable' : 'Enable' }}</button>
                 </form>
+                <details><summary>Review reuse rights</summary>
+                    <form class="form-stack mt-2" method="post" action="/admin/news/source/{{ $source->id }}/rights">@csrf
+                        <label>Reuse rights<select name="reuse">@foreach(['unreviewed','link-only','summary-permitted'] as $right)<option value="{{ $right }}" @selected($source->reuse === $right)>{{ ucfirst(str_replace('-', ' ', $right)) }}</option>@endforeach</select></label>
+                        <label>Permission notes<textarea name="reuse_notes" maxlength="2000" required>{{ $source->reuse_notes }}</textarea></label>
+                        <p class="field-note">Changes affect new intake and publication. Review already published articles separately.</p><button class="button button-outline">Save rights</button>
+                    </form>
+                </details>
                 <details><summary>Configure feed</summary>
                     <form class="form-stack mt-2" method="post" action="/admin/news/source/{{ $source->id }}/feed">@csrf
                         <label>RSS or Atom URL<input name="feed_url" type="url" maxlength="1024" value="{{ $source->feed_url }}"></label>
@@ -53,12 +60,18 @@
         </details>
     @endif
 
-    @if($feedCandidates->isNotEmpty() || $feedChecks->isNotEmpty())
+    @if($candidateReviewEnabled || $feedCandidates->isNotEmpty() || $feedChecks->isNotEmpty())
         <section class="panel" id="feed-candidates">
             <h2>Feed candidates</h2>
+            @if($candidateReviewEnabled)<nav class="inline-actions mb-3"><a class="button button-outline" href="/admin/news?feed_view=pending#feed-candidates">Pending</a><a class="button button-outline" href="/admin/news?feed_view=dismissed#feed-candidates">Dismissed</a></nav>@endif
             @forelse($feedCandidates as $item)
                 <div class="item-row"><div><h3>{{ $item->title }}</h3><p>{{ $item->source_name }}@if($item->source_date) · {{ $item->source_date }}@endif</p></div>
-                    <a class="button button-outline" href="/admin/news?candidate={{ $item->id }}">Review candidate</a>
+                    @if(($filters['feed_view'] ?? 'pending') !== 'dismissed')<a class="button button-outline" href="/admin/news?candidate={{ $item->id }}">Review candidate</a>@endif
+                    @if($candidateReviewEnabled)<details><summary>{{ ($filters['feed_view'] ?? '') === 'dismissed' ? 'Restore' : 'Dismiss' }}</summary>
+                        <form method="post" action="/admin/news/candidate/{{ $item->id }}/review" class="form-stack">@csrf
+                            <label>Review reason<input name="reason" minlength="8" maxlength="300" required></label>
+                            <button class="button button-outline" name="decision" value="{{ ($filters['feed_view'] ?? '') === 'dismissed' ? 'restore' : 'dismiss' }}">Save decision</button>
+                        </form></details>@endif
                 </div>
             @empty<p>No feed candidates are waiting for review.</p>@endforelse
             {{ $feedCandidates->links() }}
@@ -76,11 +89,19 @@
 
     <section class="panel" id="editorial-queue">
         <h2>Editorial queue</h2>
+        <form method="get" class="form-stack mb-4">
+            <label>Search articles<input name="q" type="search" value="{{ $filters['q'] ?? '' }}" maxlength="100"></label>
+            <div class="form-grid"><label>Status<select name="status"><option value="">Active queue</option>@foreach(['draft','published','withdrawn'] as $state)<option value="{{ $state }}" @selected(($filters['status'] ?? '') === $state)>{{ ucfirst($state) }}</option>@endforeach</select></label>
+            <label>Source<select name="source_id"><option value="">All sources</option>@foreach($sources as $source)<option value="{{ $source->id }}" @selected((int) ($filters['source_id'] ?? 0) === $source->id)>{{ $source->name }}</option>@endforeach</select></label></div>
+            <button class="button button-primary">Filter queue</button>
+        </form>
         @forelse($articles as $article)
             <article class="admin-review-card form-stack">
                 <div><h3>{{ $article->title }}</h3><p>{{ ucfirst($article->status) }} · {{ $article->location?->name ?? 'Manitoba' }} · {{ $article->source_date->format('M j, Y') }}{{ $article->sensitive ? ' · Sensitive coverage' : '' }}</p></div>
                 <a class="text-link" href="{{ $article->source_url }}" rel="noreferrer">{{ $article->source->name }} <x-icon name="arrow" size="16"/></a>
+                @if($article->status !== 'withdrawn')
                 <form class="form-stack" method="post" action="/admin/news/{{ $article->id }}/publish">@csrf
+                    <input type="hidden" name="version" value="{{ $article->reviewVersion() }}">
                     <label>Headline<input name="title" value="{{ $article->title }}" maxlength="140" required></label>
                     <label>Summary<textarea name="body" maxlength="2500" rows="4" required>{{ $article->body }}</textarea></label>
                     <label>Fact-check and correction notes<textarea name="verification" rows="2" minlength="20" maxlength="3000" required></textarea></label>
@@ -89,10 +110,14 @@
                 </form>
                 <details><summary>Withdraw</summary>
                     <form class="form-stack mt-2" method="post" action="/admin/news/{{ $article->id }}/withdraw">@csrf
+                        <input type="hidden" name="version" value="{{ $article->reviewVersion() }}">
                         <label>Reason<textarea name="verification" rows="2" minlength="10" maxlength="3000" required></textarea></label>
                         <div><button class="button button-outline">Withdraw article</button></div>
                     </form>
                 </details>
+                @else
+                    <p class="field-note">Withdrawn articles are retained in the editorial history.</p>
+                @endif
             </article>
         @empty<p>No news articles are awaiting review or published.</p>@endforelse
         {{ $articles->links() }}

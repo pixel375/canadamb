@@ -273,6 +273,8 @@ Route::prefix('admin/news')->middleware(['auth', 'verified', 'can:manage-news'])
     Route::get('/', [EditorialController::class, 'index']);
     Route::post('/source', [EditorialController::class, 'source'])->middleware('can:manage-network');
     Route::post('/source/{source}', [EditorialController::class, 'sourceStatus'])->whereNumber('source')->middleware('can:manage-network');
+    Route::post('/source/{source}/rights', [EditorialController::class, 'sourceRights'])->whereNumber('source')->middleware(['can:manage-network', 'throttle:8,1,news-rights']);
+    Route::post('/candidate/{candidate}/review', [EditorialController::class, 'candidateReview'])->whereNumber('candidate')->middleware('throttle:12,1,news-candidate-review');
     Route::post('/source/{source}/feed', [EditorialController::class, 'sourceFeed'])->whereNumber('source')->middleware('can:manage-network');
     Route::post('/draft', [EditorialController::class, 'draft']);
     Route::post('/{article}/publish', [EditorialController::class, 'publish'])->whereNumber('article');

@@ -14,6 +14,11 @@ class NewsArticle extends Model
         return ['source_date' => 'date', 'sensitive' => 'boolean', 'published_at' => 'datetime'];
     }
 
+    public function reviewVersion(): string
+    {
+        return hash('sha256', json_encode($this->getRawOriginal(), JSON_THROW_ON_ERROR));
+    }
+
     public function source(): BelongsTo
     {
         return $this->belongsTo(NewsSource::class);

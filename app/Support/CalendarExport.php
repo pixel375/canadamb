@@ -30,7 +30,7 @@ final class CalendarExport
 
     private static function escape(string $value): string
     {
-        return str_replace(["\\", "\r\n", "\r", "\n", ';', ','], ["\\\\", '\\n', '\\n', '\\n', '\\;', '\\,'], $value);
+        return str_replace([chr(92), "\r\n", "\r", "\n", ';', ','], [str_repeat(chr(92), 2), '\\n', '\\n', '\\n', '\\;', '\\,'], $value);
     }
 
     private static function fold(string $line): string

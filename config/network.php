@@ -7,6 +7,7 @@ return [
     'development_hosts' => env('CANADAMB_DEVELOPMENT_HOSTS', false),
     'sso_enabled' => env('CANADAMB_SSO_ENABLED', true),
     'news_ingest_token' => env('CANADAMB_NEWS_INGEST_TOKEN'),
+    'news_candidate_review' => env('CANADAMB_NEWS_CANDIDATE_REVIEW', false),
     'news_polling' => env('CANADAMB_NEWS_POLLING', false),
     'notification_preferences' => env('CANADAMB_NOTIFICATION_PREFERENCES', false),
     'recurring_events' => env('CANADAMB_RECURRING_EVENTS', false),
