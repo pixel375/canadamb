@@ -137,6 +137,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/account/businesses/new', [BusinessController::class, 'create']);
     Route::post('/account/businesses', [BusinessController::class, 'store'])->middleware('throttle:5,1');
     Route::get('/account/businesses/{business}/advertising', [AdvertisingController::class, 'index'])->whereNumber('business');
+    Route::get('/account/businesses/{business}/advertising/export', [AdvertisingController::class, 'export'])->whereNumber('business')->middleware('throttle:6,1');
     Route::post('/account/businesses/{business}/advertising', [AdvertisingController::class, 'store'])->whereNumber('business')->middleware('throttle:6,1');
     Route::post('/account/businesses/{business}/advertising/{campaign}/withdraw', [AdvertisingController::class, 'withdraw'])->whereNumber(['business', 'campaign'])->middleware('throttle:8,1');
     Route::get('/account/businesses/{business}/team', [BusinessTeamController::class, 'index'])->whereNumber('business');

@@ -26,8 +26,27 @@ class AdvertisingController extends Controller
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))->latest('id')->paginate(15)->withQueryString();
         $catalog = CommercialCatalog::fromSettings(app(NetworkSettings::class)->published());
         $trial = CommercialRecords::hasTrial($item);
+        $canExport = $trial && config('network.commercial_trial_export');
 
-        return view('business.advertising', compact('item', 'portals', 'campaigns', 'catalog', 'trial', 'filters'));
+        return view('business.advertising', compact('item', 'portals', 'campaigns', 'catalog', 'trial', 'filters', 'canExport'));
+    }
+
+    public function export(Request $request, int $business)
+    {
+        $item = $this->owned($request, $business);
+        abort_unless(config('network.commercial_trial_export') && CommercialRecords::hasTrial($item), 404);
+        $records = AdvertisingCampaign::where('business_id', $business)->with('site:id,name')->orderBy('id')->get()
+            ->map(fn ($campaign) => [
+                'id' => $campaign->id, 'portal' => $campaign->site->name,
+                'placement' => $campaign->placement, 'headline' => $campaign->title, 'text' => $campaign->body,
+                'start_date' => $campaign->starts_on->toDateString(), 'end_date_exclusive' => $campaign->endsOn()->toDateString(),
+                'estimate_cad_cents' => $campaign->estimated_cents, 'status' => $campaign->status,
+                'planning_phase' => $campaign->planningPhase(), 'review_note' => $campaign->review_note,
+            ]);
+
+        return response()->json(['business_id' => $business, 'planning_only' => true, 'campaigns' => $records])
+            ->header('Content-Disposition', 'attachment; filename="campaign-planning.json"')
+            ->header('Cache-Control', 'private, no-store');
     }
 
     public function store(Request $request, int $business, NetworkSettings $settings)

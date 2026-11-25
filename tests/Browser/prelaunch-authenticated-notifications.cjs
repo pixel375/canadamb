@@ -548,7 +548,7 @@ const fs = require('node:fs');
         check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Advertising dashboard overflow');
         await page.locator('summary').filter({ hasText: 'Withdraw request' }).click();
         await page.getByRole('button', { name: 'Confirm withdrawal' }).click();
-        await page.getByText(/Withdrawn/).waitFor();
+        await page.locator('article.admin-review-card').filter({ hasText: 'Private browser campaign' }).getByText(/Withdrawn/).waitFor();
         await page.goto(host);
         check(await page.getByText('Private browser campaign', { exact: true }).count() === 0, 'Private campaign leaked onto homepage');
         console.log('PASS: private persistent campaign submission and withdrawal, no public delivery');

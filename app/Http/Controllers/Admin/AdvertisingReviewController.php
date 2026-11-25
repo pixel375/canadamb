@@ -33,7 +33,7 @@ class AdvertisingReviewController extends Controller
         $portals = Site::where('status', 'active')->orderBy('name')->get();
         $portal = $portals->firstWhere('id', (int) ($filters['site_id'] ?? 0));
         $date = $filters['date'] ?? today('America/Winnipeg')->toDateString();
-        $placements = collect(CommercialCatalog::PLACEMENTS)->map(fn ($module, $placement) => $portal ? $schedule->candidates($portal, $placement, $date) : collect());
+        $placements = collect(CommercialCatalog::PLACEMENTS)->map(fn ($module, $placement) => $portal ? $schedule->eligible($portal, $placement, $date) : collect());
 
         return view('admin.advertising-schedule', compact('portals', 'portal', 'date', 'placements'));
     }

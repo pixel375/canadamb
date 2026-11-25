@@ -25,3 +25,9 @@ The proposed schema is loaded explicitly by the commercial records feature test 
 ## Private placement schedule
 
 Planning phases use Manitoba calendar dates and exclusive end dates: pending requests lapse once their proposed start passes; approved requests become scheduled, in-window or expired. History is retained and past records no longer consume the owner's open-request limit. A private simulation selects at most one independently reviewed, still-eligible campaign per active portal and placement, oldest approval first. No public renderer calls the selector, and no inventory is reserved. The selection policy is proposed, not a commercial guarantee.
+
+The schedule preview reports competing requests and applies a single-slot selection rule. It is not an inventory booking system. An optional internal trial tool exports the owner's own campaign plans as JSON only while a valid trial exists and CANADAMB_COMMERCIAL_TRIAL_EXPORT is explicitly enabled (default false). No payment or public ranking privileges are granted.
+
+### Future measurement contract
+
+Do not record simulated placements as impressions. Once separately approved public rendering exists, count served placements in aggregate by campaign, portal, placement and Manitoba calendar date, with atomic increments; distinguish served render opportunities from verified viewability. Do not retain visitor identifiers, IP addresses, fingerprinting data or per-visitor histories. Exclude admin previews, disabled modules and private drafts. Define bot exclusions, caching behavior, retention and reconciliation before enabling measurement. Until then all public delivery and measurement remain disconnected.
