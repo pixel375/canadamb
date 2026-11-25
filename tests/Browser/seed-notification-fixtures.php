@@ -7,8 +7,11 @@
  */
 
 use App\Models\CommunityThread;
+use App\Models\Conversation;
+use App\Models\Listing;
 use App\Models\Location;
 use App\Models\User;
+use App\Support\Marketplace;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Facades\DB;
 
@@ -85,4 +88,14 @@ CommunityThread::create([
     'body' => 'A pending discussion visible only to its author and moderators.',
 ]);
 
-echo "Disposable authenticated notification and administrator fixtures seeded.\n";
+$listing = Listing::create([
+    'user_id' => $author->id, 'location_id' => $brandon->id,
+    'title' => 'Browser QA oak bookshelf', 'description' => 'A solid oak bookshelf for testing saved listings and messaging.',
+    'category' => 'furniture', 'condition' => 'good', 'price_cents' => 4500, 'status' => 'pending',
+]);
+app(Marketplace::class)->changeStatus($listing, 'active', null);
+DB::table('listing_favourites')->insert(['user_id' => $member->id, 'listing_id' => $listing->id]);
+$conversation = Conversation::create(['listing_id' => $listing->id, 'buyer_id' => $member->id, 'seller_id' => $author->id]);
+$conversation->messages()->create(['sender_id' => $author->id, 'body' => 'The oak bookshelf is still available.']);
+
+echo "Disposable authenticated notification, marketplace, messaging and administrator fixtures seeded.\n";

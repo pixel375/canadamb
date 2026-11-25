@@ -9,6 +9,7 @@ const fs = require('node:fs');
     try {
         fs.mkdirSync('test-results', { recursive: true });
         for (const host of hosts) {
+            await page.setViewportSize({ width: 390, height: 900 });
             await page.goto(host);
             await page.waitForFunction(async () => {
                 if (!navigator.serviceWorker) return false;

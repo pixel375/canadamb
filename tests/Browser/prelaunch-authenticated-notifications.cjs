@@ -445,6 +445,33 @@ const fs = require('node:fs');
         check((await page.goto(host + '/account/settings')).ok(), 'New password did not restore access');
         console.log('PASS: password visibility and authenticated password change with fresh sign-in');
 
+        for (const width of [320, 390, 1024, 1440]) {
+            await page.setViewportSize({ width, height: 900 });
+            check((await page.goto(host + '/account/saved?q=oak&sort=price-low')).ok(), 'Saved listings search failed');
+            check(await page.locator('.saved-listing-card').count() === 1, 'Saved listing not found');
+            check(await page.locator('.saved-navigation [aria-current="page"]').count() === 1, 'Saved navigation state missing');
+            check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Saved listings overflow');
+            check((await page.goto(host + '/account/saved-jobs')).ok(), 'Saved jobs failed');
+            check(await page.locator('select[name="sort"]').isVisible(), 'Job sort missing');
+            check((await page.goto(host + '/account/messages?q=BOOKSHELF+OAK')).ok(), 'Conversation search failed');
+            check(await page.locator('.message-thread').count() === 1, 'Multiword conversation search failed');
+            await page.locator('.message-thread').click();
+            check(await page.getByText('The oak bookshelf is still available.', { exact: true }).isVisible(), 'Conversation missing message');
+            await page.locator('[data-chat-jump]').click();
+            await page.locator('textarea[name="body"]').fill('Thanks for confirming.');
+            check((await page.locator('[data-character-feedback]').innerText()).includes('22 / 2000'), 'Chat character counter did not update');
+            check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Conversation overflow at ' + width);
+        }
+        await page.locator('.chat-actions summary').click();
+        await page.getByRole('button', { name: 'Block member', exact: true }).click();
+        check(await page.getByText('New messages are blocked for this conversation.').isVisible(), 'Blocked chat state missing');
+        await page.goto(host + '/account/blocked-members');
+        await page.locator('.blocked-member-row summary').click();
+        await page.getByRole('button', { name: 'Confirm unblock' }).click();
+        check(await page.getByText('You have not blocked any members.').isVisible(), 'Unblock did not remove member');
+        console.log('PASS: saved listing and job navigation, messaging search, responsive chat and block management');
+
+
 
     } catch (error) {
         try {
