@@ -2,6 +2,7 @@
     <div class="container page-shell">
         <div class="page-intro"><div><a class="text-link" href="/account/profile">My account</a><h1>My businesses</h1><p>Manage business profiles, announcements and hiring.</p></div><a class="button button-primary" href="/account/businesses/new"><x-icon name="plus" size="18"/> Add a business</a></div>
         @if(\App\Support\BusinessAccess::enabled())<p class="mb-4"><a class="button button-outline" href="/account/business-access">Invitations and ownership transfers</a></p>@endif
+        @if(\App\Support\BusinessDisputes::enabled())<p class="mb-4"><a class="button button-outline" href="/account/business-disputes">My ownership disputes</a></p>@endif
         <?php $site = request()->attributes->get('site'); ?>
         <section aria-label="Managed business profiles" class="seller-listing-grid">
             @forelse($businesses as $business)

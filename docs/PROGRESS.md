@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-24 — dispute intake and business access CI repair
+
+Reply lifecycle deployment [45549311383](https://github.com/pixel375/canadamb/actions/runs/45549311383) succeeded. Business access release `c753cbb` failed PHP formatting checks in controller and route imports, before functional tests. This pass repairs those issues and stages private ownership dispute intake, claimant history, withdrawal and independent close/escalate review. No contested ownership mutation, production migration or feature activation. New exact-SHA CI required.
+
 ## 2026-11-24 — business access and ownership lifecycle
 
 Prior reply lifecycle `7515f79fdeba52c2c015e73c8e7348a06d887e2f` passed backend and browser CI ([backend](https://github.com/pixel375/canadamb/actions/runs/45549036272), [browser](https://github.com/pixel375/canadamb/actions/runs/45549036293)). Reporting deployment [45548974394](https://github.com/pixel375/canadamb/actions/runs/45548974394) succeeded. This pass stages recipient-accepted team invitations and independent ownership transfer review, with expiry, cancellation, password checks and a proposed additive schema. No live migration or feature switch changes. Disputes remain separate.

@@ -36,10 +36,17 @@ class BusinessAccessController extends Controller
             $eligible = $recipient && $recipient->id !== $id && ($data['kind'] === 'transfer'
                 ? $item->members()->wherePivot('role', 'owner')->count() === 1
                 : ! $item->members()->whereKey($recipient->id)->exists() && $item->members()->count() < 20);
-            $duplicate = DB::table('business_access_requests')->where('business_id', $business)
-                ->whereIn('status', ['pending', 'accepted'])->where('expires_at', '>', now())
-                ->where(fn ($query) => $query->where('recipient_id', $recipient?->id)
-                    ->when($data['kind'] === 'transfer', fn ($transfer) => $transfer->orWhere('kind', 'transfer')))->exists();
+            $duplicate = DB::table('business_access_requests')
+                ->where('business_id', $business)
+                ->whereIn('status', ['pending', 'accepted'])
+                ->where('expires_at', '>', now())
+                ->where(function ($query) use ($recipient, $data) {
+                    $query->where('recipient_id', $recipient?->id);
+                    if ($data['kind'] === 'transfer') {
+                        $query->orWhere('kind', 'transfer');
+                    }
+                })
+                ->exists();
             if (! $eligible || $duplicate) {
                 throw ValidationException::withMessages(['email' => 'Unable to create this request. Check the account, current access and outstanding requests.']);
             }
@@ -100,10 +107,17 @@ class BusinessAccessController extends Controller
     {
         abort_unless(BusinessAccess::enabled(), 404);
         $id = $request->user()->id;
-        $items = $this->records()->where('kind', 'transfer')->where('business_access_requests.status', 'accepted')
-            ->where('requester_id', '!=', $id)->where('recipient_id', '!=', $id)
-            ->where('expires_at', '>', now())->whereNotExists(fn ($query) => $query->selectRaw('1')->from('business_memberships')
-                ->whereColumn('business_memberships.business_id', 'business_access_requests.business_id')->where('user_id', $id))
+        $items = $this->records()
+            ->where('kind', 'transfer')
+            ->where('business_access_requests.status', 'accepted')
+            ->where('requester_id', '!=', $id)
+            ->where('recipient_id', '!=', $id)
+            ->where('expires_at', '>', now())
+            ->whereNotExists(function ($query) use ($id) {
+                $query->selectRaw('1')->from('business_memberships')
+                    ->whereColumn('business_memberships.business_id', 'business_access_requests.business_id')
+                    ->where('user_id', $id);
+            })
             ->latest('business_access_requests.id')->paginate(20);
 
         return view('admin.business-transfers', compact('items'));

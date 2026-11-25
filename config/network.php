@@ -9,6 +9,7 @@ return [
     'news_ingest_token' => env('CANADAMB_NEWS_INGEST_TOKEN'),
     'news_polling' => env('CANADAMB_NEWS_POLLING', false),
     'event_discussions' => env('CANADAMB_EVENT_DISCUSSIONS', false),
+    'business_disputes' => env('CANADAMB_BUSINESS_DISPUTES', false),
     'business_access_requests' => env('CANADAMB_BUSINESS_ACCESS_REQUESTS', false),
     'content_reports' => env('CANADAMB_CONTENT_REPORTS', false),
     'commercial_test_checkout' => env('CANADAMB_COMMERCIAL_TEST_CHECKOUT', false),
