@@ -40,6 +40,9 @@
                     @if($business->phone)<div><strong>Phone</strong><p>{{ $business->phone }}</p></div>@endif
                     @if($business->public_email)<a class="button button-outline" href="mailto:{{ $business->public_email }}">Email business</a>@endif
                 </section>
+                @if($claimed && !$managesProfile && \App\Support\MessagingExtensions::enabled() && auth()->check() && auth()->user()->hasVerifiedEmail())
+                    <x-inquiry-form :path="'/businesses/'.$business->id.'/message'" label="Message business"/>
+                @endif
                 @if($claimed && \App\Support\BusinessDisputes::enabled())
                     <section class="panel form-stack"><h2>Ownership concerns</h2><p class="field-note">If you believe this profile has been claimed incorrectly, request private independent review.</p>
                         @auth<a class="text-link" href="/businesses/{{ $business->slug }}/dispute">Raise an ownership dispute</a>@else<a class="text-link" href="{{ request()->attributes->get('site')->isNetwork() ? '/login' : '/auth/start' }}">Sign in to request review</a>@endauth

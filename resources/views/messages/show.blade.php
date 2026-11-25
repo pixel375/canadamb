@@ -1,4 +1,4 @@
-<x-layouts.site :title="$thread->listing->title.' | Messages'">
+<x-layouts.site :title="$thread->title().' | Messages'">
     @php($messageReports = auth()->user()->hasVerifiedEmail() && \App\Support\ContentReports::enabled())
     <div class="container page-shell message-workspace">
         <a class="text-link mb-4" href="/account/messages"><x-icon name="messages" size="18"/> All messages</a>
@@ -6,12 +6,18 @@
             <header class="chat-heading">
                 <span class="message-avatar" aria-hidden="true"><x-icon name="person" size="26"/></span>
                 <div class="chat-heading-copy">
-                    <p class="section-label">Marketplace conversation</p>
+                    <p class="section-label">{{ $thread->kindLabel() }} conversation</p>
                     <h1>{{ $thread->buyer_id === auth()->id() ? $thread->seller->name : $thread->buyer->name }}</h1>
-                    <p>{{ $thread->listing->title }}</p><a class="text-link" href="/users/{{ $thread->other(auth()->id()) }}">View member profile</a>
+                    <p>{{ $thread->title() }}</p><a class="text-link" href="/users/{{ $thread->other(auth()->id()) }}">View member profile</a>
                 </div>
                 <details class="chat-actions">
                     <summary>Options <x-icon name="chevron-down" size="16"/></summary>
+                    @if(\App\Support\MessagingExtensions::enabled())
+                        <form method="post" action="/account/messages/{{ $thread->id }}/archive">@csrf
+                            @if($thread->{$thread->archiveMarker(auth()->id())})@method('DELETE')@endif
+                            <button class="button button-outline">{{ $thread->{$thread->archiveMarker(auth()->id())} ? 'Restore conversation' : 'Archive and mark read' }}</button>
+                        </form>
+                    @endif
                     <form method="post" action="/account/messages/{{ $thread->id }}/block">
                         @csrf @if($myBlock)@method('DELETE')@endif
                         <p class="field-note">{{ $myBlock ? 'Allow this member to contact you again.' : 'Blocking stops new messages between you and this member.' }}</p>

@@ -2,11 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Business;
 use App\Models\Conversation;
+use App\Models\JobPosting;
 use App\Models\User;
 use App\Support\AccountActivity;
+use App\Support\BusinessDirectory;
+use App\Support\JobBoard;
 use App\Support\KeywordSearch;
 use App\Support\Marketplace;
+use App\Support\MessagingExtensions;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -15,19 +20,26 @@ class MessagesController extends Controller
     public function index(Request $request)
     {
         $id = $request->user()->id;
-        $filters = $request->validate(['view' => 'nullable|in:unread', 'q' => 'nullable|string|max:100']);
+        $filters = $request->validate(['view' => 'nullable|in:unread,archived', 'q' => 'nullable|string|max:100']);
         $unread = fn ($messages) => $messages->where('sender_id', '!=', $id)
             ->whereRaw('messages.id > CASE WHEN conversations.buyer_id = ? THEN conversations.buyer_last_read_id ELSE conversations.seller_last_read_id END', [$id]);
+        $extended = MessagingExtensions::enabled();
+        abort_if(($filters['view'] ?? null) === 'archived' && ! $extended, 404);
         $threads = Conversation::forMember($id)
+            ->when($extended, function ($query) use ($filters, $id) {
+                $column = 'CASE WHEN buyer_id = ? THEN buyer_archived_at ELSE seller_archived_at END';
+                $query->whereRaw($column.(($filters['view'] ?? null) === 'archived' ? ' IS NOT NULL' : ' IS NULL'), [$id]);
+            })
             ->with(['listing:id,title', 'buyer:id,name', 'seller:id,name', 'latestMessage'])
             ->withCount(['messages as unread' => $unread])
             ->addSelect(['blocked_by_me' => DB::table('user_blocks')->selectRaw('1')->where('user_id', $id)
                 ->whereRaw('blocked_id = CASE WHEN conversations.buyer_id = ? THEN conversations.seller_id ELSE conversations.buyer_id END', [$id])->limit(1)])
             ->when(($filters['view'] ?? null) === 'unread', fn ($query) => $query->whereHas('messages', $unread))
-            ->when(filled($filters['q'] ?? null), function ($query) use ($filters, $id) {
+            ->when(filled($filters['q'] ?? null), function ($query) use ($filters, $id, $extended) {
                 foreach (KeywordSearch::patterns($filters['q']) as $pattern) {
                     $query->where(fn ($match) => $match
                         ->whereHas('listing', fn ($listing) => $listing->whereRaw("LOWER(title) LIKE ? ESCAPE '!'", [$pattern]))
+                        ->when($extended, fn ($context) => $context->orWhereRaw("LOWER(inquiry_title) LIKE ? ESCAPE '!'", [$pattern]))
                         ->orWhere(fn ($buyer) => $buyer->where('buyer_id', '!=', $id)
                             ->whereHas('buyer', fn ($user) => $user->whereRaw("LOWER(name) LIKE ? ESCAPE '!'", [$pattern])))
                         ->orWhere(fn ($seller) => $seller->where('seller_id', '!=', $id)
@@ -59,6 +71,86 @@ class MessagesController extends Controller
         return redirect('/account/messages/'.$thread->id);
     }
 
+    public function startBusiness(Request $request, int $business)
+    {
+        abort_unless(MessagingExtensions::enabled(), 404);
+        $site = $request->attributes->get('site');
+        $directory = app(BusinessDirectory::class);
+        abort_unless($directory->enabled($site), 404);
+        $data = $request->validate(['body' => 'required|string|max:2000']);
+        $thread = DB::transaction(function () use ($request, $site, $directory, $business, $data) {
+            $item = $directory->visible($site)->lockForUpdate()->findOrFail($business);
+
+            return $this->startInquiry($item, null, $request->user()->id, $data['body']);
+        }, attempts: 3);
+
+        return redirect('/account/messages/'.$thread->id);
+    }
+
+    public function startJob(Request $request, int $job)
+    {
+        abort_unless(MessagingExtensions::enabled(), 404);
+        $site = $request->attributes->get('site');
+        $board = app(JobBoard::class);
+        abort_unless($board->enabled($site), 404);
+        $data = $request->validate(['body' => 'required|string|max:2000']);
+        $thread = DB::transaction(function () use ($request, $site, $board, $job, $data) {
+            $initial = $board->visible($site->location_id)->findOrFail($job);
+            $business = Business::lockForUpdate()->findOrFail($initial->branch->business_id);
+            $item = $board->visible($site->location_id)->lockForUpdate()->findOrFail($job);
+            abort_unless($item->branch->business_id === $business->id, 409);
+
+            return $this->startInquiry($business, $item, $request->user()->id, $data['body']);
+        }, attempts: 3);
+
+        return redirect('/account/messages/'.$thread->id);
+    }
+
+    private function startInquiry(Business $business, ?JobPosting $job, int $id, string $body): Conversation
+    {
+        $owners = $business->members()->wherePivot('role', 'owner')->get(['users.id', 'users.email_verified_at']);
+        abort_unless($owners->count() === 1 && $owners->first()->hasVerifiedEmail() && $business->status === 'active', 404);
+        $recipient = $owners->first()->id;
+        abort_if($business->members()->whereKey($id)->exists(), 403);
+        $this->lockParticipants($id, $recipient);
+        abort_if($this->isBlocked($id, $recipient), 403, 'Messaging is blocked for this conversation.');
+        $key = hash('sha256', implode(':', [$job ? 'job' : 'business', $job?->id ?? $business->id, $id, $recipient]));
+        $thread = Conversation::firstOrCreate(['inquiry_key' => $key], [
+            'buyer_id' => $id, 'seller_id' => $recipient, 'inquiry_business_id' => $business->id,
+            'inquiry_job_id' => $job?->id, 'inquiry_title' => $job?->title ?? $business->name,
+        ]);
+        $this->write($thread, $id, $body);
+
+        return $thread;
+    }
+
+    public function archive(Request $request, int $conversation)
+    {
+        return $this->toggleArchive($request, $conversation, true);
+    }
+
+    public function unarchive(Request $request, int $conversation)
+    {
+        return $this->toggleArchive($request, $conversation, false);
+    }
+
+    private function toggleArchive(Request $request, int $conversation, bool $archive)
+    {
+        abort_unless(MessagingExtensions::enabled(), 404);
+        $id = $request->user()->id;
+        DB::transaction(function () use ($id, $conversation, $archive) {
+            $thread = Conversation::forMember($id)->lockForUpdate()->findOrFail($conversation);
+            $marker = $thread->archiveMarker($id);
+            if ($archive) {
+                $thread->forceFill([$marker => now(), $thread->marker($id) => max($thread->{$thread->marker($id)}, $thread->messages()->max('id') ?? 0)])->save();
+            } else {
+                $thread->forceFill([$marker => null])->save();
+            }
+        }, attempts: 3);
+
+        return redirect('/account/messages'.($archive ? '?view=archived' : ''))->with('status', $archive ? 'Conversation archived and marked read.' : 'Conversation restored.');
+    }
+
     public function show(Request $request, int $conversation)
     {
         $id = $request->user()->id;
@@ -70,7 +162,7 @@ class MessagesController extends Controller
         }
         $mine = DB::table('user_blocks')->where(['user_id' => $id, 'blocked_id' => $thread->other($id)])->exists();
 
-        return view('messages.show', ['thread' => $thread, 'messages' => $messages, 'blocked' => $this->isBlocked($id, $thread->other($id)), 'myBlock' => $mine]);
+        return view('messages.show', ['thread' => $thread, 'messages' => $messages, 'blocked' => $this->isBlocked($id, $thread->other($id)) || ! MessagingExtensions::canReply($thread), 'myBlock' => $mine]);
     }
 
     public function sync(Request $request, int $conversation, AccountActivity $activity)
@@ -95,7 +187,7 @@ class MessagesController extends Controller
                 'created_at' => $message->created_at->toIso8601String(),
                 'time_label' => $message->created_at->diffForHumans(),
             ])->values(),
-            'blocked' => $this->isBlocked($id, $thread->other($id)),
+            'blocked' => $this->isBlocked($id, $thread->other($id)) || ! MessagingExtensions::canReply($thread),
             'counts' => $activity->counts($request->user(), $request->attributes->get('site')),
         ])->header('Cache-Control', 'private, no-store');
     }
@@ -106,8 +198,11 @@ class MessagesController extends Controller
         $data = $request->validate(['body' => 'required|string|max:2000']);
         DB::transaction(function () use ($id, $conversation, $data) {
             $thread = Conversation::forMember($id)->findOrFail($conversation);
+            if ($thread->inquiry_business_id) {
+                Business::lockForUpdate()->findOrFail($thread->inquiry_business_id);
+            }
             $this->lockParticipants($id, $thread->other($id));
-            abort_if($this->isBlocked($id, $thread->other($id)), 403, 'Messaging is blocked for this conversation.');
+            abort_if($this->isBlocked($id, $thread->other($id)) || ! MessagingExtensions::canReply($thread), 403, 'Messaging is blocked for this conversation.');
             $this->write($thread, $id, $data['body']);
         }, attempts: 3);
 
@@ -174,8 +269,13 @@ class MessagesController extends Controller
 
     private function write(Conversation $thread, int $id, string $body): void
     {
+        $thread = Conversation::lockForUpdate()->findOrFail($thread->id);
         $message = $thread->messages()->create(['sender_id' => $id, 'body' => $body]);
         $marker = $thread->marker($id);
-        Conversation::whereKey($thread->id)->where($marker, '<', $message->id)->update([$marker => $message->id]);
+        $changes = [$marker => $message->id];
+        if (MessagingExtensions::enabled()) {
+            $changes += ['buyer_archived_at' => null, 'seller_archived_at' => null];
+        }
+        Conversation::whereKey($thread->id)->where($marker, '<', $message->id)->update($changes);
     }
 }

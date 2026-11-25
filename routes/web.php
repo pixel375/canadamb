@@ -149,6 +149,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/marketplace/{listing}/save', [ListingEngagementController::class, 'save'])->whereNumber('listing')->middleware('throttle:24,1');
     Route::delete('/marketplace/{listing}/save', [ListingEngagementController::class, 'remove'])->whereNumber('listing')->middleware('throttle:24,1');
     Route::post('/marketplace/{listing}/report', [ListingEngagementController::class, 'report'])->whereNumber('listing')->middleware('throttle:8,1');
+    Route::post('/businesses/{business}/message', [MessagesController::class, 'startBusiness'])->whereNumber('business')->middleware('throttle:8,1,inquiry-start');
+    Route::post('/jobs/{job}/message', [MessagesController::class, 'startJob'])->whereNumber('job')->middleware('throttle:8,1,inquiry-start');
+    Route::post('/account/messages/{conversation}/archive', [MessagesController::class, 'archive'])->whereNumber('conversation')->middleware('throttle:15,1,message-archive');
+    Route::delete('/account/messages/{conversation}/archive', [MessagesController::class, 'unarchive'])->whereNumber('conversation')->middleware('throttle:15,1,message-archive');
     Route::post('/marketplace/{listing}/message', [MessagesController::class, 'start'])->whereNumber('listing')->middleware('throttle:15,1');
     Route::get('/account/messages', [MessagesController::class, 'index']);
     Route::get('/account/blocked-members', [MessagesController::class, 'blockedMembers']);

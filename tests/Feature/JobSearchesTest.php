@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Business;
+use App\Models\JobPosting;
 use App\Models\JobSearch;
 use App\Models\Location;
 use App\Models\User;
@@ -43,7 +44,7 @@ class JobSearchesTest extends TestCase
         $this->post($base, array_replace($filters, ['minimum_pay' => '25.00']))->assertSessionHasErrors('name');
         $this->travel(2)->minutes();
         $make = function ($location, string $title, string $status, int $pay = 3000) {
-            $job = \App\Models\JobPosting::create([
+            $job = JobPosting::create([
                 'business_location_id' => $location->id, 'title' => $title, 'description' => 'A retail employment opportunity.',
                 'employment_type' => 'full-time', 'workplace' => 'on-site', 'apply_url' => 'https://example.test/apply',
                 'closing_on' => today()->addWeek()->toDateString(), 'pay_unit' => 'hour', 'pay_min' => $pay, 'pay_max' => $pay,

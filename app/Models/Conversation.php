@@ -9,12 +9,27 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable(['listing_id', 'buyer_id', 'seller_id'])]
+#[Fillable(['listing_id', 'buyer_id', 'seller_id', 'inquiry_key', 'inquiry_business_id', 'inquiry_job_id', 'inquiry_title'])]
 class Conversation extends Model
 {
     public function scopeForMember(Builder $query, int $id): Builder
     {
         return $query->where(fn ($members) => $members->where('buyer_id', $id)->orWhere('seller_id', $id));
+    }
+
+    public function title(): string
+    {
+        return $this->listing?->title ?? $this->inquiry_title ?? 'Private conversation';
+    }
+
+    public function kindLabel(): string
+    {
+        return $this->listing_id ? 'Marketplace' : ($this->inquiry_job_id ? 'Job inquiry' : 'Business inquiry');
+    }
+
+    public function archiveMarker(int $member): string
+    {
+        return $this->buyer_id === $member ? 'buyer_archived_at' : 'seller_archived_at';
     }
 
     public function listing(): BelongsTo

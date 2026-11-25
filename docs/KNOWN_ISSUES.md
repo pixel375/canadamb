@@ -4,6 +4,8 @@
 
 ## Outstanding launch blockers and acceptance
 
+- Business/job inquiries and participant-local archiving are review-staged; the proposed nullable-listing migration requires backup, migration and rollback review. Attachments and a shared business inbox remain outstanding. Existing private chat history is never assigned to a new owner.
+
 - Real phone/desktop testing from an approved network, including actual Android standalone/WebAPK installation (browser manifest and worker tests are not device installation proof), full HTTPS community sign-in and posting.
 - SMTP delivery and monitored support mailbox, reviewed privacy policy/terms, retention, full account export/deletion (selected password-confirmed exports implemented).
 - Review-staged content-reporting queue covers discussions, replies, events, jobs, businesses, member profiles and individually reported received Marketplace messages; production migration and retention review are still required. Use the existing listing-report queue for Marketplace and contact guidance until broader reports are enabled. Do not store message contents or reports in the audit log as a substitute for an authorized report store. See the migration proposal in [CONTENT_REPORTING_PLAN.md](CONTENT_REPORTING_PLAN.md).

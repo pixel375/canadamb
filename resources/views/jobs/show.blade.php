@@ -53,6 +53,9 @@
                         </form>
                     @endauth
                 </section>
+                @if(\App\Support\MessagingExtensions::enabled() && auth()->check() && auth()->user()->hasVerifiedEmail() && $item->branch->business->members()->wherePivot('role', 'owner')->exists() && !$item->branch->business->members()->whereKey(auth()->id())->exists())
+                    <x-inquiry-form :path="'/jobs/'.$item->id.'/message'" label="Ask about this job"/>
+                @endif
                 <section class="panel form-stack">
                     <h2>About the employer</h2>
                     <p><strong>{{ $item->branch->business->name }}</strong></p><p>{{ $item->branch->location->name }}</p>

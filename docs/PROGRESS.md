@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-25 — unified private inquiries and archives
+
+Saved search source `080ea68` passed browser QA but failed Pint on a test import; corrected in this pass. Stages existing-inbox business/job inquiries to a sole verified owner, participant-specific archive/read state and automatic restoration on new messages. Prior participant history stays private on transfer; new replies to former owners are denied. No attachments or live schema changes. Proposed conversation migration requires special rollback review and exact-SHA tests.
+
 ## 2026-11-25 — saved job searches and in-app alerts
 
 Prior business changes `c45e223` passed [backend](https://github.com/pixel375/canadamb/actions/runs/45553503749), [browser](https://github.com/pixel375/canadamb/actions/runs/45553503763) and [deployment plus independent audits](https://github.com/pixel375/canadamb/actions/runs/45553789528). This pass stages portal-scoped saved searches, shared public filters, bounded ten-search limit, per-search alert opt-in/pause, new matches since last checked and account navigation. Counts are computed on demand only; no scheduler, push, email or global unread badge change. Proposed migration and feature switch remain off.
