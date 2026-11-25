@@ -23,7 +23,7 @@ class StripeTestCheckoutTest extends TestCase
         Http::assertSent(fn ($request) => $request->hasHeader('Idempotency-Key', 'canadamb-test-'.$reference)
             && $request['client_reference_id'] === $reference && $request['mode'] === 'payment');
         $this->expectException(InvalidArgumentException::class);
-        $adapter->create('sk_live_fixture_only', $reference, 3000);
+        $adapter->create('sk_live_fixture_only', $reference, 3000, now()->addHours(20)->timestamp);
     }
 
     public function test_event_rejects_tampering_and_expired_signatures(): void

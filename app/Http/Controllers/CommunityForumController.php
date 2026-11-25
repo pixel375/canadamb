@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\CommunityEvent;
 use App\Models\CommunityThread;
 use App\Models\Location;
+use App\Support\Audit;
 use App\Support\Community;
 use App\Support\KeywordSearch;
 use App\Support\LocationScope;
@@ -13,6 +14,7 @@ use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class CommunityForumController extends Controller
 {
@@ -86,7 +88,7 @@ class CommunityForumController extends Controller
     {
         $site = $request->attributes->get('site');
         abort_unless($this->community->enabled($site, 'community'), 404);
-        $statuses = ['pending', 'approved', 'rejected'];
+        $statuses = ['pending', 'approved', 'rejected', 'withdrawn'];
         $filters = $request->validate(['status' => ['nullable', Rule::in($statuses)], 'q' => 'nullable|string|max:100']);
         $owned = CommunityThread::where('author_id', $request->user()->id)
             ->when($site->location_id, fn ($query, $id) => $query->where('location_id', $id));
@@ -97,6 +99,59 @@ class CommunityForumController extends Controller
             ->latest('id')->paginate(18)->withQueryString();
 
         return view('community.owned', compact('items', 'counts', 'statuses', 'filters'));
+    }
+
+    public function edit(Request $request, int $thread)
+    {
+        $item = $this->ownedThread($request)->findOrFail($thread);
+        abort_if($item->locked || ! in_array($item->status, ['pending', 'approved', 'rejected'], true), 409);
+
+        return view('community.edit-thread', compact('item'));
+    }
+
+    public function update(Request $request, int $thread)
+    {
+        $data = $request->validate([
+            'title' => 'required|string|max:140', 'body' => 'required|string|min:10|max:5000',
+            'category' => ['required', Rule::in(array_keys(Community::FORUMS))],
+            'version' => 'required|string|size:64',
+        ]);
+        DB::transaction(function () use ($request, $thread, $data) {
+            $item = $this->ownedThread($request)->lockForUpdate()->findOrFail($thread);
+            abort_if($item->locked || ! in_array($item->status, ['pending', 'approved', 'rejected'], true), 409);
+            if (! hash_equals($item->contentVersion(), $data['version'])) {
+                throw ValidationException::withMessages(['version' => 'This discussion changed. Reload the editor before saving.']);
+            }
+            $item->fill(collect($data)->except('version')->all());
+            if (! $item->isDirty()) {
+                return;
+            }
+            $item->forceFill(['status' => 'pending', 'pinned' => false])->save();
+            Audit::record('community.thread.edited', $request->user()->id, context: ['thread' => $thread]);
+        }, attempts: 3);
+
+        return redirect('/account/discussions')->with('status', 'Discussion changes saved. Changed content requires moderation before publication.');
+    }
+
+    public function withdraw(Request $request, int $thread)
+    {
+        DB::transaction(function () use ($request, $thread) {
+            $item = $this->ownedThread($request)->lockForUpdate()->findOrFail($thread);
+            abort_if($item->locked || ! in_array($item->status, ['pending', 'approved', 'rejected'], true), 409);
+            $item->forceFill(['status' => 'withdrawn', 'pinned' => false])->save();
+            Audit::record('community.thread.withdrawn', $request->user()->id, context: ['thread' => $thread]);
+        }, attempts: 3);
+
+        return redirect('/account/discussions')->with('status', 'Discussion withdrawn from public view.');
+    }
+
+    private function ownedThread(Request $request)
+    {
+        $site = $request->attributes->get('site');
+        abort_unless($this->community->enabled($site, 'community'), 404);
+
+        return CommunityThread::where('author_id', $request->user()->id)
+            ->when($site->location_id, fn ($query, $id) => $query->where('location_id', $id));
     }
 
     public function followed(Request $request)

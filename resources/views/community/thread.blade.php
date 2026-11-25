@@ -37,6 +37,7 @@
                 <div class="discussion-original-copy prose-text">{{ $item->body }}</div>
                 <div class="discussion-original-footer">
                     <a class="text-link" href="#discussion-replies"><x-icon name="messages" size="16"/> {{ $item->replies_count }} {{ \Illuminate\Support\Str::plural('reply', $item->replies_count) }}</a>
+                    @if($canParticipate && !$item->locked && (int) $item->author_id === auth()->id())<a class="button button-outline" href="/account/discussions/{{ $item->id }}/edit">Edit my discussion</a>@endif
                     @if(! $item->locked && $canParticipate)
                         <a class="button button-outline" href="#reply-composer"><x-icon name="arrow" size="16"/> Write a reply</a>
                     @endif

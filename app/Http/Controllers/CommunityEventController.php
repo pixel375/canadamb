@@ -127,6 +127,7 @@ class CommunityEventController extends Controller
     public function cancel(Request $request, int $event)
     {
         $site = $request->attributes->get('site');
+        abort_unless($this->community->enabled($site, 'events'), 404);
         $data = $request->validate(['cancellation_note' => 'nullable|string|max:300']);
         DB::transaction(function () use ($event, $request, $site, $data) {
             $item = $this->community->events($site->location_id)->where('author_id', $request->user()->id)->lockForUpdate()->findOrFail($event);
