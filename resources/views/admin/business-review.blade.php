@@ -1,5 +1,5 @@
 <x-layouts.admin title="Business review">
-    <div class="page-intro"><div><h1>Business review</h1><p>Review directory submissions, ownership claims and business updates.</p></div></div>
+    <div class="page-intro"><div><h1>Business review</h1><p>Review directory submissions, ownership claims and business updates.</p></div><a class="button button-outline" href="/admin/business-ownership">Ownership lookup</a></div>
     <nav class="inline-actions admin-jump-links" aria-label="Business review sections"><a class="button button-outline" href="#profiles">Profiles ({{ $businesses->total() }})</a><a class="button button-outline" href="#claims">Claims ({{ $claims->total() }})</a><a class="button button-outline" href="#updates">Updates ({{ $updates->total() }})</a><a class="button button-outline" href="#imports">Imports</a></nav>
     <section class="panel" id="profiles">
         <h2>Profile submissions</h2>

@@ -164,6 +164,7 @@ Route::prefix('admin')->middleware(['auth', 'verified', 'can:manage-network'])->
     Route::get('/readiness', [NetworkController::class, 'readiness']);
     Route::get('/moderation', [NetworkController::class, 'moderation']);
     Route::get('/business-review', [BusinessReviewController::class, 'index']);
+    Route::get('/business-ownership', [BusinessReviewController::class, 'ownership']);
     Route::post('/business-review/{business}', [BusinessReviewController::class, 'profile'])->whereNumber('business');
     Route::post('/business-claims/{claim}', [BusinessReviewController::class, 'claim'])->whereNumber('claim');
     Route::post('/business-updates/{update}', [BusinessReviewController::class, 'update'])->whereNumber('update');

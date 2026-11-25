@@ -6,7 +6,9 @@
  * published with the website.
  */
 
+use App\Models\Business;
 use App\Models\CommunityThread;
+use App\Models\JobPosting;
 use App\Models\Conversation;
 use App\Models\Listing;
 use App\Models\Location;
@@ -109,5 +111,16 @@ $ownedListing->media()->createMany(app(ListingPhotos::class)->store([
     UploadedFile::fake()->image('first.jpg', 200, 200),
     UploadedFile::fake()->image('second.jpg', 200, 200),
 ]));
+
+$business = Business::create(['slug' => 'browser-qa-team', 'name' => 'Browser QA Team', 'category' => 'services', 'status' => 'active']);
+$business->members()->attach($member->id, ['role' => 'owner']);
+$branch = $business->locations()->create(['location_id' => $brandon->id, 'address' => '1 QA Street']);
+JobPosting::create([
+    'business_location_id' => $branch->id, 'author_id' => $member->id,
+    'title' => 'Browser QA technician', 'description' => 'A sample technician role for the browser suite.',
+    'employment_type' => 'full-time', 'workplace' => 'on-site', 'apply_url' => 'https://example.test/careers',
+    'closing_on' => today()->addWeek()->toDateString(),
+]);
+User::factory()->create(['name' => 'Browser QA Teammate', 'email' => 'team-qa@example.test']);
 
 echo "Disposable authenticated notification, marketplace, messaging and administrator fixtures seeded.\n";

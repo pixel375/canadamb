@@ -42,6 +42,9 @@ class BusinessDirectoryTest extends TestCase
         $this->put('https://canadamb.ca/account/businesses/'.$business->id, ['description' => 'Unauthorized change'])->assertNotFound();
         $this->assertDatabaseHas('audit_logs', ['action' => 'business.member-removed', 'actor_id' => $owner->id]);
         $this->assertDatabaseCount('business_memberships', 1);
+        $this->get('https://canadamb.ca/admin/business-ownership')->assertForbidden();
+        $this->actingAs(User::factory()->create(['role' => 'network_admin']))->get('https://canadamb.ca/admin/business-ownership?q=Team&ownership=claimed')->assertOk()->assertSee('Team Test')->assertSee($owner->name)->assertDontSee($owner->email);
+        $this->get('https://canadamb.ca/admin/business-ownership?q=Team&ownership=unclaimed')->assertOk()->assertSee('No matching businesses.');
     }
 
     public function test_import_is_idempotent_and_directory_respects_physical_branch_location(): void

@@ -8,7 +8,7 @@
 - SMTP delivery and monitored support mailbox, reviewed privacy policy/terms, retention, account export/deletion.
 - Broader content-reporting queue for discussions, replies, jobs, events, businesses and private messages; use the existing listing-report queue for Marketplace and contact guidance for other issues. Do not store message contents or reports in the audit log as a substitute for an authorized report store. See the migration proposal in [CONTENT_REPORTING_PLAN.md](CONTENT_REPORTING_PLAN.md).
 - Real estate publication, ownership/authority and compliance review; property drafts remain private.
-- Business team ownership transfer/dispute handling, contact verification, subscriptions, advertising and job alerts.
+- Business ownership transfer/dispute handling, invitation acceptance, contact verification, subscriptions, advertising and job alerts. Owner-controlled manager/editor access and read-only ownership lookup are implemented in the current development branch.
 - Scheduled news ingestion and provider feeds require verification; polling remains suppressed during prelaunch.
 - Recheck production backups, scheduler and mail delivery as part of launch acceptance; practice file-level media restoration. Retain the original public_html inode, private keys and access restrictions. No unreviewed migrations or seeders.
 - Location boundaries and administrative relationships require additional authoritative Manitoba data. Forum editing, recurring events and automated media retention remain open.

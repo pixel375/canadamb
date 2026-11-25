@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Business;
 use App\Models\BusinessUpdate;
 use App\Support\Audit;
+use App\Support\KeywordSearch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -23,6 +24,18 @@ class BusinessReviewController extends Controller
             'imports' => DB::table('business_import_runs')->join('business_sources', 'business_sources.id', '=', 'business_import_runs.source_id')
                 ->latest('business_import_runs.id')->paginate(15, ['business_import_runs.*', 'business_sources.name'], 'imports_page'),
         ]);
+    }
+
+    public function ownership(Request $request)
+    {
+        $filters = $request->validate(['q' => 'nullable|string|max:100', 'ownership' => 'nullable|in:claimed,unclaimed']);
+        $items = Business::query()->with(['locations.location', 'members' => fn ($query) => $query->select('users.id', 'users.name')])
+            ->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['name', 'slug']))
+            ->when(($filters['ownership'] ?? null) === 'claimed', fn ($query) => $query->whereHas('members', fn ($members) => $members->where('business_memberships.role', 'owner')))
+            ->when(($filters['ownership'] ?? null) === 'unclaimed', fn ($query) => $query->whereDoesntHave('members', fn ($members) => $members->where('business_memberships.role', 'owner')))
+            ->orderBy('name')->orderBy('id')->paginate(20)->withQueryString();
+
+        return view('admin.business-ownership', compact('items', 'filters'));
     }
 
     public function profile(Request $request, int $business)

@@ -399,7 +399,7 @@ const fs = require('node:fs');
         for (const width of [320, 390, 768, 1024, 1440]) {
             await adminPage.setViewportSize({ width, height: 900 });
             for (const path of ['/admin', '/admin/moderation?status=pending', '/admin/community?status=pending',
-                '/admin/jobs?status=pending', '/admin/business-review', '/admin/news', '/admin/audit', '/admin/readiness']) {
+                '/admin/jobs?status=pending', '/admin/business-review', '/admin/business-ownership', '/admin/news', '/admin/audit', '/admin/readiness']) {
                 const response = await adminPage.goto(host + path);
                 check(response.ok(), 'Admin page failed: ' + path + ' at ' + width);
                 check(await adminPage.locator('.admin-shell').isVisible(), 'Admin layout missing: ' + path);
@@ -495,6 +495,32 @@ const fs = require('node:fs');
             check(await page.locator('select[name="topic"]').inputValue() === 'news', 'Contact topic not retained');
         }
         console.log('PASS: help, safety, privacy and contact pages at four widths');
+        for (const width of [390, 1440]) {
+            await page.setViewportSize({ width, height: 900 });
+            await page.goto(host + '/account/businesses');
+            await page.getByRole('link', { name: 'Team', exact: true }).click();
+            check(await page.getByRole('heading', { name: 'Browser QA Team team' }).isVisible(), 'Business team page missing');
+            check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Business team overflow');
+            await page.getByLabel('Account email').fill('team-qa@example.test');
+            await page.getByRole('checkbox', { name: /confirmed this account holder/ }).check();
+            await page.getByRole('button', { name: 'Grant access' }).click();
+            await page.getByText('Browser QA Teammate', { exact: true }).waitFor();
+            const row = page.locator('.business-team-row').filter({ hasText: 'Browser QA Teammate' });
+            await row.locator('summary').click();
+            await row.locator('select[name="role"]').selectOption('manager');
+            await row.getByRole('button', { name: 'Save role' }).click();
+            check((await row.innerText()).includes('Manager'), 'Team role change failed');
+            await row.locator('summary').click();
+            await row.getByRole('button', { name: 'Confirm remove member' }).click();
+            check(await row.count() === 0, 'Team removal failed');
+            await page.goto(host + '/account/businesses');
+            await page.getByRole('link', { name: 'Manage jobs' }).click();
+            await page.getByRole('link', { name: 'Reuse posting' }).click();
+            check(await page.locator('input[name="title"]').inputValue() === 'Browser QA technician', 'Reusable posting did not retain title');
+            check(await page.locator('input[name="closing_on"]').inputValue() === '', 'Reuse must require new closing date');
+            check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Reuse posting overflow');
+        }
+        console.log('PASS: owner team grants, role changes and removals, reusable job forms at two widths');
 
 
 
