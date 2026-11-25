@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-25 — messaging lifecycle and activity integrity
+
+Business/job replies require a single verified original owner and an open business; job inquiries remain replyable after ordinary expiry but not after withdrawal, rejection or branch closure. New inquiries recheck the recipient after participant locking. Archive/unarchive and sync read receipts no longer mutate conversation activity order. Photo processing errors map to the actual upload field. Added regression checks for stale owner verification, ambiguous ownership, withdrawn/expired jobs and archive activity timestamps.
+
 ## 2026-11-25 — branch reopening and review history
 
 Owner-only reopening requires independent review at the original address, preserves branch identity and does not restore withdrawn jobs or announcements. Added status/kind/reference review filters and regression coverage. Updated confirmed production source and quota recovery record. No new migration or switch changes.

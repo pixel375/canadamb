@@ -21,11 +21,21 @@ final class MessagingExtensions
             return true;
         }
 
-        if ($thread->inquiry_job_id && ! JobPosting::whereKey($thread->inquiry_job_id)->whereHas('branch', fn ($branch) => $branch->open())->exists()) {
+        if (! self::enabled() || ! $thread->inquiry_business_id) {
+            return false;
+        }
+        if ($thread->inquiry_job_id && ! JobPosting::whereKey($thread->inquiry_job_id)
+            ->whereIn('status', ['approved', 'expired'])
+            ->whereHas('branch', fn ($branch) => $branch->open()->where('business_id', $thread->inquiry_business_id))->exists()) {
             return false;
         }
 
-        return self::enabled() && Business::whereKey($thread->inquiry_business_id)->where('status', 'active')->whereHas('openLocations')
-            ->whereHas('members', fn ($query) => $query->whereKey($thread->seller_id)->where('business_memberships.role', 'owner'))->exists();
+        $business = Business::whereKey($thread->inquiry_business_id)->where('status', 'active')->whereHas('openLocations')->first();
+        if (! $business) {
+            return false;
+        }
+        $owners = $business->members()->wherePivot('role', 'owner')->get(['users.id', 'users.email_verified_at']);
+
+        return $owners->count() === 1 && $owners->first()->id === $thread->seller_id && $owners->first()->hasVerifiedEmail();
     }
 }

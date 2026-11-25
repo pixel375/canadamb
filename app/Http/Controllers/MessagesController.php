@@ -121,12 +121,14 @@ class MessagesController extends Controller
         abort_unless(BusinessInquirySettings::accepts($business, $job !== null), 404);
         abort_if($business->members()->whereKey($id)->exists(), 403);
         $this->lockParticipants($id, $recipient);
+        abort_unless(User::whereKey($recipient)->whereNotNull('email_verified_at')->exists(), 404);
         abort_if($this->isBlocked($id, $recipient), 403, 'Messaging is blocked for this conversation.');
         $key = hash('sha256', implode(':', [$job ? 'job' : 'business', $job?->id ?? $business->id, $id, $recipient]));
         $thread = Conversation::firstOrCreate(['inquiry_key' => $key], [
             'buyer_id' => $id, 'seller_id' => $recipient, 'inquiry_business_id' => $business->id,
             'inquiry_job_id' => $job?->id, 'inquiry_title' => $job?->title ?? $business->name,
         ]);
+        abort_unless(MessagingExtensions::canReply($thread), 403);
         $this->write($thread, $id, $body);
 
         return $thread;
@@ -150,10 +152,11 @@ class MessagesController extends Controller
             $thread = Conversation::forMember($id)->lockForUpdate()->findOrFail($conversation);
             $marker = $thread->archiveMarker($id);
             if ($archive) {
-                $thread->forceFill([$marker => now(), $thread->marker($id) => max($thread->{$thread->marker($id)}, $thread->messages()->max('id') ?? 0)])->save();
+                $changes = [$marker => now(), $thread->marker($id) => max($thread->{$thread->marker($id)}, $thread->messages()->max('id') ?? 0)];
             } else {
-                $thread->forceFill([$marker => null])->save();
+                $changes = [$marker => null];
             }
+            DB::table('conversations')->where('id', $conversation)->update($changes);
         }, attempts: 3);
 
         return redirect('/account/messages'.($archive ? '?view=archived' : ''))->with('status', $archive ? 'Conversation archived and marked read.' : 'Conversation restored.');
@@ -184,7 +187,7 @@ class MessagesController extends Controller
         $seen = (int) ($data['seen'] ?? 0);
         if ($seen > 0 && $seen <= $after && $thread->messages()->whereKey($seen)->exists()) {
             $marker = $thread->marker($id);
-            Conversation::whereKey($thread->id)->where($marker, '<', $seen)->update([$marker => $seen, 'updated_at' => $thread->updated_at]);
+            Conversation::whereKey($thread->id)->where($marker, '<', $seen)->update([$marker => $seen, 'updated_at' => DB::raw('updated_at')]);
         }
         $messages = $thread->messages()->with('sender:id,name')
             ->when(MessageAttachments::enabled(), fn ($query) => $query->withExists('attachment'))
@@ -218,7 +221,11 @@ class MessagesController extends Controller
                 if (MessageAttachments::quotaExceeded($id, $conversation)) {
                     throw ValidationException::withMessages(['photo' => 'Photo attachment limit reached.']);
                 }
-                $media = $photos->store([$request->file('photo')], 'attachments', MessageAttachments::DISK);
+                try {
+                    $media = $photos->store([$request->file('photo')], 'attachments', MessageAttachments::DISK);
+                } catch (ValidationException $exception) {
+                    throw ValidationException::withMessages(['photo' => $exception->validator->errors()->first()]);
+                }
             }
             DB::transaction(function () use ($id, $conversation, $data, $media) {
                 $thread = Conversation::forMember($id)->findOrFail($conversation);

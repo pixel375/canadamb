@@ -49,7 +49,10 @@ class ExtendedMessagingTest extends TestCase
         $this->get($url)->assertOk()->assertSee('Job question');
         $this->actingAs($other)->get($url)->assertNotFound();
         $this->post($url.'/archive')->assertNotFound();
+        $thread->forceFill(['updated_at' => now()->subDay()])->save();
+        $activity = $thread->fresh()->updated_at->toDateTimeString();
         $this->actingAs($owner)->post($url.'/archive')->assertRedirect();
+        $this->assertSame($activity, $thread->fresh()->updated_at->toDateTimeString());
         $this->get($base.'/account/messages')->assertDontSee('Local helper');
         $this->get($base.'/account/messages?view=archived')->assertSee('Local helper');
         $this->actingAs($member)->get($base.'/account/messages')->assertSee('Local helper');
@@ -58,6 +61,16 @@ class ExtendedMessagingTest extends TestCase
         $this->post($url.'/block')->assertRedirect();
         $this->actingAs($member)->post($url, ['body' => 'Blocked question'])->assertForbidden();
         $this->actingAs($owner)->delete($url.'/block')->assertRedirect();
+        $job->forceFill(['status' => 'withdrawn'])->save();
+        $this->actingAs($member)->post($url, ['body' => 'Withdrawn job question'])->assertForbidden();
+        $job->forceFill(['status' => 'expired'])->save();
+        $this->post($url, ['body' => 'Existing question after expiry'])->assertRedirect();
+        $owner->forceFill(['email_verified_at' => null])->save();
+        $this->post($url, ['body' => 'Unverified owner'])->assertForbidden();
+        $owner->forceFill(['email_verified_at' => now()])->save();
+        $business->members()->attach($other->id, ['role' => 'owner']);
+        $this->post($url, ['body' => 'Ambiguous ownership'])->assertForbidden();
+        $business->members()->detach($other->id);
         $business->members()->detach($owner->id);
         $business->members()->attach($other->id, ['role' => 'owner']);
         $this->actingAs($other)->get($url)->assertNotFound();

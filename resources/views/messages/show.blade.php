@@ -55,7 +55,7 @@
                     <div class="chat-composer-footer"><small class="field-note">Keep personal and payment information private. <a class="text-link" href="/safety">Safety guidance</a></small><button class="button button-primary" data-chat-send>Send reply <x-icon name="arrow" size="17"/></button></div>
                 </form>
             @else
-                <p class="notice">New messages are blocked for this conversation.</p>
+                <p class="notice">New messages are blocked for this conversation. Existing history remains available to its original participants.</p>
             @endif
         </div>
     </div>
