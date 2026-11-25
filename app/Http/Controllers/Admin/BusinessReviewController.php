@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Business;
 use App\Models\BusinessUpdate;
+use App\Models\User;
 use App\Support\Audit;
 use App\Support\BusinessChanges;
 use App\Support\BusinessInquirySettings;
@@ -15,12 +16,17 @@ use Illuminate\Validation\ValidationException;
 
 class BusinessReviewController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         return view('admin.business-review', [
             'businesses' => Business::with('locations.location')->where('status', 'pending')->latest()->paginate(15),
             'claims' => DB::table('business_claims')->join('businesses', 'businesses.id', '=', 'business_claims.business_id')
                 ->join('users', 'users.id', '=', 'business_claims.user_id')->where('business_claims.status', 'pending')
+                ->where('business_claims.user_id', '!=', $request->user()->id)
+                ->whereNotExists(function ($query) use ($request) {
+                    $query->selectRaw('1')->from('business_memberships')->whereColumn('business_memberships.business_id', 'business_claims.business_id')
+                        ->where('business_memberships.user_id', $request->user()->id);
+                })
                 ->latest('business_claims.id')->paginate(15, ['business_claims.*', 'businesses.name', 'users.email'], 'claims_page'),
             'updates' => BusinessUpdate::with('branch.business')->where('status', 'pending')->latest()->paginate(15, ['*'], 'updates_page'),
             'imports' => DB::table('business_import_runs')->join('business_sources', 'business_sources.id', '=', 'business_import_runs.source_id')
@@ -61,15 +67,21 @@ class BusinessReviewController extends Controller
             $business = Business::lockForUpdate()->findOrFail($row->business_id);
             $row = DB::table('business_claims')->where('id', $claim)->lockForUpdate()->firstOrFail();
             abort_unless($row->status === 'pending', 409);
+            abort_if((int) $row->user_id === $request->user()->id || $business->members()->whereKey($request->user()->id)->exists(), 403);
             if ($data['decision'] === 'approved') {
                 if ($business->status !== 'active' || $business->members()->wherePivot('role', 'owner')->exists()
-                    || $row->user_id === $request->user()->id) {
+                    || ! User::whereKey($row->user_id)->whereNotNull('email_verified_at')->exists()) {
                     throw ValidationException::withMessages(['decision' => 'An independent reviewer can approve only unclaimed active profiles.']);
                 }
 
                 $business->members()->syncWithoutDetaching([$row->user_id => ['role' => 'owner']]);
                 BusinessInquirySettings::reset($business->id);
                 BusinessChanges::invalidateContact($business->id);
+                $competing = DB::table('business_claims')->where('business_id', $business->id)->where('id', '!=', $claim)->where('status', 'pending');
+                $count = $competing->update(['status' => 'superseded', 'updated_at' => now()]);
+                if ($count) {
+                    Audit::record('business.claims-superseded', $request->user()->id, context: ['business' => $business->id, 'count' => $count]);
+                }
             }
             DB::table('business_claims')->where('id', $claim)->update([
                 'status' => $data['decision'], 'notes' => $data['notes'], 'reviewer_id' => $request->user()->id,

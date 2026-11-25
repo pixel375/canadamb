@@ -84,11 +84,24 @@ class BusinessDirectoryTest extends TestCase
             'contact_email' => 'owner@example.test', 'evidence' => 'I can supply the registration document and respond from our business address.',
         ])->assertRedirect();
         $claimId = DB::table('business_claims')->value('id');
+        $competitor = User::factory()->create();
+        $this->actingAs($competitor)->post('https://brandonmb.ca/businesses/test-repair/claim', [
+            'contact_email' => 'competing@example.test', 'evidence' => 'I have independent evidence for another ownership request.',
+        ])->assertRedirect();
+        $competing = DB::table('business_claims')->where('user_id', $competitor->id)->value('id');
+        $this->post('https://brandonmb.ca/account/business-claims/'.$claimId.'/withdraw')->assertNotFound();
+        $this->post('https://brandonmb.ca/account/business-claims/'.$competing.'/withdraw')->assertRedirect();
+        $this->assertDatabaseHas('business_claims', ['id' => $competing, 'status' => 'withdrawn']);
+        $this->post('https://brandonmb.ca/businesses/test-repair/claim', [
+            'contact_email' => 'competing@example.test', 'evidence' => 'I have independent evidence for another ownership request.',
+        ])->assertRedirect();
+        $this->actingAs($claimant);
         $this->put("https://brandonmb.ca/account/businesses/$business->id", ['description' => 'Repairs bicycles.'])->assertNotFound();
         $this->actingAs($admin)->post("https://canadamb.ca/admin/business-claims/$claimId", [
             'decision' => 'approved', 'notes' => 'Matched the registration and confirmed control of contact email.',
         ])->assertSessionHasNoErrors()->assertRedirect();
         $this->assertDatabaseHas('business_memberships', ['business_id' => $business->id, 'user_id' => $claimant->id, 'role' => 'owner']);
+        $this->assertDatabaseHas('business_claims', ['user_id' => $competitor->id, 'status' => 'superseded']);
         $this->actingAs($claimant)->put("https://brandonmb.ca/account/businesses/$business->id", [
             'description' => 'Repairs bicycles.', 'public_email' => 'repairs@example.test',
         ])->assertSessionHasNoErrors()->assertRedirect();

@@ -155,7 +155,9 @@ class BusinessAccessController extends Controller
     private function records()
     {
         return DB::table('business_access_requests')->join('businesses', 'businesses.id', '=', 'business_access_requests.business_id')
-            ->select('business_access_requests.*', 'businesses.name as business_name');
+            ->leftJoin('users as requester', 'requester.id', '=', 'business_access_requests.requester_id')
+            ->leftJoin('users as recipient', 'recipient.id', '=', 'business_access_requests.recipient_id')
+            ->select('business_access_requests.*', 'businesses.name as business_name', 'requester.name as requester_name', 'recipient.name as recipient_name');
     }
 
     private function lockRequest(int $access): array

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Business;
 use App\Models\Location;
+use App\Support\Audit;
 use App\Support\BusinessChanges;
 use App\Support\BusinessDirectory;
 use App\Support\JobBoard;
@@ -105,12 +106,28 @@ class BusinessController extends Controller
             ])->exists()) {
                 throw ValidationException::withMessages(['claim' => 'You already have a claim waiting for review.']);
             }
-            DB::table('business_claims')->insert($data + [
+            $claim = DB::table('business_claims')->insertGetId($data + [
                 'business_id' => $business->id, 'user_id' => $request->user()->id, 'status' => 'pending', 'created_at' => now(), 'updated_at' => now(),
             ]);
+            Audit::record('business.claim-submitted', $request->user()->id, context: ['claim' => $claim, 'business' => $business->id]);
         });
 
         return redirect('/account/businesses')->with('status', 'Your claim was submitted for manual verification.');
+    }
+
+    public function withdrawClaim(Request $request, int $claim)
+    {
+        DB::transaction(function () use ($request, $claim) {
+            $id = $request->user()->id;
+            $initial = DB::table('business_claims')->where('user_id', $id)->where('id', $claim)->firstOrFail();
+            $business = Business::lockForUpdate()->findOrFail($initial->business_id);
+            $row = DB::table('business_claims')->where('user_id', $id)->where('id', $claim)->lockForUpdate()->firstOrFail();
+            abort_unless($row->status === 'pending', 409);
+            DB::table('business_claims')->where('id', $claim)->update(['status' => 'withdrawn', 'updated_at' => now()]);
+            Audit::record('business.claim-withdrawn', $id, context: ['claim' => $claim, 'business' => $business->id]);
+        }, attempts: 3);
+
+        return redirect('/account/businesses')->with('status', 'Claim withdrawn.');
     }
 
     public function mine(Request $request)
@@ -120,7 +137,7 @@ class BusinessController extends Controller
             ->orderBy('name')->paginate(20);
         $claims = DB::table('business_claims')->join('businesses', 'businesses.id', '=', 'business_claims.business_id')
             ->where('business_claims.user_id', $user)->latest('business_claims.id')->take(15)
-            ->get(['businesses.name', 'business_claims.status', 'business_claims.created_at']);
+            ->get(['business_claims.id', 'businesses.name', 'business_claims.status', 'business_claims.created_at']);
 
         return view('business.mine', compact('businesses', 'claims'));
     }

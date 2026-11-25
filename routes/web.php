@@ -176,7 +176,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/businesses/{slug}/dispute', [BusinessDisputeController::class, 'create']);
     Route::post('/businesses/{slug}/dispute', [BusinessDisputeController::class, 'store'])->middleware('throttle:5,1,business-dispute');
     Route::post('/account/business-disputes/{dispute}/withdraw', [BusinessDisputeController::class, 'withdraw'])->whereNumber('dispute')->middleware('throttle:8,1,business-dispute-withdraw');
-    Route::post('/businesses/{slug}/claim', [BusinessController::class, 'claim'])->middleware('throttle:8,1');
+    Route::post('/businesses/{slug}/claim', [BusinessController::class, 'claim'])->middleware('throttle:8,1,business-claim');
+    Route::post('/account/business-claims/{claim}/withdraw', [BusinessController::class, 'withdrawClaim'])->whereNumber('claim')->middleware('throttle:8,1,business-claim-withdraw');
     Route::get('/account/businesses', [BusinessController::class, 'mine']);
     Route::get('/account/businesses/new', [BusinessController::class, 'create']);
     Route::post('/account/businesses', [BusinessController::class, 'store'])->middleware('throttle:5,1');

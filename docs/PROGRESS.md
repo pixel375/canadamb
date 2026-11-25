@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-25 — business ownership lifecycle
+
+Implemented claim withdrawal, verified claimant recheck, conflicted-review exclusion, atomic supersession of competing claims and audit records. Dispute queue supports escalated follow-up, filters and closure; open cases block duplicates and may be withdrawn. Access requests identify the parties without exposing email. Added lifecycle regression assertions; no database or production switch changes.
+
 ## 2026-11-25 — cumulative browser acceptance green
 
 Exact `cca7be8` browser run 45612098709 passed, including recurring event submission after isolating its rate-limit bucket. Backend 45612098489 stopped on a missing blank line between property test methods. Corrected that style issue without changing assertions. Final full backend verification remains required.

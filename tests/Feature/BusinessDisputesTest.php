@@ -56,6 +56,10 @@ class BusinessDisputesTest extends TestCase
         $this->assertDatabaseHas('business_memberships', ['business_id' => $business->id, 'user_id' => $owner->id, 'role' => 'owner']);
         $this->assertDatabaseCount('business_memberships', 1);
         $this->actingAs($claimant)->get($history)->assertSee('Escalated')->assertDontSee($decision['note']);
+        $this->post($url, $data)->assertSessionHasErrors('explanation');
+        $this->actingAs($reviewer)->get($queue.'?status=escalated')->assertSee($data['contact_email']);
+        $this->post($queue.'/'.$id, ['decision' => 'closed', 'note' => 'Independent verification was completed.'])->assertRedirect();
+        $this->actingAs($claimant)->get($history)->assertSee('Closed');
         $this->post($history.'/'.$id.'/withdraw')->assertConflict();
     }
 }

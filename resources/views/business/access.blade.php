@@ -4,6 +4,8 @@
         <section class="panel form-stack">@forelse($items as $item)
             @php($expired = in_array($item->status, ['pending','accepted'], true) && $item->expires_at <= now()->toDateTimeString())
             <article class="admin-review-card form-stack"><h2>{{ $item->business_name }}</h2><p>{{ ucfirst($item->kind) }} · {{ $expired ? 'Expired' : ucfirst($item->status) }} · {{ (int) $item->recipient_id === auth()->id() ? 'Received' : 'Sent' }}</p>
+                <p>Request #{{ $item->id }} · {{ $item->requester_name ?? 'Former account' }} (#{{ $item->requester_id ?? '—' }}) → {{ $item->recipient_name ?? 'Former account' }} (#{{ $item->recipient_id ?? '—' }})</p>
+                <p class="field-note">Expires {{ \Illuminate\Support\Carbon::parse($item->expires_at)->setTimezone('America/Winnipeg')->format('M j, Y g:i A') }} Manitoba time.</p>
                 @if(!$expired && $item->status === 'pending' && (int) $item->recipient_id === auth()->id())
                     <form method="post" action="/account/business-access/{{ $item->id }}/respond" class="form-stack">@csrf
                         <p class="field-note">{{ $item->kind === 'transfer' ? 'Acceptance requests independent review. You will not become owner until approved.' : 'Acceptance grants the indicated team role.' }}</p>

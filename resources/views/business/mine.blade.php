@@ -31,7 +31,9 @@
         {{ $businesses->links() }}
         @if($claims->isNotEmpty())
             <section class="panel mt-4"><h2>Claim requests</h2><p class="field-note">Ownership requests are reviewed before management access is granted.</p>
-                @foreach($claims as $claim)<div class="item-row"><div><h3>{{ $claim->name }}</h3><p>Submitted {{ \Illuminate\Support\Carbon::parse($claim->created_at)->format('M j, Y') }}</p></div><span class="member-listing-status" data-status="{{ $claim->status }}">{{ ucfirst($claim->status) }}</span></div>@endforeach
+                @foreach($claims as $claim)<div class="item-row"><div><h3>{{ $claim->name }}</h3><p>Submitted {{ \Illuminate\Support\Carbon::parse($claim->created_at)->format('M j, Y') }}</p></div><div class="form-stack"><span class="member-listing-status" data-status="{{ $claim->status }}">{{ ucfirst($claim->status) }}</span>
+                    @if($claim->status === 'pending')<form method="post" action="/account/business-claims/{{ $claim->id }}/withdraw">@csrf<button class="button button-outline">Withdraw claim</button></form>@endif
+                    </div></div>@endforeach
             </section>
         @endif
     </div>
