@@ -41,6 +41,7 @@
         @if($preferencesEnabled)
             <section class="panel form-stack"><h2>Notification preferences</h2><p>These settings apply across CanadaMB communities. Existing notification history and private messages are preserved.</p>
                 <form class="form-stack" method="post" action="/account/notifications/preferences">@csrf
+                    <input type="hidden" name="version" value="{{ \App\Support\NotificationPreferences::version($preferences) }}">
                     <label>New replies to followed discussions<select name="discussion_replies"><option value="1" @selected($preferences['discussion_replies'])>Notify me</option><option value="0" @selected(!$preferences['discussion_replies'])>Pause new notifications</option></select></label>
                     <label>Job alerts in this dashboard<select name="job_summary"><option value="1" @selected($preferences['job_summary'])>Show summary</option><option value="0" @selected(!$preferences['job_summary'])>Hide summary</option></select></label>
                     <p class="field-note">Pausing discussion notifications does not unfollow discussions. Missed alerts are not backfilled. Job summary settings do not change individual saved searches.</p>

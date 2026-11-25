@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use App\Support\AccountActivity;
 use App\Support\Community;
 use App\Support\JobSearches;
 use App\Support\NotificationPreferences;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 final class AccountNotificationsController extends Controller
 {
@@ -17,12 +19,20 @@ final class AccountNotificationsController extends Controller
         $data = $request->validate([
             'discussion_replies' => 'required|boolean',
             'job_summary' => 'required|boolean',
+            'version' => 'nullable|string|size:64',
         ]);
-        DB::table('notification_preferences')->updateOrInsert(['user_id' => $request->user()->id], [
-            'discussion_replies' => (bool) $data['discussion_replies'],
-            'job_summary' => (bool) $data['job_summary'],
-            'updated_at' => now(),
-        ]);
+        DB::transaction(function () use ($request, $data) {
+            $member = $request->user()->id;
+            User::lockForUpdate()->findOrFail($member);
+            $current = NotificationPreferences::forMember($member);
+            if (isset($data['version']) && ! hash_equals(NotificationPreferences::version($current), $data['version'])) {
+                throw ValidationException::withMessages(['version' => 'Your notification preferences changed. Reload before saving.']);
+            }
+            $next = ['discussion_replies' => (bool) $data['discussion_replies'], 'job_summary' => (bool) $data['job_summary']];
+            if ($next !== $current) {
+                DB::table('notification_preferences')->updateOrInsert(['user_id' => $member], $next + ['updated_at' => now()]);
+            }
+        }, attempts: 3);
 
         return redirect('/account/notifications')->with('status', 'Notification preferences saved across the network.');
     }

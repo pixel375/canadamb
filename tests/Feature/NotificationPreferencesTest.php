@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\CommunityThread;
 use App\Models\Location;
 use App\Models\User;
+use App\Support\NotificationPreferences;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Foundation\Testing\RefreshDatabaseState;
@@ -41,7 +42,9 @@ class NotificationPreferencesTest extends TestCase
         $settings = ['discussion_replies' => '0', 'job_summary' => '0'];
         $this->actingAs($member)->post($path, $settings)->assertNotFound();
         config(['network.notification_preferences' => true]);
-        $this->post($path, $settings + ['user_id' => $other->id])->assertRedirect();
+        $version = NotificationPreferences::version(NotificationPreferences::forMember($member->id));
+        $this->post($path, $settings + ['user_id' => $other->id, 'version' => $version])->assertRedirect();
+        $this->post($path, ['discussion_replies' => '1', 'job_summary' => '1', 'version' => $version])->assertSessionHasErrors('version');
         $this->get('https://canadamb.ca/account/notifications')->assertOk()->assertSee('Pause new notifications');
         $this->assertDatabaseHas('notification_preferences', ['user_id' => $member->id, 'discussion_replies' => false]);
         $this->assertDatabaseMissing('notification_preferences', ['user_id' => $other->id]);
