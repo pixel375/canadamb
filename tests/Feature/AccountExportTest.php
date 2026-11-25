@@ -3,6 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\CommunityThread;
+use App\Models\Conversation;
+use App\Models\Listing;
+use App\Models\Location;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -14,6 +17,28 @@ class AccountExportTest extends TestCase
     use RefreshDatabase;
 
     protected $seeder = DatabaseSeeder::class;
+
+    public function test_conversation_metadata_exports_only_participant_local_fields(): void
+    {
+        $member = User::factory()->create();
+        $other = User::factory()->create();
+        $stranger = User::factory()->create();
+        $listing = Listing::create(['user_id' => $other->id, 'location_id' => Location::where('slug', 'brandon')->sole()->id,
+            'category' => 'furniture', 'title' => 'Private fixture', 'description' => 'A test item.', 'condition' => 'good', 'price_cents' => 100]);
+        $thread = Conversation::create(['listing_id' => $listing->id, 'buyer_id' => $member->id, 'seller_id' => $other->id]);
+        $message = $thread->messages()->create(['sender_id' => $other->id, 'body' => 'Received confidential text.']);
+        $thread->forceFill(['buyer_last_read_id' => $message->id, 'seller_last_read_id' => $message->id])->save();
+        Conversation::create(['listing_id' => $listing->id, 'buyer_id' => $stranger->id, 'seller_id' => $other->id]);
+        $url = 'https://canadamb.ca/account/data-export';
+        $this->actingAs($member)->get($url)->assertOk()->assertSee('Conversation metadata (1)');
+        $data = ['current_password' => 'password', 'section' => 'conversation-metadata'];
+        $this->post($url, $data)->assertOk()->assertJsonCount(1, 'records')
+            ->assertJsonPath('records.0.export_id', $thread->id)->assertJsonPath('records.0.member_role', 'buyer')
+            ->assertJsonPath('records.0.own_last_read_id', $message->id)
+            ->assertJsonMissingPath('records.0.seller_id')->assertJsonMissingPath('records.0.seller_last_read_id')
+            ->assertDontSee('Received confidential text.');
+        $this->post($url, $data + ['after_id' => $thread->id])->assertOk()->assertJsonCount(0, 'records');
+    }
 
     public function test_exports_require_password_and_only_include_owned_allowlisted_data(): void
     {

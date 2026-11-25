@@ -9,3 +9,5 @@ Run `php artisan messages:attachment-inventory --limit=500` for aggregate counts
 The dedicated attachment disk is inside shared private storage. Keep private storage out of public roots. Review orphan cleanup following account erasure and attachment-specific moderation before enabling uploads.
 
 Exports are password-confirmed, allowlisted and limited to 500 current records per request; bookmark cursors use the referenced ID. Optional sections appear only when their table exists. Internal notes, security credentials, received messages, files and third-party records are excluded. Full access requests remain separate.
+
+The self-export includes participant-local conversation metadata and sent-photo metadata (IDs and dates only), excluding the other participant's read/archive state, identity fields, message body and storage paths. Privacy impact counts now include bookmarks, follows, notification settings, blocks, advertising authorship, inquiry preferences and owned listing/property photos. These counts do not authorize erasure or demonstrate backup deletion.

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Support\Audit;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -61,6 +62,9 @@ class AccountExportController extends Controller
         if (Schema::hasTable('notification_preferences')) {
             $counts['notification-preferences'] = DB::table('notification_preferences')->where('user_id', $request->user()->id)->count();
         }
+        foreach ($this->participantSections($request->user()->id) as $key => $query) {
+            $counts[$key] = $query->count();
+        }
         foreach (self::BOOKMARKS as $key => [$table]) {
             $counts[$key] = DB::table($table)->where('user_id', $request->user()->id)->count();
         }
@@ -68,13 +72,34 @@ class AccountExportController extends Controller
         return view('account.export', compact('counts'));
     }
 
+    private function participantSections(int $member): array
+    {
+        $conversations = DB::table('conversations')->where(fn (Builder $query) => $query->where('buyer_id', $member)->orWhere('seller_id', $member))
+            ->selectRaw('id AS export_id, listing_id, created_at, updated_at')
+            ->selectRaw("CASE WHEN buyer_id = ? THEN 'buyer' ELSE 'seller' END AS member_role", [$member])
+            ->selectRaw('CASE WHEN buyer_id = ? THEN buyer_last_read_id ELSE seller_last_read_id END AS own_last_read_id', [$member]);
+        if (Schema::hasColumns('conversations', ['inquiry_business_id', 'inquiry_job_id', 'buyer_archived_at', 'seller_archived_at'])) {
+            $conversations->addSelect('inquiry_business_id', 'inquiry_job_id')
+                ->selectRaw('CASE WHEN buyer_id = ? THEN buyer_archived_at ELSE seller_archived_at END AS own_archived_at', [$member]);
+        }
+        $sections = ['conversation-metadata' => DB::query()->fromSub($conversations, 'export_records')];
+        if (Schema::hasTable('message_attachments')) {
+            $photos = DB::table('message_attachments')->join('messages', 'messages.id', '=', 'message_attachments.message_id')
+                ->where('messages.sender_id', $member)->selectRaw('message_attachments.id AS export_id, message_attachments.message_id, messages.conversation_id, message_attachments.created_at');
+            $sections['sent-photo-metadata'] = DB::query()->fromSub($photos, 'export_records');
+        }
+
+        return $sections;
+    }
+
     public function download(Request $request)
     {
         $sections = $this->sections();
         $preferenceSections = Schema::hasTable('notification_preferences') ? ['notification-preferences'] : [];
+        $participantSections = $this->participantSections($request->user()->id);
         $data = $request->validate([
             'current_password' => 'required|string|max:72',
-            'section' => ['required', Rule::in(['profile', ...array_keys($sections), ...array_keys(self::BOOKMARKS), ...$preferenceSections])],
+            'section' => ['required', Rule::in(['profile', ...array_keys($sections), ...array_keys(self::BOOKMARKS), ...$preferenceSections, ...array_keys($participantSections)])],
             'after_id' => 'nullable|integer|min:0',
         ]);
         $user = User::findOrFail($request->user()->id);
@@ -89,6 +114,12 @@ class AccountExportController extends Controller
         } elseif ($section === 'notification-preferences') {
             $records = DB::table('notification_preferences')->where('user_id', $user->id)->where('user_id', '>', $after)
                 ->get(['user_id', 'discussion_replies', 'job_summary', 'updated_at']);
+        } elseif (isset($participantSections[$section])) {
+            $records = $participantSections[$section]->where('export_id', '>', $after)->orderBy('export_id')->limit(501)->get();
+            if ($records->count() > 500) {
+                $records = $records->take(500)->values();
+                $next = $records->last()->export_id;
+            }
         } elseif (isset(self::BOOKMARKS[$section])) {
             [$table, $key] = self::BOOKMARKS[$section];
             $columns = $section === 'business-memberships' ? [$key, 'role', 'created_at', 'updated_at'] : [$key, 'created_at'];
@@ -112,6 +143,6 @@ class AccountExportController extends Controller
             'section' => $section, 'after_id' => $after, 'next_after_id' => $next,
             'records' => $records,
         ])->header('Content-Disposition', 'attachment; filename="canadamb-'.$section.'.json"')
-            ->header('Cache-Control', 'private, no-store');
+            ->header('Cache-Control', 'private, no-store')->header('X-Content-Type-Options', 'nosniff');
     }
 }

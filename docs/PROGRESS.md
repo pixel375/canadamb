@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-25 — private data export coverage
+
+Added bounded password-confirmed participant-local conversation metadata and sent-photo metadata exports without other participants' read markers, identity fields, received content or storage paths. Expanded read-only privacy impact counts and regression coverage. No deletion or retention execution.
+
 ## 2026-11-25 — private property review and reuse
 
 Added owner-scoped similar-draft creation without photos, address, land description, availability or prior declarations; authorized full-resolution photo viewing with no-store/nosniff headers; creation and exact-content declaration/review audit hashes; version-bound browser archive actions. Public property publication remains disabled.

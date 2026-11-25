@@ -45,7 +45,7 @@ class AccountPrivacyTest extends TestCase
         $this->post($url.'/'.$id.'/withdraw', ['current_password' => 'password'])->assertNotFound();
         $this->get($queue)->assertForbidden();
         $this->actingAs($admin)->get($queue)->assertSee('Reference #'.$id);
-        $this->get($queue.'?inspect='.$id)->assertOk()->assertSee('Record impact')->assertSee('Business ownership memberships')->assertDontSee($member->email);
+        $this->get($queue.'?inspect='.$id)->assertOk()->assertSee('Record impact')->assertSee('Business ownership memberships')->assertSee('Private property photos')->assertSee('Saved listings')->assertDontSee($member->email);
         $this->assertDatabaseHas('audit_logs', ['action' => 'user.privacy-impact-inspected', 'actor_id' => $admin->id]);
         $note = 'Check shared records before arranging a response.';
         $this->post($queue.'/'.$id, ['note' => $note, 'current_password' => 'password'])->assertRedirect()->assertSessionHasNoErrors();
