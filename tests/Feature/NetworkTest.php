@@ -45,6 +45,18 @@ class NetworkTest extends TestCase
             ->get('https://brandonmb.ca/admin')->assertNotFound();
     }
 
+    public function test_admin_dashboard_and_review_filters_remain_role_protected(): void
+    {
+        $this->actingAs(User::factory()->create())->get('https://canadamb.ca/admin/moderation?status=pending')->assertForbidden();
+        $this->actingAs(User::factory()->create(['role' => 'super_admin']));
+        $this->get('https://canadamb.ca/admin')->assertOk()->assertSee('Moderation queues')->assertSee('Open listing reports')->assertSee('Recent administration activity');
+        $this->get('https://canadamb.ca/admin/moderation?status=pending&q=desk')->assertOk()->assertSee('Review status');
+        $this->get('https://canadamb.ca/admin/community?status=pending&q=meeting')->assertOk()->assertSee('Community review sections');
+        $this->get('https://canadamb.ca/admin/jobs?status=pending&q=mechanic')->assertOk()->assertSee('Review status');
+        $this->get('https://canadamb.ca/admin/audit?period=7&q=theme')->assertOk()->assertSee('audit entries');
+        $this->getJson('https://canadamb.ca/admin/moderation?status=invalid')->assertUnprocessable();
+    }
+
     public function test_admin_can_preview_a_new_community_but_activation_requires_readiness(): void
     {
         $admin = User::factory()->create(['role' => 'super_admin']);

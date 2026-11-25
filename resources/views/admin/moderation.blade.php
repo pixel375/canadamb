@@ -1,7 +1,8 @@
 <x-layouts.admin title="Marketplace moderation">
     <div class="page-intro"><div><h1>Marketplace moderation</h1><p>Review new listings and remove approved listings when needed.</p></div></div>
+    <x-admin-queue-filters path="/admin/moderation" :filters="$filters" :counts="$counts" :statuses="['pending','active']" search-label="Search listing title or description"/>
     @if($reports->isNotEmpty())
-        <div class="panel">
+        <div class="panel" id="reports">
             <h2>Open listing reports</h2>
             @foreach($reports as $report)
                 <div class="item-row">
@@ -16,8 +17,9 @@
         </div>
     @endif
     @forelse($items as $item)
-        <article class="panel form-stack">
-            <div><h2>{{ $item->title }}</h2><p>{{ $item->seller->name }} · {{ $item->location->name }} · {{ $item->categoryRecord->name }} · {{ $item->priceLabel() }} · {{ ucfirst($item->status) }}</p></div>
+        <article class="panel form-stack admin-review-card">
+            <div><span class="member-listing-status" data-status="{{ $item->status }}">{{ ucfirst($item->status) }}</span><h2>{{ $item->title }}</h2><p>{{ $item->seller->name }} · {{ $item->location->name }} · {{ $item->categoryRecord->name }} · {{ $item->priceLabel() }} · {{ ucfirst($item->status) }}</p></div>
+                        @if($item->status === 'active' && $item->expires_at?->isFuture())<a class="text-link" href="/marketplace/{{ $item->id }}">Open public listing</a>@endif
             <p class="prose-text">{{ $item->description }}</p>
             <form action="/admin/moderation/{{ $item->id }}" method="post" class="form-stack">
                 @csrf

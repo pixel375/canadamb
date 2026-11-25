@@ -6,16 +6,22 @@ use App\Http\Controllers\Controller;
 use App\Models\JobPosting;
 use App\Support\Audit;
 use App\Support\JobBoard;
+use App\Support\KeywordSearch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class JobReviewController extends Controller
 {
-    public function index(JobBoard $board)
+    public function index(Request $request, JobBoard $board)
     {
-        $items = $board->scope(null)->whereIn('status', ['pending', 'approved'])->latest('id')->paginate(20);
+        $filters = $request->validate(['status' => 'nullable|in:pending,approved', 'q' => 'nullable|string|max:100']);
+        $matching = $board->scope(null)->whereIn('status', ['pending', 'approved'])
+            ->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'description']));
+        $counts = (clone $matching)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
+        $items = $matching->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
+            ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")->latest('id')->paginate(20)->withQueryString();
 
-        return view('admin.jobs', compact('items'));
+        return view('admin.jobs', compact('items', 'filters', 'counts'));
     }
 
     public function update(Request $request, int $job, JobBoard $board)

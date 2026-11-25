@@ -1,9 +1,10 @@
 <x-layouts.admin title="Job moderation">
     <div class="page-intro"><div><h1>Job moderation</h1><p>Review employer submissions and published jobs.</p></div></div>
+    <x-admin-queue-filters path="/admin/jobs" :filters="$filters" :counts="$counts" :statuses="['pending','approved']" search-label="Search job title or description"/>
     <section class="panel">
         @forelse($items as $item)
-            <article class="form-stack border-b border-gray-300 py-4">
-                <div><h3>{{ $item->title }}</h3><p>{{ $item->branch->business->name }} · {{ $item->branch->location->name }} · {{ ucfirst($item->status) }}</p>
+            <article class="admin-review-card form-stack">
+                <div><span class="member-listing-status" data-status="{{ $item->status }}">{{ ucfirst($item->status) }}</span><h3>{{ $item->title }}</h3><p>{{ $item->branch->business->name }} · {{ $item->branch->location->name }} · {{ ucfirst($item->status) }}</p>
                     <p>{{ \App\Support\JobBoard::TYPES[$item->employment_type] }} · {{ \App\Support\JobBoard::WORKPLACES[$item->workplace] }} · Closes {{ $item->closing_on->format('M j, Y') }}@if($item->payLabel()) · {{ $item->payLabel() }} CAD @endif</p>
                     <a class="text-link" rel="noreferrer" href="{{ $item->apply_url }}">{{ $item->apply_url }}</a>
                 </div>

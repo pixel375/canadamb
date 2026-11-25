@@ -18,7 +18,7 @@ const fs = require('node:fs');
                 // Each mode has an independent form; switching requires no JavaScript.
                 const homeSearch = page.locator('.home-unified-search');
                 check(await homeSearch.isVisible(), 'Homepage local search missing: ' + host + ' ' + width);
-                check(await homeSearch.locator('input[name="home-search-mode"]').count() === 4,
+                check(await homeSearch.locator('input[name="home-search-mode"]').count() === 6,
                     'Enabled search modes are missing: ' + host);
                 check(await homeSearch.locator('form.home-search-form:visible').count() === 1,
                     'Only the selected search form should be visible');
@@ -27,7 +27,7 @@ const fs = require('node:fs');
                 if (width === 390 || width === 1440) {
                     for (const [mode, action] of [
                         ['marketplace', '/marketplace'], ['businesses', '/businesses'],
-                        ['community', '/community'], ['jobs', '/jobs']
+                        ['community', '/community'], ['jobs', '/jobs'], ['news', '/news'], ['events', '/events']
                     ]) {
                         await homeSearch.locator('label.home-search-mode').filter({ has: page.locator('input[value="' + mode + '"]') }).click();
                         const active = homeSearch.locator('form.home-search-form:visible');

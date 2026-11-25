@@ -7,20 +7,36 @@ use App\Models\CommunityEvent;
 use App\Models\CommunityReply;
 use App\Models\CommunityThread;
 use App\Support\Audit;
+use App\Support\KeywordSearch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class CommunityModerationController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $filters = $request->validate(['status' => 'nullable|in:pending,approved,cancelled', 'q' => 'nullable|string|max:100']);
+        $threads = CommunityThread::whereIn('status', ['pending', 'approved'])
+            ->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'body']));
+        $replies = CommunityReply::whereIn('status', ['pending', 'approved'])->whereHas('thread', fn ($query) => $query->where('status', 'approved'))
+            ->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['body']));
+        $events = CommunityEvent::whereIn('status', ['pending', 'approved', 'cancelled'])
+            ->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'body', 'venue']));
+        $counts = collect();
+        foreach ([$threads, $replies, $events] as $query) {
+            foreach ((clone $query)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status') as $status => $count) {
+                $counts[$status] = ($counts[$status] ?? 0) + $count;
+            }
+        }
+        $status = $filters['status'] ?? null;
+
         return view('admin.community', [
-            'threads' => CommunityThread::whereIn('status', ['pending', 'approved'])->with(['location', 'author'])
-                ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")->latest('id')->paginate(15, pageName: 'threads'),
-            'replies' => CommunityReply::whereIn('status', ['pending', 'approved'])->whereHas('thread', fn ($query) => $query->where('status', 'approved'))
-                ->with(['thread', 'author'])->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")->latest('id')->paginate(15, pageName: 'replies'),
-            'events' => CommunityEvent::whereIn('status', ['pending', 'approved', 'cancelled'])->with('location')
-                ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")->latest('id')->paginate(15, pageName: 'events'),
+            'filters' => $filters, 'counts' => $counts,
+            'threads' => $threads->when($status, fn ($query) => $query->where('status', $status))->with(['location', 'author'])
+                ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")->latest('id')->paginate(15, pageName: 'threads')->withQueryString(),
+            'replies' => $replies->when($status, fn ($query) => $query->where('status', $status))->with(['thread', 'author'])->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")->latest('id')->paginate(15, pageName: 'replies')->withQueryString(),
+            'events' => $events->when($status, fn ($query) => $query->where('status', $status))->with('location')
+                ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")->latest('id')->paginate(15, pageName: 'events')->withQueryString(),
         ]);
     }
 

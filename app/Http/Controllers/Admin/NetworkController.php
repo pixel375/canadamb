@@ -8,6 +8,7 @@ use App\Models\Location;
 use App\Models\Site;
 use App\Models\User;
 use App\Support\Audit;
+use App\Support\KeywordSearch;
 use App\Support\Marketplace;
 use App\Support\NetworkSettings;
 use Illuminate\Http\Request;
@@ -18,27 +19,66 @@ class NetworkController extends Controller
 {
     public function index(NetworkSettings $settings)
     {
+        $queues = [
+            ['label' => 'Marketplace listings', 'count' => Listing::where('status', 'pending')->count(), 'url' => '/admin/moderation?status=pending', 'icon' => 'marketplace'],
+            ['label' => 'Open listing reports', 'count' => DB::table('listing_reports')->whereNull('resolved_at')->count(), 'url' => '/admin/moderation#reports', 'icon' => 'shield'],
+            ['label' => 'Discussions', 'count' => DB::table('community_threads')->where('status', 'pending')->count(), 'url' => '/admin/community?status=pending#threads', 'icon' => 'discussions'],
+            ['label' => 'Replies', 'count' => DB::table('community_replies')->where('status', 'pending')->whereExists(fn ($query) => $query->selectRaw('1')->from('community_threads')->whereColumn('community_threads.id', 'community_replies.thread_id')->where('community_threads.status', 'approved'))->count(), 'url' => '/admin/community?status=pending#replies', 'icon' => 'messages'],
+            ['label' => 'Events', 'count' => DB::table('community_events')->where('status', 'pending')->count(), 'url' => '/admin/community?status=pending#events', 'icon' => 'calendar'],
+            ['label' => 'Job postings', 'count' => DB::table('job_postings')->where('status', 'pending')->count(), 'url' => '/admin/jobs?status=pending', 'icon' => 'briefcase'],
+            ['label' => 'Business profiles', 'count' => DB::table('businesses')->where('status', 'pending')->count(), 'url' => '/admin/business-review#profiles', 'icon' => 'building'],
+            ['label' => 'Ownership claims', 'count' => DB::table('business_claims')->where('status', 'pending')->count(), 'url' => '/admin/business-review#claims', 'icon' => 'person'],
+            ['label' => 'Business updates', 'count' => DB::table('business_updates')->where('status', 'pending')->count(), 'url' => '/admin/business-review#updates', 'icon' => 'news'],
+        ];
+        if (config('network.property_drafts')) {
+            $queues[] = ['label' => 'Private property reviews', 'count' => \App\Models\PropertyListing::where('status', 'submitted')->count(), 'url' => '/admin/properties', 'icon' => 'house'];
+        }
+        if (auth()->user()->can('manage-news')) {
+            $queues[] = ['label' => 'News drafts', 'count' => DB::table('news_articles')->where('status', 'draft')->count(), 'url' => '/admin/news#editorial-queue', 'icon' => 'news'];
+        }
+
         return view('admin.index', [
+            'queues' => $queues,
+            'prelaunch' => (bool) config('network.prelaunch'),
+            'recentAudit' => DB::table('audit_logs')->select('audit_logs.action', 'audit_logs.created_at', 'users.name')
+                ->leftJoin('users', 'users.id', '=', 'audit_logs.actor_id')->latest('audit_logs.id')->limit(6)->get(),
             'sites' => Site::count(), 'active' => Site::where('status', 'active')->count(),
             'locations' => Location::selectable()->count(), 'accounts' => User::count(),
             'pending' => Listing::where('status', 'pending')->count(), 'version' => $settings->state()->version,
         ]);
     }
 
-    public function audit()
+    public function audit(Request $request)
     {
-        return view('admin.audit', ['entries' => DB::table('audit_logs')->select('audit_logs.*', 'users.name')
-            ->leftJoin('users', 'users.id', '=', 'audit_logs.actor_id')->latest('audit_logs.id')->paginate(25)]);
+        $filters = $request->validate(['q' => 'nullable|string|max:100', 'period' => 'nullable|in:7,30,90']);
+        $entries = DB::table('audit_logs')->select('audit_logs.*', 'users.name')
+            ->leftJoin('users', 'users.id', '=', 'audit_logs.actor_id')
+            ->when($filters['q'] ?? null, function ($query, $term) {
+                foreach (KeywordSearch::patterns($term) as $pattern) {
+                    $query->where(fn ($match) => $match->whereRaw("LOWER(audit_logs.action) LIKE ? ESCAPE '!'", [$pattern])
+                        ->orWhereRaw("LOWER(users.name) LIKE ? ESCAPE '!'", [$pattern]));
+                }
+            })
+            ->when($filters['period'] ?? null, fn ($query, $days) => $query->where('audit_logs.created_at', '>=', now()->subDays((int) $days)))
+            ->latest('audit_logs.id')->paginate(25)->withQueryString();
+
+        return view('admin.audit', compact('entries', 'filters'));
     }
 
-    public function moderation()
+    public function moderation(Request $request)
     {
-        return view('admin.moderation', ['items' => Listing::with(['location', 'seller', 'categoryRecord'])
-            ->whereIn('status', ['pending', 'active'])->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")
-            ->latest('updated_at')->paginate(25), 'reports' => DB::table('listing_reports')
+        $filters = $request->validate(['status' => 'nullable|in:pending,active', 'q' => 'nullable|string|max:100']);
+        $matching = Listing::whereIn('status', ['pending', 'active'])
+            ->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'description']));
+        $counts = (clone $matching)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
+
+        return view('admin.moderation', ['filters' => $filters, 'counts' => $counts, 'items' => $matching->with(['location', 'seller', 'categoryRecord', 'media'])
+            ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
+            ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")
+            ->latest('updated_at')->paginate(25)->withQueryString(), 'reports' => DB::table('listing_reports')
             ->join('listings', 'listings.id', '=', 'listing_reports.listing_id')
             ->whereNull('resolved_at')->latest('listing_reports.id')
-            ->paginate(15, ['listing_reports.*', 'listings.title'], 'reports_page')]);
+            ->paginate(15, ['listing_reports.*', 'listings.title'], 'reports_page')->withQueryString()]);
     }
 
     public function resolveReport(Request $request, int $report)

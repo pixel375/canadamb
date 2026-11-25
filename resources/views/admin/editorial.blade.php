@@ -1,6 +1,7 @@
 <x-layouts.admin title="News editorial">
     <div class="page-intro"><div><h1>News editorial</h1><p>Review source rights, dates and claims before publishing.</p></div></div>
-    <section class="panel">
+    <nav class="inline-actions admin-jump-links" aria-label="Editorial sections"><a class="button button-outline" href="#editorial-queue">Editorial queue ({{ $articles->total() }})</a><a class="button button-outline" href="#feed-candidates">Feed candidates ({{ $feedCandidates->total() }})</a><a class="button button-outline" href="#news-sources">Sources</a></nav>
+    <section class="panel" id="news-sources">
         <h2>Sources</h2>
         @foreach($sources as $source)
             <div class="item-row"><div><h3>{{ $source->name }}</h3><p>{{ $source->url }} · {{ $source->reuse }}</p>
@@ -53,7 +54,7 @@
     @endif
 
     @if($feedCandidates->isNotEmpty() || $feedChecks->isNotEmpty())
-        <section class="panel">
+        <section class="panel" id="feed-candidates">
             <h2>Feed candidates</h2>
             @forelse($feedCandidates as $item)
                 <div class="item-row"><div><h3>{{ $item->title }}</h3><p>{{ $item->source_name }}@if($item->source_date) · {{ $item->source_date }}@endif</p></div>
@@ -73,10 +74,10 @@
         </section>
     @endif
 
-    <section class="panel">
+    <section class="panel" id="editorial-queue">
         <h2>Editorial queue</h2>
         @forelse($articles as $article)
-            <article class="form-stack border-b border-gray-300 py-4">
+            <article class="admin-review-card form-stack">
                 <div><h3>{{ $article->title }}</h3><p>{{ ucfirst($article->status) }} · {{ $article->location?->name ?? 'Manitoba' }} · {{ $article->source_date->format('M j, Y') }}{{ $article->sensitive ? ' · Sensitive coverage' : '' }}</p></div>
                 <a class="text-link" href="{{ $article->source_url }}" rel="noreferrer">{{ $article->source->name }} <x-icon name="arrow" size="16"/></a>
                 <form class="form-stack" method="post" action="/admin/news/{{ $article->id }}/publish">@csrf
