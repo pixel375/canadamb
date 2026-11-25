@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-25 — Marketplace edit integrity
+
+Browser editor and lifecycle actions carry full version tokens including latest status history; stale submissions are rejected when a token is supplied. Legacy callers without tokens remain compatible. Unchanged active edits retain publication; photo order updates only when needed; duplicate price is prefilled. Active moderation permits removal rather than rejection. No schema change.
+
 ## 2026-11-25 — staged schema integrity inventory
 
 Expanded read-only readiness to required columns, selected uniqueness/primary keys and conversation listing nullability, with per-feature mismatch details and an installed-schema regression over every proposal. No migrations applied or feature flags changed.

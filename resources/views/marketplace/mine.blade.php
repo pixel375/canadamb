@@ -60,7 +60,7 @@
                             <a class="button button-outline" href="/account/listings/{{ $item->id }}/edit">Edit</a>
                         @endif
                         @if($item->status === 'active' || $item->status === 'expired')
-                            <form method="post" action="/account/listings/{{ $item->id }}/status">@csrf
+                            <form method="post" action="/account/listings/{{ $item->id }}/status">@csrf<input type="hidden" name="version" value="{{ $item->reviewVersion() }}">
                                 @if($item->status === 'active' && $item->expires_at?->isFuture())<button class="button button-outline" name="status" value="sold">Mark sold</button>@else<button class="button button-primary" name="status" value="pending">Renew</button>@endif
                             </form>
                         @endif
@@ -68,7 +68,7 @@
                     <details class="seller-remove-listing">
                         <summary>Remove listing</summary>
                         <p class="field-note">This will permanently remove this listing from your dashboard and public Marketplace. It cannot be restored here.</p>
-                        <form method="post" action="/account/listings/{{ $item->id }}/status">@csrf<button class="button button-outline" name="status" value="removed">Confirm removal</button></form>
+                        <form method="post" action="/account/listings/{{ $item->id }}/status">@csrf<input type="hidden" name="version" value="{{ $item->reviewVersion() }}"><button class="button button-outline" name="status" value="removed">Confirm removal</button></form>
                     </details>
                 </article>
             @empty

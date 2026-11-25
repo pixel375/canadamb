@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 
 #[Fillable(['user_id', 'location_id', 'category', 'title', 'description', 'price_cents', 'negotiable', 'condition', 'status', 'attributes'])]
 class Listing extends Model
@@ -41,7 +42,7 @@ class Listing extends Model
         $attributes = $this->getRawOriginal();
         ksort($attributes);
 
-        return hash('sha256', json_encode([$attributes, $this->photoVersion()], JSON_THROW_ON_ERROR));
+        return hash('sha256', json_encode([$attributes, $this->photoVersion(), DB::table('listing_status_history')->where('listing_id', $this->id)->max('id')], JSON_THROW_ON_ERROR));
     }
 
     public function photoVersion(): string

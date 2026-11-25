@@ -5,7 +5,7 @@
         @if($duplicating ?? false)<p class="notice">Copied text and item details only. Review the information and upload new photos. This will create a new listing requiring approval; messages, saves and reports stay with the original.</p>@endif
         <form class="listing-editor-form form-stack" method="post" enctype="multipart/form-data" action="{{ $item->exists ? '/account/listings/'.$item->id : '/marketplace' }}" x-data="{ category: @js(old('category', $item->category ?? '')) }">
             @csrf
-            @if($item->exists)@method('PUT')@endif
+            @if($item->exists)@method('PUT')<input type="hidden" name="version" value="{{ $item->reviewVersion() }}">@endif
             <section class="panel form-stack listing-editor-section" aria-labelledby="listing-details-heading">
                 <h2 id="listing-details-heading">1. Item details</h2>
             <label>Title<input name="title" value="{{ old('title', $item->title) }}" required maxlength="120" placeholder="e.g. Solid oak dining table"></label>
@@ -29,7 +29,7 @@
             </section>
             <section class="panel form-stack listing-editor-section" aria-labelledby="listing-price-heading">
                 <h2 id="listing-price-heading">2. Price</h2>
-            <label>Price (CAD)<input name="price" type="number" value="{{ old('price', $item->exists ? number_format($item->price_cents / 100, 2, '.', '') : '') }}" min="0" max="9999999.99" step=".01" required><small class="field-note">Enter 0 for a free item.</small></label>
+            <label>Price (CAD)<input name="price" type="number" value="{{ old('price', $item->price_cents !== null ? number_format($item->price_cents / 100, 2, '.', '') : '') }}" min="0" max="9999999.99" step=".01" required><small class="field-note">Enter 0 for a free item.</small></label>
             <label class="checkbox"><input type="checkbox" name="negotiable" value="1" @checked(old('negotiable', $item->negotiable))> Negotiable</label>
             </section>
             <section class="panel form-stack listing-editor-section" aria-labelledby="listing-photos-heading">

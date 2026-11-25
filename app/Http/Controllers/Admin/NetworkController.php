@@ -176,7 +176,7 @@ class NetworkController extends Controller
             abort_if($item->user_id === $request->user()->id, 403);
             abort_unless(hash_equals($item->reviewVersion(), $data['version']), 409, 'Listing changed. Reload before reviewing.');
             abort_unless(in_array($item->status, ['pending', 'active'], true), 409);
-            abort_if($data['status'] === 'active' && $item->status !== 'pending', 409);
+            abort_if(in_array($data['status'], ['active', 'rejected'], true) && $item->status !== 'pending', 409);
             $marketplace->changeStatus($item, $data['status'], $request->user()->id, $data['reason'] ?? null);
             Audit::record('listing.'.$data['status'], $request->user()->id, context: ['listing' => $listing]);
         });

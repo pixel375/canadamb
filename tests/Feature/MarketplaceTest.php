@@ -140,6 +140,25 @@ class MarketplaceTest extends TestCase
         $this->getJson(self::MAIN.'/account/listings?status=removed')->assertUnprocessable();
     }
 
+    public function test_versioned_listing_edits_do_not_unpublish_unchanged_content(): void
+    {
+        $seller = User::factory()->create();
+        $admin = User::factory()->create(['role' => 'network_admin']);
+        $data = $this->listing('Oak desk');
+        $this->actingAs($seller)->post(self::CITY.'/marketplace', $data)->assertRedirect();
+        $item = Listing::sole();
+        $path = self::CITY.'/account/listings/'.$item->id;
+        $this->actingAs($admin)->post(self::MAIN.'/admin/moderation/'.$item->id, ['status' => 'active', 'version' => $item->fresh()->reviewVersion()])->assertRedirect();
+        $version = $item->fresh()->reviewVersion();
+        $this->actingAs($seller)->put($path, $data + ['version' => $version])->assertRedirect();
+        $this->assertSame('active', $item->fresh()->status);
+        $this->put($path, array_replace($data, ['title' => 'Revised desk', 'version' => $version]))->assertRedirect();
+        $this->put($path, $data + ['version' => $version])->assertConflict();
+        $this->post($path.'/status', ['status' => 'removed', 'version' => $version])->assertConflict();
+        $this->assertSame('Revised desk', $item->fresh()->title);
+        $this->assertSame('pending', $item->fresh()->status);
+    }
+
     private function listing(string $title): array
     {
         return ['title' => $title, 'description' => 'Includes the table and chairs.', 'category' => 'furniture',

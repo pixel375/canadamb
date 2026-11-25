@@ -160,7 +160,10 @@ class MarketplaceController extends Controller
 
     public function edit(Request $request, int $listing)
     {
-        return $this->form($request, $this->owned($request, $listing));
+        $item = $this->owned($request, $listing);
+        abort_unless(in_array($item->status, ['pending', 'active', 'expired', 'rejected'], true), 409);
+
+        return $this->form($request, $item);
     }
 
     public function update(SaveListing $request, int $listing, ListingPhotos $photos)
@@ -173,7 +176,11 @@ class MarketplaceController extends Controller
             $removed = DB::transaction(function () use ($request, $listing, $data, $media) {
                 $item = $this->owned($request, $listing, true);
                 abort_unless(in_array($item->status, ['pending', 'active', 'expired', 'rejected'], true), 409);
+                if ($request->validated('version') !== null) {
+                    abort_unless(hash_equals($item->reviewVersion(), $request->validated('version')), 409, 'Listing changed. Reload before editing.');
+                }
                 $item->fill($data);
+                $changed = $item->isDirty() || $media !== [];
                 $removed = [];
                 if ($request->boolean('manage_photos')) {
                     if (! hash_equals($item->photoVersion(), (string) $request->validated('photo_version'))) {
@@ -184,16 +191,18 @@ class MarketplaceController extends Controller
                     if (array_diff($keep, $current->keys()->all()) || count($keep) + count($media) > 5) {
                         throw ValidationException::withMessages(['photos' => 'Keep only photos from this listing, with at most five photos in total.']);
                     }
+                    $changed = $changed || $keep !== $current->keys()->all();
                     $discard = $current->except($keep);
                     $removed = $discard->values()->toArray();
                     $item->media()->whereIn('id', $discard->modelKeys())->delete();
-                    // Move retained photos out of the occupied position range before
-                    // assigning their final order (listing_id, position is unique).
-                    foreach ($keep as $position => $id) {
-                        $current[$id]->update(['position' => 100 + $position]);
-                    }
-                    foreach ($keep as $position => $id) {
-                        $current[$id]->update(['position' => $position]);
+                    // Move retained photos only when their order or positions change.
+                    if ($keep !== $current->keys()->all()) {
+                        foreach ($keep as $position => $id) {
+                            $current[$id]->update(['position' => 100 + $position]);
+                        }
+                        foreach ($keep as $position => $id) {
+                            $current[$id]->update(['position' => $position]);
+                        }
                     }
                     foreach ($media as $position => $photo) {
                         $item->media()->create(array_replace($photo, ['position' => count($keep) + $position]));
@@ -203,7 +212,9 @@ class MarketplaceController extends Controller
                     $item->media()->delete();
                     $item->media()->createMany($media);
                 }
-                $this->marketplace->changeStatus($item, 'pending', $request->user()->id);
+                if ($changed || in_array($item->status, ['expired', 'rejected'], true)) {
+                    $this->marketplace->changeStatus($item, 'pending', $request->user()->id);
+                }
 
                 return $removed;
             });
@@ -213,16 +224,19 @@ class MarketplaceController extends Controller
         }
         $photos->delete($removed);
 
-        return redirect('/account/listings')->with('status', 'Your changes were submitted for review.');
+        return redirect('/account/listings')->with('status', 'Listing saved. Changed content requires review.');
     }
 
     public function status(Request $request, int $listing)
     {
         abort_unless($this->marketplace->enabled($request->attributes->get('site')), 404);
-        $data = $request->validate(['status' => ['required', Rule::in(['removed', 'sold', 'pending'])]]);
+        $data = $request->validate(['status' => ['required', Rule::in(['removed', 'sold', 'pending'])], 'version' => 'nullable|string|size:64']);
         DB::transaction(function () use ($request, $listing, $data) {
             $item = $this->owned($request, $listing, true);
-            abort_if($data['status'] === 'sold' && $item->status !== 'active', 409);
+            if (isset($data['version'])) {
+                abort_unless(hash_equals($item->reviewVersion(), $data['version']), 409, 'Listing changed. Reload before changing status.');
+            }
+            abort_if($data['status'] === 'sold' && ($item->status !== 'active' || ! $item->expires_at?->isFuture()), 409);
             abort_if($data['status'] === 'pending' && $item->status !== 'expired' && ! ($item->status === 'active' && $item->expires_at?->isPast()), 409);
             $this->marketplace->changeStatus($item, $data['status'], $request->user()->id);
         });
