@@ -128,7 +128,7 @@ class PublicController extends Controller
             }
         }
         if ($businesses->enabled($site)) {
-            $profiles = $businesses->visible($site)->with('locations.location.site.domain')->orderBy('id')->limit(10000);
+            $profiles = $businesses->visible($site)->with('openLocations.location.site.domain')->orderBy('id')->limit(10000);
             if ($profiles->exists()) {
                 $urls[] = NetworkUrl::to($site, '/businesses');
             }

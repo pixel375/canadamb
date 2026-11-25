@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\Business;
 use App\Models\Conversation;
+use App\Models\JobPosting;
 use Illuminate\Support\Facades\Schema;
 
 final class MessagingExtensions
@@ -20,7 +21,11 @@ final class MessagingExtensions
             return true;
         }
 
-        return self::enabled() && Business::whereKey($thread->inquiry_business_id)->where('status', 'active')
+        if ($thread->inquiry_job_id && ! JobPosting::whereKey($thread->inquiry_job_id)->whereHas('branch', fn ($branch) => $branch->open())->exists()) {
+            return false;
+        }
+
+        return self::enabled() && Business::whereKey($thread->inquiry_business_id)->where('status', 'active')->whereHas('openLocations')
             ->whereHas('members', fn ($query) => $query->whereKey($thread->seller_id)->where('business_memberships.role', 'owner'))->exists();
     }
 }

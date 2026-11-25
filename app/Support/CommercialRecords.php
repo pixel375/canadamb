@@ -20,7 +20,7 @@ final class CommercialRecords
         if ($business->status !== 'active' || $site->status !== 'active' || ! array_key_exists($placement, CommercialCatalog::PLACEMENTS)) {
             return false;
         }
-        if ($site->location_id && ! $business->locations()->where('location_id', $site->location_id)->exists()) {
+        if (! $business->openLocations()->when($site->location_id, fn ($query, $id) => $query->where('location_id', $id))->exists()) {
             return false;
         }
         $module = CommercialCatalog::PLACEMENTS[$placement];

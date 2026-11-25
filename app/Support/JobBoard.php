@@ -33,7 +33,7 @@ class JobBoard
     public function visible(?int $location): Builder
     {
         return $this->scope($location)->where('status', 'approved')->where('closing_on', '>=', $this->closingToday())
-            ->whereHas('branch.business', fn (Builder $business) => $business->where('status', 'active'));
+            ->whereHas('branch', fn (Builder $branch) => $branch->open()->whereHas('business', fn (Builder $business) => $business->where('status', 'active')));
     }
 
     public static function searchRules(): array

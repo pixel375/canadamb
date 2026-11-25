@@ -9,18 +9,18 @@
                 </a>
             @endforeach
         </nav>
-        @if($branches->isNotEmpty())
+        @if($openBranches->isNotEmpty())
             <details class="panel job-posting-editor" @if($errors->any()) open @endif><summary><x-icon name="plus" size="18"/> Post a job</summary>
                 <form method="post" action="/account/businesses/{{ $employer->id }}/jobs" class="form-stack mt-3">@csrf
                     <p class="field-note">New postings are reviewed before publication. Provide a working HTTPS application link.</p>
                     <label>Business branch<select name="business_location_id" required>
-                        @foreach($branches as $branch)<option value="{{ $branch->id }}" @selected((string) old('business_location_id') === (string) $branch->id)>{{ $branch->location->name }} · {{ $branch->address }}</option>@endforeach
+                        @foreach($openBranches as $branch)<option value="{{ $branch->id }}" @selected((string) old('business_location_id') === (string) $branch->id)>{{ $branch->location->name }} · {{ $branch->address }}</option>@endforeach
                     </select></label>
                     <x-job-fields/>
                     <div><button class="button button-primary">Submit for review</button></div>
                 </form>
             </details>
-        @else <p class="notice">This business has no branches in the current portal.</p> @endif
+        @else <p class="notice">This business has no open branches in the current portal.</p> @endif
         <form class="panel seller-listing-search" method="get" action="/account/businesses/{{ $employer->id }}/jobs">
             @if($filters['status'] ?? null)<input type="hidden" name="status" value="{{ $filters['status'] }}">@endif
             <label for="job-owner-search" class="sr-only">Search your jobs</label><input type="search" id="job-owner-search" name="q" maxlength="100" value="{{ $filters['q'] ?? '' }}" placeholder="Search your job postings">
@@ -33,7 +33,7 @@
                 <article class="panel seller-listing-card">
                     <div class="member-listing-info">
                         <span class="member-listing-status" data-status="{{ $item->status }}">{{ ucfirst($item->status) }}</span>
-                        <h2>{{ $item->title }}</h2><p>{{ $item->branch->location->name }} · {{ \App\Support\JobBoard::TYPES[$item->employment_type] ?? $item->employment_type }} · {{ \App\Support\JobBoard::WORKPLACES[$item->workplace] ?? $item->workplace }}</p>
+                        <h2>{{ $item->title }}</h2><p>{{ $item->branch->location->name }} @if(!$item->branch->isOpen()) (closed branch) @endif · {{ \App\Support\JobBoard::TYPES[$item->employment_type] ?? $item->employment_type }} · {{ \App\Support\JobBoard::WORKPLACES[$item->workplace] ?? $item->workplace }}</p>
                         @if($item->payLabel())<p>{{ $item->payLabel() }}</p>@endif
                         <p>Closes {{ $item->closing_on->format('M j, Y') }}</p>
                     </div>
@@ -48,8 +48,8 @@
                     </p>
                     <div class="inline-actions seller-listing-actions">
                         @if($item->status === 'approved' && $item->closing_on->toDateString() >= today('America/Winnipeg')->toDateString())<a class="button button-outline" href="/jobs/{{ $item->id }}">View posting</a>@endif
-                        @if(in_array($item->status, ['pending', 'approved', 'rejected', 'expired'], true))<a class="button button-outline" href="/account/businesses/{{ $employer->id }}/jobs/{{ $item->id }}/edit">Edit</a>@endif
-                        <a class="button button-outline" href="/account/businesses/{{ $employer->id }}/jobs/{{ $item->id }}/duplicate">Reuse posting</a>
+                        @if($item->branch->isOpen() && in_array($item->status, ['pending', 'approved', 'rejected', 'expired'], true))<a class="button button-outline" href="/account/businesses/{{ $employer->id }}/jobs/{{ $item->id }}/edit">Edit</a>@endif
+                        @if($openBranches->isNotEmpty())<a class="button button-outline" href="/account/businesses/{{ $employer->id }}/jobs/{{ $item->id }}/duplicate">Reuse posting</a>@endif
                     </div>
                     @if(in_array($item->status, ['pending', 'approved'], true))
                         <details class="seller-remove-listing"><summary>Withdraw posting</summary><p class="field-note">Withdraw this job from publication and review.</p><form method="post" action="/account/businesses/{{ $employer->id }}/jobs/{{ $item->id }}/withdraw">@csrf<button class="button button-outline">Confirm withdrawal</button></form></details>

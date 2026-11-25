@@ -16,6 +16,11 @@ class Business extends Model
         return $this->hasMany(BusinessLocation::class);
     }
 
+    public function openLocations(): HasMany
+    {
+        return $this->locations()->open();
+    }
+
     public function members(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'business_memberships')->withPivot('role')->withTimestamps();

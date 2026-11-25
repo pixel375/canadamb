@@ -31,9 +31,9 @@ class BusinessController extends Controller
         ]);
         $matching = $this->directory->visible($site)
             ->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['name', 'description']))
-            ->when($site->isNetwork() && filled($filters['location'] ?? null), fn ($query) => $query->whereHas('locations.location', fn ($location) => $location->where('slug', $filters['location'])));
+            ->when($site->isNetwork() && filled($filters['location'] ?? null), fn ($query) => $query->whereHas('openLocations.location', fn ($location) => $location->where('slug', $filters['location'])));
         $categoryCounts = (clone $matching)->selectRaw('category, COUNT(*) as total')->groupBy('category')->pluck('total', 'category');
-        $businesses = $matching->with(['locations.location'])
+        $businesses = $matching->with(['openLocations.location'])
             ->when($filters['category'] ?? null, fn ($query, $category) => $query->where('category', $category))
             ->orderBy('name')->orderBy('id')->paginate(18)->withQueryString();
 
@@ -47,13 +47,13 @@ class BusinessController extends Controller
     {
         $site = $request->attributes->get('site');
         abort_unless($this->directory->enabled($site), 404);
-        $business = $this->directory->visible($site)->with('locations.location')->where('slug', $slug)->firstOrFail();
+        $business = $this->directory->visible($site)->with('openLocations.location')->where('slug', $slug)->firstOrFail();
         $owner = $this->directory->canonicalSite($business);
         $canonical = NetworkUrl::to($owner, '/businesses/'.$business->slug);
         if ($owner->id !== $site->id) {
             return redirect()->away($canonical, 301, ['Cache-Control' => 'no-store']);
         }
-        $branches = $business->locations->when($site->location_id, fn ($locations, $id) => $locations->where('location_id', $id));
+        $branches = $business->openLocations->when($site->location_id, fn ($locations, $id) => $locations->where('location_id', $id));
         $updates = $this->directory->updates($site->location_id)->whereIn('business_location_id', $branches->pluck('id'))->paginate(12);
         $claimed = $business->members()->wherePivot('role', 'owner')->exists();
 
@@ -216,13 +216,15 @@ class BusinessController extends Controller
             'business_location_id' => 'required|integer', 'type' => 'required|in:announcement,promotion,update',
             'title' => 'required|string|max:140', 'body' => 'required|string|max:3000',
         ]);
-        $branch = $item->locations()->findOrFail($data['business_location_id']);
+        $branch = $item->openLocations()->findOrFail($data['business_location_id']);
         LocationScope::forPublication($request->attributes->get('site'), $branch->location_id);
 
         DB::transaction(function () use ($request, $item, $data) {
             $locked = Business::lockForUpdate()->findOrFail($item->id);
             $this->managed($request, $locked->id);
             abort_unless($locked->status === 'active', 409);
+            $branch = $locked->openLocations()->findOrFail($data['business_location_id']);
+            LocationScope::forPublication($request->attributes->get('site'), $branch->location_id);
             if (DB::table('business_updates')->whereIn('business_location_id', $locked->locations()->select('id'))
                 ->where('created_at', '>=', now()->subDay())->count() >= 5) {
                 throw ValidationException::withMessages(['title' => 'This profile has reached its daily update limit.']);

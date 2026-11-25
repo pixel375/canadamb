@@ -64,7 +64,7 @@
                         <article class="panel business-result-card">
                             <span class="location-icon mb-2"><x-icon :name="$categoryIcons[$business->category] ?? 'building'"/></span>
                             <h3><a href="/businesses/{{ $business->slug }}">{{ $business->name }}</a></h3>
-                            <p>{{ $categories[$business->category] }} · {{ $selectedPlace?->name ?? request()->attributes->get('site')->location?->name ?? $business->locations->pluck('location.name')->unique()->join(', ') }}</p>
+                            <p>{{ $categories[$business->category] }} · {{ $selectedPlace?->name ?? request()->attributes->get('site')->location?->name ?? $business->openLocations->pluck('location.name')->unique()->join(', ') }}</p>
                             @if(filled($business->description))
                                 <div class="business-result-excerpt">{{ \Illuminate\Support\Str::limit(\Illuminate\Support\Str::squish(strip_tags($business->description)), 140) }}</div>
                             @endif

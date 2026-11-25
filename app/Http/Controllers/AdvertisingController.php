@@ -20,7 +20,7 @@ class AdvertisingController extends Controller
     public function index(Request $request, int $business)
     {
         $item = $this->owned($request, $business);
-        $locations = $item->locations()->pluck('location_id');
+        $locations = $item->openLocations()->pluck('location_id');
         $portals = Site::where('status', 'active')->where(fn ($query) => $query->whereNull('location_id')->orWhereIn('location_id', $locations))->orderBy('name')->get();
         $filters = $request->validate(['status' => 'nullable|in:pending,approved,rejected,withdrawn', 'q' => 'nullable|string|max:100']);
         $campaigns = AdvertisingCampaign::where('business_id', $business)->with('site')

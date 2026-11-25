@@ -40,7 +40,7 @@ class JobReviewController extends Controller
             abort_if($item->author_id === $request->user()->id || $business->members()->whereKey($request->user()->id)->exists(), 403);
             abort_unless(hash_equals($item->reviewVersion(), $data['version']), 409, 'The posting changed. Reload it before reviewing.');
             if ($data['action'] === 'approve') {
-                abort_unless($item->status === 'pending' && $item->branch->business->status === 'active'
+                abort_unless($item->status === 'pending' && $item->branch->isOpen() && $item->branch->business->status === 'active'
                     && $item->closing_on->toDateString() >= $board->closingToday(), 409);
                 $item->forceFill(['status' => 'approved', 'published_at' => $item->published_at ?? now()])->save();
             } else {

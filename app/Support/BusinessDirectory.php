@@ -23,13 +23,13 @@ final class BusinessDirectory
 
     public function visible(Site $site): Builder
     {
-        return Business::where('status', 'active')->whereHas('locations', fn ($branch) => $branch
+        return Business::where('status', 'active')->whereHas('openLocations', fn ($branch) => $branch
             ->when($site->location_id, fn ($local, $id) => $local->where('location_id', $id)));
     }
 
     public function updates(?int $location): Builder
     {
-        return BusinessUpdate::where('status', 'approved')->whereHas('branch', fn ($branch) => $branch
+        return BusinessUpdate::where('status', 'approved')->whereHas('branch', fn ($branch) => $branch->open()
             ->whereHas('business', fn ($business) => $business->where('status', 'active'))
             ->when($location, fn ($local, $id) => $local->where('location_id', $id)))
             ->with(['branch.business', 'branch.location'])->latest('published_at')->orderByDesc('id');
@@ -37,8 +37,8 @@ final class BusinessDirectory
 
     public function canonicalSite(Business $business): Site
     {
-        $business->loadMissing('locations.location.site.domain');
-        $primary = $business->locations->sortBy('id')->first();
+        $business->loadMissing('openLocations.location.site.domain');
+        $primary = $business->openLocations->sortBy('id')->first();
         $site = $primary?->location?->site;
 
         return $site?->status === 'active' && $this->enabled($site) ? $site : NetworkUrl::main();

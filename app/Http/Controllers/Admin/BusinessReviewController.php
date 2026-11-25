@@ -97,8 +97,12 @@ class BusinessReviewController extends Controller
     {
         $data = $this->decision($request);
         DB::transaction(function () use ($update, $request, $data) {
-            $item = BusinessUpdate::lockForUpdate()->findOrFail($update);
+            $initial = BusinessUpdate::with('branch')->findOrFail($update);
+            $business = Business::lockForUpdate()->findOrFail($initial->branch->business_id);
+            $item = BusinessUpdate::with('branch')->lockForUpdate()->findOrFail($update);
             abort_unless($item->status === 'pending', 409);
+            abort_if($item->author_id === $request->user()->id || $business->members()->whereKey($request->user()->id)->exists(), 403);
+            abort_if($data['decision'] === 'approved' && (! $item->branch->isOpen() || $business->status !== 'active'), 409);
             $item->update(['status' => $data['decision'], 'published_at' => $data['decision'] === 'approved' ? now() : null]);
             Audit::record('business.update-'.$data['decision'], $request->user()->id, context: ['update' => $update, 'notes' => $data['notes']]);
         });
