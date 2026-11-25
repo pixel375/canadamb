@@ -1,13 +1,13 @@
 <x-layouts.admin title="Community moderation">
-    <div class="page-intro"><div><h1>Community moderation</h1><p>Review discussions, replies, and event submissions.</p></div></div>
-    <x-admin-queue-filters path="/admin/community" :filters="$filters" :counts="$counts" :statuses="['pending','approved','cancelled']" search-label="Search discussion, reply or event"/>
+    <div class="page-intro"><div><h1>Community moderation</h1><p>Review discussions, replies, and event submissions. Rejected and withdrawn items are read-only history; pending items appear first.</p></div></div>
+    <x-admin-queue-filters path="/admin/community" :filters="$filters" :counts="$counts" :statuses="['pending','approved','cancelled','rejected','withdrawn']" :places="$places" search-label="Search discussion, reply or event"/>
     <nav class="inline-actions admin-jump-links" aria-label="Community review sections"><a class="button button-outline" href="#threads">Discussions ({{ $threads->total() }})</a><a class="button button-outline" href="#replies">Replies ({{ $replies->total() }})</a><a class="button button-outline" href="#events">Events ({{ $events->total() }})</a></nav>
     <section class="panel" id="threads"><h2>Discussions</h2>
         @forelse($threads as $item)
             <article class="admin-review-card form-stack">
                 <div><h3>{{ $item->title }}</h3><p>{{ $item->author?->name ?? 'Former member' }} · {{ $item->location?->name ?? 'Manitoba' }} · {{ ucfirst($item->status) }}</p></div>
                 <p class="prose-text">{{ $item->body }}</p>
-                <x-community-moderation-form :path="'/admin/community/threads/'.$item->id" :approved="$item->status === 'approved'" :thread-controls="true" :pinned="$item->pinned" :locked="$item->locked" :version="$item->contentVersion()"/>
+                @if(in_array($item->status, ['pending', 'approved'], true))<x-community-moderation-form :path="'/admin/community/threads/'.$item->id" :approved="$item->status === 'approved'" :thread-controls="true" :pinned="$item->pinned" :locked="$item->locked" :version="$item->contentVersion()"/>@else<p class="field-note">Historical record · no moderation actions available.</p>@endif
             </article>
         @empty<p>No discussions to moderate.</p>@endforelse
         {{ $threads->links() }}
@@ -15,7 +15,7 @@
     <section class="panel" id="replies"><h2>Replies</h2>
         @forelse($replies as $item)
             <article class="admin-review-card form-stack"><h3>{{ $item->thread->title }}</h3><p>{{ $item->author?->name ?? 'Former member' }}</p><p class="prose-text">{{ $item->body }}</p>
-                <p>{{ ucfirst($item->status) }}</p><x-community-moderation-form :path="'/admin/community/replies/'.$item->id" :approved="$item->status === 'approved'" :version="$item->contentVersion()"/>
+                <p>{{ ucfirst($item->status) }}</p>@if(in_array($item->status, ['pending', 'approved'], true))<x-community-moderation-form :path="'/admin/community/replies/'.$item->id" :approved="$item->status === 'approved'" :version="$item->contentVersion()"/>@else<p class="field-note">Historical record · no moderation actions available.</p>@endif
             </article>
         @empty<p>No replies awaiting review.</p>@endforelse
         {{ $replies->links() }}
@@ -28,7 +28,7 @@
                 @if($item->event_url)<a class="text-link" rel="noreferrer" href="{{ $item->event_url }}">{{ $item->event_url }}</a>@endif
                 <p>{{ ucfirst($item->status) }}</p>
                 @if($item->cancellation_note)<p>Private cancellation note · {{ $item->cancellation_note }}</p>@endif
-                <x-community-moderation-form :path="'/admin/community/events/'.$item->id" :approved="$item->status !== 'pending'" :version="$item->contentVersion()"/>
+                @if(in_array($item->status, ['pending', 'approved', 'cancelled'], true))<x-community-moderation-form :path="'/admin/community/events/'.$item->id" :approved="$item->status !== 'pending'" :version="$item->contentVersion()"/>@else<p class="field-note">Historical record · no moderation actions available.</p>@endif
             </article>
         @empty<p>No events awaiting review.</p>@endforelse
         {{ $events->links() }}

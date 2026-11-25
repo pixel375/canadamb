@@ -49,6 +49,11 @@ class CommunityPublishingTest extends TestCase
             'action' => 'reject', 'reason' => 'Reply removed during second review.', 'version' => $reply->fresh()->contentVersion(),
         ])->assertRedirect();
         $this->get($city)->assertOk()->assertDontSee('I can donate some vegetable seeds.');
+        $queue = 'https://canadamb.ca/admin/community';
+        $this->get($queue.'?status=rejected&location='.$thread->location_id)->assertOk()
+            ->assertSee('I can donate some vegetable seeds.')->assertSee('Historical record')
+            ->assertDontSee('action="/admin/community/replies/'.$reply->id.'"', false);
+        $this->get($queue.'?status=rejected&location='.$winnipeg)->assertOk()->assertDontSee('I can donate some vegetable seeds.');
         $this->actingAs($moderator)->post("https://canadamb.ca/admin/community/threads/$thread->id", ['action' => 'lock'])->assertRedirect();
         $this->actingAs($reader)->post("$city/replies", ['body' => 'A new reply should not be accepted.'])->assertStatus(409);
     }

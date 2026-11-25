@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CommunityEvent;
 use App\Models\CommunityReply;
 use App\Models\CommunityThread;
+use App\Models\Location;
 use App\Support\Audit;
 use App\Support\KeywordSearch;
 use App\Support\NotificationPreferences;
@@ -17,12 +18,19 @@ class CommunityModerationController extends Controller
 {
     public function index(Request $request)
     {
-        $filters = $request->validate(['status' => 'nullable|in:pending,approved,cancelled', 'q' => 'nullable|string|max:100']);
-        $threads = CommunityThread::whereIn('status', ['pending', 'approved'])
+        $filters = $request->validate(['status' => 'nullable|in:pending,approved,cancelled,rejected,withdrawn', 'q' => 'nullable|string|max:100',
+            'location' => 'nullable|integer|exists:locations,id']);
+        $location = $filters['location'] ?? null;
+        $threads = CommunityThread::whereIn('status', ['pending', 'approved', 'rejected', 'withdrawn'])
+            ->when($location, fn ($query, $id) => $query->where('location_id', $id))
             ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'body']));
-        $replies = CommunityReply::whereIn('status', ['pending', 'approved'])->whereHas('thread', fn ($query) => $query->where('status', 'approved'))
+        $replies = CommunityReply::whereIn('status', ['pending', 'approved', 'rejected', 'withdrawn'])
+            ->where(fn ($query) => $query->whereIn('status', ['rejected', 'withdrawn'])
+                ->orWhereHas('thread', fn ($thread) => $thread->where('status', 'approved')))
+            ->when($location, fn ($query, $id) => $query->whereHas('thread', fn ($thread) => $thread->where('location_id', $id)))
             ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['body']));
-        $events = CommunityEvent::whereIn('status', ['pending', 'approved', 'cancelled'])
+        $events = CommunityEvent::whereIn('status', ['pending', 'approved', 'cancelled', 'rejected', 'withdrawn'])
+            ->when($location, fn ($query, $id) => $query->where('location_id', $id))
             ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'body', 'venue']));
         $counts = collect();
         foreach ([$threads, $replies, $events] as $query) {
@@ -33,12 +41,12 @@ class CommunityModerationController extends Controller
         $status = $filters['status'] ?? null;
 
         return view('admin.community', [
-            'filters' => $filters, 'counts' => $counts,
+            'filters' => $filters, 'counts' => $counts, 'places' => Location::selectable()->orderBy('name')->get(['id', 'name']),
             'threads' => $threads->when($status, fn ($query) => $query->where('status', $status))->with(['location', 'author'])
-                ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")->latest('id')->paginate(15, pageName: 'threads')->withQueryString(),
-            'replies' => $replies->when($status, fn ($query) => $query->where('status', $status))->with(['thread', 'author'])->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")->latest('id')->paginate(15, pageName: 'replies')->withQueryString(),
+                ->orderByRaw("CASE WHEN status = 'pending' THEN 0 WHEN status = 'approved' THEN 1 ELSE 2 END")->latest('id')->paginate(15, pageName: 'threads')->withQueryString(),
+            'replies' => $replies->when($status, fn ($query) => $query->where('status', $status))->with(['thread', 'author'])->orderByRaw("CASE WHEN status = 'pending' THEN 0 WHEN status = 'approved' THEN 1 ELSE 2 END")->latest('id')->paginate(15, pageName: 'replies')->withQueryString(),
             'events' => $events->when($status, fn ($query) => $query->where('status', $status))->with('location')
-                ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")->latest('id')->paginate(15, pageName: 'events')->withQueryString(),
+                ->orderByRaw("CASE WHEN status = 'pending' THEN 0 WHEN status = 'approved' THEN 1 ELSE 2 END")->latest('id')->paginate(15, pageName: 'events')->withQueryString(),
         ]);
     }
 
