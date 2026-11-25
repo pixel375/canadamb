@@ -204,7 +204,7 @@ class MarketplaceController extends Controller
                     }
                     $discard = $current->except($keep);
                     $removed = $discard->values()->toArray();
-                    $item->media()->whereIn('id', $discard->keys())->delete();
+                    $item->media()->whereIn('id', $discard->modelKeys())->delete();
                     // Move retained photos out of the occupied position range before
                     // assigning their final order (listing_id, position is unique).
                     foreach ($keep as $position => $id) {
