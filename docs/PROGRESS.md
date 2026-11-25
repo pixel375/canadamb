@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-25 — property draft management and independent review
+
+Private property drafts now support version-bound editing/submission/review, retained photo ordering/removal/addition (six total), private thumbnail path validation, independent reviewer filtering, and returning submitted/reviewed records to draft without deleting photos. Existing public gates unchanged. No schema migration or publication action.
+
 ## 2026-11-25 — staged browser QA chat menu repair
 
 Expanded browser run `45606518944` passed saved searches, preferences, privacy request lifecycle and business controls before finding overlapping absolute-positioned Archive and Block forms. Use a single stacked popover and hit-test both actions at 320, 390 and 1440px; preserve archived inbox filters on search reset. Backend `45606518888` passed; the latest release was held by browser QA. No schema or configuration change.

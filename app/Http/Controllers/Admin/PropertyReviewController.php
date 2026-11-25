@@ -16,7 +16,7 @@ class PropertyReviewController extends Controller
     public function index(Request $request)
     {
         $filters = $request->validate(['status' => 'nullable|in:submitted,reviewed', 'q' => 'nullable|string|max:100']);
-        $matching = $this->reviewable()->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'description']));
+        $matching = $this->reviewable($request)->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'description']));
         $counts = (clone $matching)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
         $items = $matching->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
             ->orderByRaw("CASE WHEN status = 'submitted' THEN 0 ELSE 1 END")->latest('id')->paginate(20)->withQueryString();
@@ -24,20 +24,20 @@ class PropertyReviewController extends Controller
         return view('admin.properties', compact('items', 'filters', 'counts'));
     }
 
-    public function show(int $property)
+    public function show(Request $request, int $property)
     {
-        return view('properties.show', ['item' => $this->reviewable()->with('photos')->findOrFail($property), 'review' => true]);
+        return view('properties.show', ['item' => $this->reviewable($request)->with('photos')->findOrFail($property), 'review' => true]);
     }
 
-    public function media(int $property, int $photo)
+    public function media(Request $request, int $property, int $photo)
     {
-        return PropertyDraftController::privatePhoto($this->reviewable()->findOrFail($property), $photo);
+        return PropertyDraftController::privatePhoto($this->reviewable($request)->findOrFail($property), $photo);
     }
 
     public function update(Request $request, int $property)
     {
         abort_unless(config('network.property_drafts'), 404);
-        $data = $request->validate(['action' => 'required|in:review,request-changes', 'note' => 'required|string|min:10|max:1200']);
+        $data = $request->validate(['version' => 'required|string|size:64', 'action' => 'required|in:review,request-changes', 'note' => 'required|string|min:10|max:1200']);
         if ($data['action'] === 'review') {
             $request->validate([
                 'owner_authority_checked' => 'required|accepted',
@@ -47,7 +47,8 @@ class PropertyReviewController extends Controller
             ]);
         }
         DB::transaction(function () use ($request, $property, $data) {
-            $item = PropertyListing::whereIn('status', ['submitted', 'reviewed'])->lockForUpdate()->findOrFail($property);
+            $item = $this->reviewable($request)->lockForUpdate()->findOrFail($property);
+            abort_unless(hash_equals($item->contentVersion(), $data['version']), 409, 'Draft changed. Reload before reviewing.');
             abort_if($item->status === 'reviewed' && $data['action'] !== 'request-changes', 409);
             $item->forceFill([
                 'status' => $data['action'] === 'review' ? 'reviewed' : 'changes_requested',
@@ -64,10 +65,11 @@ class PropertyReviewController extends Controller
         return redirect('/admin/properties')->with('status', 'Private review decision saved.');
     }
 
-    private function reviewable(): Builder
+    private function reviewable(Request $request): Builder
     {
         abort_unless(config('network.property_drafts'), 404);
 
-        return PropertyListing::with('location')->whereIn('status', ['submitted', 'reviewed']);
+        return PropertyListing::with('location')->whereIn('status', ['submitted', 'reviewed'])
+            ->where('owner_id', '!=', $request->user()->id);
     }
 }

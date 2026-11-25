@@ -104,6 +104,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/account/properties/{property}/edit', [PropertyDraftController::class, 'edit'])->whereNumber('property');
     Route::put('/account/properties/{property}', [PropertyDraftController::class, 'update'])->whereNumber('property')->middleware('throttle:12,1');
     Route::delete('/account/properties/{property}', [PropertyDraftController::class, 'archive'])->whereNumber('property');
+    Route::post('/account/properties/{property}/withdraw-review', [PropertyDraftController::class, 'withdraw'])->whereNumber('property')->middleware('throttle:6,1,property-withdraw-review');
     Route::post('/account/properties/{property}/submit', [PropertyDraftController::class, 'submit'])->whereNumber('property')->middleware('throttle:6,1');
     Route::get('/account/properties/{property}/media/{photo}', [PropertyDraftController::class, 'media'])->whereNumber(['property', 'photo']);
     Route::get('/account/businesses/{business}/jobs', [JobController::class, 'business'])->whereNumber('business');

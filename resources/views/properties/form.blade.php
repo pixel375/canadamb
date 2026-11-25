@@ -2,7 +2,10 @@
     <div class="container page-shell listing-editor">
         <div class="page-intro"><div><a class="text-link" href="/account/properties">Private property drafts</a><h1>{{ $item->exists ? 'Edit private property draft' : 'New private property draft' }}</h1><p>Only you and authorized reviewers can access a submitted draft.</p></div></div>
         <form method="post" enctype="multipart/form-data" action="/account/properties{{ $item->exists ? '/'.$item->id : '' }}" class="form-stack">@csrf
-            @if($item->exists) @method('PUT') @endif
+            @if($item->exists)
+                @method('PUT')
+                <input type="hidden" name="version" value="{{ $item->contentVersion() }}">
+            @endif
             <section class="panel form-stack listing-editor-section"><h2>1. Property overview</h2>
             <label>Title<input name="title" required maxlength="140" value="{{ old('title', $item->title) }}"></label>
             <div class="form-grid">
@@ -35,10 +38,24 @@
             <label>Description<textarea data-character-count name="description" required minlength="20" maxlength="6000" rows="6">{{ old('description', $item->description) }}</textarea><small class="field-note" data-character-feedback></small></label>
             </section>
             <section class="panel form-stack listing-editor-section"><h2>4. Private photos</h2>
-                <label>{{ $item->exists ? 'Replace photos' : 'Property photos' }}<input data-listing-photos data-photo-limit="6" data-photo-mb="5" type="file" name="photos[]" multiple accept="image/jpeg,image/png,image/webp"><small class="field-note">Up to six JPEG, PNG or WebP images, 5 MB each. Photos stay private. Choose a cover or remove selected files before saving.</small></label>
+                <label>{{ $item->exists ? 'Add photos' : 'Property photos' }}<input data-listing-photos data-photo-limit="6" data-photo-mb="5" type="file" name="photos[]" multiple accept="image/jpeg,image/png,image/webp"><small class="field-note">Up to six JPEG, PNG or WebP images, 5 MB each. Photos stay private. Choose a cover or remove selected files before saving.</small></label>
                 @if($item->exists && $item->photos->isNotEmpty())
-                    <h3>Current photos</h3><p class="field-note">Leave the picker empty to keep the current set; selecting new photos replaces it.</p>
-                    <div class="listing-photo-preview">@foreach($item->photos as $photo)<figure><img src="/account/properties/{{ $item->id }}/media/{{ $photo->id }}" alt="Current property photo {{ $loop->iteration }}" loading="lazy"><figcaption>{{ $loop->first ? 'Current cover' : 'Photo '.$loop->iteration }}</figcaption></figure>@endforeach</div>
+                    <input type="hidden" name="manage_photos" value="1">
+                    <h3>Current photos</h3><p class="field-note">Keep, remove or reorder existing photos. New photos are appended after retained photos.</p>
+                    <div class="listing-photo-preview" data-existing-photo-grid>
+                        @foreach($item->photos as $photo)
+                            <figure data-existing-photo="{{ $photo->id }}">
+                                <img src="/account/properties/{{ $item->id }}/media/{{ $photo->id }}" alt="Current property photo {{ $loop->iteration }}" loading="lazy">
+                                <figcaption data-existing-caption>{{ $loop->first ? 'Cover photo' : 'Photo '.$loop->iteration }}</figcaption>
+                                <label class="checkbox"><input type="checkbox" name="keep_photos[]" value="{{ $photo->id }}" checked> Keep photo</label>
+                                <div class="listing-photo-actions" data-existing-controls hidden>
+                                    <button type="button" class="button button-outline" data-existing-cover>Make cover</button>
+                                    <button type="button" class="button button-outline" data-existing-move>Move earlier</button>
+                                </div>
+                            </figure>
+                        @endforeach
+                    </div>
+                    <p class="field-note" data-existing-feedback role="status"></p>
                 @endif
                 <p class="field-note" data-photo-feedback role="status" aria-live="polite"></p><div class="listing-photo-preview" data-photo-preview hidden></div>
             </section>

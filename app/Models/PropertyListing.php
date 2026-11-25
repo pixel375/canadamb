@@ -25,6 +25,15 @@ class PropertyListing extends Model
         return ['price_cents' => 'integer', 'pets_allowed' => 'boolean', 'available_on' => 'date'];
     }
 
+    public function contentVersion(): string
+    {
+        $attributes = $this->getRawOriginal();
+        ksort($attributes);
+        $photos = $this->photos()->get(['id', 'position', 'image_path', 'thumbnail_path'])->toArray();
+
+        return hash('sha256', json_encode([$attributes, $photos], JSON_THROW_ON_ERROR));
+    }
+
     public function photos(): HasMany
     {
         return $this->hasMany(PropertyPhoto::class)->orderBy('position');

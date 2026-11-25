@@ -60,9 +60,9 @@ class PropertyDraftTest extends TestCase
         $this->actingAs($author)->get($path)->assertOk()
             ->assertSee('name="authorization_capacity"', false)
             ->assertSee('name="advertising_consent"', false);
-        $this->post("$path/submit")->assertSessionHasErrors(['authorization_capacity', 'advertising_consent']);
+        $this->post("$path/submit", ['version' => $draft->contentVersion()])->assertSessionHasErrors(['authorization_capacity', 'advertising_consent']);
         $this->post("$path/submit", [
-            'authorization_capacity' => 'owner',
+            'version' => $draft->fresh()->contentVersion(), 'authorization_capacity' => 'owner',
             'advertising_consent' => '1',
         ])->assertRedirect();
         $this->assertDatabaseHas('audit_logs', [
@@ -78,12 +78,12 @@ class PropertyDraftTest extends TestCase
         $this->actingAs($admin)->get($review)->assertOk()->assertSee($draft->title);
         $this->get('https://canadamb.ca/admin/properties?status=submitted&q=outbuilding')->assertOk()->assertSee($draft->title);
         $this->get('https://canadamb.ca/admin/properties?status=reviewed')->assertOk()->assertDontSee($draft->title);
-        $this->post($review, ['action' => 'publish'])->assertSessionHasErrors('action');
-        $this->post($review, ['action' => 'review', 'note' => 'The draft has the required internal fields.'])
+        $this->post($review, ['version' => $draft->fresh()->contentVersion(), 'action' => 'publish'])->assertSessionHasErrors('action');
+        $this->post($review, ['version' => $draft->fresh()->contentVersion(), 'action' => 'review', 'note' => 'The draft has the required internal fields.'])
             ->assertSessionHasErrors(['owner_authority_checked', 'seller_role_checked',
                 'property_details_checked', 'media_checked']);
         $this->post($review, [
-            'action' => 'review',
+            'version' => $draft->fresh()->contentVersion(), 'action' => 'review',
             'note' => 'The draft has the required internal fields.',
             'owner_authority_checked' => '1',
             'seller_role_checked' => '1',
@@ -117,16 +117,23 @@ class PropertyDraftTest extends TestCase
         $review = 'https://canadamb.ca/admin/properties/'.$draft->id;
 
         $this->actingAs($owner)->post($path.'/submit', [
-            'authorization_capacity' => 'owner',
+            'version' => $draft->fresh()->contentVersion(), 'authorization_capacity' => 'owner',
             'advertising_consent' => '1',
         ])->assertRedirect();
+        $version = $draft->fresh()->contentVersion();
+        $this->actingAs($owner)->post($path.'/withdraw-review', ['version' => $version])->assertRedirect();
+        $this->assertSame('draft', $draft->fresh()->status);
+        $this->actingAs($moderator)->get($review)->assertNotFound();
+        $this->actingAs($owner)->post($path.'/submit', [
+            'version' => $draft->fresh()->contentVersion(), 'authorization_capacity' => 'owner', 'advertising_consent' => '1',
+        ])->assertRedirect();
         $this->actingAs($moderator)->post($review, [
-            'action' => 'review', 'note' => 'The authority and property details were checked.',
+            'version' => $draft->fresh()->contentVersion(), 'action' => 'review', 'note' => 'The authority and property details were checked.',
             'owner_authority_checked' => '1', 'seller_role_checked' => '1',
             'property_details_checked' => '1', 'media_checked' => '1',
         ])->assertRedirect();
         $this->post($review, [
-            'action' => 'request-changes',
+            'version' => $draft->fresh()->contentVersion(), 'action' => 'request-changes',
             'note' => 'Please confirm the updated property description.',
         ])->assertRedirect();
         $this->assertSame('changes_requested', $draft->fresh()->status);

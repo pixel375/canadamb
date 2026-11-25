@@ -28,6 +28,7 @@
         @if($review && in_array($item->status, ['submitted', 'reviewed'], true))
             <form method="post" action="{{ $path }}" class="panel form-stack">
                 @csrf
+                <input type="hidden" name="version" value="{{ $item->contentVersion() }}">
                 <h2>{{ $item->status === 'submitted' ? 'Private review checklist' : 'Reopen a reviewed draft' }}</h2>
                 <p class="field-note">Review is internal only. No action on this page authorizes or publishes an advertisement.</p>
                 @if($item->status === 'submitted')
@@ -53,6 +54,7 @@
                     <a class="button button-outline" href="{{ $path }}/edit">Edit draft</a>
                     <form method="post" action="{{ $path }}/submit" class="form-stack property-attestation">
                         @csrf
+                        <input type="hidden" name="version" value="{{ $item->contentVersion() }}">
                         <h2>Submit for private review</h2>
                         <p class="field-note">Declare your authority to submit the property. This declaration alone does not authorize public advertising.</p>
                         <label>Your capacity
@@ -65,6 +67,15 @@
                         <label class="property-consent-check"><input type="checkbox" name="advertising_consent" value="1" required> I confirm I have the owner's authority to submit this information for private review, and understand that public advertising requires separate consent verification and approval.</label>
                         <button class="button button-primary" type="submit">Submit for private review</button>
                     </form>
+                @endif
+                @if(in_array($item->status, ['submitted', 'reviewed'], true))
+                    <details class="seller-remove-listing"><summary>Return to draft for editing</summary>
+                        <form method="post" action="{{ $path }}/withdraw-review" class="form-stack mt-2">@csrf
+                            <input type="hidden" name="version" value="{{ $item->contentVersion() }}">
+                            <p class="field-note">Withdraw the current review and keep your photos. You must submit a new authority declaration before review resumes.</p>
+                            <button class="button button-outline">Return to private draft</button>
+                        </form>
+                    </details>
                 @endif
                 <details class="seller-remove-listing"><summary>Archive / withdraw draft</summary><p class="field-note">This removes the draft from your workspace and deletes its stored photos. It cannot be restored here.</p>
                     <form method="post" action="{{ $path }}">@csrf @method('DELETE')<button class="button button-outline" type="submit">Confirm archive / withdrawal</button></form>

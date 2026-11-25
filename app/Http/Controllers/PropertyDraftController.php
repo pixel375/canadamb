@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 
 class PropertyDraftController extends Controller
@@ -82,13 +83,40 @@ class PropertyDraftController extends Controller
         $editable = $this->owned($request)->findOrFail($property);
         abort_unless(in_array($editable->status, ['draft', 'changes_requested'], true), 409);
         $data = $this->draftData($request);
+        $selection = $request->validate([
+            'version' => 'required|string|size:64',
+            'manage_photos' => 'nullable|boolean',
+            'keep_photos' => 'nullable|array|list|max:6',
+            'keep_photos.*' => 'integer|distinct|min:1',
+        ]);
         $paths = $photos->store($request->file('photos', []), 'property-drafts', 'local');
         try {
-            $replaced = DB::transaction(function () use ($request, $property, $data, $paths) {
+            $replaced = DB::transaction(function () use ($request, $property, $data, $paths, $selection) {
                 $item = $this->owned($request)->lockForUpdate()->findOrFail($property);
                 abort_unless(in_array($item->status, ['draft', 'changes_requested'], true), 409);
+                abort_unless(hash_equals($item->contentVersion(), $selection['version']), 409, 'Draft changed. Reload the editor.');
                 $item->update($data);
                 Audit::record('property-draft.revised', $request->user()->id, context: ['property' => $item->id]);
+                if ($request->boolean('manage_photos')) {
+                    $current = $item->photos()->get()->keyBy('id');
+                    $keep = array_map('intval', $selection['keep_photos'] ?? []);
+                    if (array_diff($keep, $current->keys()->all()) || count($keep) + count($paths) > 6) {
+                        throw ValidationException::withMessages(['photos' => 'Keep only photos from this draft, with at most six photos total.']);
+                    }
+                    $discard = $current->except($keep);
+                    $item->photos()->whereIn('id', $discard->modelKeys())->delete();
+                    foreach ($keep as $position => $id) {
+                        $current[$id]->update(['position' => 100 + $position]);
+                    }
+                    foreach ($keep as $position => $id) {
+                        $current[$id]->update(['position' => $position]);
+                    }
+                    foreach ($paths as $position => $photo) {
+                        $item->photos()->create(array_replace($photo, ['position' => count($keep) + $position]));
+                    }
+
+                    return $discard->values()->toArray();
+                }
                 if ($paths === []) {
                     return [];
                 }
@@ -111,12 +139,14 @@ class PropertyDraftController extends Controller
     {
         abort_unless(config('network.property_drafts'), 404);
         $data = $request->validate([
+            'version' => 'required|string|size:64',
             'authorization_capacity' => 'required|in:owner,authorized-agent',
             'advertising_consent' => 'required|accepted',
         ]);
         DB::transaction(function () use ($request, $property, $data) {
             $item = $this->owned($request)->lockForUpdate()->findOrFail($property);
             abort_unless(in_array($item->status, ['draft', 'changes_requested'], true), 409);
+            abort_unless(hash_equals($item->contentVersion(), $data['version']), 409, 'Draft changed. Reload before submitting.');
             $item->forceFill(['status' => 'submitted', 'review_note' => null])->save();
             // Store declaration in the existing append-only audit log, without
             // placing consent details on any public property record.
@@ -127,10 +157,25 @@ class PropertyDraftController extends Controller
         return redirect('/account/properties/'.$property)->with('status', 'Authority declaration recorded. Submitted for private review only.');
     }
 
+    public function withdraw(Request $request, int $property)
+    {
+        $data = $request->validate(['version' => 'required|string|size:64']);
+        DB::transaction(function () use ($request, $property, $data) {
+            $item = $this->owned($request)->lockForUpdate()->findOrFail($property);
+            abort_unless(in_array($item->status, ['submitted', 'reviewed'], true), 409);
+            abort_unless(hash_equals($item->contentVersion(), $data['version']), 409);
+            $item->forceFill(['status' => 'draft', 'review_note' => null])->save();
+            Audit::record('property-draft.review-withdrawn', $request->user()->id, context: ['property' => $item->id]);
+        });
+
+        return redirect('/account/properties/'.$property)->with('status', 'Returned to private draft. Photos retained.');
+    }
+
     public function archive(Request $request, int $property, ListingPhotos $photos)
     {
         $paths = DB::transaction(function () use ($request, $property) {
             $item = $this->owned($request)->lockForUpdate()->findOrFail($property);
+            abort_unless(in_array($item->status, ['draft', 'changes_requested', 'submitted', 'reviewed'], true), 409);
             $old = $item->photos()->get(['image_path', 'thumbnail_path'])->toArray();
             $item->photos()->delete();
             $item->forceFill(['status' => 'archived'])->save();
@@ -154,7 +199,7 @@ class PropertyDraftController extends Controller
     {
         $photo = $item->photos()->findOrFail($id);
         $disk = Storage::disk('local');
-        abort_unless($disk->exists($photo->thumbnail_path), 404);
+        abort_unless(preg_match('~^property-drafts/[a-f0-9-]{36}-preview\.webp$~D', $photo->thumbnail_path) && $disk->exists($photo->thumbnail_path), 404);
 
         return $disk->response($photo->thumbnail_path, 'property-photo.webp', ['Content-Type' => 'image/webp', 'Cache-Control' => 'private, no-store']);
     }
@@ -164,7 +209,7 @@ class PropertyDraftController extends Controller
         abort_unless(config('network.property_drafts'), 404);
         $site = $request->attributes->get('site');
 
-        return PropertyListing::with('location')->where('owner_id', $request->user()->id)->where('status', '!=', 'archived')
+        return PropertyListing::with('location')->where('owner_id', $request->user()->id)->whereIn('status', ['draft', 'submitted', 'changes_requested', 'reviewed'])
             ->when($site->location_id, fn (Builder $query, int $location) => $query->where('location_id', $location));
     }
 
