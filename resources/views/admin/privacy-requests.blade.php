@@ -5,7 +5,7 @@
             <form class="form-stack" method="post" action="/admin/privacy-requests/{{ $item->id }}">@csrf
                 <label>Internal review note<textarea name="note" minlength="10" maxlength="1000" required>{{ $item->review_note }}</textarea></label>
                 <p class="field-note">Record only necessary review information; do not paste passwords or private conversation contents.</p>
-                <x-password-field name="current_password" label="Current password" autocomplete="current-password"/>
+                <x-password-field name="current_password" label="Current password" autocomplete="current-password" :field-id="'privacy-review-password-'.$item->id"/>
                 <button class="button button-primary">Record review progress</button>
             </form>
         </article>

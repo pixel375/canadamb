@@ -64,6 +64,35 @@ jobs:
         run: php tests/Browser/seed-notification-fixtures.php
       - name: Verify authenticated notifications in Chromium
         run: node tests/Browser/prelaunch-authenticated-notifications.cjs
+      - name: Exercise staged features in disposable browser QA
+        env:
+          APP_URL: http://canadamb.localhost:8001
+          CANADAMB_JOB_SEARCHES: 'true'
+          CANADAMB_EXTENDED_MESSAGING: 'true'
+          CANADAMB_MESSAGE_ATTACHMENTS: 'true'
+          CANADAMB_BUSINESS_ACCESS_REQUESTS: 'true'
+          CANADAMB_BUSINESS_DISPUTES: 'true'
+          CANADAMB_BUSINESS_CHANGES: 'true'
+          CANADAMB_BUSINESS_INQUIRY_CONTROLS: 'true'
+          CANADAMB_PRIVACY_REQUESTS: 'true'
+          CANADAMB_NOTIFICATION_PREFERENCES: 'true'
+          CANADAMB_RECURRING_EVENTS: 'true'
+          CANADAMB_EVENT_DISCUSSIONS: 'true'
+          CANADAMB_CONTENT_REPORTS: 'true'
+          CANADAMB_NEWS_CANDIDATE_REVIEW: 'true'
+        run: |
+          php artisan serve --host=127.0.0.1 --port=8001 --no-reload > staged-server.log 2>&1 &
+          server=$!
+          trap 'kill "$server" 2>/dev/null || true' EXIT
+          for i in $(seq 1 40); do
+            if curl -fsS -H 'Host: canadamb.localhost' http://127.0.0.1:8001/ >/dev/null; then
+              node tests/Browser/prelaunch-staged-features.cjs
+              exit $?
+            fi
+            sleep 1
+          done
+          cat staged-server.log
+          exit 1
       - name: Preserve screenshots and local logs
         if: always()
         uses: actions/upload-artifact@v4
@@ -72,6 +101,7 @@ jobs:
           path: |
             test-results/
             navigation-server.log
+            staged-server.log
             storage/logs/laravel.log
           if-no-files-found: ignore
       - name: Stop disposable server
