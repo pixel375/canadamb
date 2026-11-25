@@ -32,7 +32,7 @@ class AccountExportController extends Controller
         'job-searches' => ['job_searches', 'user_id', ['id', 'site_id', 'name', 'filters', 'alerts', 'checked_at', 'created_at', 'updated_at']],
         'content-reports' => ['content_reports', 'reporter_id', ['id', 'site_id', 'target_type', 'target_id', 'reason', 'explanation', 'status', 'created_at', 'updated_at']],
         'business-disputes' => ['business_disputes', 'claimant_id', ['id', 'business_id', 'site_id', 'contact_email', 'explanation', 'status', 'created_at', 'updated_at']],
-        'business-change-requests' => ['business_change_requests', 'requester_id', ['id', 'business_id', 'branch_id', 'location_id', 'kind', 'value', 'previous_value', 'status', 'created_at', 'updated_at']],
+        'business-change-requests' => ['business_change_requests', 'requester_id', ['id', 'business_id', 'branch_id', 'location_id', 'kind', 'value', 'status', 'created_at', 'updated_at']],
         'privacy-requests' => ['account_privacy_requests', 'user_id', ['id', 'kind', 'status', 'created_at', 'updated_at']],
         'sent-business-access-requests' => ['business_access_requests', 'requester_id', ['id', 'business_id', 'kind', 'status', 'expires_at', 'created_at', 'updated_at']],
         'received-business-access-requests' => ['business_access_requests', 'recipient_id', ['id', 'business_id', 'kind', 'status', 'expires_at', 'created_at', 'updated_at']],
@@ -83,6 +83,12 @@ class AccountExportController extends Controller
                 ->selectRaw('CASE WHEN buyer_id = ? THEN buyer_archived_at ELSE seller_archived_at END AS own_archived_at', [$member]);
         }
         $sections = ['conversation-metadata' => DB::query()->fromSub($conversations, 'export_records')];
+        $listingPhotos = DB::table('listing_media')->join('listings', 'listings.id', '=', 'listing_media.listing_id')
+            ->where('listings.user_id', $member)->selectRaw('listing_media.id AS export_id, listing_media.listing_id, listing_media.position');
+        $propertyPhotos = DB::table('property_photos')->join('property_listings', 'property_listings.id', '=', 'property_photos.property_listing_id')
+            ->where('property_listings.owner_id', $member)->selectRaw('property_photos.id AS export_id, property_photos.property_listing_id, property_photos.position');
+        $sections['listing-photo-metadata'] = DB::query()->fromSub($listingPhotos, 'export_records');
+        $sections['property-photo-metadata'] = DB::query()->fromSub($propertyPhotos, 'export_records');
         if (Schema::hasTable('message_attachments')) {
             $photos = DB::table('message_attachments')->join('messages', 'messages.id', '=', 'message_attachments.message_id')
                 ->where('messages.sender_id', $member)->selectRaw('message_attachments.id AS export_id, message_attachments.message_id, messages.conversation_id, message_attachments.created_at');
@@ -110,7 +116,7 @@ class AccountExportController extends Controller
         $after = (int) ($data['after_id'] ?? 0);
         $next = null;
         if ($section === 'profile') {
-            $records = collect([$user->only(['id', 'name', 'email', 'email_verified_at', 'created_at', 'updated_at'])]);
+            $records = $user->id > $after ? collect([$user->only(['id', 'name', 'email', 'email_verified_at', 'created_at', 'updated_at'])]) : collect();
         } elseif ($section === 'notification-preferences') {
             $records = DB::table('notification_preferences')->where('user_id', $user->id)->where('user_id', '>', $after)
                 ->get(['user_id', 'discussion_replies', 'job_summary', 'updated_at']);
@@ -136,13 +142,14 @@ class AccountExportController extends Controller
                 $next = $records->last()->id;
             }
         }
+        $filename = 'canadamb-'.$section.($after > 0 ? '-after-'.$after : '').'.json';
         Audit::record('user.data-exported', $user->id, context: ['section' => $section, 'count' => $records->count()]);
 
         return response()->json([
             'format_version' => 1, 'generated_at' => now()->toIso8601String(),
             'section' => $section, 'after_id' => $after, 'next_after_id' => $next,
             'records' => $records,
-        ])->header('Content-Disposition', 'attachment; filename="canadamb-'.$section.'.json"')
+        ])->header('Content-Disposition', 'attachment; filename="'.$filename.'"')
             ->header('Cache-Control', 'private, no-store')->header('X-Content-Type-Options', 'nosniff');
     }
 }

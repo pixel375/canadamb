@@ -11,3 +11,7 @@ The dedicated attachment disk is inside shared private storage. Keep private sto
 Exports are password-confirmed, allowlisted and limited to 500 current records per request; bookmark cursors use the referenced ID. Optional sections appear only when their table exists. Internal notes, security credentials, received messages, files and third-party records are excluded. Full access requests remain separate.
 
 The self-export includes participant-local conversation metadata and sent-photo metadata (IDs and dates only), excluding the other participant's read/archive state, identity fields, message body and storage paths. Privacy impact counts now include bookmarks, follows, notification settings, blocks, advertising authorship, inquiry preferences and owned listing/property photos. These counts do not authorize erasure or demonstrate backup deletion.
+
+### Photo metadata exports
+
+Member exports include the identifiers and display order of their own Marketplace and private property photographs. No filesystem paths, thumbnails, image bytes or other members' photographs are included. Continuation downloads include the record cursor in the filename. Historical values of business change requests are excluded from self-service exports; the submitted value and status remain available.
