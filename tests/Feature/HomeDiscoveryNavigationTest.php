@@ -181,6 +181,16 @@ class HomeDiscoveryNavigationTest extends TestCase
             ->assertSee('class="header-search" action="/business-updates"', false);
     }
 
+    public function test_community_search_escapes_wildcards_and_combines_words(): void
+    {
+        $this->getJson('https://canadamb.ca/api/v1/communities?q=BRAN%20DON')->assertOk()
+            ->assertJsonFragment(['slug' => 'brandon']);
+        $this->getJson('https://canadamb.ca/api/v1/communities?q=%25')->assertOk()->assertJsonCount(0, 'data');
+        $this->getJson('https://canadamb.ca/api/v1/communities?q=_')->assertOk()->assertJsonCount(0, 'data');
+        $this->getJson('https://canadamb.ca/api/v1/communities?q=brandon%20notarealplace')->assertOk()->assertJsonCount(0, 'data');
+        $this->get('https://canadamb.ca/communities?q=brandon')->assertOk()->assertSee('Reset filters')->assertSee('found');
+    }
+
     public function test_category_discovery_search_is_real_submission_not_a_dummy_button(): void
     {
         $this->get('https://canadamb.ca/marketplace')->assertOk()

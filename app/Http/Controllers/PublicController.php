@@ -7,6 +7,7 @@ use App\Models\Site;
 use App\Support\BusinessDirectory;
 use App\Support\Community;
 use App\Support\JobBoard;
+use App\Support\KeywordSearch;
 use App\Support\LocationScope;
 use App\Support\Marketplace;
 use App\Support\NetworkSettings;
@@ -81,19 +82,20 @@ class PublicController extends Controller
     {
         abort_unless($request->attributes->get('site')->isNetwork(), 404);
         $filters = $request->validate(['q' => 'nullable|string|max:100', 'type' => 'nullable|string|max:40']);
-        $locations = Location::selectable()->with('site.domain')
-            ->when($filters['q'] ?? null, fn ($query, $q) => $query->where(function ($match) use ($q) {
-                $match->whereLike('name', '%'.$q.'%')->orWhereExists(function ($alias) use ($q) {
-                    $alias->selectRaw('1')->from('location_aliases')->whereColumn('location_id', 'locations.id')->whereLike('name', '%'.$q.'%');
-                });
-            }))
+        $locations = Location::selectable()->with('site.domain');
+        foreach (KeywordSearch::patterns($filters['q'] ?? '') as $pattern) {
+            $locations->where(fn ($match) => $match->whereRaw("LOWER(locations.name) LIKE ? ESCAPE '!'", [$pattern])
+                ->orWhereExists(fn ($alias) => $alias->selectRaw('1')->from('location_aliases')->whereColumn('location_id', 'locations.id')
+                    ->whereRaw("LOWER(location_aliases.name) LIKE ? ESCAPE '!'", [$pattern])));
+        }
+        $locations = $locations
             ->when($filters['type'] ?? null, fn ($query, $type) => $query->where('type', $type))
-            ->orderBy('name')->paginate(24)->withQueryString();
+            ->orderBy('name')->orderBy('id')->paginate(24)->withQueryString();
 
         if ($request->is('api/*')) {
             return response()->json(['data' => $locations->map(fn (Location $location) => [
                 'id' => $location->id, 'name' => $location->name, 'slug' => $location->slug, 'type' => $location->type,
-            ]), 'meta' => ['page' => $locations->currentPage(), 'last_page' => $locations->lastPage()]]);
+            ]), 'meta' => ['page' => $locations->currentPage(), 'last_page' => $locations->lastPage(), 'total' => $locations->total()]]);
         }
 
         $types = Location::selectable()->select('type')->distinct()->orderBy('type')->pluck('type');

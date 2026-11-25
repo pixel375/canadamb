@@ -3,9 +3,11 @@
         <div class="page-intro"><div><a class="text-link" href="/account/profile">My account</a><h1>My settings</h1><p>Manage your CanadaMB identity across Manitoba communities.</p></div></div>
         <form class="panel form-stack" method="post" action="/account/settings">
             @csrf
+            <input type="hidden" name="version" value="{{ old('version', $member->profileVersion()) }}">
             <h2>Public display name</h2>
             <label>Name<input name="name" value="{{ old('name', $member->name) }}" maxlength="80" minlength="2" autocomplete="name" required></label>
             <p class="field-note">Your display name is visible beside discussions, listings and messages.</p>
+            @error('version')<p role="alert">{{ $message }} <a href="/account/settings">Reload settings</a></p>@enderror
             <div><button class="button button-primary">Save changes</button></div>
         </form>
         <section class="panel form-stack" aria-labelledby="device-preferences-heading">

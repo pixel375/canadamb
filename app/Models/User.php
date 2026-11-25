@@ -26,6 +26,11 @@ class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable
         }
     }
 
+    public function profileVersion(): string
+    {
+        return hash('sha256', json_encode([$this->id, $this->name], JSON_THROW_ON_ERROR));
+    }
+
     protected function casts(): array
     {
         return [

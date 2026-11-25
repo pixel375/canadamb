@@ -67,13 +67,17 @@ class UserProfileController extends Controller
 
     public function update(Request $request): RedirectResponse
     {
-        $data = $request->validate(['name' => ['required', 'string', 'min:2', 'max:80']]);
-        $user = $request->user();
-
-        if ($user->name !== $data['name']) {
-            $user->update(['name' => $data['name']]);
-            Audit::record('user.profile-updated', $user->id);
-        }
+        $data = $request->validate(['name' => ['required', 'string', 'min:2', 'max:80'], 'version' => 'nullable|string|size:64']);
+        DB::transaction(function () use ($request, $data) {
+            $user = User::lockForUpdate()->findOrFail($request->user()->id);
+            if (isset($data['version']) && ! hash_equals($user->profileVersion(), $data['version'])) {
+                throw ValidationException::withMessages(['version' => 'Your display name changed. Reload settings before saving.']);
+            }
+            if ($user->name !== $data['name']) {
+                $user->update(['name' => $data['name']]);
+                Audit::record('user.profile-updated', $user->id);
+            }
+        }, attempts: 3);
 
         return redirect('/account/settings')->with('status', 'Profile settings saved.');
     }

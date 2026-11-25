@@ -88,6 +88,20 @@ class PassOneAuthSecurityTest extends TestCase
             ->get('https://brandonmb.ca/account/profile')->assertRedirect('/auth/start');
     }
 
+    public function test_profile_name_changes_are_versioned_and_unchanged_saves_are_not_audited(): void
+    {
+        $user = User::factory()->create(['name' => 'Original Name']);
+        $path = 'https://canadamb.ca/account/settings';
+        $version = $user->profileVersion();
+        $this->actingAs($user)->get($path)->assertOk()->assertSee($version);
+        $this->post($path, ['name' => 'Original Name', 'version' => $version])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertDatabaseMissing('audit_logs', ['action' => 'user.profile-updated']);
+        $this->post('https://brandonmb.ca/account/settings', ['name' => 'Changed Name', 'version' => $version])->assertRedirect()->assertSessionHasNoErrors();
+        $this->post($path, ['name' => 'Stale Name', 'version' => $version])->assertSessionHasErrors('version');
+        $this->assertSame('Changed Name', $user->fresh()->name);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'user.profile-updated', 'actor_id' => $user->id]);
+    }
+
     public function test_malformed_credentials_render_validation_and_login_is_throttled(): void
     {
         $url = 'https://canadamb.ca/login';
