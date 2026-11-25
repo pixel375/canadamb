@@ -2,6 +2,7 @@
     <div class="page-intro"><div><h1>Global settings</h1><p>Published version {{ $state->version }}{{ $state->draft_id ? ' · Draft available' : '' }}</p></div></div>
     <form method="post" action="/admin/settings" class="panel form-stack">
         @csrf
+        <input type="hidden" name="configuration_version" value="{{ \App\Support\NetworkSettings::stateVersion($state) }}">
         <h2>Module availability</h2>
         @foreach($modules as $key => $label)
             <fieldset class="form-stack pb-3">
@@ -26,7 +27,7 @@
     </form>
     <section class="panel form-stack"><h2>Commercial planning</h2><p>Internal rate cards are versioned with network settings. They cannot activate payments or advertising.</p><a class="text-link" href="/admin/commercial">Advertising and subscription planning</a></section>
     @if($state->draft_id)
-        <form method="post" action="/admin/settings/publish" class="panel inline-actions">@csrf
+        <form method="post" action="/admin/settings/publish" class="panel inline-actions">@csrf<input type="hidden" name="configuration_version" value="{{ \App\Support\NetworkSettings::stateVersion($state) }}">
             <p>This publishes pending appearance and module settings together.</p>
             <button class="button button-primary">Publish network settings</button>
         </form>

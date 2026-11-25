@@ -74,10 +74,23 @@ final class NetworkSettings
         });
     }
 
-    public function saveDraft(int $actor, Closure $change): void
+    public static function stateVersion(stdClass $state): string
     {
-        DB::transaction(function () use ($actor, $change) {
+        return hash('sha256', json_encode([$state->published_id, $state->draft_id, $state->previous_id, $state->version], JSON_THROW_ON_ERROR));
+    }
+
+    private function checkState(stdClass $state, ?string $expected): void
+    {
+        if ($expected !== null && ! hash_equals(self::stateVersion($state), $expected)) {
+            throw ValidationException::withMessages(['configuration_version' => 'Network configuration changed. Reload and review the current draft before continuing.']);
+        }
+    }
+
+    public function saveDraft(int $actor, Closure $change, ?string $expected = null): void
+    {
+        DB::transaction(function () use ($actor, $change, $expected) {
             $state = $this->lockedState();
+            $this->checkState($state, $expected);
             $revision = DB::table('configuration_revisions')->where('id', $state->draft_id ?? $state->published_id)->firstOrFail();
             $settings = $change(json_decode($revision->settings, true, flags: JSON_THROW_ON_ERROR));
             $id = DB::table('configuration_revisions')->insertGetId([
@@ -91,10 +104,11 @@ final class NetworkSettings
         }, attempts: 3);
     }
 
-    public function publish(int $actor, bool $rollback = false): void
+    public function publish(int $actor, bool $rollback = false, ?string $expected = null): void
     {
-        DB::transaction(function () use ($actor, $rollback) {
+        DB::transaction(function () use ($actor, $rollback, $expected) {
             $state = $this->lockedState();
+            $this->checkState($state, $expected);
             $target = $rollback ? $state->previous_id : $state->draft_id;
             if ($target === null) {
                 throw ValidationException::withMessages(['theme' => 'No revision is available for that action.']);

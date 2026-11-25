@@ -4,7 +4,7 @@
     @if(\App\Support\TestCheckoutAttempts::enabled())<a class="button button-outline" href="/admin/commercial/test-ledger">Inspect test-payment ledger</a>@endif
     <p class="notice"><strong>Planning only.</strong> There is no live billing, ad delivery, checkout, subscription entitlement or paid ranking. Saving or publishing a rate card cannot activate these features.</p>
     <section class="panel form-stack"><h2>Proposed rate card</h2><p class="field-note">Blank means unpriced. Prices are Canadian dollars before applicable taxes. These are internal planning amounts, not customer offers.</p>
-        <form method="post" action="/admin/commercial" class="form-stack">@csrf
+        <form method="post" action="/admin/commercial" class="form-stack">@csrf<input type="hidden" name="configuration_version" value="{{ old('configuration_version', \App\Support\NetworkSettings::stateVersion($state)) }}">
             @foreach($catalog as $key => $product)
                 <fieldset class="commercial-product"><legend>{{ $product['name'] }}</legend><p>{{ $product['description'] }}</p>
                     <div class="form-grid"><label>Proposed price (CAD / {{ $product['period'] }})<input type="number" name="prices[{{ $key }}]" min="0" max="100000" step="0.01" value="{{ old('prices.'.$key, $product['price_cents'] === null ? '' : number_format($product['price_cents'] / 100, 2, '.', '')) }}"></label><div><p class="section-label">Published internal rate</p><p>{{ $published[$key]['price_cents'] === null ? 'Not set' : 'CAD $'.number_format($published[$key]['price_cents'] / 100, 2) }}</p></div></div>

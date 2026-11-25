@@ -69,7 +69,7 @@ class CommercialController extends Controller
 
     public function save(Request $request, NetworkSettings $settings)
     {
-        $rules = ['prices' => 'required|array:'.implode(',', array_keys(CommercialCatalog::PRODUCTS))];
+        $rules = ['configuration_version' => 'nullable|string|size:64', 'prices' => 'required|array:'.implode(',', array_keys(CommercialCatalog::PRODUCTS))];
         foreach (CommercialCatalog::PRODUCTS as $key => $product) {
             $rules['prices.'.$key] = 'present|nullable|numeric|decimal:0,2|min:0|max:100000';
         }
@@ -82,7 +82,7 @@ class CommercialController extends Controller
             }
 
             return $current;
-        });
+        }, $data['configuration_version'] ?? null);
 
         return redirect('/admin/commercial')->with('status', 'Commercial rate-card draft saved. No advertising or billing was activated.');
     }

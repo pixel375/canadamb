@@ -32,7 +32,7 @@ class ThemeController extends Controller
 
     public function draft(Request $request, NetworkSettings $settings)
     {
-        $rules = ['preset' => ['required', Rule::in(array_keys(Themes::LABELS))]];
+        $rules = ['configuration_version' => 'nullable|string|size:64', 'preset' => ['required', Rule::in(array_keys(Themes::LABELS))]];
         if ($request->input('preset') === 'custom') {
             foreach (['light', 'dark'] as $mode) {
                 foreach (Themes::TOKENS as $token => $label) {
@@ -44,21 +44,23 @@ class ThemeController extends Controller
         $palette = $data['palette'] ?? Themes::preset($data['preset']);
         $settings->saveDraft($request->user()->id, fn (array $current) => array_replace($current, [
             'preset' => $data['preset'], 'palette' => $palette,
-        ]));
+        ]), $data['configuration_version'] ?? null);
 
         return redirect('/admin/theme')->with('status', 'Theme draft saved.');
     }
 
     public function publish(Request $request, NetworkSettings $settings)
     {
-        $settings->publish($request->user()->id);
+        $data = $request->validate(['configuration_version' => 'nullable|string|size:64']);
+        $settings->publish($request->user()->id, expected: $data['configuration_version'] ?? null);
 
         return redirect('/admin/theme')->with('status', 'Theme published across the network.');
     }
 
     public function rollback(Request $request, NetworkSettings $settings)
     {
-        $settings->publish($request->user()->id, rollback: true);
+        $data = $request->validate(['configuration_version' => 'nullable|string|size:64']);
+        $settings->publish($request->user()->id, rollback: true, expected: $data['configuration_version'] ?? null);
 
         return redirect('/admin/theme')->with('status', 'Previous published configuration restored.');
     }

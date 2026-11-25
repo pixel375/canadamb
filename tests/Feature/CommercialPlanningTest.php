@@ -18,6 +18,27 @@ class CommercialPlanningTest extends TestCase
 
     protected $seeder = DatabaseSeeder::class;
 
+    public function test_stale_network_forms_cannot_overwrite_or_publish_a_different_draft(): void
+    {
+        $this->actingAs(User::factory()->create(['role' => 'super_admin']));
+        $origin = 'https://canadamb.ca/admin';
+        $settings = app(NetworkSettings::class);
+        $version = NetworkSettings::stateVersion($settings->state());
+        $this->get($origin.'/settings')->assertOk()->assertSee($version);
+        $this->post($origin.'/theme', ['preset' => 'blue', 'configuration_version' => $version])->assertRedirect()->assertSessionHasNoErrors();
+        $draft = $settings->state()->draft_id;
+        $this->post($origin.'/settings', ['configuration_version' => $version])->assertSessionHasErrors('configuration_version');
+        $this->post($origin.'/settings/publish', ['configuration_version' => $version])->assertSessionHasErrors('configuration_version');
+        $prices = ['business-pro' => '29.95', 'directory-sponsored' => null, 'home-banner' => '10.00', 'marketplace-banner' => '0'];
+        $this->post($origin.'/commercial', ['prices' => $prices, 'configuration_version' => $version])->assertSessionHasErrors('configuration_version');
+        $this->assertSame($draft, $settings->state()->draft_id);
+        $current = NetworkSettings::stateVersion($settings->state());
+        $this->post($origin.'/settings/publish', ['configuration_version' => $current])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame($draft, $settings->state()->published_id);
+        $this->post($origin.'/theme/rollback', ['configuration_version' => $current])->assertSessionHasErrors('configuration_version');
+        $this->assertSame($draft, $settings->state()->published_id);
+    }
+
     public function test_rate_card_is_private_versioned_and_never_activates_advertising(): void
     {
         $url = 'https://canadamb.ca/admin/commercial';

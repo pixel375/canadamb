@@ -21,7 +21,7 @@ class SettingsController extends Controller
 
     public function save(Request $request, NetworkSettings $settings)
     {
-        $rules = ['pwa_install_enabled' => 'nullable|boolean', 'prelaunch_test_registration_enabled' => 'sometimes|boolean'];
+        $rules = ['configuration_version' => 'nullable|string|size:64', 'pwa_install_enabled' => 'nullable|boolean', 'prelaunch_test_registration_enabled' => 'sometimes|boolean'];
         foreach (NetworkSettings::OPERATIONAL_MODULES as $key => $label) {
             $rules['modules.'.$key] = 'nullable|boolean';
             $rules['overrides.'.$key] = 'nullable|boolean';
@@ -38,14 +38,15 @@ class SettingsController extends Controller
             $current['permitted_module_overrides'] = array_keys(array_filter($data['overrides'] ?? []));
 
             return $current;
-        });
+        }, $data['configuration_version'] ?? null);
 
         return redirect('/admin/settings')->with('status', 'Settings draft saved.');
     }
 
     public function publish(Request $request, NetworkSettings $settings)
     {
-        $settings->publish($request->user()->id);
+        $data = $request->validate(['configuration_version' => 'nullable|string|size:64']);
+        $settings->publish($request->user()->id, expected: $data['configuration_version'] ?? null);
 
         return redirect('/admin/settings')->with('status', 'Network settings published.');
     }

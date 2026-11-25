@@ -3,6 +3,7 @@
     @php($presetPalettes = array_combine(array_keys($presets), $palettes))
     <form class="panel form-stack" method="post" action="/admin/theme" x-data="themeEditor(@js($presetPalettes), @js($theme['palette']), @js($theme['preset']))">
         @csrf
+        <input type="hidden" name="configuration_version" value="{{ \App\Support\NetworkSettings::stateVersion($state) }}">
         <label>Theme preset<select name="preset" x-model="selected" x-on:change="preset()">
             @foreach($presets as $key => $label)<option value="{{ $key }}" @selected($theme['preset'] === $key)>{{ $label }}</option>@endforeach
         </select></label>
@@ -29,8 +30,8 @@
         <div class="inline-actions"><button class="button button-primary" name="action" value="draft">Save draft</button><button class="button button-outline" type="button" x-on:click="selected = 'blue'; preset()">Reset to defaults</button></div>
     </form>
     <div class="panel inline-actions">
-        @if($state->draft_id)<form action="/admin/theme/publish" method="post">@csrf<button class="button button-primary">Publish across the network</button></form>@endif
-        @if($state->previous_id)<form action="/admin/theme/rollback" method="post">@csrf<button class="button button-outline">Restore previous published configuration</button></form>@endif
+        @if($state->draft_id)<form action="/admin/theme/publish" method="post">@csrf<input type="hidden" name="configuration_version" value="{{ \App\Support\NetworkSettings::stateVersion($state) }}"><button class="button button-primary">Publish across the network</button></form>@endif
+        @if($state->previous_id)<form action="/admin/theme/rollback" method="post">@csrf<input type="hidden" name="configuration_version" value="{{ \App\Support\NetworkSettings::stateVersion($state) }}"><button class="button button-outline">Restore previous published configuration</button></form>@endif
         @if(!$state->draft_id && !$state->previous_id)<p>Save a draft to publish a new theme.</p>@endif
     </div>
 </x-layouts.admin>
