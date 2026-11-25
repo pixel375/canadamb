@@ -143,7 +143,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/account/community-notifications/read-all', [CommunityForumController::class, 'readAllNotifications'])->middleware('throttle:12,1');
     Route::post('/account/community-notifications/{notification}/read', [CommunityForumController::class, 'readNotification'])->whereNumber('notification');
     Route::get('/events/new', [CommunityEventController::class, 'create']);
-    Route::post('/events', [CommunityEventController::class, 'store'])->middleware('throttle:6,1');
+    Route::post('/events', [CommunityEventController::class, 'store'])->middleware('throttle:6,1,event-submission');
     Route::get('/account/events', [CommunityEventController::class, 'owned']);
     Route::post('/account/events/{event}/cancel', [CommunityEventController::class, 'cancel'])->whereNumber('event');
     Route::get('/marketplace/new', [MarketplaceController::class, 'create']);

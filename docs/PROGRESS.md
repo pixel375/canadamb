@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-25 — staged event browser diagnostics
+
+Chat menu repair passed the expanded browser flow through archive and restoration. Recurrence form timed out at redirect; isolate the event submission rate-limit bucket (still six per minute), capture the POST status, validation page and screenshot on failure. The cause remains to be confirmed by exact-SHA QA.
+
 ## 2026-11-25 — commercial planning and sandbox ledger visibility
 
 Added campaign search and portal filtering, duplicate guard, one-year start horizon, bounded trial exports and a read-only, gated test-payment ledger with grouped outcome counts. Tests check the ledger omits provider references and rejects members. No checkout route, real provider call, payment or ad renderer.

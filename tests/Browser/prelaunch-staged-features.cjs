@@ -125,7 +125,12 @@ const password = 'New-browser-qa-42';
         await page.locator('select[name="repeat"]').selectOption('weekly');
         await page.locator('select[name="occurrences"]').selectOption('2');
         await page.locator('textarea[name="body"]').fill('A disposable recurring event for browser verification.');
-        await submit(page, page.getByRole('button', { name: 'Submit for review' }), '/account/events');
+        const submitted = page.waitForResponse(response => response.request().method() === 'POST' && new URL(response.url()).pathname === '/events');
+        await page.getByRole('button', { name: 'Submit for review' }).click();
+        const eventResponse = await submitted;
+        check(eventResponse.status() === 302, 'Event submission HTTP ' + eventResponse.status());
+        await page.waitForLoadState('load');
+        check(new URL(page.url()).pathname === '/account/events', 'Event submission did not redirect to account events: ' + (await page.locator('body').innerText()).slice(0, 2500));
         check(await page.getByRole('heading', { name: 'Recurring browser QA event', exact: true }).count() === 2, 'Expected two event submissions');
         console.log('PASS: recurring event form creates two reviewed occurrences');
 
@@ -142,6 +147,9 @@ const password = 'New-browser-qa-42';
         check(await admin.getByText('Configuration mismatch', { exact: true }).count() === 0, 'Staged schema mismatch');
         await visit(admin, '/admin/news');
         console.log('PASS: responsive staged views and admin readiness');
+    } catch (error) {
+        await page.screenshot({ path: 'test-results/staged-qa-failure.png', fullPage: true }).catch(() => {});
+        throw error;
     } finally {
         await browser.close();
     }
