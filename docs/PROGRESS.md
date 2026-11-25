@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-25 — branch reopening and review history
+
+Owner-only reopening requires independent review at the original address, preserves branch identity and does not restore withdrawn jobs or announcements. Added status/kind/reference review filters and regression coverage. Updated confirmed production source and quota recovery record. No new migration or switch changes.
+
 ## 2026-11-25 — reviewed branch closure and relocation
 
 Used existing branch location_status and staged business change requests: owner-only closure or CanadaMB-only relocation, independent review, preserved original branch/address/history, withdrawal of pending/approved jobs and announcements, open-only public directory/canonical/search/sitemap, job and inquiry eligibility, and commercial eligibility. Management retains closed branches; relocation creates a new branch rather than moving old records. No new schema or public activation; reopening requires separate review. Added branch lifecycle regression coverage.

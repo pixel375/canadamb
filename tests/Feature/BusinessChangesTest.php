@@ -116,6 +116,19 @@ class BusinessChangesTest extends TestCase
         $this->assertDatabaseCount('business_locations', 2);
         $this->assertDatabaseCount('job_postings', 1);
         $this->assertDatabaseCount('business_updates', 1);
-        $this->actingAs($owner)->get($main)->assertOk()->assertSee('Closed');
+        $this->actingAs($owner)->get($main)->assertOk()->assertSee('Closed')->assertSee('Request reopening');
+        $reopen = ['kind' => 'branch-reopen', 'branch_id' => $branch->id, 'reason' => 'The original shop is open again.'];
+        $this->actingAs($manager)->post($city, $reopen)->assertNotFound();
+        $this->actingAs($owner)->post($city, $reopen)->assertRedirect()->assertSessionHasNoErrors();
+        $reopenId = DB::table('business_change_requests')->max('id');
+        $this->get('https://brandonmb.ca/businesses/moving-shop')->assertNotFound();
+        $this->actingAs($reviewer)->get($queue.'?kind=branch-reopen')->assertSee('The original shop is open again.');
+        $this->post($queue.$reopenId, ['decision' => 'approved', 'note' => 'Independently verified reopening.'])->assertRedirect();
+        $this->assertTrue($branch->fresh()->isOpen());
+        $this->assertSame('withdrawn', $job->fresh()->status);
+        $this->assertSame('withdrawn', $update->fresh()->status);
+        $this->get('https://brandonmb.ca/businesses/moving-shop')->assertOk()->assertSee('5 Old Road')->assertDontSee('6 New Road');
+        $this->get('https://brandonmb.ca/jobs/'.$job->id)->assertNotFound();
+        $this->get($queue.'?status=approved&reference='.$reopenId)->assertSee('The original shop is open again.')->assertDontSee('Approve verified request');
     }
 }

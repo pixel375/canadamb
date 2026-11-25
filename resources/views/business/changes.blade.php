@@ -8,7 +8,7 @@
                 <label>Public business address<input name="address" maxlength="255" required></label><button class="button button-primary">Request new branch</button>
             </form>
         </section>
-        <section class="panel form-stack"><h2>Correct a branch address</h2><p>Correct addresses within the same community. Owners may also request closure or, from CanadaMB, relocation.</p>
+        <section class="panel form-stack"><h2>Manage existing branches</h2><p>Correct addresses within the same community. Owners may request closure, reopening or, from CanadaMB, relocation.</p>
             @forelse($branches as $branch)<details><summary>{{ $branch->location->name }} · {{ $branch->address }} @if(!$branch->isOpen()) · Closed @endif</summary>
                 @if($branch->isOpen())
                 <form class="form-stack mt-2" method="post" action="/account/businesses/{{ $item->id }}/changes">@csrf<input type="hidden" name="kind" value="branch-address"><input type="hidden" name="branch_id" value="{{ $branch->id }}">
@@ -25,7 +25,12 @@
                         </form>
                     @endif
                 @endif
-                @else<p class="field-note">Closed branch retained for history. Contact support to review reopening.</p>@endif
+                @else
+                    <p class="field-note">Closed branch retained for history. Reopening requires independent review. Previously withdrawn jobs and announcements stay withdrawn.</p>
+                    @if($isOwner)<form class="form-stack mt-3" method="post" action="/account/businesses/{{ $item->id }}/changes">@csrf<input type="hidden" name="kind" value="branch-reopen"><input type="hidden" name="branch_id" value="{{ $branch->id }}">
+                        <label>Reason for reopening<textarea name="reason" required minlength="10" maxlength="255"></textarea></label><button class="button button-outline">Request reopening</button>
+                    </form>@endif
+                @endif
                 </details>
             @empty<p>No branches in this community.</p>@endforelse
         </section>

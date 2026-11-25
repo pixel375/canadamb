@@ -35,11 +35,11 @@ class BusinessChangeController extends Controller
     {
         $this->managed($request, $business);
         $data = $request->validate([
-            'kind' => 'required|in:branch-add,branch-address,branch-close,branch-relocate,contact',
-            'branch_id' => 'nullable|required_if:kind,branch-address,branch-close,branch-relocate|integer',
+            'kind' => 'required|in:branch-add,branch-address,branch-close,branch-reopen,branch-relocate,contact',
+            'branch_id' => 'nullable|required_if:kind,branch-address,branch-close,branch-reopen,branch-relocate|integer',
             'location_id' => 'nullable|required_if:kind,branch-relocate|integer',
             'address' => 'nullable|required_if:kind,branch-add,branch-address,branch-relocate|string|max:255',
-            'reason' => 'nullable|required_if:kind,branch-close|string|min:10|max:255',
+            'reason' => 'nullable|required_if:kind,branch-close,branch-reopen|string|min:10|max:255',
         ]);
         DB::transaction(function () use ($request, $business, $data) {
             $item = Business::lockForUpdate()->findOrFail($business);
@@ -55,11 +55,12 @@ class BusinessChangeController extends Controller
                     throw ValidationException::withMessages(['kind' => 'Save a valid public contact email before requesting verification.']);
                 }
                 $value = $item->public_email;
-            } elseif (in_array($data['kind'], ['branch-close', 'branch-relocate'], true)) {
+            } elseif (in_array($data['kind'], ['branch-close', 'branch-reopen', 'branch-relocate'], true)) {
                 abort_unless($item->members()->whereKey($id)->wherePivot('role', 'owner')->exists(), 404);
-                $branch = $item->openLocations()->findOrFail($data['branch_id']);
+                $branch = $item->locations()->findOrFail($data['branch_id']);
+                abort_unless($branch->isOpen() === ($data['kind'] !== 'branch-reopen'), 409);
                 $previous = $branch->address;
-                if ($data['kind'] === 'branch-close') {
+                if (in_array($data['kind'], ['branch-close', 'branch-reopen'], true)) {
                     $place = LocationScope::forPublication($site, $branch->location_id);
                     $value = trim($data['reason']);
                 } else {
@@ -82,11 +83,11 @@ class BusinessChangeController extends Controller
                 $place = LocationScope::forPublication($site, isset($data['location_id']) ? (int) $data['location_id'] : null);
                 $value = trim($data['address']);
             }
-            if ($place && $data['kind'] !== 'branch-close' && ($value === '' || $this->addressConflict($item, $place, $value, $branch?->id))) {
+            if ($place && ! in_array($data['kind'], ['branch-close', 'branch-reopen'], true) && ($value === '' || $this->addressConflict($item, $place, $value, $branch?->id))) {
                 throw ValidationException::withMessages(['address' => 'This business address already appears in the directory or is empty.']);
             }
             $pending = DB::table('business_change_requests')->where('business_id', $business)
-                ->when($branch, fn ($query) => $query->whereIn('kind', ['branch-address', 'branch-close', 'branch-relocate']),
+                ->when($branch, fn ($query) => $query->whereIn('kind', ['branch-address', 'branch-close', 'branch-reopen', 'branch-relocate']),
                     fn ($query) => $query->where('kind', $data['kind']))
                 ->where('status', 'pending')
                 ->when($branch, fn ($query) => $query->where('branch_id', $branch->id))
@@ -128,19 +129,22 @@ class BusinessChangeController extends Controller
     {
         abort_unless(BusinessChanges::enabled(), 404);
         $id = $request->user()->id;
+        $filters = $request->validate(['status' => 'nullable|in:pending,approved,rejected,withdrawn,stale', 'reference' => 'nullable|integer|min:1', 'kind' => 'nullable|in:branch-add,branch-address,branch-close,branch-reopen,branch-relocate,contact']);
         $items = DB::table('business_change_requests')
             ->join('businesses', 'businesses.id', '=', 'business_change_requests.business_id')
             ->leftJoin('locations', 'locations.id', '=', 'business_change_requests.location_id')
-            ->where('business_change_requests.status', 'pending')
+            ->where('business_change_requests.status', $filters['status'] ?? 'pending')
+            ->when($filters['reference'] ?? null, fn ($query, $reference) => $query->where('business_change_requests.id', $reference))
+            ->when($filters['kind'] ?? null, fn ($query, $kind) => $query->where('business_change_requests.kind', $kind))
             ->where('requester_id', '!=', $id)
             ->whereNotExists(function ($query) use ($id) {
                 $query->selectRaw('1')->from('business_memberships')
                     ->whereColumn('business_memberships.business_id', 'business_change_requests.business_id')
                     ->where('user_id', $id);
             })
-            ->latest('business_change_requests.id')->paginate(20, ['business_change_requests.*', 'businesses.name as business_name', 'locations.name as location_name']);
+            ->latest('business_change_requests.id')->paginate(20, ['business_change_requests.*', 'businesses.name as business_name', 'locations.name as location_name'])->withQueryString();
 
-        return view('admin.business-changes', compact('items'));
+        return view('admin.business-changes', compact('items', 'filters'));
     }
 
     public function review(Request $request, int $change)
@@ -172,7 +176,7 @@ class BusinessChangeController extends Controller
 
     private function apply(Business $business, object $row): void
     {
-        $roles = in_array($row->kind, ['contact', 'branch-close', 'branch-relocate'], true) ? ['owner'] : ['owner', 'manager'];
+        $roles = in_array($row->kind, ['contact', 'branch-close', 'branch-reopen', 'branch-relocate'], true) ? ['owner'] : ['owner', 'manager'];
         abort_unless($business->status === 'active' && $row->requester_id
             && $business->members()->whereKey($row->requester_id)->wherePivotIn('role', $roles)->exists(), 409);
         if ($row->kind === 'contact') {
@@ -181,8 +185,18 @@ class BusinessChangeController extends Controller
             return;
         }
         abort_unless(Location::selectable()->whereKey($row->location_id)->exists(), 409);
-        $branch = $row->branch_id ? $business->openLocations()->lockForUpdate()->findOrFail($row->branch_id) : null;
-        abort_unless(in_array($row->kind, ['branch-add', 'branch-address', 'branch-close', 'branch-relocate'], true), 409);
+        $branch = $row->branch_id ? $business->locations()->lockForUpdate()->findOrFail($row->branch_id) : null;
+        if ($branch) {
+            abort_unless($branch->isOpen() === ($row->kind !== 'branch-reopen'), 409);
+        }
+        abort_unless(in_array($row->kind, ['branch-add', 'branch-address', 'branch-close', 'branch-reopen', 'branch-relocate'], true), 409);
+        if ($row->kind === 'branch-reopen') {
+            abort_unless($branch && $branch->address === $row->previous_value && (int) $branch->location_id === (int) $row->location_id, 409);
+            abort_if($this->addressConflict($business, (int) $row->location_id, $branch->address, $branch->id), 409);
+            $branch->update(['location_status' => 'user_selected', 'last_verified_at' => now()]);
+
+            return;
+        }
         if ($row->kind === 'branch-close') {
             abort_unless($branch && $branch->address === $row->previous_value && (int) $branch->location_id === (int) $row->location_id, 409);
             $this->closeBranch($branch, (int) $row->id);
