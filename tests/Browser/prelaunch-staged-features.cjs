@@ -90,6 +90,19 @@ const password = 'New-browser-qa-42';
         await page.locator('.message-thread').click();
         const conversation = new URL(page.url()).pathname;
         await page.locator('input[name="photo"]').waitFor();
+        for (const width of [320, 390, 1440]) {
+            await page.setViewportSize({ width, height: 900 });
+            await page.locator('.chat-actions summary').click();
+            for (const name of ['Archive and mark read', 'Block member']) {
+                const button = page.getByRole('button', { name, exact: true });
+                check(await button.evaluate(el => {
+                    const r = el.getBoundingClientRect();
+                    return el.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
+                }), name + ' obstructed at ' + width);
+            }
+            await page.locator('.chat-actions summary').click();
+        }
+        await page.setViewportSize({ width: 390, height: 844 });
         await page.locator('.chat-actions summary').click();
         await page.getByRole('button', { name: 'Archive and mark read' }).click();
         await visit(page, '/account/messages?view=archived');

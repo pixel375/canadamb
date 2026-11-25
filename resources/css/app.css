@@ -1495,7 +1495,11 @@ a.market-category-card:hover, a.market-category-card:focus-visible {
 .chat-actions { flex-shrink: 0; position: relative; }
 .chat-actions summary { cursor: pointer; display: flex; align-items: center; gap: 5px; font-size: .85rem; font-weight: 750; padding: 9px; border: 1px solid var(--border); border-radius: 8px; list-style: none; }
 .chat-actions summary::-webkit-details-marker { display: none; }
-.chat-actions form { position: absolute; right: 0; z-index: 5; top: calc(100% + 6px); display: grid; gap: 10px; width: min(230px,70vw); background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px; box-shadow: 0 12px 30px rgb(0 0 0 / .15); }
+.chat-actions-menu { position: absolute; right: 0; z-index: 15; top: calc(100% + 6px); display: grid; gap: 12px; width: min(260px,70vw); background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px; box-shadow: 0 12px 30px rgb(0 0 0 / .15); }
+.chat-actions:not([open]) .chat-actions-menu { display: none; }
+.chat-actions-menu form { display: grid; gap: 8px; min-width: 0; }
+.chat-actions-menu form + form { border-top: 1px solid var(--border); padding-top: 12px; }
+.chat-actions-menu .button { width: 100%; white-space: normal; }
 .chat-history-nav { display: flex; flex-wrap: wrap; gap: 12px; padding: 10px 20px 0; }
 .chat-history-nav:empty { display: none; }
 .chat-history { display: flex; flex-direction: column; gap: 18px; min-height: 200px; padding: 24px 20px; }

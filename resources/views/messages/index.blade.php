@@ -18,7 +18,7 @@
                 <a href="{{ $allUrl }}" @if(!$unreadOnly && !$archived) aria-current="page" @endif>All messages</a>
                 <a href="{{ $unreadUrl }}" @if($unreadOnly) aria-current="page" @endif>Unread</a>
                 @if(\App\Support\MessagingExtensions::enabled())<a href="/account/messages?{{ http_build_query(array_filter(['view' => 'archived', 'q' => $keyword])) }}" @if($archived) aria-current="page" @endif>Archived</a>@endif
-                @if($keyword !== '')<a href="{{ $unreadOnly ? '/account/messages?view=unread' : '/account/messages' }}">Clear search</a>@endif
+                @if($keyword !== '')<a href="{{ $archived ? '/account/messages?view=archived' : ($unreadOnly ? '/account/messages?view=unread' : '/account/messages') }}">Clear search</a>@endif
             </nav>
             <div class="message-thread-list">
                 @forelse($threads as $thread)
@@ -40,8 +40,8 @@
                 @empty
                     <div class="market-results-empty">
                         <span class="empty-icon"><x-icon name="messages" size="24"/></span>
-                        <h3>{{ $keyword !== '' ? 'No conversations match your search.' : ($unreadOnly ? 'You have no unread messages.' : 'You have no conversations yet.') }}</h3>
-                        <p>{{ $keyword !== '' || $unreadOnly ? 'Browse all conversations to see your message history.' : 'When you contact a seller or receive an inquiry, your conversation will appear here.' }}</p>
+                        <h3>{{ $keyword !== '' ? 'No conversations match your search.' : ($archived ? 'You have no archived conversations.' : ($unreadOnly ? 'You have no unread messages.' : 'You have no conversations yet.')) }}</h3>
+                        <p>{{ $keyword !== '' || $unreadOnly || $archived ? 'Browse all conversations to see your message history.' : 'When you contact a seller or receive an inquiry, your conversation will appear here.' }}</p>
                         @if($keyword !== '' || $unreadOnly)<a class="button button-outline" href="/account/messages">All conversations</a>@else<a class="button button-primary" href="/marketplace">Browse Marketplace</a>@endif
                     </div>
                 @endforelse

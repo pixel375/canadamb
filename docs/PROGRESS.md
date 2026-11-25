@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-25 — staged browser QA chat menu repair
+
+Expanded browser run `45606518944` passed saved searches, preferences, privacy request lifecycle and business controls before finding overlapping absolute-positioned Archive and Block forms. Use a single stacked popover and hit-test both actions at 320, 390 and 1440px; preserve archived inbox filters on search reset. Backend `45606518888` passed; the latest release was held by browser QA. No schema or configuration change.
+
 ## 2026-11-25 — cumulative calendar regression fixes
 
 Backend CI `45605838934` reached the full suite and reported two calendar failures. The monthly agenda now respects an explicit day selection rather than exposing other days' event titles. The repeat test uses Manitoba's known March 2026 clock change (the existing event test already fixes this historical fixture), rather than assuming future March 2027 changes. Agenda previews now have deterministic chronological order. Exact latest SHA checks still required.

@@ -12,6 +12,7 @@
                 </div>
                 <details class="chat-actions">
                     <summary>Options <x-icon name="chevron-down" size="16"/></summary>
+                    <div class="chat-actions-menu">
                     @if(\App\Support\MessagingExtensions::enabled())
                         <form method="post" action="/account/messages/{{ $thread->id }}/archive">@csrf
                             @if($thread->{$thread->archiveMarker(auth()->id())})@method('DELETE')@endif
@@ -22,7 +23,8 @@
                         @csrf @if($myBlock)@method('DELETE')@endif
                         <p class="field-note">{{ $myBlock ? 'Allow this member to contact you again.' : 'Blocking stops new messages between you and this member.' }}</p>
                         <button class="button button-outline">{{ $myBlock ? 'Unblock member' : 'Block member' }}</button>
-                    </form><a class="text-link mt-2" href="/account/blocked-members">Manage blocked members</a>
+                    </form><a class="text-link" href="/account/blocked-members">Manage blocked members</a>
+                    </div>
                 </details>
             </header>
             <nav class="chat-history-nav" aria-label="Conversation history">
