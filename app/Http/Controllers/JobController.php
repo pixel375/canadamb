@@ -171,6 +171,37 @@ class JobController extends Controller
         return redirect('/account/businesses/'.$business.'/jobs')->with('status', 'Job withdrawn.');
     }
 
+    public function withdrawSelected(Request $request, int $business)
+    {
+        $site = $request->attributes->get('site');
+        abort_unless($this->jobs->enabled($site), 404);
+        $this->managedBusiness($request, $business);
+        $data = $request->validate([
+            'jobs' => 'required|array|list|min:1|max:10', 'jobs.*' => 'required|integer|distinct|min:1',
+            'versions' => 'required|array|max:12', 'versions.*' => 'required|string|size:64',
+            'confirm_withdraw' => 'accepted',
+        ]);
+        DB::transaction(function () use ($request, $business, $site, $data) {
+            Business::lockForUpdate()->findOrFail($business);
+            $this->managedBusiness($request, $business);
+            $items = $this->jobs->scope($site->location_id)->whereHas('branch', fn ($branch) => $branch->where('business_id', $business))
+                ->whereIn('id', $data['jobs'])->orderBy('id')->lockForUpdate()->get();
+            abort_unless($items->count() === count($data['jobs']), 404);
+            foreach ($items as $item) {
+                if (! in_array($item->status, ['pending', 'approved'], true)
+                    || ! isset($data['versions'][$item->id]) || ! hash_equals($item->reviewVersion(), $data['versions'][$item->id])) {
+                    throw ValidationException::withMessages(['jobs' => 'A selected job changed or cannot be withdrawn. No postings changed.']);
+                }
+            }
+            foreach ($items as $item) {
+                $item->forceFill(['status' => 'withdrawn'])->save();
+                Audit::record('jobs.withdrawn', $request->user()->id, context: ['job' => $item->id]);
+            }
+        }, attempts: 3);
+
+        return redirect('/account/businesses/'.$business.'/jobs')->with('status', count($data['jobs']).' job postings withdrawn.');
+    }
+
     public function save(Request $request, int $job)
     {
         $item = $this->visible($request)->findOrFail($job);

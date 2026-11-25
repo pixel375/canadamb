@@ -28,6 +28,15 @@
             <button class="button button-primary"><x-icon name="search" size="16"/> Search</button>
         </form>
         <p class="field-note seller-results-count">{{ $items->total() }} {{ \Illuminate\Support\Str::plural('job', $items->total()) }} found</p>
+        @if($items->contains(fn ($item) => in_array($item->status, ['pending', 'approved'], true)))
+            <details class="panel form-stack mb-4"><summary>Withdraw selected postings</summary>
+                <form id="job-batch-withdraw" method="post" action="/account/businesses/{{ $employer->id }}/jobs/withdraw-selected" class="form-stack mt-3">@csrf
+                    <p class="field-note">Choose up to ten pending or approved jobs below. Existing messages and posting history are preserved.</p>
+                    <label class="checkbox-line"><input type="checkbox" name="confirm_withdraw" value="1" required> Confirm withdrawal of selected postings</label>
+                    <button class="button button-outline">Withdraw selected jobs</button>
+                </form>
+            </details>
+        @endif
         <section class="seller-listing-grid" aria-label="Your job postings">
             @forelse($items as $item)
                 <article class="panel seller-listing-card">
@@ -47,15 +56,17 @@
                         @endswitch
                     </p>
                     <div class="inline-actions seller-listing-actions">
-                        @if($item->status === 'approved' && $item->closing_on->toDateString() >= today('America/Winnipeg')->toDateString())<a class="button button-outline" href="/jobs/{{ $item->id }}">View posting</a>@endif
+                        @if($item->branch->isOpen() && $item->status === 'approved' && $item->closing_on->toDateString() >= today('America/Winnipeg')->toDateString())<a class="button button-outline" href="/jobs/{{ $item->id }}">View posting</a>@endif
                         @if($item->branch->isOpen() && in_array($item->status, ['pending', 'approved', 'rejected', 'expired'], true))<a class="button button-outline" href="/account/businesses/{{ $employer->id }}/jobs/{{ $item->id }}/edit">Edit</a>@endif
                         @if($openBranches->isNotEmpty())<a class="button button-outline" href="/account/businesses/{{ $employer->id }}/jobs/{{ $item->id }}/duplicate">Reuse posting</a>@endif
                     </div>
                     @if(in_array($item->status, ['pending', 'approved'], true))
+                        <label class="checkbox-line"><input form="job-batch-withdraw" type="checkbox" name="jobs[]" value="{{ $item->id }}"> Select for withdrawal</label>
+                        <input form="job-batch-withdraw" type="hidden" name="versions[{{ $item->id }}]" value="{{ $item->reviewVersion() }}">
                         <details class="seller-remove-listing"><summary>Withdraw posting</summary><p class="field-note">Withdraw this job from publication and review.</p><form method="post" action="/account/businesses/{{ $employer->id }}/jobs/{{ $item->id }}/withdraw">@csrf<input type="hidden" name="version" value="{{ $item->reviewVersion() }}"><button class="button button-outline">Confirm withdrawal</button></form></details>
                     @endif
                 </article>
-            @empty<div class="panel market-results-empty"><x-icon name="briefcase" size="30"/><h2>{{ ($filters['status'] ?? null) || ($filters['q'] ?? null) ? 'No jobs match these filters.' : 'No jobs have been posted for these branches.' }}</h2><a class="button button-outline" href="/account/businesses/{{ $employer->id }}/jobs">View all jobs</a></div>@endforelse
+            @empty<div class="panel market-results-empty"><x-icon name="briefcase" size="30"/><h2>{{ filled($filters['status'] ?? null) || filled($filters['q'] ?? null) || filled($filters['branch'] ?? null) ? 'No jobs match these filters.' : 'No jobs have been posted for these branches.' }}</h2><a class="button button-outline" href="/account/businesses/{{ $employer->id }}/jobs">View all jobs</a></div>@endforelse
         </section>
         {{ $items->links() }}
     </div>

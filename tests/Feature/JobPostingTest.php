@@ -41,6 +41,35 @@ class JobPostingTest extends TestCase
         $this->assertSame(3, DB::table('job_posting_bookmarks')->where('user_id', $other->id)->count());
     }
 
+    public function test_bulk_withdrawal_respects_employer_roles_portal_and_stale_versions(): void
+    {
+        $owner = User::factory()->create();
+        $editor = User::factory()->create();
+        $business = Business::create(['name' => 'Batch employer', 'slug' => 'batch-employer', 'category' => 'retail', 'status' => 'active']);
+        $business->members()->attach($owner->id, ['role' => 'owner']);
+        $business->members()->attach($editor->id, ['role' => 'editor']);
+        $items = collect();
+        foreach (['brandon', 'brandon', 'winnipeg'] as $index => $place) {
+            $branch = $business->locations()->create(['location_id' => Location::where('slug', $place)->sole()->id, 'address' => $index.' Batch Road']);
+            $items->push(JobPosting::create(['business_location_id' => $branch->id, 'title' => 'Batch job '.$index,
+                'description' => 'A local employment opportunity.', 'employment_type' => 'full-time', 'workplace' => 'on-site',
+                'apply_url' => 'https://example.test/apply', 'closing_on' => today()->addWeek()->toDateString()])->fresh());
+        }
+        $path = 'https://brandonmb.ca/account/businesses/'.$business->id.'/jobs';
+        $url = $path.'/withdraw-selected';
+        $versions = $items->mapWithKeys(fn ($job) => [$job->id => $job->reviewVersion()])->all();
+        $input = ['jobs' => [$items[0]->id, $items[1]->id], 'versions' => $versions, 'confirm_withdraw' => '1'];
+        $this->actingAs($editor)->post($url, $input)->assertNotFound();
+        $this->actingAs($owner)->get($path)->assertOk()->assertSee('Withdraw selected postings');
+        $this->post($url, array_replace($input, ['jobs' => [$items[0]->id, $items[2]->id]]))->assertNotFound();
+        $this->post($url, array_replace($input, ['versions' => array_replace($versions, [$items[1]->id => str_repeat('0', 64)])]))->assertSessionHasErrors('jobs');
+        $this->assertSame('pending', $items[0]->fresh()->status);
+        $this->post($url, $input)->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame('withdrawn', $items[0]->fresh()->status);
+        $this->assertSame('withdrawn', $items[1]->fresh()->status);
+        $this->assertSame('pending', $items[2]->fresh()->status);
+    }
+
     public function test_business_jobs_are_authorized_moderated_scoped_and_expired(): void
     {
         $owner = User::factory()->create();
