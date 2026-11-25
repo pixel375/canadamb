@@ -5,17 +5,43 @@
     $place = $location->name ?? 'Manitoba';
     $scope = $site->isNetwork() && $location ? '?location='.$location->slug : '';
     $homeBrowseLink = fn (string $path) => \App\Support\LocationScope::browseUrl($site, $path, $location);
+    $newsEnabled = $homeModules['news'] ?? false;
+    $eventsEnabled = $homeModules['events'] ?? false;
+    $eventPostUrl = ($homeModules['community'] ?? false) ? '/community/new?type=event' : '/events/new';
+    if ($site->isNetwork() && $location) {
+        $eventPostUrl .= (str_contains($eventPostUrl, '?') ? '&' : '?').'location='.rawurlencode($location->slug);
+    }
     $hero = match ($site->code) { 'network' => 'manitoba', 'brandon' => 'brandon', default => null };
 @endphp
 <x-layouts.site :preview="$preview ?? false" :location="$location" main-class="home-main">
     <div class="container">
+        @unless($preview ?? false)
+            @if($site->isNetwork())
+            <form class="location-bar" action="/" method="get">
+                <span class="location-icon"><x-icon name="map"/></span>
+                <div><label for="home-location">Explore by location</label><p>Browse listings, businesses, jobs and local activity in your part of Manitoba.</p></div>
+                <select id="home-location" name="location" aria-label="Browsing location">
+                    <option value="">All Manitoba</option>
+                    @foreach($locations as $placeOption)
+                        <option value="{{ $placeOption->slug }}" @selected($location?->id === $placeOption->id)>{{ $placeOption->name }}</option>
+                    @endforeach
+                </select>
+                <button class="button button-outline" type="submit">Browse once</button>
+            </form>
+            <div class="home-preference-actions">
+                <form method="post" action="/communities/preference">@csrf<input type="hidden" name="location" value="{{ $location?->slug }}"><button class="text-link" type="submit"><x-icon name="pin" size="16"/> {{ $location ? "Remember ".$location->name." on this browser" : "Use all Manitoba as my default" }}</button></form>
+                <a class="text-link" href="/communities">Find another community</a>
+            </div>
+            @endif
+        @endunless
+
         @php($businessesEnabled = app(\App\Support\BusinessDirectory::class)->enabled($site))
-        @if($enabled || $businessesEnabled || ($homeModules['community'] ?? false) || ($homeModules['jobs'] ?? false))
+        @if($enabled || $businessesEnabled || ($homeModules['community'] ?? false) || ($homeModules['jobs'] ?? false) || $newsEnabled || $eventsEnabled)
             <section class="home-unified-search" aria-label="Search your community">
                 <div class="home-search-heading">
                     <p class="section-label"><x-icon name="search" size="16"/> Find it locally</p>
                     <h2>Search {{ $place }}</h2>
-                    <p>Find listings, businesses, discussions, and jobs in your community.</p>
+                    <p>Find listings, businesses, conversations, jobs, news and events.</p>
                 </div>
                 <div class="home-search-tools">
                     <fieldset class="home-search-modes">
@@ -24,6 +50,8 @@
                         @if($businessesEnabled)<label class="home-search-mode"><input type="radio" name="home-search-mode" value="businesses" @checked(! $enabled)><span>Businesses</span></label>@endif
                         @if($homeModules['community'] ?? false)<label class="home-search-mode"><input type="radio" name="home-search-mode" value="community" @checked(! $enabled && ! $businessesEnabled)><span>Discussions</span></label>@endif
                         @if($homeModules['jobs'] ?? false)<label class="home-search-mode"><input type="radio" name="home-search-mode" value="jobs" @checked(! $enabled && ! $businessesEnabled && ! ($homeModules['community'] ?? false))><span>Jobs</span></label>@endif
+                        @if($newsEnabled)<label class="home-search-mode"><input type="radio" name="home-search-mode" value="news" @checked(!$enabled && !$businessesEnabled && !($homeModules['community'] ?? false) && !($homeModules['jobs'] ?? false))><span>News</span></label>@endif
+                        @if($eventsEnabled)<label class="home-search-mode"><input type="radio" name="home-search-mode" value="events" @checked(!$enabled && !$businessesEnabled && !($homeModules['community'] ?? false) && !($homeModules['jobs'] ?? false) && !$newsEnabled)><span>Events</span></label>@endif
                     </fieldset>
                     <div class="home-search-forms">
                         @if($enabled)
@@ -62,6 +90,16 @@
                                 <button class="button button-primary" type="submit">Find jobs</button>
                             </form>
                         @endif
+                        @foreach(['news' => [$newsEnabled, 'Search headlines and notices...', 'Find news'], 'events' => [$eventsEnabled, 'Search events and venues...', 'Find events']] as $mode => [$available, $placeholder, $button])
+                            @if($available)
+                                <form class="home-search-form" data-home-search-section="{{ $mode }}" action="/{{ $mode }}" method="get" role="search">
+                                    <x-icon name="search" size="19"/><label class="sr-only" for="home-search-{{ $mode }}">{{ $button }}</label>
+                                    <input id="home-search-{{ $mode }}" type="search" name="q" maxlength="100" placeholder="{{ $placeholder }}">
+                                    @if($site->isNetwork() && $location)<input type="hidden" name="location" value="{{ $location->slug }}">@endif
+                                    <button class="button button-primary" type="submit">{{ $button }}</button>
+                                </form>
+                            @endif
+                        @endforeach
                     </div>
                 </div>
             </section>
@@ -70,14 +108,14 @@
         <section class="hero{{ $hero ? ' hero-photo' : '' }}" aria-labelledby="hero-title">
             @if($hero)<img class="hero-image hero-{{ $hero }}" src="/images/{{ $hero }}.webp" alt="" fetchpriority="high">@endif
             <div class="hero-content">
-                <p class="hero-location"><x-icon name="pin" size="16"/> {{ $site->location ? $site->location->name.', Manitoba' : 'Manitoba, Canada' }}</p>
+                <p class="hero-location"><x-icon name="pin" size="16"/> {{ $location ? $location->name.', Manitoba' : 'Manitoba, Canada' }}</p>
                 <h1 id="hero-title">{{ $site->tagline }}</h1>
                 <p class="hero-description">{{ $site->description }}</p>
                 @unless($preview ?? false)
                     <div class="hero-actions">
                         @if($enabled)<a class="button button-primary" href="/marketplace{{ $scope }}">Browse Marketplace <x-icon name="arrow" size="18"/></a>@endif
                         @if($site->isNetwork())<a class="button button-hero" href="/communities">Explore communities</a>
-                        @elseif($enabled)<a class="button button-hero" href="/marketplace/new">Post a listing</a>@endif
+                        @elseif($enabled)<a class="button button-hero" href="{{ $homeBrowseLink('/marketplace/new') }}">Post a listing</a>@endif
                     </div>
                 @endunless
             </div>
@@ -138,7 +176,8 @@
                         <span><strong>Communities</strong><small>Explore cities and towns</small></span>
                         <x-icon name="arrow" size="17"/>
                     </a>
-                @elseif($homeModules['news'] ?? false)
+                @endif
+                @if($newsEnabled)
                     <a href="{{ $homeBrowseLink('/news') }}" class="home-explore-link">
                         <span class="home-explore-icon"><x-icon name="news" size="23"/></span>
                         <span><strong>Local news</strong><small>What's happening nearby</small></span>
@@ -149,33 +188,15 @@
         </aside>
         </div>
 
-        @unless($preview ?? false)
-            @if($site->isNetwork())
-            <form class="location-bar" action="/" method="get">
-                <span class="location-icon"><x-icon name="map"/></span>
-                <div><label for="home-location">Explore by location</label><p>Browse listings, businesses, jobs and local activity in your part of Manitoba.</p></div>
-                <select id="home-location" name="location" aria-label="Browsing location">
-                    <option value="">All Manitoba</option>
-                    @foreach($locations as $placeOption)
-                        <option value="{{ $placeOption->slug }}" @selected($location?->id === $placeOption->id)>{{ $placeOption->name }}</option>
-                    @endforeach
-                </select>
-                <button class="button button-outline" type="submit">Browse once</button>
-            </form>
-            <div class="home-preference-actions">
-                <form method="post" action="/communities/preference">@csrf<input type="hidden" name="location" value="{{ $location?->slug }}"><button class="text-link" type="submit"><x-icon name="pin" size="16"/> {{ $location ? "Remember ".$location->name." on this browser" : "Use all Manitoba as my default" }}</button></form>
-                <a class="text-link" href="/communities">Find another community</a>
-            </div>
-            @endif
-        @endunless
-
-        @if($articles->isNotEmpty())
+        @if($newsEnabled)
             <section class="homepage-section" aria-labelledby="news-title">
                 <div class="section-heading"><h2 id="news-title">Latest news</h2>@unless($preview ?? false)<a class="text-link" href="{{ $homeBrowseLink('/news') }}">All news <x-icon name="arrow" size="16"/></a>@endunless</div>
-                <div class="panel">
-                    @foreach($articles as $article)
-                        <article class="item-row"><div><p class="section-label">{{ $article->source->name }} · {{ $article->published_at->format('M j, Y') }}</p><h3>@if($preview ?? false){{ $article->title }}@else<a href="/news/{{ $article->id }}">{{ $article->title }}</a>@endif</h3><p>{{ \Illuminate\Support\Str::limit($article->body, 150) }}</p></div></article>
-                    @endforeach
+                <div class="home-news-grid">
+                    @forelse($articles as $article)
+                                                <article class="panel home-news-card"><p class="section-label">{{ \App\Support\News::CATEGORIES[$article->category] }} · {{ $article->location?->name ?? 'Manitoba' }}</p><h3>@if($preview ?? false){{ $article->title }}@else<a href="/news/{{ $article->id }}">{{ $article->title }}</a>@endif</h3><p>{{ \Illuminate\Support\Str::limit(\Illuminate\Support\Str::squish($article->body), 150) }}</p><p class="field-note">{{ $article->source->name }} · {{ $article->published_at->timezone('America/Winnipeg')->format('M j, Y') }}</p></article>
+                    @empty
+                        <div class="panel home-news-empty"><x-icon name="news" size="26"/><div><h3>No published news here yet</h3><p>Check the local news section for source-attributed reports and public notices.</p>@unless($preview ?? false)<a class="text-link" href="{{ $homeBrowseLink('/news') }}">Browse news <x-icon name="arrow" size="16"/></a>@endunless</div></div>
+                    @endforelse
                 </div>
             </section>
         @endif
@@ -191,7 +212,7 @@
                 <div class="empty-state">
                     <span class="empty-icon"><x-icon name="tag" size="25"/></span>
                     <div><h3>No active listings yet</h3><p>New listings will appear here after review.</p>@unless($preview ?? false)<a class="text-link home-empty-link" href="/marketplace{{ $scope }}">Browse categories <x-icon name="arrow" size="15"/></a>@endunless</div>
-                    @unless($preview ?? false)<a class="button button-outline" href="/marketplace/new"><x-icon name="plus" size="16"/> Post a listing</a>@endunless
+                    @unless($preview ?? false)<a class="button button-outline" href="{{ $homeBrowseLink('/marketplace/new') }}"><x-icon name="plus" size="16"/> Post a listing</a>@endunless
                 </div>
             @else
                 <div class="listing-grid">@foreach($latest as $item)<x-listing-card :item="$item" :preview="$preview ?? false"/>@endforeach</div>
@@ -208,7 +229,7 @@
                 <div class="panel">
                     @forelse($businessUpdates as $update)
                         <article class="item-row">
-                            <div><h3>{{ $update->title }}</h3><p>{{ $update->branch->business->name }} · {{ $update->branch->location->name }}</p></div>
+                            <div><h3>@if($preview ?? false){{ $update->title }}@else<a href="/businesses/{{ $update->branch->business->slug }}">{{ $update->title }}</a>@endif</h3><p>{{ $update->branch->business->name }} · {{ $update->branch->location->name }}</p></div>
                             <time datetime="{{ $update->published_at->toDateString() }}">{{ $update->published_at->format('M j, Y') }}</time>
                         </article>
                     @empty
@@ -261,7 +282,7 @@
                                 @endforelse
                             </div>
                             @unless($preview ?? false)
-                                <footer class="home-community-card-footer"><a href="{{ $recentDiscussions->isEmpty() ? '/community/new' : $homeBrowseLink('/community') }}">{{ $recentDiscussions->isEmpty() ? 'Start a discussion' : 'Browse all discussions' }} <x-icon name="arrow" size="16"/></a></footer>
+                                <footer class="home-community-card-footer"><a href="{{ $recentDiscussions->isEmpty() ? $homeBrowseLink('/community/new') : $homeBrowseLink('/community') }}">{{ $recentDiscussions->isEmpty() ? 'Start a discussion' : 'Browse all discussions' }} <x-icon name="arrow" size="16"/></a></footer>
                             @endunless
                         </section>
                     @endif
@@ -290,7 +311,7 @@
                                 @endforelse
                             </div>
                             @unless($preview ?? false)
-                                <footer class="home-community-card-footer"><a href="{{ $upcomingEvents->isEmpty() ? '/community/new?type=event' : $homeBrowseLink('/events') }}">{{ $upcomingEvents->isEmpty() ? 'Submit an event' : 'View events calendar' }} <x-icon name="arrow" size="16"/></a></footer>
+                                <footer class="home-community-card-footer"><a href="{{ $upcomingEvents->isEmpty() ? $eventPostUrl : $homeBrowseLink('/events') }}">{{ $upcomingEvents->isEmpty() ? 'Submit an event' : 'View events calendar' }} <x-icon name="arrow" size="16"/></a></footer>
                             @endunless
                         </section>
                     @endif

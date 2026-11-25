@@ -278,6 +278,26 @@ const fs = require('node:fs');
         }
         console.log('PASS: discussion and event discovery, scoped composer and private dashboards at four widths');
 
+        for (const width of [320, 390, 1024, 1440]) {
+            await page.setViewportSize({ width, height: 900 });
+            let response = await page.goto(host + '/?location=brandon');
+            check(response.ok(), 'Scoped home failed');
+            for (const mode of ['news', 'events']) {
+                await page.locator('.home-search-mode').filter({ has: page.locator('input[value="' + mode + '"]') }).click();
+                const form = page.locator('[data-home-search-section="' + mode + '"]');
+                check(await form.isVisible(), 'Homepage search mode not visible: ' + mode);
+                check(await form.locator('input[name="location"]').inputValue() === 'brandon', 'Home search lost community');
+            }
+            check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Homepage overflow at ' + width);
+            response = await page.goto(host + '/news?location=brandon&period=7&category=municipal');
+            check(response.ok(), 'News filters failed');
+            check(await page.locator('select[name="period"]').inputValue() === '7', 'News period filter lost');
+            check(await page.locator('.news-category-panel [aria-current="page"]').count() === 1, 'News category selection missing');
+            check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'News overflow at ' + width);
+        }
+        console.log('PASS: homepage news and event search modes and scoped news filters at four widths');
+
+
 
 
         for (const width of [320, 390, 1440]) {

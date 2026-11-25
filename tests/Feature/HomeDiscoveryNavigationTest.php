@@ -56,7 +56,8 @@ class HomeDiscoveryNavigationTest extends TestCase
                 ->assertSee('href="/community/new?type=event"', false)
                 ->assertSee('href="/jobs"', false)
                 ->assertSee('Browse the directory')
-                ->assertSee('Browse categories');
+                ->assertSee('Browse categories')
+                ->assertSee('No published news here yet');
         }
     }
 
@@ -131,6 +132,8 @@ class HomeDiscoveryNavigationTest extends TestCase
             ->assertSee('data-home-search-section="businesses" action="/businesses" method="get"', false)
             ->assertSee('data-home-search-section="community" action="/community" method="get"', false)
             ->assertSee('data-home-search-section="jobs" action="/jobs" method="get"', false)
+            ->assertSee('data-home-search-section="news" action="/news" method="get"', false)
+            ->assertSee('data-home-search-section="events" action="/events" method="get"', false)
             ->assertSee('name="location" value="brandon"', false)
             ->assertSee('name="location" value="Brandon"', false);
 

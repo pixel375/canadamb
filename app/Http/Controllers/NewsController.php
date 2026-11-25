@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Location;
+use App\Models\NewsSource;
 use App\Support\KeywordSearch;
 use App\Support\LocationScope;
 use App\Support\NetworkUrl;
@@ -19,16 +20,24 @@ class NewsController extends Controller
         $filter = $request->validate([
             'q' => 'nullable|string|max:100',
             'category' => ['nullable', Rule::in(array_keys(News::CATEGORIES))],
+            'source' => 'nullable|integer|min:1',
+            'period' => 'nullable|in:7,30,90',
             'location' => ['nullable', 'string', 'max:100', Rule::exists('locations', 'slug')->where('province', 'MB')->where('selectable', true)],
         ]);
         $place = LocationScope::forBrowsing($site, $filter['location'] ?? null);
         $places = $site->isNetwork() ? Location::selectable()->orderBy('name')->get() : collect();
-        $items = $news->visible($place?->id)
+        $visible = $news->visible($place?->id);
+        $sources = NewsSource::whereIn('id', (clone $visible)->reorder()->select('source_id'))
+            ->orderBy('name')->get(['id', 'name']);
+        $matching = $visible
             ->when($filter['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'body']))
-            ->when($filter['category'] ?? null, fn ($query, $category) => $query->where('category', $category))
+            ->when($filter['source'] ?? null, fn ($query, $source) => $query->where('source_id', $source))
+            ->when($filter['period'] ?? null, fn ($query, $period) => $query->where('published_at', '>=', now()->subDays((int) $period)));
+        $categoryCounts = (clone $matching)->reorder()->selectRaw('category, COUNT(*) as total')->groupBy('category')->pluck('total', 'category');
+        $items = $matching->when($filter['category'] ?? null, fn ($query, $category) => $query->where('category', $category))
             ->paginate(18)->withQueryString();
 
-        return view('news.index', compact('items', 'filter', 'place', 'places'));
+        return view('news.index', compact('items', 'filter', 'place', 'places', 'sources', 'categoryCounts'));
     }
 
     public function show(Request $request, int $article, News $news)
@@ -42,7 +51,10 @@ class NewsController extends Controller
             return redirect()->away($canonical, 301, ['Cache-Control' => 'no-store']);
         }
 
-        return view('news.show', compact('item', 'canonical'));
+        $related = $news->visible($item->location_id)->where('location_id', $item->location_id)
+            ->where('category', $item->category)->whereKeyNot($item->id)->limit(4)->get();
+
+        return view('news.show', compact('item', 'canonical', 'related'));
     }
 
     public function ingest(Request $request, News $news)
