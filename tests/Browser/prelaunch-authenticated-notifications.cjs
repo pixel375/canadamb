@@ -556,6 +556,14 @@ const fs = require('node:fs');
         await page.goto(host);
         check(await page.getByText('Private browser campaign', { exact: true }).count() === 0, 'Private campaign leaked onto homepage');
         console.log('PASS: private persistent campaign submission and withdrawal, no public delivery');
+        for (const width of [320, 390, 1440]) {
+            await page.setViewportSize({ width, height: 900 });
+            await page.goto(host + '/account/data-export');
+            check(await page.getByRole('heading', { name: 'Download my data' }).isVisible(), 'Account export unavailable');
+            check(await page.getByLabel('Current password').isVisible(), 'Export password confirmation unavailable');
+            check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Account export overflow');
+        }
+        console.log('PASS: private account export interface at three widths');
 
 
 

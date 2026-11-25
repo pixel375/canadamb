@@ -33,6 +33,7 @@ use App\Http\Controllers\PublicController;
 use App\Http\Controllers\PwaController;
 use App\Http\Controllers\RealEstateController;
 use App\Http\Controllers\UserProfileController;
+use App\Support\ContentReports;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [PublicController::class, 'home'])->name('home');
@@ -110,8 +111,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/community/{thread}/follow', [CommunityForumController::class, 'follow'])->whereNumber('thread')->middleware('throttle:30,1');
     Route::delete('/community/{thread}/follow', [CommunityForumController::class, 'unfollow'])->whereNumber('thread')->middleware('throttle:30,1');
     Route::get('/account/content-reports', [ContentReportController::class, 'index']);
-    Route::get('/account/report/{type}/{target}', [ContentReportController::class, 'create'])->whereIn('type', array_keys(\App\Support\ContentReports::TYPES))->whereNumber('target');
-    Route::post('/account/report/{type}/{target}', [ContentReportController::class, 'store'])->whereIn('type', array_keys(\App\Support\ContentReports::TYPES))->whereNumber('target')->middleware('throttle:6,1,content-report');
+    Route::get('/account/report/{type}/{target}', [ContentReportController::class, 'create'])->whereIn('type', array_keys(ContentReports::TYPES))->whereNumber('target');
+    Route::post('/account/report/{type}/{target}', [ContentReportController::class, 'store'])->whereIn('type', array_keys(ContentReports::TYPES))->whereNumber('target')->middleware('throttle:6,1,content-report');
     Route::get('/account/discussions', [CommunityForumController::class, 'owned']);
     Route::get('/account/discussions/{thread}/edit', [CommunityForumController::class, 'edit'])->whereNumber('thread');
     Route::put('/account/discussions/{thread}', [CommunityForumController::class, 'update'])->whereNumber('thread')->middleware('throttle:8,1,discussion-edit');
