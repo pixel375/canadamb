@@ -57,6 +57,33 @@ class DiscussionNotificationWorkflowTest extends TestCase
             ->get($url)->assertRedirect();
     }
 
+    public function test_follow_management_filters_and_removes_only_owned_portal_follows(): void
+    {
+        $member = User::factory()->create();
+        $other = User::factory()->create();
+        $visible = $this->thread($other, 'Garden 0 swap', 'brandon');
+        $hidden = $this->thread($other, 'Hidden Brandon topic', 'brandon', 'pending');
+        $elsewhere = $this->thread($other, 'Hidden Winnipeg topic', 'winnipeg', 'pending');
+        foreach ([$visible, $hidden, $elsewhere] as $thread) {
+            foreach ([$member, $other] as $follower) {
+                DB::table('community_thread_follows')->insert(['user_id' => $follower->id, 'thread_id' => $thread->id]);
+            }
+        }
+        $url = 'https://brandonmb.ca/account/followed-discussions';
+        $this->actingAs($member)->get($url.'?q=0')->assertOk()->assertSee('Garden 0 swap')->assertSee('1 unavailable discussion followed')
+            ->assertDontSee('Hidden Brandon topic')->assertDontSee('Hidden Winnipeg topic');
+        $this->get($url.'?q=unmatched')->assertSee('No followed discussions match these filters');
+        $this->post($url.'/clear-unavailable')->assertSessionHasErrors('confirm_remove');
+        $this->post($url.'/clear-unavailable', ['confirm_remove' => '1'])->assertRedirect('/account/followed-discussions');
+        $this->assertDatabaseMissing('community_thread_follows', ['user_id' => $member->id, 'thread_id' => $hidden->id]);
+        $this->assertDatabaseHas('community_thread_follows', ['user_id' => $member->id, 'thread_id' => $elsewhere->id]);
+        $this->assertDatabaseHas('community_thread_follows', ['user_id' => $other->id, 'thread_id' => $hidden->id]);
+        $this->delete('https://brandonmb.ca/community/'.$elsewhere->id.'/follow')->assertNotFound();
+        $this->delete('https://brandonmb.ca/community/'.$visible->id.'/follow', ['return_to' => 'following'])->assertRedirect('/account/followed-discussions');
+        $this->assertDatabaseMissing('community_thread_follows', ['user_id' => $member->id, 'thread_id' => $visible->id]);
+        $this->assertDatabaseHas('community_thread_follows', ['user_id' => $other->id, 'thread_id' => $visible->id]);
+    }
+
     public function test_unread_filter_and_mark_all_read_respect_approval_user_and_city_scope(): void
     {
         $member = User::factory()->create();

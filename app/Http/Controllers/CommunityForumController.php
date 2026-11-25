@@ -32,7 +32,7 @@ class CommunityForumController extends Controller
         }
         $filters = $request->validate($rules);
         $matching = $this->community->threads($site->location_id)
-            ->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'body']))
+            ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'body']))
             ->when($filters['location'] ?? null, fn ($query, $slug) => $query->whereHas('location', fn ($place) => $place->where('slug', $slug)));
         $categoryCounts = (clone $matching)->toBase()->select('category')->selectRaw('COUNT(*) as total')->groupBy('category')->pluck('total', 'category');
         $threads = $matching->when($filters['category'] ?? null, fn ($query, $category) => $query->where('category', $category))
@@ -99,7 +99,7 @@ class CommunityForumController extends Controller
         $counts = (clone $owned)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
         $items = $owned->with('location')->withCount(['replies' => fn ($query) => $query->where('status', 'approved')])
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
-            ->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'body']))
+            ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'body']))
             ->latest('id')->paginate(18)->withQueryString();
 
         return view('community.owned', compact('items', 'counts', 'statuses', 'filters'));
@@ -166,7 +166,7 @@ class CommunityForumController extends Controller
         $counts = (clone $owned)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
         $items = $owned->with('thread:id,title,status,locked')
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
-            ->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['body']))
+            ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['body']))
             ->latest('id')->paginate(20)->withQueryString();
 
         return view('community.owned-replies', compact('items', 'counts', 'statuses', 'filters'));
@@ -241,13 +241,17 @@ class CommunityForumController extends Controller
         $site = $request->attributes->get('site');
         abort_unless($this->community->enabled($site, 'community'), 404);
 
+        $filters = $request->validate(['q' => 'nullable|string|max:100', 'category' => ['nullable', Rule::in(array_keys(Community::FORUMS))]]);
+        $follows = DB::table('community_thread_follows')->where('user_id', $request->user()->id);
         $threads = $this->community->threads($site->location_id)
-            ->whereIn('community_threads.id', DB::table('community_thread_follows')
-                ->select('thread_id')->where('user_id', $request->user()->id))
+            ->whereIn('community_threads.id', (clone $follows)->select('thread_id'))
+            ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'body']))
+            ->when($filters['category'] ?? null, fn ($query, $category) => $query->where('category', $category))
             ->orderByDesc('last_activity_at')->orderByDesc('id')
-            ->paginate(18);
+            ->paginate(18)->withQueryString();
+        $hidden = $follows->whereIn('thread_id', $this->unavailableFollowIds($request))->count();
 
-        return view('community.followed', compact('threads'));
+        return view('community.followed', compact('threads', 'filters', 'hidden'));
     }
 
     public function replyPermalink(Request $request, int $thread, int $reply)
@@ -319,9 +323,34 @@ class CommunityForumController extends Controller
 
     public function unfollow(Request $request, int $thread)
     {
+        $site = $request->attributes->get('site');
+        abort_unless($this->community->enabled($site, 'community'), 404);
+        CommunityThread::when($site->location_id, fn ($query, $id) => $query->where('location_id', $id))
+            ->whereIn('id', DB::table('community_thread_follows')->where('user_id', $request->user()->id)->select('thread_id'))
+            ->findOrFail($thread);
         DB::table('community_thread_follows')->where(['thread_id' => $thread, 'user_id' => $request->user()->id])->delete();
 
-        return redirect('/community/'.$thread)->with('status', 'You stopped following this discussion.');
+        return redirect($request->input('return_to') === 'following' ? '/account/followed-discussions' : '/community/'.$thread)
+            ->with('status', 'You stopped following this discussion.');
+    }
+
+    public function clearUnavailableFollows(Request $request)
+    {
+        $request->validate(['confirm_remove' => 'accepted']);
+        $site = $request->attributes->get('site');
+        abort_unless($this->community->enabled($site, 'community'), 404);
+        $removed = DB::table('community_thread_follows')->where('user_id', $request->user()->id)
+            ->whereIn('thread_id', $this->unavailableFollowIds($request))->delete();
+
+        return redirect('/account/followed-discussions')->with('status', $removed.' unavailable discussion follows removed.');
+    }
+
+    private function unavailableFollowIds(Request $request)
+    {
+        $site = $request->attributes->get('site');
+
+        return CommunityThread::where('status', '!=', 'approved')
+            ->when($site->location_id, fn ($query, $id) => $query->where('location_id', $id))->select('id');
     }
 
     public function notifications(Request $request)
@@ -356,12 +385,15 @@ class CommunityForumController extends Controller
     {
         // Only mark the current user's approved, visible replies on this portal.
         // Use bounded updates to avoid large SQL parameter lists.
-        $ids = $this->visibleNotifications($request)->whereNull('notifications.read_at')
-            ->pluck('notifications.id');
-        foreach ($ids->chunk(250) as $chunk) {
-            DB::table('community_notifications')->where('user_id', $request->user()->id)
-                ->whereIn('id', $chunk->all())->whereNull('read_at')
-                ->update(['read_at' => now()]);
+        $visible = $this->visibleNotifications($request)->whereNull('notifications.read_at');
+        $latest = (clone $visible)->max('notifications.id');
+        if ($latest !== null) {
+            $visible->where('notifications.id', '<=', $latest)->select('notifications.id as id')
+                ->chunkById(250, function ($rows) use ($request) {
+                    DB::table('community_notifications')->where('user_id', $request->user()->id)
+                        ->whereIn('id', $rows->pluck('id')->all())->whereNull('read_at')
+                        ->update(['read_at' => now()]);
+                }, 'notifications.id', 'id');
         }
 
         return redirect('/account/community-notifications')

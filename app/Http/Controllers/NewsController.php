@@ -30,7 +30,7 @@ class NewsController extends Controller
         $sources = NewsSource::whereIn('id', (clone $visible)->reorder()->select('source_id'))
             ->orderBy('name')->get(['id', 'name']);
         $matching = $visible
-            ->when($filter['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'body']))
+            ->when(filled($filter['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filter['q'], ['title', 'body']))
             ->when($filter['source'] ?? null, fn ($query, $source) => $query->where('source_id', $source))
             ->when($filter['period'] ?? null, fn ($query, $period) => $query->where('published_at', '>=', now()->subDays((int) $period)));
         $categoryCounts = (clone $matching)->reorder()->selectRaw('category, COUNT(*) as total')->groupBy('category')->pluck('total', 'category');

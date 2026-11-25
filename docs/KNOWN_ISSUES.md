@@ -1,10 +1,10 @@
 # Known issues and remaining acceptance
 
-**Verified restricted production source:** `2606a22e387d4e88395554e455c60914e58287a6`. [Backend CI](https://github.com/pixel375/canadamb/actions/runs/45680438196), [browser QA](https://github.com/pixel375/canadamb/actions/runs/45680438193), and [deployment with independent audits and three-release retention](https://github.com/pixel375/canadamb/actions/runs/45680891904) passed. This is not a public-launch approval.
+**Verified restricted production source at the start of this batch:** `db44289b421b6876cb8005ac836e3fae0bb864a9`. [Backend CI](https://github.com/pixel375/canadamb/actions/runs/45686448773), [browser QA](https://github.com/pixel375/canadamb/actions/runs/45686448843), and [deployment with independent audits and two-release retention](https://github.com/pixel375/canadamb/actions/runs/45686973421) passed. This is not a public-launch approval.
 
 ## Outstanding launch blockers and acceptance
 
-- Hostinger quota incident: exact source `8851bdd` passed CI but deployment 45613737993 failed before activation. Audit 45655286097 verified `ba1ee92` remained active and classified the failure as disk quota exceeded. Storage recovery succeeded; final retention audit 45670197424 verified three complete releases and 32,622 entries, down from 295,296 before directory cleanup. Latest production deployment succeeded. All backups and shared media remain intact.
+- Hostinger quota incident: exact source `8851bdd` passed CI but deployment 45613737993 failed before activation. Audit 45655286097 verified `ba1ee92` remained active and classified the failure as disk quota exceeded. Storage recovery succeeded; final retention audit 45670197424 verified three complete releases and 32,622 entries, down from 295,296 before directory cleanup. The subsequent two-release retention policy was confirmed after deployment 45686973421: exactly two directories and 21,831 filesystem entries. All backups and shared media remain intact.
 
 - The read-only staged feature inventory and [migration review checklist](STAGED_FEATURES.md) track proposed migrations and switches. Enabled-but-unrecorded or missing schemas fail the deployment database check. No migration promotion or activation is implied.
 
@@ -17,7 +17,7 @@
 - Contested ownership adjudication, automated contact verification, subscriptions, advertising and proactive job alert delivery. Saved job searches and on-demand in-app new-match alerts are review-staged; no email, push or scheduler is enabled. Moderated branch additions, address corrections and manual email review are review-staged. Private dispute intake and independent triage are review-staged; they do not change memberships. Invitations and consensual transfers are review-staged and require migration approval. Owner-controlled manager/editor access and read-only ownership lookup are implemented in the active implementation branch.
 - Scheduled news ingestion and provider feeds require verification; polling remains suppressed during prelaunch.
 - Recheck production backups, scheduler and mail delivery as part of launch acceptance; practice file-level media restoration. Retain the original public_html inode, private keys and access restrictions. No unreviewed migrations or seeders.
-- Location boundaries and administrative relationships require additional authoritative Manitoba data. Bounded recurring submissions are implemented behind a switch; series-wide changes and automated media retention remain open. Reply editing, withdrawal and private history are implemented in the current source; verify deployment separately.
+- Location boundaries and administrative relationships require additional authoritative Manitoba data. Bounded recurring submissions are implemented behind a switch; single unlinked upcoming event correction and scoped follow management are implemented in the current source; coordinated linked/series-wide editing and automated media retention remain open. Reply editing, withdrawal and private history are implemented in the current source; verify deployment separately.
 
 ## Superseded earlier UX concerns
 

@@ -127,6 +127,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/jobs/{job}/save', [JobController::class, 'save'])->whereNumber('job');
     Route::delete('/jobs/{job}/save', [JobController::class, 'remove'])->whereNumber('job');
     Route::get('/account/followed-discussions', [CommunityForumController::class, 'followed']);
+    Route::post('/account/followed-discussions/clear-unavailable', [CommunityForumController::class, 'clearUnavailableFollows'])->middleware('throttle:5,1,clear-follows');
     Route::get('/community/new', [CommunityForumController::class, 'create']);
     Route::post('/community', [CommunityForumController::class, 'store'])->middleware('throttle:6,1');
     Route::post('/community/{thread}/replies', [CommunityForumController::class, 'reply'])->whereNumber('thread')->middleware('throttle:12,1');

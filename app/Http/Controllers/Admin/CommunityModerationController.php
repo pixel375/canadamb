@@ -19,11 +19,11 @@ class CommunityModerationController extends Controller
     {
         $filters = $request->validate(['status' => 'nullable|in:pending,approved,cancelled', 'q' => 'nullable|string|max:100']);
         $threads = CommunityThread::whereIn('status', ['pending', 'approved'])
-            ->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'body']));
+            ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'body']));
         $replies = CommunityReply::whereIn('status', ['pending', 'approved'])->whereHas('thread', fn ($query) => $query->where('status', 'approved'))
-            ->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['body']));
+            ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['body']));
         $events = CommunityEvent::whereIn('status', ['pending', 'approved', 'cancelled'])
-            ->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'body', 'venue']));
+            ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'body', 'venue']));
         $counts = collect();
         foreach ([$threads, $replies, $events] as $query) {
             foreach ((clone $query)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status') as $status => $count) {
