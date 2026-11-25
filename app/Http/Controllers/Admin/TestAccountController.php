@@ -5,19 +5,27 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Support\Audit;
+use App\Support\KeywordSearch;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class TestAccountController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         abort_unless(config('network.prelaunch'), 404);
 
-        return view('admin.test-accounts', [
-            'accounts' => $this->testAccounts()->whereNull('email_verified_at')->latest('id')->paginate(25),
-        ]);
+        $filters = $request->validate(['status' => 'nullable|in:pending,verified', 'q' => 'nullable|string|max:100']);
+        $eligible = $this->testAccounts();
+        $pending = (clone $eligible)->whereNull('email_verified_at')->count();
+        $verified = (clone $eligible)->whereNotNull('email_verified_at')->count();
+        $accounts = $eligible->when(($filters['status'] ?? 'pending') === 'verified', fn ($query) => $query->whereNotNull('email_verified_at'),
+            fn ($query) => $query->whereNull('email_verified_at'))
+            ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['name', 'email']))
+            ->latest('id')->paginate(25)->withQueryString();
+
+        return view('admin.test-accounts', compact('accounts', 'filters', 'pending', 'verified'));
     }
 
     public function verify(Request $request, int $account)

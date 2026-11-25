@@ -45,6 +45,10 @@ class PassOneRegistrationTest extends TestCase
         $this->post("https://canadamb.ca/admin/test-accounts/$tester->id/verify")->assertRedirect('/admin/test-accounts');
         $this->post("https://canadamb.ca/admin/test-accounts/$tester->id/verify")->assertRedirect('/admin/test-accounts');
         $this->assertTrue($tester->fresh()->hasVerifiedEmail());
+        $this->get('https://canadamb.ca/admin/test-accounts?status=verified&q=TAYLOR')->assertOk()->assertSee($tester->email)
+            ->assertDontSee('action="/admin/test-accounts/'.$tester->id.'/verify"', false);
+        $this->get('https://canadamb.ca/admin/test-accounts?status=pending')->assertOk()->assertDontSee($tester->email);
+        $this->get('https://canadamb.ca/admin/test-accounts?status=verified&q=missing')->assertOk()->assertDontSee($tester->email);
         $this->assertDatabaseHas('audit_logs', ['action' => 'identity.prelaunch.verified', 'actor_id' => $admin->id]);
         $this->assertSame(1, DB::table('audit_logs')->where('action', 'identity.prelaunch.verified')->count());
         $this->post("https://canadamb.ca/admin/test-accounts/$admin->id/verify")->assertForbidden();

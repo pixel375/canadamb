@@ -183,11 +183,11 @@ class HomeDiscoveryNavigationTest extends TestCase
 
     public function test_community_search_escapes_wildcards_and_combines_words(): void
     {
-        $this->getJson('https://canadamb.ca/api/v1/communities?q=BRAN%20DON')->assertOk()
+        $this->getJson('https://canadamb.ca/api/v1/locations?q=BRAN%20DON')->assertOk()
             ->assertJsonFragment(['slug' => 'brandon']);
-        $this->getJson('https://canadamb.ca/api/v1/communities?q=%25')->assertOk()->assertJsonCount(0, 'data');
-        $this->getJson('https://canadamb.ca/api/v1/communities?q=_')->assertOk()->assertJsonCount(0, 'data');
-        $this->getJson('https://canadamb.ca/api/v1/communities?q=brandon%20notarealplace')->assertOk()->assertJsonCount(0, 'data');
+        $this->getJson('https://canadamb.ca/api/v1/locations?q=%25')->assertOk()->assertJsonCount(0, 'data');
+        $this->getJson('https://canadamb.ca/api/v1/locations?q=_')->assertOk()->assertJsonCount(0, 'data');
+        $this->getJson('https://canadamb.ca/api/v1/locations?q=brandon%20notarealplace')->assertOk()->assertJsonCount(0, 'data');
         $this->get('https://canadamb.ca/communities?q=brandon')->assertOk()->assertSee('Reset filters')->assertSee('found');
     }
 
