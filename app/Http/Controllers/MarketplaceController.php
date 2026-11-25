@@ -16,6 +16,7 @@ use App\Support\NetworkUrl;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 
 class MarketplaceController extends Controller
@@ -192,7 +193,25 @@ class MarketplaceController extends Controller
                 abort_unless(in_array($item->status, ['pending', 'active', 'expired', 'rejected'], true), 409);
                 $item->fill($data);
                 $removed = [];
-                if ($media !== []) {
+                if ($request->boolean('manage_photos')) {
+                    if (! hash_equals($item->photoVersion(), (string) $request->validated('photo_version'))) {
+                        throw ValidationException::withMessages(['photos' => 'The existing photos changed. Reload the editor before trying again.']);
+                    }
+                    $current = $item->media()->get()->keyBy('id');
+                    $keep = array_map('intval', $request->validated('keep_photos', []));
+                    if (array_diff($keep, $current->keys()->all()) || count($keep) + count($media) > 5) {
+                        throw ValidationException::withMessages(['photos' => 'Keep only photos from this listing, with at most five photos in total.']);
+                    }
+                    $discard = $current->except($keep);
+                    $removed = $discard->values()->toArray();
+                    $item->media()->whereIn('id', $discard->keys())->delete();
+                    foreach ($keep as $position => $id) {
+                        $current[$id]->update(['position' => $position]);
+                    }
+                    foreach ($media as $position => $photo) {
+                        $item->media()->create(array_replace($photo, ['position' => count($keep) + $position]));
+                    }
+                } elseif ($media !== []) {
                     $removed = $item->media()->get()->toArray();
                     $item->media()->delete();
                     $item->media()->createMany($media);
@@ -231,7 +250,8 @@ class MarketplaceController extends Controller
         return view('marketplace.form', [
             'item' => $item, 'categories' => $this->categories(), 'conditions' => Marketplace::CONDITIONS,
             'fields' => Marketplace::FIELDS, 'locations' => $site->isNetwork() ? Location::selectable()->orderBy('name')->get() : collect(),
-            'suggestedLocation' => $item->exists ? null : LocationScope::forBrowsing($site, $request->query('location')),
+            'suggestedLocation' => $item->exists ? null : LocationScope::forBrowsing($site, $request->query('location', $request->cookie(LocationScope::PREFERENCE_COOKIE))),
+            'photoVersion' => $item->exists ? $item->photoVersion() : null,
         ]);
     }
 

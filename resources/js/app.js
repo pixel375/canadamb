@@ -359,6 +359,22 @@ for (const input of document.querySelectorAll('[data-listing-photos]')) {
     const feedback = form.querySelector('[data-photo-feedback]');
     const limit = Number(input.dataset.photoLimit) || 5;
     const megabytes = Number(input.dataset.photoMb) || 4;
+    const existing = form.querySelector('[data-existing-photo-grid]');
+    const existingFeedback = form.querySelector('[data-existing-feedback]');
+    const kept = () => existing ? [...existing.querySelectorAll('input[name="keep_photos[]"]:checked')] : [];
+    const updateExisting = () => {
+        if (!existing) return;
+        const retained = kept();
+        for (const figure of existing.querySelectorAll('[data-existing-photo]')) {
+            const checkbox = figure.querySelector('input');
+            const index = retained.indexOf(checkbox);
+            figure.classList.toggle('photo-will-remove', index < 0);
+            figure.querySelector('[data-existing-caption]').textContent = index < 0 ? 'Will be removed' : index === 0 ? 'Cover photo' : 'Photo ' + (index + 1);
+            figure.querySelector('[data-existing-cover]').disabled = index <= 0;
+            figure.querySelector('[data-existing-move]').disabled = index <= 0;
+        }
+        existingFeedback.textContent = retained.length + ' existing photo(s) retained. ' + (limit - retained.length) + ' upload slot(s) available.';
+    };
     let urls = [];
     const clear = () => {
         for (const url of urls) URL.revokeObjectURL(url);
@@ -373,10 +389,11 @@ for (const input of document.querySelectorAll('[data-listing-photos]')) {
         const files = [...input.files];
         const invalid = files.some(file => file.size > megabytes * 1024 * 1024 ||
             !['image/jpeg', 'image/png', 'image/webp'].includes(file.type));
-        const error = files.length > limit ? 'Choose no more than ' + limit + ' photos.' :
+        const available = limit - kept().length;
+        const error = files.length > available ? 'Choose no more than ' + available + ' new photos, or remove existing photos first.' :
             invalid ? 'Use JPEG, PNG or WebP photos no larger than ' + megabytes + ' MB each.' : '';
         input.setCustomValidity(error);
-        feedback.textContent = error || (files.length ? files.length + ' of ' + limit + ' photos selected.' : '');
+        feedback.textContent = error || (files.length ? (files.length + kept().length) + ' of ' + limit + ' photos selected.' : '');
         if (error) return;
         const editable = typeof DataTransfer === 'function';
         const apply = updated => {
@@ -398,7 +415,7 @@ for (const input of document.querySelectorAll('[data-listing-photos]')) {
             image.src = url;
             image.alt = 'Selected photo ' + (index + 1);
             const caption = document.createElement('figcaption');
-            caption.textContent = index === 0 ? 'Cover photo' : 'Photo ' + (index + 1);
+            caption.textContent = index === 0 && kept().length === 0 ? 'Cover photo' : 'Photo ' + (kept().length + index + 1);
             figure.append(image, caption);
             if (editable) {
                 const actions = document.createElement('div');
@@ -412,7 +429,7 @@ for (const input of document.querySelectorAll('[data-listing-photos]')) {
                     control.addEventListener('click', action);
                     actions.append(control);
                 };
-                if (index > 0) button('Make cover', 'Make photo ' + (index + 1) + ' the cover', () => {
+                if (index > 0) button(kept().length ? 'Move first among new photos' : 'Make cover', 'Make photo ' + (index + 1) + ' the cover', () => {
                     const updated = [...files];
                     updated.unshift(updated.splice(index, 1)[0]);
                     apply(updated);
@@ -426,6 +443,23 @@ for (const input of document.querySelectorAll('[data-listing-photos]')) {
         }
         preview.hidden = files.length === 0;
     };
+    if (existing) {
+        for (const figure of existing.querySelectorAll('[data-existing-photo]')) {
+            figure.querySelector('[data-existing-controls]').hidden = false;
+            figure.querySelector('input').addEventListener('change', () => { updateExisting(); render(); });
+            figure.querySelector('[data-existing-cover]').addEventListener('click', () => {
+                existing.prepend(figure);
+                updateExisting(); render();
+            });
+            figure.querySelector('[data-existing-move]').addEventListener('click', () => {
+                const retained = kept();
+                const index = retained.indexOf(figure.querySelector('input'));
+                if (index > 0) existing.insertBefore(figure, retained[index - 1].closest('figure'));
+                updateExisting(); render();
+            });
+        }
+        updateExisting();
+    }
     input.addEventListener('change', () => {
         render();
         if (!input.validity.valid) input.reportValidity();

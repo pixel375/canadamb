@@ -1765,3 +1765,12 @@ a.market-category-card:hover, a.market-category-card:focus-visible {
 .blocked-member-row { flex-wrap:wrap; gap:12px; }
 .blocked-member-row .listing-seller-identity { margin-top:0; }
 @media(max-width:650px) { .saved-search { grid-template-columns:minmax(0,1fr); } .saved-search input { font-size:16px; } }
+
+/* Existing photo edits are staged until the listing form is submitted. */
+[data-existing-photos] { display:grid; gap:10px; }
+[data-existing-photo] { min-width:0; }
+[data-existing-photo] .checkbox { padding:6px; font-size:.8rem; }
+[data-existing-photo].photo-will-remove img { opacity:.4; }
+[data-existing-photo].photo-will-remove figcaption { color:var(--muted); }
+[data-existing-controls][hidden] { display:none; }
+[data-existing-controls] .button { white-space:normal; }

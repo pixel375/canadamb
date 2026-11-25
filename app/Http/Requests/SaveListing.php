@@ -24,6 +24,12 @@ class SaveListing extends FormRequest
             'photos' => ['sometimes', 'array', 'list', 'max:5'],
             'photos.*' => ['required', 'file', 'image', 'mimes:jpeg,jpg,png,webp', 'max:4096'],
         ];
+        if ($this->isMethod('PUT')) {
+            $rules['manage_photos'] = ['sometimes', 'accepted'];
+            $rules['photo_version'] = ['required_with:manage_photos', 'nullable', 'string', 'size:64'];
+            $rules['keep_photos'] = ['sometimes', 'array', 'list', 'max:5'];
+            $rules['keep_photos.*'] = ['required', 'integer', 'min:1', 'distinct'];
+        }
         foreach (Marketplace::FIELDS as $fields) {
             foreach ($fields as $field => $label) {
                 $rules["details.$field"] = match ($field) {
@@ -49,7 +55,7 @@ class SaveListing extends FormRequest
         $data['negotiable'] = (bool) ($data['negotiable'] ?? false);
         $fields = Marketplace::FIELDS[$data['category']] ?? [];
         $data['attributes'] = array_filter(Arr::only($data['details'] ?? [], array_keys($fields)), fn ($value) => $value !== null);
-        unset($data['price'], $data['details'], $data['photos']);
+        unset($data['price'], $data['details'], $data['photos'], $data['manage_photos'], $data['photo_version'], $data['keep_photos']);
 
         return $data;
     }

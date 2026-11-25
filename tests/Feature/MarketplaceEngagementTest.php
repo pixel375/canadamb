@@ -111,6 +111,35 @@ class MarketplaceEngagementTest extends TestCase
         $this->assertSame('pending', $item->status);
     }
 
+    public function test_existing_photo_edits_preserve_selected_files_and_reject_foreign_or_stale_ids(): void
+    {
+        Storage::fake('local');
+        $seller = User::factory()->create();
+        $other = User::factory()->create();
+        $data = ['title' => 'Oak kitchen table', 'description' => 'Two original photos.', 'category' => 'furniture', 'condition' => 'good', 'price' => '80'];
+        $this->actingAs($seller)->post('https://brandonmb.ca/marketplace', $data + ['photos' => [
+            UploadedFile::fake()->image('one.jpg'), UploadedFile::fake()->image('two.jpg'),
+        ]])->assertRedirect()->assertSessionHasNoErrors();
+        $item = Listing::sole();
+        $original = $item->media()->get();
+        $path = "https://brandonmb.ca/account/listings/$item->id";
+        $version = $item->photoVersion();
+        $this->actingAs($other)->put($path, $data + ['manage_photos' => '1', 'photo_version' => $version])->assertNotFound();
+        $this->actingAs($seller)->put($path, $data + ['manage_photos' => '1', 'photo_version' => $version, 'keep_photos' => [999999]])->assertSessionHasErrors('photos');
+        $this->put($path, $data + ['manage_photos' => '1', 'photo_version' => $version, 'keep_photos' => [$original[1]->id],
+            'photos' => [UploadedFile::fake()->image('new.jpg')]])->assertRedirect()->assertSessionHasNoErrors();
+        $remaining = $item->media()->get();
+        $this->assertCount(2, $remaining);
+        $this->assertSame($original[1]->id, $remaining[0]->id);
+        $this->assertSame([0, 1], $remaining->pluck('position')->all());
+        Storage::disk('local')->assertExists($original[1]->image_path);
+        Storage::disk('local')->assertMissing($original[0]->image_path);
+        $this->put($path, $data + ['manage_photos' => '1', 'photo_version' => $version])->assertSessionHasErrors('photos');
+        $this->assertCount(2, $item->media()->get());
+        $this->put($path, $data + ['manage_photos' => '1', 'photo_version' => $item->photoVersion()])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertCount(0, $item->media()->get());
+    }
+
     public function test_members_can_save_and_report_a_listing_and_only_participants_can_read_messages(): void
     {
         $seller = User::factory()->create();

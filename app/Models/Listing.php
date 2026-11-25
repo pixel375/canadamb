@@ -36,6 +36,11 @@ class Listing extends Model
         return $this->hasMany(ListingMedia::class)->orderBy('position');
     }
 
+    public function photoVersion(): string
+    {
+        return hash('sha256', $this->media()->pluck('id')->implode(','));
+    }
+
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('status', 'active')->where('expires_at', '>', now());

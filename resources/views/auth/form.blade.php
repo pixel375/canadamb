@@ -14,13 +14,6 @@
 <x-layouts.site :title="$title">
     <div class="container page-shell auth-shell">
         <div class="auth-intro"><span class="member-profile-avatar"><x-icon name="person" size="27"/></span><div><p class="section-label">One CanadaMB account</p><h1>{{ $title }}</h1><p>{{ match($mode) { 'register' => 'Use one account across participating Manitoba communities.', 'login' => 'Sign in to access your listings, messages and community activity.', 'verify' => 'Verify your account before posting or messaging.', default => 'Manage access to your CanadaMB account.' } }}</p></div></div>
-        @if(session('status'))<p class="panel" role="status">{{ session('status') }}</p>@endif
-        @if($errors->any())
-            <div class="panel" role="alert">
-                <p>Check the following details and try again.</p>
-                <ul>@foreach($errors->all() as $message)<li>{{ $message }}</li>@endforeach</ul>
-            </div>
-        @endif
         @if(config('network.prelaunch') && in_array($mode, ['verify', 'forgot'], true))
             <div class="panel form-stack">
                 @if($mode === 'verify')
