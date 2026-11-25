@@ -40,9 +40,9 @@ class EventSeriesTest extends TestCase
         $this->get($url.'?month=2026-03')->assertOk()->assertSee('Day-by-day agenda')->assertSee('Weekly club, meeting');
         $this->actingAs($member)->post('https://brandonmb.ca/account/events/'.$events[0]->id.'/cancel')->assertRedirect();
         $this->get($file)->assertNotFound();
+        $this->get('https://brandonmb.ca/events/new?reuse='.$events[1]->id)->assertOk()->assertSee('Weekly club, meeting')->assertSee('choose new dates');
         $this->post($url, array_replace($input, ['title' => 'Invalid DST series', 'starts_at' => '2026-03-01T02:30', 'ends_at' => '2026-03-01T04:00']))->assertSessionHasErrors('starts_at');
         $this->assertDatabaseCount('community_events', 3);
-        $this->get('https://brandonmb.ca/events/new?reuse='.$events[1]->id)->assertOk()->assertSee('Weekly club, meeting')->assertSee('choose new dates');
         $other = User::factory()->create();
         $this->actingAs($other)->get('https://brandonmb.ca/events/new?reuse='.$events[1]->id)->assertNotFound();
         $batch = 'https://brandonmb.ca/account/events/cancel-selected';
