@@ -8,8 +8,8 @@
 
 use App\Models\Business;
 use App\Models\CommunityThread;
-use App\Models\JobPosting;
 use App\Models\Conversation;
+use App\Models\JobPosting;
 use App\Models\Listing;
 use App\Models\Location;
 use App\Models\User;
@@ -24,7 +24,7 @@ require dirname(__DIR__, 2).'/vendor/autoload.php';
 $app = require dirname(__DIR__, 2).'/bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();
 
-if (! app()->environment('local') || ! config('network.development_hosts') || config('database.default') !== 'sqlite') {
+if (app()->environment('local') === false || (bool) config('network.development_hosts') === false || config('database.default') !== 'sqlite') {
     fwrite(STDERR, "Refusing to seed browser fixtures outside isolated local SQLite QA.\n");
     exit(1);
 }

@@ -11,6 +11,7 @@
                 <a href="/admin" @if(request()->is('admin')) aria-current="page" @endif>Network overview</a>
                 <a href="/admin/communities" @if(request()->is('admin/communities*')) aria-current="page" @endif>Community websites</a>
                 @can('manage-theme')
+                    <a href="/admin/commercial" @if(request()->is('admin/commercial')) aria-current="page" @endif>Advertising &amp; subscriptions</a>
                     <a href="/admin/settings" @if(request()->is('admin/settings*')) aria-current="page" @endif>Global settings</a>
                     <a href="/admin/theme" @if(request()->is('admin/theme*')) aria-current="page" @endif>Theme & appearance</a>
                     @if(config('network.prelaunch'))<a href="/admin/test-accounts" @if(request()->is('admin/test-accounts*')) aria-current="page" @endif>Prelaunch test accounts</a>@endif

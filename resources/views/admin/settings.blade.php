@@ -24,6 +24,7 @@
         </fieldset>
         <div><button class="button button-primary">Save draft</button></div>
     </form>
+    <section class="panel form-stack"><h2>Commercial planning</h2><p>Internal rate cards are versioned with network settings. They cannot activate payments or advertising.</p><a class="text-link" href="/admin/commercial">Advertising and subscription planning</a></section>
     @if($state->draft_id)
         <form method="post" action="/admin/settings/publish" class="panel inline-actions">@csrf
             <p>This publishes pending appearance and module settings together.</p>

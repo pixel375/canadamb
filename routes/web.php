@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AccountNotificationsController;
 use App\Http\Controllers\Admin\BusinessReviewController;
+use App\Http\Controllers\Admin\CommercialController;
 use App\Http\Controllers\Admin\CommunityController;
 use App\Http\Controllers\Admin\CommunityModerationController;
 use App\Http\Controllers\Admin\EditorialController;
@@ -173,6 +174,8 @@ Route::prefix('admin')->middleware(['auth', 'verified', 'can:manage-network'])->
     Route::middleware('can:manage-theme')->group(function () {
         Route::get('/test-accounts', [TestAccountController::class, 'index']);
         Route::post('/test-accounts/{account}/verify', [TestAccountController::class, 'verify'])->whereNumber('account');
+        Route::get('/commercial', [CommercialController::class, 'index']);
+        Route::post('/commercial', [CommercialController::class, 'save'])->middleware('throttle:8,1');
         Route::get('/settings', [SettingsController::class, 'edit']);
         Route::post('/settings', [SettingsController::class, 'save']);
         Route::post('/settings/publish', [SettingsController::class, 'publish']);
