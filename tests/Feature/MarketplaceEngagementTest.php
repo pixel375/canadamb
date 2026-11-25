@@ -126,6 +126,10 @@ class MarketplaceEngagementTest extends TestCase
         $version = $item->photoVersion();
         $this->actingAs($other)->put($path, $data + ['manage_photos' => '1', 'photo_version' => $version])->assertNotFound();
         $this->actingAs($seller)->put($path, $data + ['manage_photos' => '1', 'photo_version' => $version, 'keep_photos' => [999999]])->assertSessionHasErrors('photos');
+        $this->put($path, $data + ['manage_photos' => '1', 'photo_version' => $version, 'keep_photos' => [$original[1]->id, $original[0]->id]])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame([$original[1]->id, $original[0]->id], $item->media()->pluck('id')->all());
+        $this->assertNotSame($version, $item->photoVersion());
+        $version = $item->photoVersion();
         $this->put($path, $data + ['manage_photos' => '1', 'photo_version' => $version, 'keep_photos' => [$original[1]->id],
             'photos' => [UploadedFile::fake()->image('new.jpg')]])->assertRedirect()->assertSessionHasNoErrors();
         $remaining = $item->media()->get();
@@ -166,6 +170,9 @@ class MarketplaceEngagementTest extends TestCase
         $this->get($base)->assertSee('You have already reported this listing.');
         $this->post("$base/report", ['reason' => 'Duplicate submitted report.'])->assertRedirect();
         $this->assertDatabaseCount('listing_reports', 1);
+        $this->get('https://canadamb.ca/account/listing-reports')->assertOk()->assertSee('Patio set')->assertSee('Awaiting review');
+        $this->actingAs($stranger)->get('https://canadamb.ca/account/listing-reports')->assertOk()->assertDontSee('The images seem to belong to another seller.');
+        $this->actingAs($buyer);
         $this->post("$base/message", ['body' => 'Are the chairs included?'])->assertRedirect();
         $thread = Conversation::sole();
         $this->get($base)->assertOk()->assertSee('Continue conversation');

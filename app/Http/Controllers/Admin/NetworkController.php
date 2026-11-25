@@ -73,7 +73,7 @@ class NetworkController extends Controller
             ->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'description']));
         $counts = (clone $matching)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
 
-        return view('admin.moderation', ['filters' => $filters, 'counts' => $counts, 'items' => $matching->with(['location', 'seller', 'categoryRecord'])
+        return view('admin.moderation', ['filters' => $filters, 'counts' => $counts, 'items' => $matching->with(['location', 'seller', 'categoryRecord', 'media'])
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
             ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")
             ->latest('updated_at')->paginate(25)->withQueryString(), 'reports' => DB::table('listing_reports')

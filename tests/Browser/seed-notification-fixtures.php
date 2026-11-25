@@ -11,8 +11,10 @@ use App\Models\Conversation;
 use App\Models\Listing;
 use App\Models\Location;
 use App\Models\User;
+use App\Support\ListingPhotos;
 use App\Support\Marketplace;
 use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 
 require dirname(__DIR__, 2).'/vendor/autoload.php';
@@ -97,5 +99,15 @@ app(Marketplace::class)->changeStatus($listing, 'active', null);
 DB::table('listing_favourites')->insert(['user_id' => $member->id, 'listing_id' => $listing->id]);
 $conversation = Conversation::create(['listing_id' => $listing->id, 'buyer_id' => $member->id, 'seller_id' => $author->id]);
 $conversation->messages()->create(['sender_id' => $author->id, 'body' => 'The oak bookshelf is still available.']);
+
+$ownedListing = Listing::create([
+    'user_id' => $member->id, 'location_id' => $brandon->id,
+    'title' => 'Browser QA private photo editor', 'description' => 'A private listing with two existing photos.',
+    'category' => 'furniture', 'condition' => 'good', 'price_cents' => 3500, 'status' => 'pending',
+]);
+$ownedListing->media()->createMany(app(ListingPhotos::class)->store([
+    UploadedFile::fake()->image('first.jpg', 200, 200),
+    UploadedFile::fake()->image('second.jpg', 200, 200),
+]));
 
 echo "Disposable authenticated notification, marketplace, messaging and administrator fixtures seeded.\n";

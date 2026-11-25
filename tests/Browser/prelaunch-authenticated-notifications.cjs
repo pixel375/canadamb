@@ -471,6 +471,23 @@ const fs = require('node:fs');
         check(await page.getByText('You have not blocked any members.').isVisible(), 'Unblock did not remove member');
         console.log('PASS: saved listing and job navigation, messaging search, responsive chat and block management');
 
+        await page.setViewportSize({ width: 390, height: 900 });
+        await page.goto(host + '/account/listings?q=private+photo+editor');
+        await page.getByRole('link', { name: 'Edit', exact: true }).click();
+        const existing = page.locator('[data-existing-photo]');
+        check(await existing.count() === 2, 'Existing photos missing from editor');
+        const secondId = await existing.nth(1).getAttribute('data-existing-photo');
+        await existing.nth(1).locator('[data-existing-cover]').click();
+        check(await existing.first().getAttribute('data-existing-photo') === secondId, 'Existing cover did not move first');
+        await existing.nth(1).getByRole('checkbox', { name: 'Keep photo' }).uncheck();
+        await page.getByRole('button', { name: 'Submit for review' }).click();
+        await page.waitForURL(url => url.pathname === '/account/listings');
+        await page.goto(host + '/account/listings?q=private+photo+editor');
+        await page.getByRole('link', { name: 'Edit', exact: true }).click();
+        check(await existing.count() === 1 && await existing.first().getAttribute('data-existing-photo') === secondId, 'Saved photo removal or cover selection failed');
+        console.log('PASS: existing listing photo cover and removal persisted through real form submission');
+
+
 
 
     } catch (error) {

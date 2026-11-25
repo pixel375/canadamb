@@ -22,6 +22,9 @@
         <article class="panel form-stack admin-review-card">
             <div><span class="member-listing-status" data-status="{{ $item->status }}">{{ ucfirst($item->status) }}</span><h2>{{ $item->title }}</h2><p>{{ $item->seller->name }} · {{ $item->location->name }} · {{ $item->categoryRecord->name }} · {{ $item->priceLabel() }} · {{ ucfirst($item->status) }}</p></div>
                         @if($item->status === 'active' && $item->expires_at?->isFuture())<a class="text-link" href="/marketplace/{{ $item->id }}">Open public listing</a>@endif
+            @if($item->media->isNotEmpty())
+                <div class="listing-photo-preview">@foreach($item->media as $photo)<figure><a href="/marketplace/{{ $item->id }}/photo/{{ $photo->id }}" aria-label="Open photo {{ $loop->iteration }} for review"><img src="/marketplace/{{ $item->id }}/thumbnail/{{ $photo->id }}" alt="Listing photo {{ $loop->iteration }}" loading="lazy"></a><figcaption>{{ $loop->first ? 'Cover photo' : 'Photo '.$loop->iteration }}</figcaption></figure>@endforeach</div>
+            @endif
             <p class="prose-text">{{ $item->description }}</p>
             <form action="/admin/moderation/{{ $item->id }}" method="post" class="form-stack">
                 @csrf

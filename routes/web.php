@@ -111,6 +111,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('/account/listings/{listing}', [MarketplaceController::class, 'update'])->whereNumber('listing')->middleware('throttle:20,1');
     Route::post('/account/listings/{listing}/status', [MarketplaceController::class, 'status'])->whereNumber('listing');
     Route::get('/account/saved', [ListingEngagementController::class, 'saved']);
+    Route::get('/account/listing-reports', [ListingEngagementController::class, 'reports']);
     Route::post('/marketplace/{listing}/save', [ListingEngagementController::class, 'save'])->whereNumber('listing')->middleware('throttle:24,1');
     Route::delete('/marketplace/{listing}/save', [ListingEngagementController::class, 'remove'])->whereNumber('listing')->middleware('throttle:24,1');
     Route::post('/marketplace/{listing}/report', [ListingEngagementController::class, 'report'])->whereNumber('listing')->middleware('throttle:8,1');

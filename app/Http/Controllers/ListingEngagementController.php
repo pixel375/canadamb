@@ -72,6 +72,20 @@ class ListingEngagementController extends Controller
         return view('marketplace.saved', compact('items', 'filters', 'total'));
     }
 
+    public function reports(Request $request)
+    {
+        $site = $request->attributes->get('site');
+        $items = DB::table('listing_reports')->join('listings', 'listings.id', '=', 'listing_reports.listing_id')
+            ->where('listing_reports.reporter_id', $request->user()->id)
+            ->when($site->location_id, fn ($query, $id) => $query->where('listings.location_id', $id))
+            ->select('listing_reports.id', 'listing_reports.listing_id', 'listing_reports.reason', 'listing_reports.created_at', 'listing_reports.resolved_at')
+            ->selectRaw("CASE WHEN listings.status = 'active' AND listings.expires_at > ? THEN listings.title ELSE NULL END AS public_title", [now()])
+            ->latest('listing_reports.id')->paginate(20);
+        $marketEnabled = $this->marketplace->enabled($site);
+
+        return view('marketplace.reports', compact('items', 'marketEnabled'));
+    }
+
     public function report(Request $request, int $listing)
     {
         $item = $this->visibleListing($request, $listing);
