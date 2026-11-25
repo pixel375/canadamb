@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Support\CommercialRecords;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
+use Illuminate\Foundation\Testing\RefreshDatabaseState;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
@@ -19,12 +20,16 @@ class CommercialRecordsTest extends TestCase
 
     protected $seeder = DatabaseSeeder::class;
 
-    public function createApplication()
+    public function runDatabaseMigrations()
     {
-        $app = parent::createApplication();
-        $app->make('migrator')->path($app->databasePath('proposed-migrations'));
-
-        return $app;
+        $this->artisan('migrate:fresh', ['--seed' => true])->assertSuccessful();
+        $this->artisan('migrate', ['--path' => 'database/proposed-migrations'])->assertSuccessful();
+        $this->beforeApplicationDestroyed(function () {
+            // Drop only the reviewed proposal, then reset the disposable test
+            // schema without reversing unrelated historical migrations.
+            $this->artisan('migrate:rollback', ['--path' => 'database/proposed-migrations', '--step' => 1])->assertSuccessful();
+            RefreshDatabaseState::$migrated = false;
+        });
     }
 
     public function test_private_campaign_and_trial_workflows_do_not_publish_ads(): void

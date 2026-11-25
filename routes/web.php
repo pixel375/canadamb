@@ -184,6 +184,7 @@ Route::prefix('admin')->middleware(['auth', 'verified', 'can:manage-network'])->
         Route::post('/entitlements', [BusinessEntitlementController::class, 'grant'])->middleware('throttle:8,1');
         Route::post('/entitlements/{entitlement}/revoke', [BusinessEntitlementController::class, 'revoke'])->whereNumber('entitlement')->middleware('throttle:8,1');
         Route::get('/advertising', [AdvertisingReviewController::class, 'index']);
+        Route::get('/advertising/schedule', [AdvertisingReviewController::class, 'schedule']);
         Route::post('/advertising/{campaign}', [AdvertisingReviewController::class, 'decide'])->whereNumber('campaign')->middleware('throttle:12,1');
         Route::get('/commercial', [CommercialController::class, 'index']);
         Route::post('/commercial', [CommercialController::class, 'save'])->middleware('throttle:8,1');

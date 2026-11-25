@@ -542,11 +542,13 @@ const fs = require('node:fs');
         const start = new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10);
         await page.locator('input[name="starts_on"]').fill(start);
         await page.getByRole('button', { name: 'Submit private request' }).click();
-        check(await page.getByRole('heading', { name: 'Private browser campaign' }).isVisible(), 'Campaign was not persisted');
+        await page.getByRole('heading', { name: 'Private browser campaign', exact: true }).waitFor({ timeout: 10000 }).catch(async () => {
+            throw new Error('Campaign was not persisted: ' + (await page.locator('main').innerText()).slice(0, 2500));
+        });
         check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Advertising dashboard overflow');
         await page.locator('summary').filter({ hasText: 'Withdraw request' }).click();
         await page.getByRole('button', { name: 'Confirm withdrawal' }).click();
-        check(await page.getByText(/Withdrawn/).isVisible(), 'Campaign withdrawal failed');
+        await page.getByText(/Withdrawn/).waitFor();
         await page.goto(host);
         check(await page.getByText('Private browser campaign', { exact: true }).count() === 0, 'Private campaign leaked onto homepage');
         console.log('PASS: private persistent campaign submission and withdrawal, no public delivery');

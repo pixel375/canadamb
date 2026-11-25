@@ -19,12 +19,15 @@ class AdvertisingController extends Controller
     public function index(Request $request, int $business)
     {
         $item = $this->owned($request, $business);
-        $portals = Site::where('status', 'active')->orderBy('name')->get()->filter(fn ($site) => ! $site->location_id || $item->locations()->where('location_id', $site->location_id)->exists());
-        $campaigns = AdvertisingCampaign::where('business_id', $business)->with('site')->latest('id')->paginate(15);
+        $locations = $item->locations()->pluck('location_id');
+        $portals = Site::where('status', 'active')->where(fn ($query) => $query->whereNull('location_id')->orWhereIn('location_id', $locations))->orderBy('name')->get();
+        $filters = $request->validate(['status' => 'nullable|in:pending,approved,rejected,withdrawn']);
+        $campaigns = AdvertisingCampaign::where('business_id', $business)->with('site')
+            ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))->latest('id')->paginate(15)->withQueryString();
         $catalog = CommercialCatalog::fromSettings(app(NetworkSettings::class)->published());
         $trial = CommercialRecords::hasTrial($item);
 
-        return view('business.advertising', compact('item', 'portals', 'campaigns', 'catalog', 'trial'));
+        return view('business.advertising', compact('item', 'portals', 'campaigns', 'catalog', 'trial', 'filters'));
     }
 
     public function store(Request $request, int $business, NetworkSettings $settings)
@@ -45,7 +48,11 @@ class AdvertisingController extends Controller
             if (! CommercialRecords::eligible($item, $site, $data['placement'])) {
                 throw ValidationException::withMessages(['site_id' => 'The business or selected placement is not eligible on that portal.']);
             }
-            if (AdvertisingCampaign::where('business_id', $business)->whereIn('status', ['pending', 'approved'])->count() >= 10) {
+            $today = today('America/Winnipeg')->toDateString();
+            $open = AdvertisingCampaign::where('business_id', $business)->whereIn('status', ['pending', 'approved'])
+                ->where('starts_on', '>=', today('America/Winnipeg')->subWeeks(12)->toDateString())->get()
+                ->filter(fn ($campaign) => in_array($campaign->planningPhase($today), ['pending', 'scheduled', 'in-window'], true))->count();
+            if ($open >= 10) {
                 throw ValidationException::withMessages(['title' => 'At most ten open campaign requests are allowed.']);
             }
             $revision = $settings->state()->published_id;

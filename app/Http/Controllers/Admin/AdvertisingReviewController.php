@@ -5,6 +5,9 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AdvertisingCampaign;
 use App\Models\Business;
+use App\Models\Site;
+use App\Support\AdvertisingSchedule;
+use App\Support\CommercialCatalog;
 use App\Support\Audit;
 use App\Support\CommercialRecords;
 use Illuminate\Http\Request;
@@ -21,6 +24,18 @@ class AdvertisingReviewController extends Controller
             ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")->latest('id')->paginate(20)->withQueryString();
 
         return view('admin.advertising-review', compact('items', 'filters'));
+    }
+
+    public function schedule(Request $request, AdvertisingSchedule $schedule)
+    {
+        abort_unless(CommercialRecords::enabled(), 404);
+        $filters = $request->validate(['site_id' => 'nullable|integer|min:1', 'date' => 'nullable|date_format:Y-m-d']);
+        $portals = Site::where('status', 'active')->orderBy('name')->get();
+        $portal = $portals->firstWhere('id', (int) ($filters['site_id'] ?? 0));
+        $date = $filters['date'] ?? today('America/Winnipeg')->toDateString();
+        $placements = collect(CommercialCatalog::PLACEMENTS)->map(fn ($module, $placement) => $portal ? $schedule->candidates($portal, $placement, $date) : collect());
+
+        return view('admin.advertising-schedule', compact('portals', 'portal', 'date', 'placements'));
     }
 
     public function decide(Request $request, int $campaign)

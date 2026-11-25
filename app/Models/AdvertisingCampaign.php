@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Support\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -14,6 +15,27 @@ class AdvertisingCampaign extends Model
     protected function casts(): array
     {
         return ['starts_on' => 'date', 'weeks' => 'integer', 'estimated_cents' => 'integer', 'reviewed_at' => 'datetime'];
+    }
+
+    public function endsOn(): Carbon
+    {
+        return $this->starts_on->copy()->addWeeks($this->weeks);
+    }
+
+    public function planningPhase(?string $date = null): string
+    {
+        $date ??= today('America/Winnipeg')->toDateString();
+        if ($this->status === 'pending' && $this->starts_on->toDateString() < $date) {
+            return 'lapsed';
+        }
+        if ($this->status !== 'approved') {
+            return $this->status;
+        }
+        if ($this->endsOn()->toDateString() <= $date) {
+            return 'expired';
+        }
+
+        return $this->starts_on->toDateString() > $date ? 'scheduled' : 'in-window';
     }
 
     public function business(): BelongsTo
