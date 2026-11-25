@@ -31,7 +31,7 @@ final class AdvertisingSchedule
 
         return AdvertisingCampaign::with('business')->where('site_id', $site->id)
             ->where('placement', $placement)->where('status', 'approved')
-            ->whereNotNull('reviewed_at')->whereBetween('starts_on', [$earliest, $date])
+            ->whereNotNull('reviewed_at')->whereDate('starts_on', '>=', $earliest)->whereDate('starts_on', '<=', $date)
             ->whereHas('business', fn ($query) => $query->where('status', 'active'))
             ->orderBy('reviewed_at')->orderBy('id')->get()
             ->filter(fn ($item) => $item->planningPhase($date) === 'in-window' && CommercialRecords::eligible($item->business, $site, $placement))

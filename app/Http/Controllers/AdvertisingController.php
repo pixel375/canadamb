@@ -69,7 +69,7 @@ class AdvertisingController extends Controller
             }
             $today = today('America/Winnipeg')->toDateString();
             $open = AdvertisingCampaign::where('business_id', $business)->whereIn('status', ['pending', 'approved'])
-                ->where('starts_on', '>=', today('America/Winnipeg')->subWeeks(12)->toDateString())->get()
+                ->whereDate('starts_on', '>=', today('America/Winnipeg')->subWeeks(12)->toDateString())->get()
                 ->filter(fn ($campaign) => in_array($campaign->planningPhase($today), ['pending', 'scheduled', 'in-window'], true))->count();
             if ($open >= 10) {
                 throw ValidationException::withMessages(['title' => 'At most ten open campaign requests are allowed.']);

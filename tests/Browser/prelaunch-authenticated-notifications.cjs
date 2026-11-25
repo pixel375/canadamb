@@ -541,9 +541,13 @@ const fs = require('node:fs');
         await page.locator('textarea[name="body"]').fill('A private advertisement proposal.');
         const start = new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10);
         await page.locator('input[name="starts_on"]').fill(start);
+        const submitted = page.waitForResponse(response => response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith('/advertising'));
         await page.getByRole('button', { name: 'Submit private request' }).click();
+        const submittedResponse = await submitted;
+        check(submittedResponse.status() === 302, 'Campaign POST returned ' + submittedResponse.status());
+
         await page.getByRole('heading', { name: 'Private browser campaign', exact: true }).waitFor({ timeout: 10000 }).catch(async () => {
-            throw new Error('Campaign was not persisted: ' + (await page.locator('main').innerText()).slice(0, 2500));
+            throw new Error('Campaign was not persisted: ' + page.url() + ' ' + (await page.locator('body').innerText({ timeout: 3000 })).slice(0, 2500));
         });
         check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Advertising dashboard overflow');
         await page.locator('summary').filter({ hasText: 'Withdraw request' }).click();

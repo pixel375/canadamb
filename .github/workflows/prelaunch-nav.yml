@@ -72,6 +72,7 @@ jobs:
           path: |
             test-results/
             navigation-server.log
+            storage/logs/laravel.log
           if-no-files-found: ignore
       - name: Stop disposable server
         if: always()
