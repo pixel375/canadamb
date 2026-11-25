@@ -13,7 +13,7 @@
 - Contested ownership adjudication, branch closure and relocation, automated contact verification, subscriptions, advertising and proactive job alert delivery. Saved job searches and on-demand in-app new-match alerts are review-staged; no email, push or scheduler is enabled. Moderated branch additions, address corrections and manual email review are review-staged. Private dispute intake and independent triage are review-staged; they do not change memberships. Invitations and consensual transfers are review-staged and require migration approval. Owner-controlled manager/editor access and read-only ownership lookup are implemented in the active implementation branch.
 - Scheduled news ingestion and provider feeds require verification; polling remains suppressed during prelaunch.
 - Recheck production backups, scheduler and mail delivery as part of launch acceptance; practice file-level media restoration. Retain the original public_html inode, private keys and access restrictions. No unreviewed migrations or seeders.
-- Location boundaries and administrative relationships require additional authoritative Manitoba data. Recurring events and automated media retention remain open. Reply editing, withdrawal and private history are implemented in the current source; verify deployment separately.
+- Location boundaries and administrative relationships require additional authoritative Manitoba data. Bounded recurring submissions are implemented behind a switch; series-wide changes and automated media retention remain open. Reply editing, withdrawal and private history are implemented in the current source; verify deployment separately.
 
 ## Superseded earlier UX concerns
 

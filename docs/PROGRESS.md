@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-25 — recurring event submissions and calendar usability
+
+Added atomic bounded weekly/biweekly submissions (up to eight dates, individually reviewed, 24 pending per member when enabled), wall-clock DST validation and duplicate rollback, monthly day agenda, scoped approved-only iCalendar downloads and regression tests. No schema changes or scheduled recurrence expansion. Recurrence switch defaults off; existing one-time events and moderation remain intact.
+
 ## 2026-11-25 — photo report moderation and export CI repair
 
 Attachment source `ce2f4d7` passed exact backend and browser checks. Privacy pass `fac6793` failed only because its expanded export test exceeded the production six-per-minute limit. Keep the throttle; assert 429 then advance test time. This pass stages distinct photo reports, narrowly scoped pending-report download for independent moderators, audit logging and participant-only reporting. No arbitrary inbox access or automatic removal.

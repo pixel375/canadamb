@@ -29,6 +29,7 @@
                 <div class="business-contact-row"><x-icon name="calendar" size="20"/><div><h3>When</h3><p><time datetime="{{ $item->localStart()->toAtomString() }}">{{ $item->localStart()->format('l, F j, Y · g:i a T') }}</time>@if($item->localEnd()) to <time datetime="{{ $item->localEnd()->toAtomString() }}">{{ $item->localEnd()->format('M j · g:i a T') }}</time>@endif</p></div></div>
                 <div class="business-contact-row"><x-icon name="pin" size="20"/><div><h3>Venue</h3><p>{{ $item->venue }} · {{ $item->location->name }}</p></div></div>
                 <div class="business-contact-row"><x-icon name="person" size="20"/><div><h3>Organizer</h3><p>{{ $item->organizer }}</p></div></div>
+                @if($item->status === 'approved')<a class="button button-outline" href="/events/{{ $item->id }}/calendar">Add to my calendar (.ics)</a>@endif
                 @if($item->event_url && $item->status === 'approved')<a class="button button-primary" rel="nofollow ugc" href="{{ $item->event_url }}">Event or ticket information <x-icon name="arrow" size="16"/></a>@endif
                 @if(auth()->id() === $item->author_id)<a class="button button-outline" href="/account/events">Manage my events</a>@endif
                 <a class="text-link" href="{{ \App\Support\LocationScope::browseUrl($site, '/events', $item->location) }}">Find more local events <x-icon name="arrow" size="16"/></a>
