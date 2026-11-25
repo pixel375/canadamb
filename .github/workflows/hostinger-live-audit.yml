@@ -120,6 +120,24 @@ jobs:
           done
           df -Pk "$app" | awk 'NR==2 {print "Filesystem free KiB:", $4}'
           df -Pi "$app" | awk 'NR==2 {print "Filesystem free inodes:", $4}'
+          echo 'Read-only storage accounting (KiB; no private file names)'
+          for part in releases failed-releases shared/backups shared/storage source; do
+            if [[ -d "$app/$part" && ! -L "$app/$part" ]]; then
+              printf '%s: ' "$part"
+              du -sk "$app/$part" | awk '{print $1}'
+            fi
+          done
+          if [[ -d "$site/.builds" && ! -L "$site/.builds" ]]; then
+            printf 'builds: '; du -sk "$site/.builds" | awk '{print $1}'
+          fi
+          echo 'Retained release inventory (SHA, KiB, active, backup receipt)'
+          for dir in "$app/releases/"*; do
+            [[ -d "$dir" && ! -L "$dir" && ${dir##*/} =~ ^[a-f0-9]{40}$ ]] || continue
+            id=${dir##*/}
+            active=no; [[ "$dir" != "$old" ]] || active=yes
+            backup=no; [[ ! -s "$app/shared/backups/$id/checksums.sha256" ]] || backup=yes
+            printf '%s %s active=%s backup=%s\n' "$id" "$(du -sk "$dir" | awk '{print $1}')" "$active" "$backup"
+          done
           echo 'Checking active Laravel production configuration and database read-only'
           /usr/bin/php "$old/artisan" network:deployment-check --hostinger --production-database=u713153343_canadamb --database --migration-state
           echo 'LIVE PREDEPLOY AUDIT OK'
