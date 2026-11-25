@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-25 — cumulative browser acceptance green
+
+Exact `cca7be8` browser run 45612098709 passed, including recurring event submission after isolating its rate-limit bucket. Backend 45612098489 stopped on a missing blank line between property test methods. Corrected that style issue without changing assertions. Final full backend verification remains required.
+
 ## 2026-11-25 — commercial formatting and property photo regression coverage
 
 Corrected campaign export indentation and isolated duplicate query for Pint; added explicit retained-photo scope, stale edit and non-destructive property withdrawal coverage. Earlier property and privacy suites passed their backend test steps; final cumulative QA remains required.

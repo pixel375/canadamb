@@ -144,6 +144,7 @@ class PropertyDraftTest extends TestCase
         $this->get($path)->assertNotFound();
         $this->get('https://brandonmb.ca/real-estate/'.$draft->id)->assertNotFound();
     }
+
     public function test_retained_property_photos_are_private_scoped_and_version_bound(): void
     {
         Storage::fake('local');
