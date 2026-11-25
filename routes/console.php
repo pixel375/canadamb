@@ -9,6 +9,7 @@ use App\Support\Identity;
 use App\Support\JobBoard;
 use App\Support\Marketplace;
 use App\Support\MessageFileInventory;
+use App\Support\PropertyMediaInventory;
 use App\Support\StagedFeatures;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -79,6 +80,16 @@ Artisan::command('messages:attachment-inventory {--limit=500}', function (Messag
     }
     $this->line(json_encode($inventory->inspect($limit), JSON_THROW_ON_ERROR));
 })->purpose('Read-only bounded private attachment inventory; never delete or print file paths');
+
+Artisan::command('media:inventory {--limit=500}', function (PropertyMediaInventory $inventory) {
+    $limit = filter_var($this->option('limit'), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 5000]]);
+    if ($limit === false) {
+        $this->error('Choose a limit between 1 and 5000.');
+
+        return 1;
+    }
+    $this->line(json_encode($inventory->inspect($limit), JSON_THROW_ON_ERROR));
+})->purpose('Read-only bounded Marketplace and private property photo inventory');
 
 Schedule::command('passport:purge --hours=24')->daily()->withoutOverlapping(10);
 if (config('network.news_polling') && ! config('network.prelaunch')) {

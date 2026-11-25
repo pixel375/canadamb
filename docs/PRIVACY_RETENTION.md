@@ -15,3 +15,7 @@ The self-export includes participant-local conversation metadata and sent-photo 
 ### Photo metadata exports
 
 Member exports include the identifiers and display order of their own Marketplace and private property photographs. No filesystem paths, thumbnails, image bytes or other members' photographs are included. Continuation downloads include the record cursor in the filename. Historical values of business change requests are excluded from self-service exports; the submitted value and status remain available.
+
+### Marketplace and property media reconciliation
+
+Use `php artisan media:inventory --limit=500` to inspect bounded aggregate photo integrity counts for the Marketplace and private property folders separately. The limit applies to each folder's database rows and file entries. Missing references, unexpected entries, symlinked directories, old unreferenced files and truncation are reported without paths or contents. The command never deletes, moves, repairs or schedules anything. Treat results as observations, not deletion authorization. Verify backup coverage and reconcile reports and legal holds before planning any retention changes.
