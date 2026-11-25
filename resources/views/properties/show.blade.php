@@ -1,12 +1,12 @@
 @php($path = ($review ? '/admin/properties/' : '/account/properties/').$item->id)
 <x-layouts.site :title="$item->title.' | Private property draft'">
-    <div class="container page-shell narrow">
+    <div class="container page-shell property-private-detail">
         <a class="text-link mb-4" href="{{ $review ? '/admin/properties' : '/account/properties' }}">Back to {{ $review ? 'private reviews' : 'property drafts' }}</a>
         <article class="panel">
             <p class="section-label">Private draft · {{ $item->location->name }}</p>
             <h1>{{ $item->title }}</h1>
             <p>{{ $item->transaction === 'rent' ? 'For rent' : 'For sale' }} · {{ \App\Models\PropertyListing::TYPES[$item->property_type] }} · CAD {{ number_format($item->price_cents / 100, 2) }}</p>
-            <p>Review state · {{ str_replace('_', ' ', ucfirst($item->status)) }}</p>
+            <p><span class="member-listing-status" data-status="{{ $item->status }}">{{ ucfirst(str_replace('_', ' ', $item->status)) }}</span></p>
             <div class="property-private-notice">
                 <strong>Authority and review status — private</strong>
                 <p>Submitted property information requires an owner or authorized-representative declaration and independent reviewer checks. This information does not appear in public listings.</p>
@@ -16,7 +16,7 @@
             @if($item->photos->isNotEmpty())
                 <div class="listing-grid">@foreach($item->photos as $photo)<img src="{{ $path }}/media/{{ $photo->id }}" alt="Property photo {{ $loop->iteration }}" loading="lazy">@endforeach</div>
             @endif
-            <dl class="form-grid mt-3">
+            <dl class="job-detail-facts mt-3">
                 @foreach(['bedrooms' => 'Bedrooms', 'bathrooms' => 'Bathrooms', 'floor_area' => 'Floor area (sq ft)', 'acreage' => 'Acreage', 'year_built' => 'Year built', 'private_address' => 'Street address', 'legal_land_description' => 'Legal land description'] as $field => $label)
                     @if($item->{$field} !== null)<div><dt>{{ $label }}</dt><dd>{{ $item->{$field} }}</dd></div>@endif
                 @endforeach
@@ -66,11 +66,9 @@
                         <button class="button button-primary" type="submit">Submit for private review</button>
                     </form>
                 @endif
-                <form method="post" action="{{ $path }}">
-                    @csrf
-                    @method('DELETE')
-                    <button class="button button-outline" type="submit">Archive / withdraw draft</button>
-                </form>
+                <details class="seller-remove-listing"><summary>Archive / withdraw draft</summary><p class="field-note">This removes the draft from your workspace and deletes its stored photos. It cannot be restored here.</p>
+                    <form method="post" action="{{ $path }}">@csrf @method('DELETE')<button class="button button-outline" type="submit">Confirm archive / withdrawal</button></form>
+                </details>
             </div>
         @endif
     </div>

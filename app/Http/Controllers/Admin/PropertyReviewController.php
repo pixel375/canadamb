@@ -6,17 +6,22 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\PropertyDraftController;
 use App\Models\PropertyListing;
 use App\Support\Audit;
+use App\Support\KeywordSearch;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class PropertyReviewController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $items = $this->reviewable()->latest('id')->paginate(20);
+        $filters = $request->validate(['status' => 'nullable|in:submitted,reviewed', 'q' => 'nullable|string|max:100']);
+        $matching = $this->reviewable()->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'description']));
+        $counts = (clone $matching)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
+        $items = $matching->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
+            ->orderByRaw("CASE WHEN status = 'submitted' THEN 0 ELSE 1 END")->latest('id')->paginate(20)->withQueryString();
 
-        return view('admin.properties', compact('items'));
+        return view('admin.properties', compact('items', 'filters', 'counts'));
     }
 
     public function show(int $property)

@@ -17,7 +17,16 @@
             ['key' => 'vacant-land', 'name' => 'Land', 'subtitle' => 'Lots and land', 'icon' => 'map'],
             ['key' => 'farm', 'name' => 'Farms', 'subtitle' => 'Rural properties', 'icon' => 'tractor'],
             ['key' => 'commercial', 'name' => 'Commercial', 'subtitle' => 'Business property', 'icon' => 'building'],
+            ['key' => 'townhouse', 'name' => 'Townhouses', 'subtitle' => 'Attached homes', 'icon' => 'house'],
+            ['key' => 'duplex', 'name' => 'Duplexes', 'subtitle' => 'Two-unit homes', 'icon' => 'house'],
+            ['key' => 'room', 'name' => 'Rooms', 'subtitle' => 'Shared accommodation', 'icon' => 'home'],
+            ['key' => 'industrial', 'name' => 'Industrial', 'subtitle' => 'Industrial property', 'icon' => 'building'],
+            ['key' => 'other', 'name' => 'Other property', 'subtitle' => 'Other property types', 'icon' => 'layers'],
         ];
+        $activeFilters = array_filter($filters, fn ($value) => $value !== null && $value !== '');
+        $typeParams = array_diff_key($activeFilters, ['property_type' => true]);
+        $transactionParams = array_diff_key($activeFilters, ['transaction' => true]);
+        $draftParams = array_intersect_key($activeFilters, ['transaction' => true, 'location' => true]);
     @endphp
     <div class="container page-shell browse-page">
         <a class="text-link mb-4" href="{{ \App\Support\LocationScope::browseUrl($site, '/marketplace', $selectedLocation) }}">Marketplace categories</a>
@@ -26,22 +35,23 @@
                 <p class="section-label"><x-icon name="pin" size="16"/> {{ $selectedLocation?->name ?? $site->location?->name ?? 'Manitoba' }} · Homes and rentals</p>
                 <h1 id="property-heading">Real Estate</h1>
                 <p>Find a place to call home. Explore houses, apartments, acreages, land and commercial properties across {{ $selectedLocation?->name ?? $site->location?->name ?? 'Manitoba' }}.</p>
-                <p class="field-note mt-3">Our Real Estate section is taking shape. Public property advertisements are not open yet.</p>
+                                @unless($publicEnabled)<p class="field-note mt-3">Public property advertisements are not open yet.</p>@endunless
+                @if(config('network.property_drafts'))<div class="inline-actions mt-3"><a class="button button-primary" href="/account/properties/new{{ $draftParams ? '?'.http_build_query($draftParams) : '' }}">Prepare a private property draft</a>@auth<a class="text-link" href="/account/properties">My property drafts</a>@endauth</div>@endif
             </div>
             <div class="property-hero-art" aria-hidden="true"><x-icon name="house" size="110"/></div>
         </section>
 
         <nav class="property-tabs" aria-label="Real Estate transaction type">
-            <a href="{{ $browseLink() }}" aria-current="{{ isset($filters['transaction']) ? 'false' : 'page' }}">All properties</a>
-            <a href="{{ $browseLink(['transaction' => 'sale']) }}" aria-current="{{ ($filters['transaction'] ?? '') === 'sale' ? 'page' : 'false' }}">For sale</a>
-            <a href="{{ $browseLink(['transaction' => 'rent']) }}" aria-current="{{ ($filters['transaction'] ?? '') === 'rent' ? 'page' : 'false' }}">For rent</a>
+            <a href="{{ $browseLink($transactionParams) }}" aria-current="{{ isset($filters['transaction']) ? 'false' : 'page' }}">All properties</a>
+            <a href="{{ $browseLink(['transaction' => 'sale'] + $transactionParams) }}" aria-current="{{ ($filters['transaction'] ?? '') === 'sale' ? 'page' : 'false' }}">For sale</a>
+            <a href="{{ $browseLink(['transaction' => 'rent'] + $transactionParams) }}" aria-current="{{ ($filters['transaction'] ?? '') === 'rent' ? 'page' : 'false' }}">For rent</a>
         </nav>
 
         <section class="property-discover-section" aria-labelledby="property-types-heading">
-            <h2 id="property-types-heading">Browse by property type</h2>
+            <div class="section-heading"><h2 id="property-types-heading">Browse by property type</h2>@if(filled($filters['property_type'] ?? null))<a class="text-link" href="{{ $browseLink($typeParams) }}">All types</a>@endif</div>
             <div class="property-type-grid">
                 @foreach($types as $type)
-                    <a class="property-type-card" href="{{ $browseLink(array_filter(['property_type' => $type['key'], 'transaction' => $filters['transaction'] ?? null])) }}" aria-current="{{ ($filters['property_type'] ?? '') === $type['key'] ? 'page' : 'false' }}">
+                    <a class="property-type-card" href="{{ $browseLink(['property_type' => $type['key']] + $typeParams) }}" aria-current="{{ ($filters['property_type'] ?? '') === $type['key'] ? 'page' : 'false' }}">
                         <span class="property-type-icon" aria-hidden="true"><x-icon :name="$type['icon']" size="23"/></span>
                         <strong>{{ $type['name'] }}</strong>
                         <small>{{ $type['subtitle'] }}</small>

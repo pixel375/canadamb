@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Location;
 use App\Models\PropertyListing;
 use App\Support\Audit;
+use App\Support\KeywordSearch;
 use App\Support\ListingPhotos;
 use App\Support\LocationScope;
 use Illuminate\Database\Eloquent\Builder;
@@ -21,14 +22,19 @@ class PropertyDraftController extends Controller
         $filters = $request->validate([
             'transaction' => 'nullable|in:sale,rent', 'property_type' => ['nullable', Rule::in(array_keys(PropertyListing::TYPES))],
             'q' => 'nullable|string|max:100',
+            'status' => 'nullable|in:draft,submitted,changes_requested,reviewed',
         ]);
-        $items = $this->owned($request)
+        $statuses = ['draft', 'submitted', 'changes_requested', 'reviewed'];
+        $matching = $this->owned($request)->whereIn('status', $statuses)
             ->when($filters['transaction'] ?? null, fn (Builder $query, string $value) => $query->where('transaction', $value))
             ->when($filters['property_type'] ?? null, fn (Builder $query, string $value) => $query->where('property_type', $value))
-            ->when($filters['q'] ?? null, fn (Builder $query, string $value) => $query->whereLike('title', '%'.$value.'%'))
+            ->when($filters['q'] ?? null, fn (Builder $query, string $value) => $query->where(fn (Builder $match) => KeywordSearch::apply($match, $value, ['title', 'description'])));
+        $counts = (clone $matching)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
+        $items = $matching->with('photos')
+            ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
             ->latest('id')->paginate(20)->withQueryString();
 
-        return view('properties.index', compact('items', 'filters'));
+        return view('properties.index', compact('items', 'filters', 'statuses', 'counts'));
     }
 
     public function show(Request $request, int $property)
@@ -166,7 +172,12 @@ class PropertyDraftController extends Controller
     {
         $site = $request->attributes->get('site');
 
-        return view('properties.form', ['item' => $item, 'places' => $site->isNetwork() ? Location::selectable()->orderBy('name')->get() : collect()]);
+        return view('properties.form', [
+            'item' => $item,
+            'places' => $site->isNetwork() ? Location::selectable()->orderBy('name')->get() : collect(),
+            'suggestedLocation' => $item->exists ? null : LocationScope::forBrowsing($site, $request->query('location', $request->cookie(LocationScope::PREFERENCE_COOKIE))),
+            'suggestedTransaction' => in_array($request->query('transaction'), ['sale', 'rent'], true) ? $request->query('transaction') : null,
+        ]);
     }
 
     private function draftData(Request $request): array

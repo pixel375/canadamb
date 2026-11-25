@@ -41,6 +41,9 @@ class RealEstateBrowsingTest extends TestCase
 
         $this->get('https://canadamb.ca/real-estate?transaction=rent&property_type=apartment&location=brandon')
             ->assertOk()->assertSee('value="apartment" selected', false);
+        $this->get('https://canadamb.ca/real-estate?location=brandon&transaction=rent&q=garage')->assertOk()
+            ->assertSee('Townhouses')->assertSee('Duplexes')->assertSee('Industrial')
+            ->assertSee('property_type=house&amp;transaction=rent&amp;q=garage&amp;location=brandon', false);
         $this->get('https://brandonmb.ca/real-estate?location=elkhorn')->assertOk()
             ->assertDontSee('name="location"', false);
     }

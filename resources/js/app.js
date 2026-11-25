@@ -343,6 +343,8 @@ for (const input of document.querySelectorAll('[data-listing-photos]')) {
     const form = input.closest('form');
     const preview = form.querySelector('[data-photo-preview]');
     const feedback = form.querySelector('[data-photo-feedback]');
+    const limit = Number(input.dataset.photoLimit) || 5;
+    const megabytes = Number(input.dataset.photoMb) || 4;
     let urls = [];
     const clear = () => {
         for (const url of urls) URL.revokeObjectURL(url);
@@ -355,12 +357,12 @@ for (const input of document.querySelectorAll('[data-listing-photos]')) {
         clear();
         input.setCustomValidity('');
         const files = [...input.files];
-        const invalid = files.some(file => file.size > 4 * 1024 * 1024 ||
+        const invalid = files.some(file => file.size > megabytes * 1024 * 1024 ||
             !['image/jpeg', 'image/png', 'image/webp'].includes(file.type));
-        const error = files.length > 5 ? 'Choose no more than five photos.' :
-            invalid ? 'Use JPEG, PNG or WebP photos no larger than 4 MB each.' : '';
+        const error = files.length > limit ? 'Choose no more than ' + limit + ' photos.' :
+            invalid ? 'Use JPEG, PNG or WebP photos no larger than ' + megabytes + ' MB each.' : '';
         input.setCustomValidity(error);
-        feedback.textContent = error || (files.length ? files.length + ' of 5 photos selected.' : '');
+        feedback.textContent = error || (files.length ? files.length + ' of ' + limit + ' photos selected.' : '');
         if (error) return;
         const editable = typeof DataTransfer === 'function';
         const apply = updated => {

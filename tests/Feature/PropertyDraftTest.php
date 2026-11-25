@@ -48,6 +48,12 @@ class PropertyDraftTest extends TestCase
         $thumbnail = "$path/media/$media->id";
 
         $this->get($path)->assertOk()->assertSee('Private address sample');
+        $this->get('https://canadamb.ca/account/properties?status=draft&q=outbuilding')->assertOk()->assertSee($draft->title)->assertSee('1 draft found');
+        $this->get('https://canadamb.ca/account/properties?status=reviewed')->assertOk()->assertDontSee($draft->title);
+        $this->get('https://canadamb.ca/account/properties/new?location=brandon&transaction=rent')->assertOk()
+            ->assertSee('value="rent" selected', false)->assertSee('value="'.$draft->location_id.'" selected', false);
+        $this->actingAs($other)->get('https://canadamb.ca/account/properties')->assertOk()->assertDontSee($draft->title);
+        $this->actingAs($author);
         $this->get($thumbnail)->assertOk()->assertHeader('Cache-Control', 'no-store, private');
         $this->actingAs($other)->get($path)->assertNotFound();
         $this->get($thumbnail)->assertNotFound();
@@ -70,6 +76,8 @@ class PropertyDraftTest extends TestCase
         $review = "https://canadamb.ca/admin/properties/$draft->id";
         $this->post($review, ['action' => 'review'])->assertForbidden();
         $this->actingAs($admin)->get($review)->assertOk()->assertSee($draft->title);
+        $this->get('https://canadamb.ca/admin/properties?status=submitted&q=outbuilding')->assertOk()->assertSee($draft->title);
+        $this->get('https://canadamb.ca/admin/properties?status=reviewed')->assertOk()->assertDontSee($draft->title);
         $this->post($review, ['action' => 'publish'])->assertSessionHasErrors('action');
         $this->post($review, ['action' => 'review', 'note' => 'The draft has the required internal fields.'])
             ->assertSessionHasErrors(['owner_authority_checked', 'seller_role_checked',
