@@ -1,5 +1,13 @@
 # Progress
 
+## 2026-11-24 — accumulated responsive, account and Marketplace releases verified
+
+Source `0a7a9ab8ccb40438ebc9392f742e3ac1ae11e420` passed both [backend CI](https://github.com/pixel375/canadamb/actions/runs/45518899797) and [browser QA](https://github.com/pixel375/canadamb/actions/runs/45518899917), then [guarded production deployment](https://github.com/pixel375/canadamb/actions/runs/45519178954) and independent exact-SHA, database/backup, and PWA access audits. The November 24 Manitoba local date corresponds to November 25 UTC audit timestamps. Both domains returned 403 externally. Exact-SHA backend AND browser success are now required for auto-deployment; migration approval remains off.
+
+Delivered since earlier snapshots: responsive desktop/mobile navigation; scoped keyword search; preferred community; Marketplace lifecycle and media editing; business, jobs, discussions/events, news and administration dashboards; private property workflows; account password change and session revocation; saved-content filters, blocking, reporting history and messaging refresh. Android standalone installation remains a device-level acceptance item. Neither public registration nor property publication was opened.
+
+The subsequent safety/readiness pass introduces guidance pages and a read-only configuration dashboard; its own deployment is tracked separately. Configuration indicators do not establish external service health.
+
 ## 2026-11-21 — Pass 01 registration and authentication
 
 Implemented default-off, published prelaunch tester registration, targeted and audited tester verification, non-enumerating mail-enabled password recovery, and session-bound Passport sign-in across CanadaMB and BrandonMB. No migrations, seeders or operational secrets changed. Deployment and real-device acceptance are recorded separately in the PR and the release checklist. [Issue #11](https://github.com/pixel375/canadamb/issues/11) · [Browser acceptance](AUTHENTICATION.md#pass-01-prelaunch-acceptance)

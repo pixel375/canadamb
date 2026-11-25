@@ -1,15 +1,18 @@
 # Known issues and remaining acceptance
 
-**Current status 2026-11-19:** CanadaMB and BrandonMB are successfully running the same Laravel release on actual Hostinger domains behind IP-restricted prelaunch; owner accepted 7/7 initial checks and created disposable Marketplace listings. See [LIVE_STATE_2026-11-19.md](LIVE_STATE_2026-11-19.md) for the verified operational snapshot. The previous statement that production prelaunch activation was pending is historical.
+**Verified restricted production release:** `0a7a9ab8ccb40438ebc9392f742e3ac1ae11e420`, November 24, 2026 (Manitoba time). [Backend CI](https://github.com/pixel375/canadamb/actions/runs/45518899797), [browser QA](https://github.com/pixel375/canadamb/actions/runs/45518899917), [deployment and independent audits](https://github.com/pixel375/canadamb/actions/runs/45519178954) passed. Both domains retained the external HTTP 403 gate. This is not a public-launch approval.
 
-- **Marketplace UX:** Homepage listing photos are not linked, card images use cropping, detail gallery displays the small preview and opens a standalone image, and canonical-site 301s move provincial visitors to Brandon. No category link, substantial seller card or related/recent sidebar. Multi-image end-to-end UX remains unverified. See [MARKETPLACE_FEEDBACK.md](MARKETPLACE_FEEDBACK.md).
-- **Deployment stability:** Original `/dev/fd` logging failed on Hostinger. Some manual and Git working-copy scripts unexpectedly truncated to 0 bytes (**root cause unknown**); immutable Git objects survived. The corrected script must be confirmed in a new actual release. Keep `public_html` directory in place; replacing its inode caused both sites to return 404. Keep Hostinger Git auto-deploy pointed away from `public_html`. See [DEPLOYMENT_AUTOMATION.md](DEPLOYMENT_AUTOMATION.md).
-- **Operational acceptance:** Initial migrations and real-domain login passed. Current cron/queue cadence, actual production-dump restore, email delivery, monitors, broader real-browser content flows and update/rollback rehearsal are pending. Preserve IP gate, app key, OAuth private keys, database and media.
+## Outstanding launch blockers and acceptance
 
-- The location starter list is small. The reviewed CGNDB import broadens coverage. Authoritative boundaries and administrative relationships require additional Manitoba data.
-- Some Marketplace features remain open, including richer category administration, advanced anti-spam controls, message-report review and automated media retention.
-- Business teams, ownership disputes/transfers, automated business contact verification and subscription entitlements need additional work.
-- Scheduled AI processing and the ChatGPT Scheduled integration remain open. Feed transport still needs verification with the intended publisher feeds and the Hostinger resolver.
-- Forum editing, member reporting and richer moderation, recurring events, and job alerts remain open.
-- Public real estate and property monetization require a separate compliance review. The existing registry is for private drafts.
-- Advertising, subscriptions, user export/deletion, MFA and launch policies remain open.
+- Real phone/desktop testing from an approved network, including actual Android standalone/WebAPK installation (browser manifest and worker tests are not device installation proof), full HTTPS community sign-in and posting.
+- SMTP delivery and monitored support mailbox, reviewed privacy policy/terms, retention, account export/deletion and administrative MFA.
+- Broader content-reporting queue for discussions, replies, jobs, events, businesses and private messages; use the existing listing-report queue for Marketplace and contact guidance for other issues. Do not store message contents or reports in the audit log as a substitute for an authorized report store. See the migration proposal in [CONTENT_REPORTING_PLAN.md](CONTENT_REPORTING_PLAN.md).
+- Real estate publication, ownership/authority and compliance review; property drafts remain private.
+- Business team ownership transfer/dispute handling, contact verification, subscriptions, advertising and job alerts.
+- Scheduled news ingestion and provider feeds require verification; polling remains suppressed during prelaunch.
+- Recheck production backups, scheduler and mail delivery as part of launch acceptance; practice file-level media restoration. Retain the original public_html inode, private keys and access restrictions. No unreviewed migrations or seeders.
+- Location boundaries and administrative relationships require additional authoritative Manitoba data. Forum editing, recurring events and automated media retention remain open.
+
+## Superseded earlier UX concerns
+
+Category-first Marketplace discovery, original-size galleries, same-domain browsing with canonical URLs, seller dashboards, messaging, existing-photo editing, responsive administration, scoped search and account preferences have been implemented and covered by automated checks. Real device acceptance remains separate. See [PROGRESS.md](PROGRESS.md) and the verified release above.

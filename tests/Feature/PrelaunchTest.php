@@ -22,10 +22,14 @@ class PrelaunchTest extends TestCase
             $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.11'])
                 ->get("https://$host/", ['X-Forwarded-For' => '192.0.2.10'])
                 ->assertForbidden()->assertHeader('X-Robots-Tag', 'noindex, nofollow');
+            foreach (['/safety', '/privacy-overview', '/contact', '/admin/readiness'] as $path) {
+                $this->get("https://$host".$path)->assertForbidden()->assertHeader('X-Robots-Tag', 'noindex, nofollow');
+            }
             $this->get("https://$host/robots.txt")
                 ->assertOk()->assertSee('Disallow: /', false)->assertDontSee('Sitemap:', false);
             $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.10'])
                 ->get("https://$host/")->assertOk()->assertHeader('Cache-Control', 'no-store, private');
+            $this->get("https://$host/safety")->assertOk()->assertHeader('X-Robots-Tag', 'noindex, nofollow');
         }
 
         $url = $this->get('https://brandonmb.ca/auth/start')->assertRedirect()->headers->get('Location');

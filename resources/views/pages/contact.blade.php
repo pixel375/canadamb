@@ -1,4 +1,5 @@
 <?php
+    $site = request()->attributes->get('site');
     $topics = ['general' => 'General feedback', 'safety' => 'Safety concern', 'community' => 'Discussion or event concern', 'business' => 'Business or job concern', 'news' => 'News correction', 'privacy' => 'Privacy or account request'];
     $requested = request()->query('topic');
     $selected = is_string($requested) && isset($topics[$requested]) ? $requested : 'general';
