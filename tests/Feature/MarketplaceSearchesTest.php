@@ -6,6 +6,7 @@ use App\Models\Listing;
 use App\Models\Location;
 use App\Models\MarketplaceSearch;
 use App\Models\User;
+use App\Support\StagedFeatures;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Foundation\Testing\RefreshDatabaseState;
@@ -46,7 +47,12 @@ class MarketplaceSearchesTest extends TestCase
         $base = 'https://brandonmb.ca/account/marketplace-searches';
         $filters = ['name' => 'My furniture', 'q' => 'Oak', 'category' => 'furniture', 'max_price' => '50', 'location' => 'elkhorn'];
         $this->actingAs($member)->post($base, $filters)->assertNotFound();
-        config(['network.marketplace_searches' => true]);
+        config(['network.marketplace_searches' => true, 'network.extended_messaging' => true]);
+        $inventory = StagedFeatures::inspect();
+        foreach ($inventory as $feature) {
+            $this->assertSame([], $feature['problems'], $feature['label']);
+            $this->assertTrue($feature['ready'], $feature['label']);
+        }
         $this->post($base, $filters)->assertRedirect()->assertSessionHasNoErrors();
         $search = MarketplaceSearch::sole();
         $this->assertArrayNotHasKey('location', $search->filters);

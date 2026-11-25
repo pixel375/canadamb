@@ -6,8 +6,10 @@
         <article class="item-row readiness-row"><div><h3>Unverified accounts</h3><p class="field-note">Accounts still requiring verification.</p></div><strong>{{ $unverified }}</strong></article>
     </section>
     <section class="panel form-stack mt-4"><h2>Staged feature inventory</h2><p class="field-note">Read-only migration history and schema checks. A schema match does not approve activation, retention or public use.</p>
+        <p class="field-note">{{ collect($staged)->where('configured', true)->count() }} enabled switches · {{ collect($staged)->where('ready', true)->count() }} ready including dependencies · {{ collect($staged)->pluck('migration')->unique()->count() }} proposed migrations</p>
         @foreach($staged as $feature)
-            <article class="item-row readiness-row"><div><h3>{{ $feature['label'] }}</h3><p>{{ $feature['state'] }} · {{ $feature['configured'] ? 'Feature switch on' : 'Feature switch off' }}</p><p class="field-note">{{ $feature['note'] }}</p></div>
+            <article class="item-row readiness-row"><div><h3>{{ $feature['label'] }}</h3><p>{{ $feature['state'] }} · {{ $feature['configured'] ? 'Feature switch on' : 'Feature switch off' }}</p><p class="field-note">{{ $feature['note'] }}</p>
+                @if($feature['problems'])<details><summary>Schema and dependency details</summary>@foreach($feature['problems'] as $problem)<p class="field-note">{{ $problem }}</p>@endforeach</details>@endif</div>
                 @if($feature['configured'] && !$feature['ready'])<strong>Configuration mismatch</strong>@else<strong>{{ $feature['ready'] ? 'Schema recorded' : 'Review required' }}</strong>@endif
             </article>
         @endforeach

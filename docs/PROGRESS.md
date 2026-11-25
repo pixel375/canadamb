@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-25 — staged schema integrity inventory
+
+Expanded read-only readiness to required columns, selected uniqueness/primary keys and conversation listing nullability, with per-feature mismatch details and an installed-schema regression over every proposal. No migrations applied or feature flags changed.
+
 ## 2026-11-25 — saved search revision
 
 Added private portal-bound edit forms for Marketplace and job saved filters, shared normalized validation with creation, serialized duplicate checks and job alert watermark reset only on changed filters. Added edit authorization and matching regressions. No schema or feature activation.

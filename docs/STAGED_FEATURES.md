@@ -1,6 +1,6 @@
 # Staged features and migration review
 
-No proposed migration is automatically discovered by ordinary migrate. Read-only inspection is available in Admin → Launch readiness and `php artisan network:staged-features`. A configured flag with missing/unrecorded schema or an unmet dependency fails deployment database validation. The inventory checks table/column presence and migration history, not data integrity, nullability, constraints or operator acceptance.
+No proposed migration is automatically discovered by ordinary migrate. Read-only inspection is available in Admin → Launch readiness and `php artisan network:staged-features`. A configured flag with missing/unrecorded schema or an unmet dependency fails deployment database validation. The inventory checks migration history, required columns on every proposed table, selected unique/primary keys, conversation listing nullability and dependencies. It is not a full foreign-key, data integrity, type or operator-acceptance audit.
 
 Review batches in dependency order:
 
