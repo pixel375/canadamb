@@ -12,7 +12,7 @@ final class StripeTestCheckout
      * Unwired test-mode adapter. No route or scheduled task calls it.
      * Reference and amount must come from a persisted, server-created attempt.
      */
-    public function create(string $secret, string $reference, int $cents): array
+    public function create(string $secret, string $reference, int $cents, int $expiresAt): array
     {
         if (! str_starts_with($secret, 'sk_test_') || ! preg_match('/\A[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z/', $reference) || $cents < 50 || $cents > 100000000) {
             throw new InvalidArgumentException('Invalid test checkout configuration.');
@@ -21,6 +21,7 @@ final class StripeTestCheckout
             ->connectTimeout(5)->timeout(15)->withoutRedirecting()
             ->post('https://api.stripe.com/v1/checkout/sessions', [
                 'mode' => 'payment',
+                'expires_at' => $expiresAt,
                 'payment_method_types' => ['card'],
                 'client_reference_id' => $reference,
                 'success_url' => 'https://canadamb.ca/account/settings',

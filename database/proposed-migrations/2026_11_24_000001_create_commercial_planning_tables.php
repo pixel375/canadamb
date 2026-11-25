@@ -20,7 +20,7 @@ return new class extends Migration
             $table->date('starts_on');
             $table->unsignedTinyInteger('weeks');
             $table->unsignedBigInteger('estimated_cents')->nullable();
-            $table->unsignedBigInteger('rate_revision_id');
+            $table->foreignId('rate_revision_id')->constrained('configuration_revisions')->restrictOnDelete();
             $table->string('status', 24)->default('pending');
             $table->string('review_note', 1200)->nullable();
             $table->timestamp('reviewed_at')->nullable();

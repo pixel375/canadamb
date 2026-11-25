@@ -19,7 +19,7 @@ class StripeTestCheckoutTest extends TestCase
             'livemode' => false, 'client_reference_id' => $reference, 'amount_total' => 3000, 'currency' => 'cad',
         ])]);
         $adapter = app(StripeTestCheckout::class);
-        $this->assertSame('cs_test_example', $adapter->create('sk_test_fixture_only', $reference, 3000)['id']);
+        $this->assertSame('cs_test_example', $adapter->create('sk_test_fixture_only', $reference, 3000, now()->addHours(20)->timestamp)['id']);
         Http::assertSent(fn ($request) => $request->hasHeader('Idempotency-Key', 'canadamb-test-'.$reference)
             && $request['client_reference_id'] === $reference && $request['mode'] === 'payment');
         $this->expectException(InvalidArgumentException::class);

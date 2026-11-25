@@ -9,11 +9,14 @@ use App\Models\Site;
 use App\Models\User;
 use App\Support\AdvertisingSchedule;
 use App\Support\CommercialRecords;
+use App\Support\TestCheckoutAttempts;
 use App\Support\TestPaymentLedger;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Foundation\Testing\RefreshDatabaseState;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 class CommercialRecordsTest extends TestCase
@@ -62,11 +65,27 @@ class CommercialRecordsTest extends TestCase
         $this->post($review, ['decision' => 'approved', 'note' => 'Verified request.'])->assertForbidden();
         $this->actingAs($admin)->post($review, ['decision' => 'approved', 'note' => 'Verified request.'])->assertRedirect()->assertSessionHasNoErrors();
         $campaign->refresh();
-        $reference = '11111111-2222-4333-8444-555555555555';
-        DB::table('commercial_payment_attempts')->insert([
-            'campaign_id' => $campaign->id, 'reference' => $reference, 'provider_session_id' => 'cs_test_example',
-            'amount_cents' => 3000, 'created_at' => now(), 'updated_at' => now(),
-        ]);
+        // Model a reviewed stored price for this isolated test. The adapter
+        // must not accept caller-supplied payment amounts.
+        $campaign->forceFill(['estimated_cents' => 3000])->save();
+        config(['network.commercial_test_checkout' => true]);
+        Http::preventStrayRequests();
+        Http::fake(['https://api.stripe.com/v1/checkout/sessions' => function ($request) {
+            return Http::response([
+                'id' => 'cs_test_example', 'url' => 'https://checkout.stripe.com/c/pay/cs_test_example',
+                'livemode' => false, 'client_reference_id' => $request['client_reference_id'],
+                'amount_total' => 3000, 'currency' => 'cad',
+            ]);
+        }]);
+        $checkout = app(TestCheckoutAttempts::class);
+        $first = $checkout->open($owner, $business->id, $campaign->id, 'sk_test_fixture_only');
+        $second = $checkout->open($owner, $business->id, $campaign->id, 'sk_test_fixture_only');
+        $reference = $first['reference'];
+        $this->assertSame($first, $second);
+        $this->assertDatabaseCount('commercial_payment_attempts', 1);
+        Http::assertSentCount(2);
+        Http::assertSent(fn ($request) => $request->hasHeader('Idempotency-Key', 'canadamb-test-'.$reference));
+        $this->assertDatabaseHas('commercial_payment_attempts', ['reference' => $reference, 'amount_cents' => 3000, 'provider_session_id' => 'cs_test_example']);
         $event = ['id' => 'evt_test_paid', 'livemode' => false, 'type' => 'checkout.session.completed', 'data' => ['object' => [
             'object' => 'checkout.session', 'id' => 'cs_test_example', 'livemode' => false, 'mode' => 'payment',
             'currency' => 'cad', 'amount_total' => 3000, 'client_reference_id' => $reference, 'payment_status' => 'paid',
@@ -81,6 +100,13 @@ class CommercialRecordsTest extends TestCase
         $this->assertDatabaseCount('commercial_payment_events', 1);
         $this->assertDatabaseHas('commercial_payment_attempts', ['reference' => $reference, 'status' => 'paid']);
         $this->assertDatabaseCount('business_entitlements', 0);
+        try {
+            $checkout->open($owner, $business->id, $campaign->id, 'sk_test_fixture_only');
+            $this->fail('A settled attempt must not reopen.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('checkout', $exception->errors());
+        }
+        Http::assertSentCount(2);
         $this->assertSame('approved', $campaign->status);
         $schedule = app(AdvertisingSchedule::class);
         $start = $campaign->starts_on->toDateString();

@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('commercial_payment_attempts', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('campaign_id')->constrained('advertising_campaigns')->restrictOnDelete();
+            $table->foreignId('campaign_id')->unique()->constrained('advertising_campaigns')->restrictOnDelete();
             $table->char('reference', 36)->unique();
             $table->string('provider', 24)->default('stripe-test');
             $table->string('provider_session_id')->nullable()->unique();
