@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Support\JobBoard;
 use App\Support\JobSearches;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -117,7 +118,7 @@ class JobSearchController extends Controller
             if (isset($data['version']) && ! hash_equals($item->editVersion(), $data['version'])) {
                 throw ValidationException::withMessages(['version' => 'This saved search changed. Reload before continuing.']);
             }
-            $cutoff = isset($data['cutoff']) ? \Illuminate\Support\Carbon::createFromTimestampUTC((int) $data['cutoff']) : now();
+            $cutoff = isset($data['cutoff']) ? Carbon::createFromTimestampUTC((int) $data['cutoff']) : now();
             if ($cutoff->greaterThan($item->checked_at)) {
                 $item->forceFill(['checked_at' => $cutoff])->save();
             }
