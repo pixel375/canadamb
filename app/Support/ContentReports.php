@@ -8,13 +8,15 @@ use App\Models\CommunityEvent;
 use App\Models\CommunityReply;
 use App\Models\CommunityThread;
 use App\Models\JobPosting;
+use App\Models\Message;
 use App\Models\Site;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Schema;
 
 final class ContentReports
 {
-    public const TYPES = ['discussion' => 'Discussion', 'reply' => 'Discussion reply', 'event' => 'Event', 'job' => 'Job posting', 'business' => 'Business profile', 'business-update' => 'Business update'];
+    public const TYPES = ['discussion' => 'Discussion', 'reply' => 'Discussion reply', 'event' => 'Event', 'job' => 'Job posting', 'business' => 'Business profile', 'business-update' => 'Business update', 'profile' => 'Member profile', 'message' => 'Private message'];
 
     public const REASONS = ['spam' => 'Spam or scam', 'harassment' => 'Harassment or threats', 'privacy' => 'Personal information', 'misleading' => 'Misleading content', 'other' => 'Other concern'];
 
@@ -23,9 +25,18 @@ final class ContentReports
         return (bool) config('network.content_reports') && Schema::hasTable('content_reports');
     }
 
-    public static function visible(Site $site, string $type, int $id): Model
+    public static function visible(Site $site, string $type, int $id, int $member): Model
     {
         abort_unless(self::enabled(), 404);
+        // Profiles and inboxes are network-wide, rather than geographically scoped.
+        if ($type === 'profile') {
+            return User::whereKey($id)->where('id', '!=', $member)->firstOrFail();
+        }
+        if ($type === 'message') {
+            return Message::whereKey($id)->where('sender_id', '!=', $member)
+                ->whereHas('conversation', fn ($query) => $query->forMember($member))->firstOrFail();
+        }
+
         $community = app(Community::class);
         $module = match ($type) {
             'event' => 'events', 'job' => 'jobs', 'business', 'business-update' => 'businesses', default => 'community',
@@ -46,16 +57,22 @@ final class ContentReports
 
     public static function label(Model $target): string
     {
-        return $target->title ?? $target->name ?? 'Discussion reply';
+        return $target instanceof Message ? 'Reported private message' : ($target->title ?? $target->name ?? 'Discussion reply');
     }
 
     public static function summary(Model $target): string
     {
-        return (string) ($target->body ?? $target->description ?? '');
+        return $target instanceof User ? 'Public display name only.' : (string) ($target->body ?? $target->description ?? '');
     }
 
     public static function conflicts(Model $target, int $reviewer): bool
     {
+        if ($target instanceof User) {
+            return (int) $target->id === $reviewer;
+        }
+        if ($target instanceof Message) {
+            return ! $target->conversation || in_array($reviewer, [(int) $target->conversation->buyer_id, (int) $target->conversation->seller_id], true);
+        }
         if ((int) $target->author_id === $reviewer) {
             return true;
         }
@@ -73,6 +90,8 @@ final class ContentReports
             'job' => JobPosting::with('branch.business')->find($id),
             'business' => Business::find($id),
             'business-update' => BusinessUpdate::with('branch.business')->find($id),
+            'profile' => User::select('id', 'name')->find($id),
+            'message' => Message::with('conversation:id,buyer_id,seller_id')->find($id),
             default => null,
         };
     }

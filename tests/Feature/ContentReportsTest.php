@@ -5,7 +5,9 @@ namespace Tests\Feature;
 use App\Models\Business;
 use App\Models\CommunityEvent;
 use App\Models\CommunityThread;
+use App\Models\Conversation;
 use App\Models\JobPosting;
+use App\Models\Listing;
 use App\Models\Location;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
@@ -27,6 +29,51 @@ class ContentReportsTest extends TestCase
             RefreshDatabaseState::$migrated = false;
             RefreshDatabaseState::$inMemoryConnections = [];
         });
+    }
+
+    public function test_private_message_and_profile_reporting_never_grants_inbox_access(): void
+    {
+        $sender = User::factory()->create(['role' => 'network_admin']);
+        $recipient = User::factory()->create();
+        $reviewer = User::factory()->create(['role' => 'network_admin']);
+        $stranger = User::factory()->create();
+        $listing = Listing::create([
+            'user_id' => $sender->id, 'location_id' => Location::where('slug', 'brandon')->sole()->id,
+            'category' => 'furniture', 'title' => 'Private conversation listing', 'description' => 'A table for sale.',
+            'condition' => 'good', 'price_cents' => 2500,
+        ]);
+        $conversation = Conversation::create(['listing_id' => $listing->id, 'buyer_id' => $recipient->id, 'seller_id' => $sender->id]);
+        $message = $conversation->messages()->create(['sender_id' => $sender->id, 'body' => 'Reported message text only.']);
+        $other = $conversation->messages()->create(['sender_id' => $sender->id, 'body' => 'Unreported private message text.']);
+        $url = 'https://brandonmb.ca/account/report/message/'.$message->id;
+        $data = ['reason' => 'harassment', 'explanation' => 'Private participant report explanation.'];
+        $chat = 'https://brandonmb.ca/account/messages/'.$conversation->id;
+        $admin = 'https://canadamb.ca/admin/content-reports';
+        $this->actingAs($recipient)->get($url)->assertNotFound();
+        config(['network.content_reports' => true]);
+        $this->get($chat)->assertOk()->assertSee('href="/account/report/message/'.$message->id.'"', false);
+        $this->get($url)->assertOk()->assertSee($message->body)->assertDontSee($other->body);
+        $this->post($url, $data)->assertRedirect('/account/content-reports')->assertSessionHasNoErrors();
+        $this->post($url, $data)->assertRedirect();
+        $report = DB::table('content_reports')->where('target_type', 'message')->sole();
+        $this->assertDatabaseCount('content_reports', 1);
+        $this->actingAs($stranger)->get($url)->assertNotFound();
+        $this->post($url, $data)->assertNotFound();
+        $this->actingAs($sender)->get($url)->assertNotFound();
+        $this->get($admin)->assertOk()->assertDontSee($data['explanation'])->assertDontSee($message->body);
+        $this->post($admin.'/'.$report->id, ['note' => 'Conflicted moderator attempt.'])->assertForbidden();
+        $this->actingAs($reviewer)->get($chat)->assertNotFound();
+        $this->get($admin)->assertOk()->assertSee($message->body)->assertDontSee($other->body);
+        $this->post($admin.'/'.$report->id, ['note' => 'Independent review completed.'])->assertRedirect();
+        $this->actingAs($recipient)->get('https://brandonmb.ca/account/content-reports')->assertSee('Review completed');
+        $profile = 'https://brandonmb.ca/account/report/profile/'.$sender->id;
+        $this->get('https://brandonmb.ca/users/'.$sender->id)->assertSee('Report member');
+        $this->get($profile)->assertOk()->assertDontSee($sender->email);
+        $this->get('https://brandonmb.ca/account/report/profile/'.$recipient->id)->assertNotFound();
+        $this->post($profile, $data)->assertRedirect();
+        $this->assertDatabaseCount('content_reports', 2);
+        $this->actingAs($sender)->get($admin)->assertDontSee($data['explanation']);
+        $this->actingAs($reviewer)->get($admin)->assertSee($sender->name)->assertDontSee($sender->email);
     }
 
     public function test_event_links_respect_independent_approval_and_cancellation(): void

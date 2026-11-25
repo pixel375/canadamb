@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-24 — reporting completion and release checkpoint
+
+The previous source `664df941cdb0d765629c82fff69b593db3b2cb50` passed [backend CI](https://github.com/pixel375/canadamb/actions/runs/45543910619), [browser QA](https://github.com/pixel375/canadamb/actions/runs/45543910600) and [guarded production deployment and independent audits](https://github.com/pixel375/canadamb/actions/runs/45544157484). The next pass extends review-staged reports to profiles and individually reported received Marketplace messages, with participant-only submission and independent review, including refreshed chat messages. No production migration or feature activation is included; this pass requires its own CI and deployment evidence.
+
 ## 2026-11-24 — accumulated responsive, account and Marketplace releases verified
 
 Source `0a7a9ab8ccb40438ebc9392f742e3ac1ae11e420` passed both [backend CI](https://github.com/pixel375/canadamb/actions/runs/45518899797) and [browser QA](https://github.com/pixel375/canadamb/actions/runs/45518899917), then [guarded production deployment](https://github.com/pixel375/canadamb/actions/runs/45519178954) and independent exact-SHA, database/backup, and PWA access audits. The November 24 Manitoba local date corresponds to November 25 UTC audit timestamps. Both domains returned 403 externally. Exact-SHA backend AND browser success are now required for auto-deployment; migration approval remains off.

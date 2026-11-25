@@ -1,7 +1,8 @@
 <x-layouts.site :title="$thread->listing->title.' | Messages'">
+    @php($messageReports = auth()->user()->hasVerifiedEmail() && \App\Support\ContentReports::enabled())
     <div class="container page-shell message-workspace">
         <a class="text-link mb-4" href="/account/messages"><x-icon name="messages" size="18"/> All messages</a>
-        <div class="panel chat-panel" @if($messages->onFirstPage()) data-chat-sync="/account/messages/{{ $thread->id }}/sync" data-chat-cursor="{{ $messages->first()?->id ?? 0 }}" data-chat-token="{{ csrf_token() }}" @endif>
+        <div class="panel chat-panel" @if($messages->onFirstPage()) data-chat-sync="/account/messages/{{ $thread->id }}/sync" data-chat-cursor="{{ $messages->first()?->id ?? 0 }}" data-chat-token="{{ csrf_token() }}" data-chat-reportable="{{ $messageReports ? '1' : '0' }}" @endif>
             <header class="chat-heading">
                 <span class="message-avatar" aria-hidden="true"><x-icon name="person" size="26"/></span>
                 <div class="chat-heading-copy">
@@ -30,6 +31,7 @@
                             <time datetime="{{ $message->created_at->toIso8601String() }}" title="{{ $message->created_at->timezone('America/Winnipeg')->format('M j, Y · g:i a') }}">{{ $message->created_at->diffForHumans() }}</time>
                         </div>
                         <p class="chat-bubble">{{ $message->body }}</p>
+                        @if($messageReports && $message->sender_id !== auth()->id())<a class="text-link field-note" href="/account/report/message/{{ $message->id }}">Report message</a>@endif
                     </article>
                 @endforeach
             </div>

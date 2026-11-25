@@ -526,6 +526,13 @@ if (chatPanel) {
         body.textContent = item.body;
         meta.append(sender, time);
         article.append(meta, body);
+        if (!item.own && chatPanel.dataset.chatReportable === '1' && Number.isSafeInteger(item.id)) {
+            const report = document.createElement('a');
+            report.className = 'text-link field-note';
+            report.href = '/account/report/message/' + item.id;
+            report.textContent = 'Report message';
+            article.append(report);
+        }
         history.append(article);
         cursor = item.id;
     };

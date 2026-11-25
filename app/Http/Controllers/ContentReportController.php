@@ -23,7 +23,7 @@ class ContentReportController extends Controller
 
     public function create(Request $request, string $type, int $target)
     {
-        $item = ContentReports::visible($request->attributes->get('site'), $type, $target);
+        $item = ContentReports::visible($request->attributes->get('site'), $type, $target, $request->user()->id);
         $reported = DB::table('content_reports')->where(['reporter_id' => $request->user()->id, 'target_type' => $type, 'target_id' => $target])->exists();
 
         return view('account.report-content', compact('item', 'type', 'target', 'reported'));
@@ -32,9 +32,10 @@ class ContentReportController extends Controller
     public function store(Request $request, string $type, int $target)
     {
         $site = $request->attributes->get('site');
-        ContentReports::visible($site, $type, $target);
+        ContentReports::visible($site, $type, $target, $request->user()->id);
         $data = $request->validate(['reason' => ['required', Rule::in(array_keys(ContentReports::REASONS))], 'explanation' => 'required|string|min:10|max:1000']);
         $created = DB::transaction(function () use ($request, $site, $type, $target, $data) {
+            ContentReports::visible($site, $type, $target, $request->user()->id);
             $created = DB::table('content_reports')->insertOrIgnore($data + [
                 'reporter_id' => $request->user()->id, 'site_id' => $site->id, 'target_type' => $type,
                 'target_id' => $target, 'created_at' => now(), 'updated_at' => now(),
