@@ -149,6 +149,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/marketplace/new', [MarketplaceController::class, 'create']);
     Route::post('/marketplace', [MarketplaceController::class, 'store'])->middleware('throttle:12,1');
     Route::get('/account/listings', [MarketplaceController::class, 'mine']);
+    Route::get('/account/listings/{listing}/history', [MarketplaceController::class, 'history'])->whereNumber('listing');
+    Route::get('/account/listings/{listing}/duplicate', [MarketplaceController::class, 'duplicate'])->whereNumber('listing');
     Route::get('/account/listings/{listing}/edit', [MarketplaceController::class, 'edit'])->whereNumber('listing');
     Route::put('/account/listings/{listing}', [MarketplaceController::class, 'update'])->whereNumber('listing')->middleware('throttle:20,1');
     Route::post('/account/listings/{listing}/status', [MarketplaceController::class, 'status'])->whereNumber('listing');

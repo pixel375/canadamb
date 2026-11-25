@@ -126,6 +126,14 @@ class MarketplaceTest extends TestCase
         $this->get(self::MAIN.'/account/listings?status=pending&q=oak')->assertOk()
             ->assertSee('1 listing found')->assertSee('Pending oak desk')->assertDontSee('Sold patio set');
         $this->get(self::MAIN.'/account/listings?status=sold&q=oak')->assertOk()->assertSee('No listings match these filters.');
+        $sold = Listing::where('title', 'Sold patio set')->sole();
+        $rural = Listing::where('title', 'Rural bookshelf')->sole();
+        $this->get(self::CITY.'/account/listings/'.$sold->id.'/duplicate')->assertOk()->assertSee('Copied text and item details only.')->assertSee('Sold patio set');
+        $this->assertDatabaseCount('listings', 4);
+        $this->get(self::CITY.'/account/listings/'.$sold->id.'/history')->assertOk()->assertSee('Status history');
+        $this->get(self::CITY.'/account/listings/'.$rural->id.'/duplicate')->assertNotFound();
+        $this->actingAs($other)->get(self::MAIN.'/account/listings/'.$sold->id.'/history')->assertNotFound();
+        $this->actingAs($seller);
         $this->getJson(self::MAIN.'/account/listings?status=removed')->assertUnprocessable();
     }
 

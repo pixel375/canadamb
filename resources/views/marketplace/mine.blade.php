@@ -42,7 +42,7 @@
                         @switch($item->status)
                             @case('active')
                                 @if($item->expires_at?->isFuture()) Visible to buyers · Expires {{ $item->expires_at->format('M j, Y') }}
-                                @else Publication period ended. Awaiting automatic expiry. @endif
+                                @else Publication period ended. Renew to submit for review again. @endif
                                 @break
                             @case('pending') Awaiting moderator approval. Your listing is not public yet. @break
                             @case('expired') No longer public. Renew to submit for review again. @break
@@ -51,6 +51,8 @@
                         @endswitch
                     </p>
                     <div class="inline-actions seller-listing-actions">
+                        <a class="text-link" href="/account/listings/{{ $item->id }}/history">Status history</a>
+                        @if(in_array($item->status, ['sold','expired','rejected'], true))<a class="button button-outline" href="/account/listings/{{ $item->id }}/duplicate">Create similar listing</a>@endif
                         @if($item->status === 'active' && $item->expires_at?->isFuture())
                             <a class="button button-outline" href="/marketplace/{{ $item->id }}">View listing</a>
                         @endif
@@ -59,7 +61,7 @@
                         @endif
                         @if($item->status === 'active' || $item->status === 'expired')
                             <form method="post" action="/account/listings/{{ $item->id }}/status">@csrf
-                                @if($item->status === 'active')<button class="button button-outline" name="status" value="sold">Mark sold</button>@else<button class="button button-primary" name="status" value="pending">Renew</button>@endif
+                                @if($item->status === 'active' && $item->expires_at?->isFuture())<button class="button button-outline" name="status" value="sold">Mark sold</button>@else<button class="button button-primary" name="status" value="pending">Renew</button>@endif
                             </form>
                         @endif
                     </div>

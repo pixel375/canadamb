@@ -22,7 +22,9 @@ class ListingEngagementController extends Controller
         abort_unless($available || $item->user_id === $request->user()?->id || Gate::allows('manage-network'), 404);
         $media = $item->media()->findOrFail($photo);
         $disk = Storage::disk(config('network.media_disk'));
-        $stream = $disk->readStream($thumbnail ? $media->thumbnail_path : $media->image_path);
+        $path = $thumbnail ? $media->thumbnail_path : $media->image_path;
+        abort_unless(preg_match('~^listings/[a-f0-9-]{36}(-preview)?\\.webp$~D', $path), 404);
+        $stream = $disk->readStream($path);
         abort_unless(is_resource($stream), 404);
 
         return response()->stream(function () use ($stream) {
@@ -31,7 +33,7 @@ class ListingEngagementController extends Controller
             } finally {
                 fclose($stream);
             }
-        }, 200, ['Content-Type' => 'image/webp', 'Cache-Control' => 'private, no-store']);
+        }, 200, ['Content-Type' => 'image/webp', 'Cache-Control' => 'private, no-store', 'X-Content-Type-Options' => 'nosniff']);
     }
 
     public function save(Request $request, int $listing)
@@ -57,6 +59,12 @@ class ListingEngagementController extends Controller
         $site = $request->attributes->get('site');
         abort_unless($this->marketplace->enabled($site), 404);
         $filters = $request->validate(['q' => 'nullable|string|max:100', 'sort' => 'nullable|in:recent,price-low,price-high']);
+        $unavailable = DB::table('listing_favourites')->join('listings', 'listings.id', '=', 'listing_favourites.listing_id')
+            ->where('listing_favourites.user_id', $request->user()->id)
+            ->when($site->location_id, fn ($query, $id) => $query->where('listings.location_id', $id))
+            ->where(function ($query) {
+                $query->where('listings.status', '!=', 'active')->orWhereNull('listings.expires_at')->orWhere('listings.expires_at', '<=', now());
+            })->orderByDesc('listing_favourites.listing_id')->paginate(15, ['listing_favourites.listing_id'], 'unavailable_page')->withQueryString();
         $matching = $this->marketplace->visible($site)->whereExists(function ($query) use ($request) {
             $query->selectRaw('1')->from('listing_favourites')->whereColumn('listing_id', 'listings.id')->where('user_id', $request->user()->id);
         });
@@ -69,7 +77,7 @@ class ListingEngagementController extends Controller
         };
         $items = $items->latest('id')->paginate(18)->withQueryString();
 
-        return view('marketplace.saved', compact('items', 'filters', 'total'));
+        return view('marketplace.saved', compact('items', 'filters', 'total', 'unavailable'));
     }
 
     public function reports(Request $request)

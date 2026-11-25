@@ -2,6 +2,7 @@
 <x-layouts.site :title="$item->exists ? 'Edit listing' : 'Post a listing'">
     <div class="container page-shell listing-editor">
         <div class="page-intro"><div><a class="text-link" href="/account/listings">My listings</a><h1>{{ $item->exists ? 'Edit listing' : 'Post a listing' }}</h1><p>Basic listings are free and reviewed before publication.</p></div></div>
+        @if($duplicating ?? false)<p class="notice">Copied text and item details only. Review the information and upload new photos. This will create a new listing requiring approval; messages, saves and reports stay with the original.</p>@endif
         <form class="listing-editor-form form-stack" method="post" enctype="multipart/form-data" action="{{ $item->exists ? '/account/listings/'.$item->id : '/marketplace' }}" x-data="{ category: @js(old('category', $item->category ?? '')) }">
             @csrf
             @if($item->exists)@method('PUT')@endif

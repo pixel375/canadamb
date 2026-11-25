@@ -208,6 +208,8 @@ class MarketplaceEngagementTest extends TestCase
         $this->actingAs($buyer)->delete('https://canadamb.ca/account/blocked-members/'.$seller->id)->assertRedirect();
         $this->assertDatabaseCount('user_blocks', 0);
         app(Marketplace::class)->changeStatus($item, 'sold', null);
-        $this->get('https://canadamb.ca/account/saved')->assertOk()->assertDontSee('Patio set');
+        $this->get('https://canadamb.ca/account/saved')->assertOk()->assertDontSee('Patio set')->assertSee('Unavailable saved listings (1)');
+        $this->delete($base.'/save')->assertRedirect('/account/saved');
+        $this->assertDatabaseMissing('listing_favourites', ['listing_id' => $item->id, 'user_id' => $buyer->id]);
     }
 }

@@ -176,6 +176,27 @@ class MarketplaceController extends Controller
         return view('marketplace.mine', compact('items', 'counts', 'statuses', 'filters'));
     }
 
+    public function history(Request $request, int $listing)
+    {
+        $site = $request->attributes->get('site');
+        abort_unless($this->marketplace->enabled($site), 404);
+        $item = Listing::with('location')->where('user_id', $request->user()->id)
+            ->when($site->location_id, fn ($query, $id) => $query->where('location_id', $id))->findOrFail($listing);
+        $history = DB::table('listing_status_history')->where('listing_id', $item->id)
+            ->latest('id')->paginate(30, ['id', 'previous_status', 'status', 'created_at']);
+
+        return view('marketplace.history', compact('item', 'history'));
+    }
+
+    public function duplicate(Request $request, int $listing)
+    {
+        $source = $this->owned($request, $listing);
+        abort_unless(in_array($source->status, ['sold', 'expired', 'rejected'], true), 409);
+        $item = new Listing($source->only(['location_id', 'title', 'description', 'category', 'condition', 'price_cents', 'negotiable', 'attributes']));
+
+        return $this->form($request, $item, $source->location);
+    }
+
     public function edit(Request $request, int $listing)
     {
         return $this->form($request, $this->owned($request, $listing));
@@ -236,18 +257,19 @@ class MarketplaceController extends Controller
 
     public function status(Request $request, int $listing)
     {
+        abort_unless($this->marketplace->enabled($request->attributes->get('site')), 404);
         $data = $request->validate(['status' => ['required', Rule::in(['removed', 'sold', 'pending'])]]);
         DB::transaction(function () use ($request, $listing, $data) {
             $item = $this->owned($request, $listing, true);
             abort_if($data['status'] === 'sold' && $item->status !== 'active', 409);
-            abort_if($data['status'] === 'pending' && $item->status !== 'expired', 409);
+            abort_if($data['status'] === 'pending' && $item->status !== 'expired' && ! ($item->status === 'active' && $item->expires_at?->isPast()), 409);
             $this->marketplace->changeStatus($item, $data['status'], $request->user()->id);
         });
 
         return redirect('/account/listings')->with('status', 'Listing status updated.');
     }
 
-    private function form(Request $request, Listing $item)
+    private function form(Request $request, Listing $item, ?Location $duplicateLocation = null)
     {
         $site = $request->attributes->get('site');
         abort_unless($this->marketplace->enabled($site), 404);
@@ -255,7 +277,8 @@ class MarketplaceController extends Controller
         return view('marketplace.form', [
             'item' => $item, 'categories' => $this->categories(), 'conditions' => Marketplace::CONDITIONS,
             'fields' => Marketplace::FIELDS, 'locations' => $site->isNetwork() ? Location::selectable()->orderBy('name')->get() : collect(),
-            'suggestedLocation' => $item->exists ? null : LocationScope::forBrowsing($site, $request->query('location', $request->cookie(LocationScope::PREFERENCE_COOKIE))),
+            'suggestedLocation' => $item->exists ? null : ($duplicateLocation ?? LocationScope::forBrowsing($site, $request->query('location', $request->cookie(LocationScope::PREFERENCE_COOKIE)))),
+            'duplicating' => $duplicateLocation !== null,
             'photoVersion' => $item->exists ? $item->photoVersion() : null,
         ]);
     }

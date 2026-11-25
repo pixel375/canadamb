@@ -13,5 +13,14 @@
             @empty<div class="panel market-results-empty"><span class="empty-icon"><x-icon name="tag" size="24"/></span><h3>{{ $total ? 'No saved listings match your search.' : 'You have no active saved listings here.' }}</h3><a class="button button-primary" href="{{ $total ? '/account/saved' : '/marketplace' }}">{{ $total ? 'View all saved listings' : 'Browse Marketplace' }}</a></div>@endforelse
         </div>
         {{ $items->links() }}
+        @if($unavailable->total())
+            <section class="panel form-stack mt-4"><h2>Unavailable saved listings ({{ $unavailable->total() }})</h2>
+                <p class="field-note">These listings are no longer public or have expired. Private titles and photos are not shown. You may keep the bookmark or remove it.</p>
+                @foreach($unavailable as $record)
+                    <div class="item-row"><span>Listing #{{ $record->listing_id }} · Unavailable</span><form method="post" action="/marketplace/{{ $record->listing_id }}/save">@csrf @method('DELETE')<button class="button button-outline">Unsave unavailable listing</button></form></div>
+                @endforeach
+                {{ $unavailable->links() }}
+            </section>
+        @endif
     </div>
 </x-layouts.site>
