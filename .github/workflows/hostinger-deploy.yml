@@ -260,4 +260,6 @@ jobs:
     name: Retain active release plus two rollback copies
     needs: [verify_private, verify_public]
     uses: ./.github/workflows/hostinger-release-retention.yml
+    with:
+      reclaim: true
     secrets: inherit

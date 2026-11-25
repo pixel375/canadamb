@@ -7,6 +7,10 @@ on:
     branches: [main]
     paths: ['.github/workflows/hostinger-release-retention.yml', 'ops/hostinger-release-retention.sh']
   workflow_call:
+    inputs:
+      reclaim:
+        required: true
+        type: boolean
   workflow_dispatch:
     inputs:
       reclaim:
@@ -34,7 +38,7 @@ jobs:
       SSH_USER: ${{ vars.HOSTINGER_USER }}
       SSH_PRIVATE_KEY: ${{ secrets.HOSTINGER_SSH_PRIVATE_KEY }}
       SSH_KNOWN_HOSTS: ${{ secrets.HOSTINGER_KNOWN_HOSTS }}
-      RECLAIM: ${{ github.event_name != 'workflow_dispatch' || inputs.reclaim || inputs.commit_sha != '' }}
+      RECLAIM: ${{ github.event_name == 'push' || inputs.reclaim }}
     steps:
       - uses: actions/checkout@v5
         with:
