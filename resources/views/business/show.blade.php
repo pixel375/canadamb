@@ -40,7 +40,7 @@
                     @if($business->phone)<div><strong>Phone</strong><p>{{ $business->phone }}</p></div>@endif
                     @if($business->public_email)<a class="button button-outline" href="mailto:{{ $business->public_email }}">Email business</a>@endif
                 </section>
-                @if($claimed && !$managesProfile && \App\Support\MessagingExtensions::enabled() && auth()->check() && auth()->user()->hasVerifiedEmail())
+                @if($claimed && !$managesProfile && \App\Support\MessagingExtensions::enabled() && \App\Support\BusinessInquirySettings::accepts($business, false) && auth()->check() && auth()->user()->hasVerifiedEmail())
                     <x-inquiry-form :path="'/businesses/'.$business->id.'/message'" label="Message business"/>
                 @endif
                 @if($claimed && \App\Support\BusinessDisputes::enabled())

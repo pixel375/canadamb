@@ -53,7 +53,7 @@
                         </form>
                     @endauth
                 </section>
-                @if(\App\Support\MessagingExtensions::enabled() && auth()->check() && auth()->user()->hasVerifiedEmail() && $item->branch->business->members()->wherePivot('role', 'owner')->exists() && !$item->branch->business->members()->whereKey(auth()->id())->exists())
+                @if(\App\Support\MessagingExtensions::enabled() && \App\Support\BusinessInquirySettings::accepts($item->branch->business, true) && auth()->check() && auth()->user()->hasVerifiedEmail() && $item->branch->business->members()->wherePivot('role', 'owner')->exists() && !$item->branch->business->members()->whereKey(auth()->id())->exists())
                     <x-inquiry-form :path="'/jobs/'.$item->id.'/message'" label="Ask about this job"/>
                 @endif
                 <section class="panel form-stack">

@@ -526,6 +526,14 @@ if (chatPanel) {
         body.textContent = item.body;
         meta.append(sender, time);
         article.append(meta, body);
+        const conversation = Number(chatPanel.dataset.chatConversation);
+        if (item.has_attachment && Number.isSafeInteger(item.id) && Number.isSafeInteger(conversation) && conversation > 0) {
+            const attachment = document.createElement('a');
+            attachment.className = 'text-link';
+            attachment.href = '/account/messages/' + conversation + '/attachments/' + item.id;
+            attachment.textContent = 'Download photo attachment';
+            article.append(attachment);
+        }
         if (!item.own && chatPanel.dataset.chatReportable === '1' && Number.isSafeInteger(item.id)) {
             const report = document.createElement('a');
             report.className = 'text-link field-note';

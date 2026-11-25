@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-25 — private message photos and owner inquiry preferences
+
+Prior source `ba1ee92` passed backend/browser and [deployment with independent audits](https://github.com/pixel375/canadamb/actions/runs/45602126083). Stages single re-encoded photos in existing replies, participant-only noncached download, sync links, per-sender/day and conversation quotas, and owner-bound independent opt-in for business and job inquiries. The dedicated private disk lies within shared storage backed up by the existing release process. No document uploads, public file serving, attachment-specific reviewer access, automatic retention or live schema/flag changes. Review retention and orphan cleanup before enabling.
+
 ## 2026-11-25 — unified private inquiries and archives
 
 Saved search source `080ea68` passed browser QA but failed Pint on a test import; corrected in this pass. Stages existing-inbox business/job inquiries to a sole verified owner, participant-specific archive/read state and automatic restoration on new messages. Prior participant history stays private on transfer; new replies to former owners are denied. No attachments or live schema changes. Proposed conversation migration requires special rollback review and exact-SHA tests.

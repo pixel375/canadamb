@@ -1,10 +1,10 @@
 # Known issues and remaining acceptance
 
-**Verified restricted production source:** `c45e2237b4748cf573d2a3020db5e7fbe16462b2`. [Backend CI](https://github.com/pixel375/canadamb/actions/runs/45553503749), [browser QA](https://github.com/pixel375/canadamb/actions/runs/45553503763), and [deployment with independent audits](https://github.com/pixel375/canadamb/actions/runs/45553789528) passed. This is not a public-launch approval.
+**Verified restricted production source:** `ba1ee92045150944dd0d0db3a7eeebde5e244661`. [Backend CI](https://github.com/pixel375/canadamb/actions/runs/45601743490), [browser QA](https://github.com/pixel375/canadamb/actions/runs/45601743443), and [deployment with independent audits](https://github.com/pixel375/canadamb/actions/runs/45602126083) passed. This is not a public-launch approval.
 
 ## Outstanding launch blockers and acceptance
 
-- Business/job inquiries and participant-local archiving are review-staged; the proposed nullable-listing migration requires backup, migration and rollback review. Attachments and a shared business inbox remain outstanding. Existing private chat history is never assigned to a new owner.
+- Business/job inquiries and participant-local archiving are review-staged; the proposed nullable-listing migration requires backup, migration and rollback review. Private re-encoded photo attachments and owner-specific inquiry opt-in are review-staged. Arbitrary files, attachment retention and orphan cleanup, attachment-specific report review, and a shared business inbox remain outstanding. Existing private chat history is never assigned to a new owner.
 
 - Real phone/desktop testing from an approved network, including actual Android standalone/WebAPK installation (browser manifest and worker tests are not device installation proof), full HTTPS community sign-in and posting.
 - SMTP delivery and monitored support mailbox, reviewed privacy policy/terms, retention, full account export/deletion (selected password-confirmed exports implemented).

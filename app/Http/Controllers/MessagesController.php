@@ -5,15 +5,22 @@ namespace App\Http\Controllers;
 use App\Models\Business;
 use App\Models\Conversation;
 use App\Models\JobPosting;
+use App\Models\Message;
 use App\Models\User;
 use App\Support\AccountActivity;
 use App\Support\BusinessDirectory;
+use App\Support\BusinessInquirySettings;
 use App\Support\JobBoard;
 use App\Support\KeywordSearch;
+use App\Support\ListingPhotos;
 use App\Support\Marketplace;
+use App\Support\MessageAttachments;
 use App\Support\MessagingExtensions;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class MessagesController extends Controller
 {
@@ -111,6 +118,7 @@ class MessagesController extends Controller
         $owners = $business->members()->wherePivot('role', 'owner')->get(['users.id', 'users.email_verified_at']);
         abort_unless($owners->count() === 1 && $owners->first()->hasVerifiedEmail() && $business->status === 'active', 404);
         $recipient = $owners->first()->id;
+        abort_unless(BusinessInquirySettings::accepts($business, $job !== null), 404);
         abort_if($business->members()->whereKey($id)->exists(), 403);
         $this->lockParticipants($id, $recipient);
         abort_if($this->isBlocked($id, $recipient), 403, 'Messaging is blocked for this conversation.');
@@ -155,7 +163,9 @@ class MessagesController extends Controller
     {
         $id = $request->user()->id;
         $thread = Conversation::forMember($id)->with(['listing:id,title', 'buyer:id,name', 'seller:id,name'])->findOrFail($conversation);
-        $messages = $thread->messages()->with('sender:id,name')->latest('id')->paginate(30);
+        $messages = $thread->messages()->with('sender:id,name')
+            ->when(MessageAttachments::enabled(), fn ($query) => $query->withExists('attachment'))
+            ->latest('id')->paginate(30);
         if ($messages->onFirstPage() && $latest = $messages->first()?->id) {
             $marker = $thread->marker($id);
             Conversation::whereKey($thread->id)->where($marker, '<', $latest)->update([$marker => $latest, 'updated_at' => DB::raw('updated_at')]);
@@ -176,7 +186,9 @@ class MessagesController extends Controller
             $marker = $thread->marker($id);
             Conversation::whereKey($thread->id)->where($marker, '<', $seen)->update([$marker => $seen, 'updated_at' => $thread->updated_at]);
         }
-        $messages = $thread->messages()->with('sender:id,name')->where('id', '>', $after)->orderBy('id')->limit(30)->get();
+        $messages = $thread->messages()->with('sender:id,name')
+            ->when(MessageAttachments::enabled(), fn ($query) => $query->withExists('attachment'))
+            ->where('id', '>', $after)->orderBy('id')->limit(30)->get();
 
         return response()->json([
             'messages' => $messages->map(fn ($message) => [
@@ -184,6 +196,7 @@ class MessagesController extends Controller
                 'own' => $message->sender_id === $id,
                 'sender' => $message->sender_id === $id ? 'You' : $message->sender->name,
                 'body' => $message->body,
+                'has_attachment' => (bool) $message->attachment_exists,
                 'created_at' => $message->created_at->toIso8601String(),
                 'time_label' => $message->created_at->diffForHumans(),
             ])->values(),
@@ -192,21 +205,59 @@ class MessagesController extends Controller
         ])->header('Cache-Control', 'private, no-store');
     }
 
-    public function reply(Request $request, int $conversation)
+    public function reply(Request $request, int $conversation, ListingPhotos $photos)
     {
         $id = $request->user()->id;
-        $data = $request->validate(['body' => 'required|string|max:2000']);
-        DB::transaction(function () use ($id, $conversation, $data) {
-            $thread = Conversation::forMember($id)->findOrFail($conversation);
-            if ($thread->inquiry_business_id) {
-                Business::lockForUpdate()->findOrFail($thread->inquiry_business_id);
+        $thread = Conversation::forMember($id)->findOrFail($conversation);
+        $enabled = MessageAttachments::enabled();
+        $data = $request->validate(['body' => 'required|string|max:2000', 'photo' => $enabled ? 'nullable|file|mimes:jpg,jpeg,png,webp|max:4096' : 'prohibited']);
+        abort_if($this->isBlocked($id, $thread->other($id)) || ! MessagingExtensions::canReply($thread), 403);
+        $media = [];
+        try {
+            if ($request->hasFile('photo')) {
+                if (MessageAttachments::quotaExceeded($id, $conversation)) {
+                    throw ValidationException::withMessages(['photo' => 'Photo attachment limit reached.']);
+                }
+                $media = $photos->store([$request->file('photo')], 'attachments', MessageAttachments::DISK);
             }
-            $this->lockParticipants($id, $thread->other($id));
-            abort_if($this->isBlocked($id, $thread->other($id)) || ! MessagingExtensions::canReply($thread), 403, 'Messaging is blocked for this conversation.');
-            $this->write($thread, $id, $data['body']);
-        }, attempts: 3);
+            DB::transaction(function () use ($id, $conversation, $data, $media) {
+                $thread = Conversation::forMember($id)->findOrFail($conversation);
+                if ($thread->inquiry_business_id) {
+                    Business::lockForUpdate()->findOrFail($thread->inquiry_business_id);
+                }
+                $this->lockParticipants($id, $thread->other($id));
+                abort_if($this->isBlocked($id, $thread->other($id)) || ! MessagingExtensions::canReply($thread), 403, 'Messaging is blocked for this conversation.');
+                if ($media && (! MessageAttachments::enabled() || MessageAttachments::quotaExceeded($id, $conversation))) {
+                    throw ValidationException::withMessages(['photo' => 'Photo attachments are unavailable or the limit has been reached.']);
+                }
+                $message = $this->write($thread, $id, $data['body']);
+                if ($media) {
+                    $message->attachment()->create([
+                        'image_path' => $media[0]['image_path'], 'thumbnail_path' => $media[0]['thumbnail_path'],
+                    ]);
+                }
+            }, attempts: 3);
+        } catch (Throwable $exception) {
+            $photos->delete($media, MessageAttachments::DISK);
+            throw $exception;
+        }
 
         return redirect('/account/messages/'.$conversation);
+    }
+
+    public function attachment(Request $request, int $conversation, int $message)
+    {
+        abort_unless(MessageAttachments::enabled(), 404);
+        $thread = Conversation::forMember($request->user()->id)->findOrFail($conversation);
+        $item = $thread->messages()->findOrFail($message)->attachment()->firstOrFail();
+        abort_unless(preg_match('/^attachments\/[a-f0-9-]{36}\.webp$/D', $item->image_path), 404);
+        $disk = Storage::disk(MessageAttachments::DISK);
+        abort_unless($disk->exists($item->image_path), 404);
+
+        return $disk->download($item->image_path, 'canadamb-photo.webp', [
+            'Content-Type' => 'image/webp', 'Cache-Control' => 'private, no-store',
+            'X-Content-Type-Options' => 'nosniff', 'X-Robots-Tag' => 'noindex, nofollow',
+        ]);
     }
 
     public function blockedMembers(Request $request)
@@ -267,7 +318,7 @@ class MessagesController extends Controller
             ->where(['user_id' => $id, 'blocked_id' => $other])->orWhere(['user_id' => $other, 'blocked_id' => $id]))->exists();
     }
 
-    private function write(Conversation $thread, int $id, string $body): void
+    private function write(Conversation $thread, int $id, string $body): Message
     {
         $thread = Conversation::lockForUpdate()->findOrFail($thread->id);
         $message = $thread->messages()->create(['sender_id' => $id, 'body' => $body]);
@@ -277,5 +328,7 @@ class MessagesController extends Controller
             $changes += ['buyer_archived_at' => null, 'seller_archived_at' => null];
         }
         Conversation::whereKey($thread->id)->where($marker, '<', $message->id)->update($changes);
+
+        return $message;
     }
 }

@@ -21,6 +21,7 @@ use App\Http\Controllers\BusinessAccessController;
 use App\Http\Controllers\BusinessChangeController;
 use App\Http\Controllers\BusinessController;
 use App\Http\Controllers\BusinessDisputeController;
+use App\Http\Controllers\BusinessInquirySettingsController;
 use App\Http\Controllers\BusinessTeamController;
 use App\Http\Controllers\CommunityEventController;
 use App\Http\Controllers\CommunityForumController;
@@ -149,6 +150,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/marketplace/{listing}/save', [ListingEngagementController::class, 'save'])->whereNumber('listing')->middleware('throttle:24,1');
     Route::delete('/marketplace/{listing}/save', [ListingEngagementController::class, 'remove'])->whereNumber('listing')->middleware('throttle:24,1');
     Route::post('/marketplace/{listing}/report', [ListingEngagementController::class, 'report'])->whereNumber('listing')->middleware('throttle:8,1');
+    Route::post('/account/businesses/{business}/inquiry-settings', [BusinessInquirySettingsController::class, 'update'])->whereNumber('business')->middleware('throttle:8,1,inquiry-settings');
+    Route::get('/account/messages/{conversation}/attachments/{message}', [MessagesController::class, 'attachment'])->whereNumber(['conversation', 'message'])->middleware('throttle:60,1,message-attachment');
     Route::post('/businesses/{business}/message', [MessagesController::class, 'startBusiness'])->whereNumber('business')->middleware('throttle:8,1,inquiry-start');
     Route::post('/jobs/{job}/message', [MessagesController::class, 'startJob'])->whereNumber('job')->middleware('throttle:8,1,inquiry-start');
     Route::post('/account/messages/{conversation}/archive', [MessagesController::class, 'archive'])->whereNumber('conversation')->middleware('throttle:15,1,message-archive');

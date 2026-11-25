@@ -10,6 +10,14 @@
                 @if(\App\Support\BusinessChanges::enabled() && $business->status === 'active' && $business->members()->whereKey(auth()->id())->wherePivotIn('role', ['owner', 'manager'])->exists())
                     <a class="button button-outline" href="/account/businesses/{{ $business->id }}/changes">Manage branches and contact verification</a>
                 @endif
+                @if(\App\Support\BusinessInquirySettings::enabled() && $business->status === 'active' && $business->members()->whereKey(auth()->id())->wherePivot('role', 'owner')->exists())
+                    <form class="form-stack" method="post" action="/account/businesses/{{ $business->id }}/inquiry-settings">@csrf
+                        <h2>Private inquiries</h2><p class="field-note">New inquiries go to your personal account. Turning them off does not delete existing conversations. A new owner must opt in separately.</p>
+                        <label>Business inquiries<select name="business_inquiries"><option value="0">Off</option><option value="1" @selected(\App\Support\BusinessInquirySettings::accepts($business, false))>On</option></select></label>
+                        <label>Job inquiries<select name="job_inquiries"><option value="0">Off</option><option value="1" @selected(\App\Support\BusinessInquirySettings::accepts($business, true))>On</option></select></label>
+                        <button class="button button-outline">Save inquiry preferences</button>
+                    </form>
+                @endif
                 <h2>Branches on this portal</h2>
                 @forelse($branches as $branch)<div><strong>{{ $branch->location->name }}</strong><p>{{ $branch->address }}</p></div>@empty<p>No branches on this portal. Manage other locations on CanadaMB.ca.</p>@endforelse
                 @if($business->status === 'active' && app(\App\Support\BusinessDirectory::class)->enabled($site) && $branches->isNotEmpty())<a class="text-link" href="/businesses/{{ $business->slug }}">View public profile <x-icon name="arrow" size="16"/></a>@endif
