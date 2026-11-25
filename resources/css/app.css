@@ -1693,3 +1693,14 @@ a.market-category-card:hover, a.market-category-card:focus-visible {
 .home-news-empty > div { display:grid; gap:5px; min-width:0; }
 @media(min-width:1024px) { .home-news-grid { grid-template-columns:repeat(4,minmax(0,1fr)); } }
 @media(max-width:580px) { .home-news-grid { grid-template-columns:minmax(0,1fr); } .home-search-form input[type=search] { font-size:16px; } .news-article-body { font-size:1rem; } }
+
+/* Consistent search and compact navigation affordances. */
+.search-results-navigation .inline-actions .button { min-height:36px; font-size:.82rem; }
+.search-results-navigation .inline-actions > [aria-current=page] { cursor:default; }
+.news-category-panel .discussion-filter-chip, .business-category-tile, .seller-status-tile { transition:background .15s,border-color .15s; }
+@media(max-width:580px) {
+    .search-results-navigation .inline-actions { gap:5px; }
+    .search-results-navigation .inline-actions .button { padding-inline:9px; font-size:.75rem; }
+    .home-main .location-bar select { font-size:16px; }
+    .public-profile-aside .text-link, .seller-listing-card .text-link { white-space:normal; }
+}

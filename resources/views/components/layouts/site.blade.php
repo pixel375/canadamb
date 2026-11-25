@@ -59,6 +59,21 @@
         ? \App\Support\LocationScope::forBrowsing($site, request()->query('location'), request()->is('jobs'))
         : ($site->location ?? \App\Support\LocationScope::preferred($site, request()->cookie(\App\Support\LocationScope::PREFERENCE_COOKIE))));
     $browseLink = fn (string $path) => \App\Support\LocationScope::browseUrl($site, $path, $browsePlace);
+    $searchSections = array_filter([
+        'marketplace' => $marketEnabled ? 'Marketplace' : null,
+        'businesses' => ($networkSettings['modules']['businesses'] ?? false) ? 'Businesses' : null,
+        'business-updates' => ($networkSettings['modules']['businesses'] ?? false) ? 'Business updates' : null,
+        'community' => ($networkSettings['modules']['community'] ?? false) ? 'Discussions' : null,
+        'jobs' => ($networkSettings['modules']['jobs'] ?? false) ? 'Jobs' : null,
+        'real-estate' => $marketEnabled && config('network.real_estate_public_listings') ? 'Real Estate' : null,
+        'news' => ($networkSettings['modules']['news'] ?? false) ? 'News' : null,
+        'events' => ($networkSettings['modules']['events'] ?? false) ? 'Events' : null,
+    ]);
+    $quickSection = array_key_exists(request()->segment(1) ?? '', $searchSections) ? request()->segment(1) : array_key_first($searchSections);
+    $quickLabel = $quickSection ? $searchSections[$quickSection] : null;
+    $quickLocation = $site->isNetwork() && $browsePlace ? ($quickSection === 'jobs' ? $browsePlace->name : $browsePlace->slug) : null;
+    $quickTerm = request()->query('q');
+    $quickTerm = request()->path() === $quickSection && is_string($quickTerm) ? \Illuminate\Support\Str::limit($quickTerm, 100, '') : '';
 ?>
 <?php $registerLink = !config('network.prelaunch') || ($networkSettings['prelaunch_test_registration_enabled'] ?? false) === true ? ($site->isNetwork() ? '/register' : \App\Support\NetworkUrl::to(\App\Support\NetworkUrl::main(), '/register?community='.$site->id)) : null; ?>
 @if($isPreview)<aside class="preview-notice">Preview of {{ $site->name }} <a href="/admin/communities/{{ $site->id }}">Return to community settings</a></aside>@endif
@@ -77,12 +92,12 @@
             @endif
             <span><strong>{{ $site->name }}</strong><small>{{ $site->subtitle }}</small></span>
         </a>
-        @if(!$isPreview && $marketEnabled)
-            <form class="header-search" action="/marketplace" method="get" role="search" aria-label="Marketplace quick search">
+        @if(!$isPreview && $quickSection)
+            <form class="header-search" action="/{{ $quickSection }}" method="get" role="search" aria-label="{{ $quickLabel }} quick search">
                 <x-icon name="search" size="19"/>
-                <input type="search" name="q" maxlength="100" aria-label="Search Marketplace" placeholder="Search Marketplace">
-                @if($site->isNetwork() && $browsePlace)<input type="hidden" name="location" value="{{ $browsePlace->slug }}">@endif
-                <button class="header-search-submit" type="submit" aria-label="Submit Marketplace search"><x-icon name="arrow" size="18"/></button>
+                <input type="search" name="q" maxlength="100" aria-label="Search {{ $quickLabel }}" placeholder="Search {{ $quickLabel }}" value="{{ $quickTerm }}">
+                @if($quickLocation)<input type="hidden" name="location" value="{{ $quickLocation }}">@endif
+                <button class="header-search-submit" type="submit" aria-label="Submit {{ $quickLabel }} search"><x-icon name="arrow" size="18"/></button>
             </form>
         @endif
         <div class="header-actions">
@@ -161,6 +176,7 @@
                         </div>
                     </details>
                 @endif
+                @if(!($networkSettings['modules']['community'] ?? false) && ($networkSettings['modules']['events'] ?? false))<a href="{{ $browseLink('/events') }}"><x-icon name="calendar" size="17"/> Events</a>@endif
                 @if($site->isNetwork())<a href="/communities" @if(request()->is('communities')) aria-current="page" @endif><x-icon name="map" size="17"/> <span>Communities</span></a>@endif
             </nav>
             @unless($isPreview)
@@ -180,16 +196,16 @@
         <strong>Explore {{ $site->name }}</strong>
         <button id="site-menu-close" class="site-drawer-close" type="button" aria-label="Close menu"><x-icon name="close" size="22"/></button>
     </div>
-    @if($marketEnabled)
+    @if($quickSection)
         <div class="site-drawer-quick">
-            <form class="site-drawer-search" action="/marketplace" method="get" role="search">
+            <form class="site-drawer-search" action="/{{ $quickSection }}" method="get" role="search">
                 <x-icon name="search" size="19"/>
-                <label class="sr-only" for="site-drawer-query">Search Marketplace</label>
-                <input id="site-drawer-query" type="search" name="q" placeholder="Search local listings" maxlength="100">
-                @if($site->isNetwork() && $browsePlace)<input type="hidden" name="location" value="{{ $browsePlace->slug }}">@endif
-                <button type="submit" aria-label="Submit Marketplace search"><x-icon name="arrow" size="18"/></button>
+                <label class="sr-only" for="site-drawer-query">Search {{ $quickLabel }}</label>
+                <input id="site-drawer-query" type="search" name="q" placeholder="Search {{ $quickLabel }}" maxlength="100" value="{{ $quickTerm }}">
+                @if($quickLocation)<input type="hidden" name="location" value="{{ $quickLocation }}">@endif
+                <button type="submit" aria-label="Submit {{ $quickLabel }} search"><x-icon name="arrow" size="18"/></button>
             </form>
-            <a class="button button-primary site-drawer-post" href="{{ $browseLink('/marketplace/new') }}"><x-icon name="plus" size="18"/> Post a listing</a>
+            @if($marketEnabled)<a class="button button-primary site-drawer-post" href="{{ $browseLink('/marketplace/new') }}"><x-icon name="plus" size="18"/> Post a listing</a>@endif
         </div>
     @endif
     <nav class="site-drawer-nav" aria-label="All site sections">
@@ -202,10 +218,10 @@
             <a href="{{ $browseLink('/real-estate') }}" aria-current="{{ request()->is('real-estate*') ? 'page' : 'false' }}"><x-icon name="house" size="20"/> Real Estate</a>
         @endif
         @if(($networkSettings['modules']['businesses'] ?? false) || ($networkSettings['modules']['jobs'] ?? false))
-        <details class="drawer-submenu" @if(request()->is('businesses*', 'jobs*')) open @endif>
+        <details class="drawer-submenu" @if(request()->is('businesses*', 'business-updates', 'jobs*')) open @endif>
             <summary><x-icon name="building" size="20"/> Businesses <x-icon class="drawer-chevron" name="chevron-down" size="17"/></summary>
             <div>
-                @if($networkSettings['modules']['businesses'] ?? false)<a href="{{ $browseLink('/businesses') }}">Directory</a>@endif
+                @if($networkSettings['modules']['businesses'] ?? false)<a href="{{ $browseLink('/businesses') }}">Directory</a><a href="{{ $browseLink('/business-updates') }}">Business updates</a>@endif
                 @if($networkSettings['modules']['jobs'] ?? false)<a href="{{ $browseLink('/jobs') }}">Jobs</a>@endif
             </div>
         </details>
@@ -219,6 +235,7 @@
             </div>
         </details>
         @endif
+        @if(!($networkSettings['modules']['community'] ?? false) && ($networkSettings['modules']['events'] ?? false))<a href="{{ $browseLink('/events') }}"><x-icon name="calendar" size="20"/> Events</a>@endif
         <hr>
         @if($site->isNetwork())
             <a href="/communities"><x-icon name="map" size="20"/> Communities <small>{{ $browsePlace?->name ?? 'All Manitoba' }}</small></a>
@@ -262,15 +279,6 @@
     @endif
     @unless($isPreview)
         <?php
-            $searchSections = array_filter([
-                'marketplace' => $marketEnabled ? 'Marketplace' : null,
-                'businesses' => app(\App\Support\BusinessDirectory::class)->enabled($site) ? 'Businesses' : null,
-                'community' => ($networkSettings['modules']['community'] ?? false) ? 'Discussions' : null,
-                'jobs' => ($networkSettings['modules']['jobs'] ?? false) ? 'Jobs' : null,
-                'real-estate' => $marketEnabled && config('network.real_estate_public_listings') ? 'Real Estate' : null,
-                'news' => ($networkSettings['modules']['news'] ?? false) ? 'News' : null,
-                'events' => ($networkSettings['modules']['events'] ?? false) ? 'Events' : null,
-            ]);
             $searchSection = request()->path();
             $searchTerm = request()->query('q');
         ?>

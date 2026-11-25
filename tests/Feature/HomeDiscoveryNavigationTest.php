@@ -167,6 +167,20 @@ class HomeDiscoveryNavigationTest extends TestCase
             ->assertRedirect('/')->assertCookieExpired('canadamb_community');
     }
 
+    public function test_quick_search_targets_the_current_enabled_section_and_keeps_community(): void
+    {
+        $this->get('https://canadamb.ca/jobs?location=Brandon&q=mechanic')
+            ->assertOk()->assertSee('class="header-search" action="/jobs"', false)
+            ->assertSee('class="site-drawer-search" action="/jobs"', false)
+            ->assertSee('name="location" value="Brandon"', false)->assertSee('value="mechanic"', false);
+        $this->get('https://canadamb.ca/news?location=brandon&q=council')
+            ->assertOk()->assertSee('class="header-search" action="/news"', false)
+            ->assertSee('class="site-drawer-search" action="/news"', false)
+            ->assertSee('name="location" value="brandon"', false);
+        $this->get('https://brandonmb.ca/business-updates')->assertOk()
+            ->assertSee('class="header-search" action="/business-updates"', false);
+    }
+
     public function test_category_discovery_search_is_real_submission_not_a_dummy_button(): void
     {
         $this->get('https://canadamb.ca/marketplace')->assertOk()
