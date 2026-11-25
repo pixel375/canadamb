@@ -9,6 +9,7 @@ use App\Models\Site;
 use App\Models\User;
 use App\Support\AdvertisingSchedule;
 use App\Support\CommercialRecords;
+use App\Support\TestPaymentLedger;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Foundation\Testing\RefreshDatabaseState;
@@ -28,7 +29,7 @@ class CommercialRecordsTest extends TestCase
         $this->beforeApplicationDestroyed(function () {
             // Drop only the reviewed proposal, then reset the disposable test
             // schema without reversing unrelated historical migrations.
-            $this->artisan('migrate:rollback', ['--path' => 'database/proposed-migrations', '--step' => 1])->assertSuccessful();
+            $this->artisan('migrate:rollback', ['--path' => 'database/proposed-migrations'])->assertSuccessful();
             RefreshDatabaseState::$migrated = false;
             RefreshDatabaseState::$inMemoryConnections = [];
         });
@@ -61,6 +62,25 @@ class CommercialRecordsTest extends TestCase
         $this->post($review, ['decision' => 'approved', 'note' => 'Verified request.'])->assertForbidden();
         $this->actingAs($admin)->post($review, ['decision' => 'approved', 'note' => 'Verified request.'])->assertRedirect()->assertSessionHasNoErrors();
         $campaign->refresh();
+        $reference = '11111111-2222-4333-8444-555555555555';
+        DB::table('commercial_payment_attempts')->insert([
+            'campaign_id' => $campaign->id, 'reference' => $reference, 'provider_session_id' => 'cs_test_example',
+            'amount_cents' => 3000, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $event = ['id' => 'evt_test_paid', 'livemode' => false, 'type' => 'checkout.session.completed', 'data' => ['object' => [
+            'object' => 'checkout.session', 'id' => 'cs_test_example', 'livemode' => false, 'mode' => 'payment',
+            'currency' => 'cad', 'amount_total' => 3000, 'client_reference_id' => $reference, 'payment_status' => 'paid',
+        ]]];
+        $raw = json_encode($event, JSON_THROW_ON_ERROR);
+        $secret = 'whsec_test_fixture_only';
+        $timestamp = time();
+        $signature = 't='.$timestamp.',v1='.hash_hmac('sha256', $timestamp.'.'.$raw, $secret);
+        $ledger = app(TestPaymentLedger::class);
+        $this->assertSame('paid', $ledger->reconcile($raw, $signature, $secret, $timestamp));
+        $this->assertSame('duplicate', $ledger->reconcile($raw, $signature, $secret, $timestamp));
+        $this->assertDatabaseCount('commercial_payment_events', 1);
+        $this->assertDatabaseHas('commercial_payment_attempts', ['reference' => $reference, 'status' => 'paid']);
+        $this->assertDatabaseCount('business_entitlements', 0);
         $this->assertSame('approved', $campaign->status);
         $schedule = app(AdvertisingSchedule::class);
         $start = $campaign->starts_on->toDateString();
