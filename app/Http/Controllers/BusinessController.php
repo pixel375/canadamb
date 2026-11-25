@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Business;
 use App\Models\Location;
+use App\Support\BusinessChanges;
 use App\Support\BusinessDirectory;
 use App\Support\JobBoard;
 use App\Support\KeywordSearch;
@@ -181,7 +182,11 @@ class BusinessController extends Controller
         DB::transaction(function () use ($request, $business, $data) {
             $item = Business::lockForUpdate()->findOrFail($business);
             $this->managed($request, $business);
+            $previousEmail = $item->public_email;
             $item->update($data);
+            if ($previousEmail !== $item->public_email) {
+                BusinessChanges::invalidateContact($item->id);
+            }
         });
 
         return redirect('/account/businesses/'.$business)->with('status', 'Business profile saved.');

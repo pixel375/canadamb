@@ -18,6 +18,7 @@ use App\Http\Controllers\Admin\TestAccountController;
 use App\Http\Controllers\Admin\ThemeController;
 use App\Http\Controllers\AdvertisingController;
 use App\Http\Controllers\BusinessAccessController;
+use App\Http\Controllers\BusinessChangeController;
 use App\Http\Controllers\BusinessController;
 use App\Http\Controllers\BusinessDisputeController;
 use App\Http\Controllers\BusinessTeamController;
@@ -166,6 +167,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/account/businesses/{business}/access-requests', [BusinessAccessController::class, 'store'])->whereNumber('business')->middleware('throttle:6,1,business-access');
     Route::post('/account/business-access/{access}/respond', [BusinessAccessController::class, 'respond'])->whereNumber('access')->middleware('throttle:10,1,business-access-respond');
     Route::post('/account/business-access/{access}/cancel', [BusinessAccessController::class, 'cancel'])->whereNumber('access')->middleware('throttle:10,1,business-access-cancel');
+    Route::get('/account/businesses/{business}/changes', [BusinessChangeController::class, 'index'])->whereNumber('business');
+    Route::post('/account/businesses/{business}/changes', [BusinessChangeController::class, 'store'])->whereNumber('business')->middleware('throttle:6,1,business-change');
+    Route::post('/account/businesses/{business}/changes/{change}/withdraw', [BusinessChangeController::class, 'withdraw'])->whereNumber(['business', 'change'])->middleware('throttle:8,1,business-change-withdraw');
     Route::get('/account/businesses/{business}/team', [BusinessTeamController::class, 'index'])->whereNumber('business');
     Route::post('/account/businesses/{business}/team', [BusinessTeamController::class, 'store'])->whereNumber('business')->middleware('throttle:8,1');
     Route::put('/account/businesses/{business}/team/{member}', [BusinessTeamController::class, 'update'])->whereNumber(['business', 'member'])->middleware('throttle:12,1');
@@ -201,6 +205,8 @@ Route::prefix('admin')->middleware(['auth', 'verified', 'can:manage-network'])->
     Route::get('/moderation', [NetworkController::class, 'moderation']);
     Route::get('/business-review', [BusinessReviewController::class, 'index']);
     Route::get('/business-ownership', [BusinessReviewController::class, 'ownership']);
+    Route::get('/business-changes', [BusinessChangeController::class, 'queue']);
+    Route::post('/business-changes/{change}', [BusinessChangeController::class, 'review'])->whereNumber('change')->middleware('throttle:10,1,business-change-review');
     Route::get('/business-disputes', [BusinessDisputeController::class, 'queue']);
     Route::post('/business-disputes/{dispute}', [BusinessDisputeController::class, 'review'])->whereNumber('dispute')->middleware('throttle:8,1,business-dispute-review');
     Route::get('/business-transfers', [BusinessAccessController::class, 'reviewQueue']);

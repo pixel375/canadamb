@@ -7,6 +7,9 @@
                 <div class="inline-actions"><span class="member-listing-status" data-status="{{ $business->status }}">{{ ucfirst($business->status) }}</span><span class="field-note">{{ $business->status === 'active' ? 'Your profile has been approved.' : 'This profile is not currently public.' }}</span></div>
                 <a class="button button-outline" href="/account/businesses/{{ $business->id }}/team">Business team and permissions</a>
                 @if(\App\Support\CommercialRecords::enabled() && $business->status === 'active' && $business->members()->whereKey(auth()->id())->wherePivot('role', 'owner')->exists())<a class="button button-outline" href="/account/businesses/{{ $business->id }}/advertising">Advertising requests</a>@endif
+                @if(\App\Support\BusinessChanges::enabled() && $business->status === 'active' && $business->members()->whereKey(auth()->id())->wherePivotIn('role', ['owner', 'manager'])->exists())
+                    <a class="button button-outline" href="/account/businesses/{{ $business->id }}/changes">Manage branches and contact verification</a>
+                @endif
                 <h2>Branches on this portal</h2>
                 @forelse($branches as $branch)<div><strong>{{ $branch->location->name }}</strong><p>{{ $branch->address }}</p></div>@empty<p>No branches on this portal. Manage other locations on CanadaMB.ca.</p>@endforelse
                 @if($business->status === 'active' && app(\App\Support\BusinessDirectory::class)->enabled($site) && $branches->isNotEmpty())<a class="text-link" href="/businesses/{{ $business->slug }}">View public profile <x-icon name="arrow" size="16"/></a>@endif

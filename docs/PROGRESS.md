@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-24 — production gate recovery and business changes
+
+`ff48c94` passed exact backend/browser checks and activated; initial deployment audit reported transient HTTP 503 after activation. Read-only main audit [45553330607](https://github.com/pixel375/canadamb/actions/runs/45553330607) independently confirmed active SHA, DB and expected HTTP 403 on both domains. No access gate bypass. This source pass stages moderated branch additions/address correction and exact-email manual verification with invalidation on change. No proposed migrations applied and no feature activation; no automatic email or public verification badge.
+
 ## 2026-11-24 — dispute intake and business access CI repair
 
 Reply lifecycle deployment [45549311383](https://github.com/pixel375/canadamb/actions/runs/45549311383) succeeded. Business access release `c753cbb` failed PHP formatting checks in controller and route imports, before functional tests. This pass repairs those issues and stages private ownership dispute intake, claimant history, withdrawal and independent close/escalate review. No contested ownership mutation, production migration or feature activation. New exact-SHA CI required.
