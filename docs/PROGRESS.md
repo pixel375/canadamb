@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-25 — privacy request triage and record impact inventory
+
+Added restricted request filters, withdrawn history and audited aggregate-only impact inspection for open requests (including shared conversations, ownership, security and optional schema records). Expanded self-export with follows, notification history and access-request status, excluding other account identities and review notes. No deletion, automatic retention or fulfillment.
+
 ## 2026-11-25 — property draft management and independent review
 
 Private property drafts now support version-bound editing/submission/review, retained photo ordering/removal/addition (six total), private thumbnail path validation, independent reviewer filtering, and returning submitted/reviewed records to draft without deleting photos. Existing public gates unchanged. No schema migration or publication action.

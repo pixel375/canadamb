@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Support\Audit;
+use App\Support\PrivacyImpact;
 use App\Support\PrivacyRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -58,10 +59,24 @@ class AccountPrivacyController extends Controller
     public function queue(Request $request)
     {
         abort_unless(PrivacyRequests::enabled(), 404);
-        $items = DB::table('account_privacy_requests')->where('user_id', '!=', $request->user()->id)
-            ->whereIn('status', ['pending', 'in-review'])->orderBy('id')->paginate(20);
+        $filters = $request->validate([
+            'status' => 'nullable|in:pending,in-review,withdrawn', 'kind' => 'nullable|in:deletion,data-review',
+            'reference' => 'nullable|integer|min:1', 'inspect' => 'nullable|integer|min:1',
+        ]);
+        $eligible = DB::table('account_privacy_requests')->whereNotNull('user_id')->where('user_id', '!=', $request->user()->id);
+        $items = (clone $eligible)->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status),
+            fn ($query) => $query->whereIn('status', ['pending', 'in-review']))
+            ->when($filters['kind'] ?? null, fn ($query, $kind) => $query->where('kind', $kind))
+            ->when($filters['reference'] ?? null, fn ($query, $reference) => $query->where('id', $reference))
+            ->orderBy('id')->paginate(20)->withQueryString();
+        $inspection = null;
+        if (isset($filters['inspect'])) {
+            $target = (clone $eligible)->whereIn('status', ['pending', 'in-review'])->where('id', $filters['inspect'])->firstOrFail();
+            $inspection = ['reference' => $target->id, 'counts' => PrivacyImpact::counts((int) $target->user_id)];
+            Audit::record('user.privacy-impact-inspected', $request->user()->id, context: ['request' => $target->id]);
+        }
 
-        return view('admin.privacy-requests', compact('items'));
+        return view('admin.privacy-requests', compact('items', 'filters', 'inspection'));
     }
 
     public function review(Request $request, int $privacy)

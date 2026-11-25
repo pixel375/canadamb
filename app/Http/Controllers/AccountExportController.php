@@ -32,6 +32,9 @@ class AccountExportController extends Controller
         'business-disputes' => ['business_disputes', 'claimant_id', ['id', 'business_id', 'site_id', 'contact_email', 'explanation', 'status', 'created_at', 'updated_at']],
         'business-change-requests' => ['business_change_requests', 'requester_id', ['id', 'business_id', 'branch_id', 'location_id', 'kind', 'value', 'previous_value', 'status', 'created_at', 'updated_at']],
         'privacy-requests' => ['account_privacy_requests', 'user_id', ['id', 'kind', 'status', 'created_at', 'updated_at']],
+        'sent-business-access-requests' => ['business_access_requests', 'requester_id', ['id', 'business_id', 'kind', 'status', 'expires_at', 'created_at', 'updated_at']],
+        'received-business-access-requests' => ['business_access_requests', 'recipient_id', ['id', 'business_id', 'kind', 'status', 'expires_at', 'created_at', 'updated_at']],
+        'discussion-notifications' => ['community_notifications', 'user_id', ['id', 'reply_id', 'read_at', 'created_at']],
     ];
 
     private const BOOKMARKS = [
@@ -39,6 +42,7 @@ class AccountExportController extends Controller
         'saved-jobs' => ['job_posting_bookmarks', 'job_posting_id'],
         'business-memberships' => ['business_memberships', 'business_id'],
         'blocked-members' => ['user_blocks', 'blocked_id'],
+        'followed-discussions' => ['community_thread_follows', 'thread_id'],
     ];
 
     private function sections(): array

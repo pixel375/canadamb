@@ -45,12 +45,16 @@ class AccountPrivacyTest extends TestCase
         $this->post($url.'/'.$id.'/withdraw', ['current_password' => 'password'])->assertNotFound();
         $this->get($queue)->assertForbidden();
         $this->actingAs($admin)->get($queue)->assertSee('Reference #'.$id);
+        $this->get($queue.'?inspect='.$id)->assertOk()->assertSee('Record impact')->assertSee('Business ownership memberships')->assertDontSee($member->email);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'user.privacy-impact-inspected', 'actor_id' => $admin->id]);
         $note = 'Check shared records before arranging a response.';
         $this->post($queue.'/'.$id, ['note' => $note, 'current_password' => 'password'])->assertRedirect()->assertSessionHasNoErrors();
         $this->actingAs($member)->get($url)->assertSee('In review')->assertDontSee($note);
         $this->assertDatabaseHas('users', ['id' => $member->id]);
         $this->post($url.'/'.$id.'/withdraw', ['current_password' => 'password'])->assertRedirect();
         $this->assertDatabaseHas('account_privacy_requests', ['id' => $id, 'status' => 'withdrawn']);
-        $this->actingAs($admin)->post($queue.'/'.$id, ['note' => $note, 'current_password' => 'password'])->assertConflict();
+        $this->actingAs($admin)->get($queue.'?inspect='.$id)->assertNotFound();
+        $this->get($queue.'?status=withdrawn&reference='.$id)->assertOk()->assertSee('Withdrawn by the member');
+        $this->post($queue.'/'.$id, ['note' => $note, 'current_password' => 'password'])->assertConflict();
     }
 }

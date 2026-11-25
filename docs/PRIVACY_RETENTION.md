@@ -1,6 +1,6 @@
 # Privacy and retention review
 
-The proposed account privacy request table records password-confirmed deletion or data-access requests. Super administrators can record review progress; claimants can withdraw. This is intake, not fulfillment. Do not enable until a monitored support route, responsible reviewer, response deadlines, retention rules and a method of recording fulfillment are agreed.
+The proposed account privacy request table records password-confirmed deletion or data-access requests. Super administrators can record review progress; claimants can withdraw. This is intake, not fulfillment. Reviewers can filter requests and explicitly inspect aggregate account record counts for an open request. The read-only inspection is audited, omits record contents and never deletes or disables an account. Do not enable until a monitored support route, responsible reviewer, response deadlines, retention rules and a method of recording fulfillment are agreed.
 
 Never delete a user by a raw cascade. Inspect business ownership, active listings, shared conversations, reports, pending disputes, commercial records, media, sessions, OAuth tokens and backups. Establish legal holds and minimization rules before a reviewed execution design. Preserve other participants' legitimate access where appropriate and do not expose their personal records in self-service exports. Do not promise historical deletion from backups without a verified backup expiration and restoration procedure.
 
