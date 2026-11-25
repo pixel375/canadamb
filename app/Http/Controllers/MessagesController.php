@@ -272,10 +272,13 @@ class MessagesController extends Controller
 
     public function blockedMembers(Request $request)
     {
-        $members = User::whereIn('id', DB::table('user_blocks')->where('user_id', $request->user()->id)->select('blocked_id'))
-            ->orderBy('name')->orderBy('id')->paginate(20, ['id', 'name']);
+        $filters = $request->validate(['q' => 'nullable|string|max:100']);
+        $query = User::whereIn('id', DB::table('user_blocks')->where('user_id', $request->user()->id)->select('blocked_id'));
+        $total = (clone $query)->count();
+        $members = $query->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['name']))
+            ->orderBy('name')->orderBy('id')->paginate(20, ['id', 'name'])->withQueryString();
 
-        return view('messages.blocked', compact('members'));
+        return view('messages.blocked', compact('members', 'filters', 'total'));
     }
 
     public function unblockMember(Request $request, int $member)

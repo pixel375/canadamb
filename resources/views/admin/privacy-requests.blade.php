@@ -14,10 +14,11 @@
         </section>
     @endif
     <section class="panel form-stack">@forelse($items as $item)
-        <article class="admin-review-card form-stack"><h2>{{ $item->kind === 'deletion' ? 'Account deletion' : 'Data review' }}</h2><p>Reference #{{ $item->id }} · Account #{{ $item->user_id }} · {{ ucfirst(str_replace('-', ' ', $item->status)) }}</p>
+        <article class="admin-review-card form-stack"><h2>{{ $item->kind === 'deletion' ? 'Account deletion' : 'Data review' }}</h2><p>Reference #{{ $item->id }} · Account #{{ $item->user_id }} · {{ ucfirst(str_replace('-', ' ', $item->status)) }}</p><p class="field-note">Submitted {{ \Illuminate\Support\Carbon::parse($item->created_at, 'UTC')->timezone('America/Winnipeg')->format('M j, Y · g:i a T') }} · Updated {{ \Illuminate\Support\Carbon::parse($item->updated_at, 'UTC')->timezone('America/Winnipeg')->format('M j, Y · g:i a T') }}</p>
             @if(in_array($item->status, ['pending','in-review'], true))
             <a class="button button-outline" href="/admin/privacy-requests?inspect={{ $item->id }}&reference={{ $item->id }}">Inspect record impact</a>
-            <form class="form-stack" method="post" action="/admin/privacy-requests/{{ $item->id }}">@csrf
+            <form class="form-stack" method="post" action="/admin/privacy-requests/{{ $item->id }}">@csrf<input type="hidden" name="version" value="{{ \App\Support\PrivacyRequests::reviewVersion($item) }}">
+                @if($item->reviewer_id)<p class="field-note">Last reviewer: account #{{ $item->reviewer_id }}</p>@endif
                 <label>Internal review note<textarea name="note" minlength="10" maxlength="1000" required>{{ $item->review_note }}</textarea></label>
                 <p class="field-note">Record only necessary review information; do not paste passwords or private conversation contents.</p>
                 <x-password-field name="current_password" label="Current password" autocomplete="current-password" :field-id="'privacy-review-password-'.$item->id"/>

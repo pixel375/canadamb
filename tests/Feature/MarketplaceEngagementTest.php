@@ -231,6 +231,9 @@ class MarketplaceEngagementTest extends TestCase
         $this->postJson($url.'/sync', ['after' => $first->id])->assertOk()->assertJsonPath('blocked', true);
         $this->assertDatabaseCount('messages', 2);
         $this->actingAs($buyer)->get('https://canadamb.ca/account/blocked-members')->assertOk()->assertSee($seller->name)->assertDontSee($seller->email);
+        $this->get('https://canadamb.ca/account/blocked-members?q='.urlencode($seller->name))->assertOk()->assertSee($seller->name)->assertDontSee($seller->email);
+        $this->get('https://canadamb.ca/account/blocked-members?q=zzmissing')->assertOk()->assertSee('No blocked members match your search.');
+        $this->get('https://canadamb.ca/account/blocked-members?q=%25')->assertOk()->assertSee('No blocked members match your search.');
         $this->actingAs($stranger)->delete('https://canadamb.ca/account/blocked-members/'.$seller->id)->assertRedirect();
         $this->assertDatabaseHas('user_blocks', ['user_id' => $buyer->id, 'blocked_id' => $seller->id]);
         $this->actingAs($buyer)->delete('https://canadamb.ca/account/blocked-members/'.$seller->id)->assertRedirect();

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Support\PrivacyRequests;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Foundation\Testing\RefreshDatabaseState;
@@ -48,8 +49,13 @@ class AccountPrivacyTest extends TestCase
         $this->get($queue.'?inspect='.$id)->assertOk()->assertSee('Record impact')->assertSee('Business ownership memberships')->assertSee('Private property photos')->assertSee('Saved listings')->assertDontSee($member->email);
         $this->assertDatabaseHas('audit_logs', ['action' => 'user.privacy-impact-inspected', 'actor_id' => $admin->id]);
         $note = 'Check shared records before arranging a response.';
-        $this->post($queue.'/'.$id, ['note' => $note, 'current_password' => 'password'])->assertRedirect()->assertSessionHasNoErrors();
+        $version = PrivacyRequests::reviewVersion(DB::table('account_privacy_requests')->where('id', $id)->first());
+        $this->post($queue.'/'.$id, ['note' => $note, 'current_password' => 'password', 'version' => $version])->assertRedirect()->assertSessionHasNoErrors();
+        $this->post($queue.'/'.$id, ['note' => 'Stale review must not overwrite progress.', 'current_password' => 'password', 'version' => $version])->assertSessionHasErrors('version');
+        $this->assertDatabaseHas('account_privacy_requests', ['id' => $id, 'review_note' => $note]);
         $this->actingAs($member)->get($url)->assertSee('In review')->assertDontSee($note);
+        $this->get($url.'?status=in-review&kind=deletion')->assertOk()->assertSee('Reference #'.$id);
+        $this->get($url.'?status=pending')->assertOk()->assertDontSee('Reference #'.$id)->assertSee('No requests match these filters.');
         $this->assertDatabaseHas('users', ['id' => $member->id]);
         $this->post($url.'/'.$id.'/withdraw', ['current_password' => 'password'])->assertRedirect();
         $this->assertDatabaseHas('account_privacy_requests', ['id' => $id, 'status' => 'withdrawn']);
