@@ -153,4 +153,5 @@
             @endif
         </div>
     </div>
+    <div class="container mb-4"><a class="text-link" href="/contact?topic=community">Raise a concern about this discussion</a> · <a class="text-link" href="/safety">Community guidance</a></div>
 </x-layouts.site>

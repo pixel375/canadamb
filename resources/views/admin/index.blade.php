@@ -2,7 +2,7 @@
     <div class="page-intro"><div><p class="section-label">Network administration</p><h1>Network overview</h1><p>Manage communities, review content and monitor recent activity.</p></div><a href="/admin/communities/new" class="button button-primary"><x-icon name="plus" size="16"/> Add a community</a></div>
     <section class="panel admin-readiness">
         <div><span class="section-label">Operating mode</span><h2>{{ $prelaunch ? 'Private prelaunch' : 'Prelaunch mode disabled' }}</h2><p>{{ $prelaunch ? 'Application configuration indicates prelaunch mode is enabled. External access and infrastructure require separate verification.' : 'Review production access controls and launch readiness separately.' }}</p></div>
-        <span class="admin-mode-icon"><x-icon name="shield" size="28"/></span>
+        <a class="button button-outline" href="/admin/readiness">Launch readiness</a><span class="admin-mode-icon"><x-icon name="shield" size="28"/></span>
     </section>
     <div class="stat-grid admin-overview-stats">
         @foreach(['Configured portals' => $sites, 'Active in configuration' => $active, 'Supported places' => $locations, 'Accounts' => $accounts, 'Published configuration version' => $version] as $label => $value)

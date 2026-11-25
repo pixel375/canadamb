@@ -37,7 +37,7 @@
             @if(!$blocked)
                 <form method="post" action="/account/messages/{{ $thread->id }}" class="chat-composer form-stack">@csrf
                     <label>Reply<textarea data-character-count name="body" maxlength="2000" rows="3" required placeholder="Write a message…">{{ old('body') }}</textarea><small class="field-note" data-character-feedback></small></label>
-                    <div class="chat-composer-footer"><small class="field-note">Keep personal and payment information private.</small><button class="button button-primary" data-chat-send>Send reply <x-icon name="arrow" size="17"/></button></div>
+                    <div class="chat-composer-footer"><small class="field-note">Keep personal and payment information private. <a class="text-link" href="/safety">Safety guidance</a></small><button class="button button-primary" data-chat-send>Send reply <x-icon name="arrow" size="17"/></button></div>
                 </form>
             @else
                 <p class="notice">New messages are blocked for this conversation.</p>

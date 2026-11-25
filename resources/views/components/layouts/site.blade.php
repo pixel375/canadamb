@@ -253,6 +253,8 @@
         <hr>
         <a href="/about">About us</a>
         <a href="/contact">Contact us</a>
+        <a href="/safety">Safety and help</a>
+        <a href="/privacy-overview">Privacy overview</a>
         <label class="drawer-theme-control">
             <x-icon name="moon" size="19"/> Appearance
             <select id="theme-choice-mobile" aria-label="Mobile appearance">
@@ -265,12 +267,12 @@
 </dialog>
 <nav class="mobile-tab-bar" aria-label="Quick navigation">
     <a href="{{ $browseLink('/') }}" @if(request()->is('/')) aria-current="page" @endif><x-icon name="home" size="22"/><span>Home</span></a>
-    <a href="{{ $browseLink('/marketplace') }}" @if(request()->is('marketplace*', 'real-estate*')) aria-current="page" @endif><x-icon name="marketplace" size="22"/><span>Marketplace</span></a>
+    @if($marketEnabled)<a href="{{ $browseLink('/marketplace') }}" @if(request()->is('marketplace*', 'real-estate*')) aria-current="page" @endif><x-icon name="marketplace" size="22"/><span>Marketplace</span></a>@else<a href="/account/profile" @if(request()->is('account/profile')) aria-current="page" @endif><x-icon name="person" size="22"/><span>Account</span></a>@endif
     <a href="/account/messages" @if(request()->is('account/messages*')) aria-current="page" @endif><x-icon name="messages" size="22"/><span>Messages</span><x-nav-count :count="$navCounts['messages']" label="messages"/></a>
     <a href="/account/notifications" @if(request()->is('account/notifications*', 'account/community-notifications*')) aria-current="page" @endif><x-icon name="bell" size="22"/><span>Notifications</span><x-nav-count :count="$navCounts['notifications']" label="notifications"/></a>
 </nav>
 @endunless
-<main id="main" @if($mainClass ?? null) class="{{ $mainClass }}" @endif>
+<main id="main" tabindex="-1" @if($mainClass ?? null) class="{{ $mainClass }}" @endif>
     @if(session('status'))<div class="container"><p role="status" class="notice">{{ __(session('status')) }}</p></div>@endif
     @if($errors->any())
         <div class="container"><div class="notice notice-error" role="alert"><strong>Check the following details.</strong><ul>
@@ -340,6 +342,8 @@
             @if($site->contact_email)<a href="mailto:{{ $site->contact_email }}">Contact</a>@endif
             <a href="/about">About us</a>
             <a href="/contact">Contact us</a>
+            <a href="/safety">Safety and help</a>
+            <a href="/privacy-overview">Privacy overview</a>
             <a href="/photo-credits">Photo credits</a>
         </nav>
     </div>

@@ -1,0 +1,9 @@
+<x-layouts.site title="Account privacy overview">
+    <div class="container page-shell listing-editor">
+        <div class="page-intro"><div><p class="section-label">Help centre</p><h1>Account privacy overview</h1><p>Understand what other members can see and how to manage your account.</p></div></div>
+        <section class="panel form-stack"><h2>Public information</h2><p>Your display name, membership date and published content may appear on community pages. Business contact information you submit for publication is also intended to be public. Avoid including private personal information in listings, posts or photos.</p></section>
+        <section class="panel form-stack"><h2>Private information</h2><p>Your account email is not displayed on your public member profile. Saved items and pending personal submissions are not public. Private messages are visible to their participants, subject to authorized operational access. Submitted reports and ownership evidence are intended for authorized reviewers.</p></section>
+        <section class="panel form-stack"><h2>Community websites and devices</h2><p>Participating websites share the CanadaMB account system. Preferences such as appearance and selected community can be stored in your browser. Changing your password or signing out everywhere invalidates existing network sessions.</p></section>
+        <section class="panel form-stack"><h2>Privacy questions and account requests</h2><p>Contact the team about correction, access or deletion requests. Automated account export and deletion are not yet available. This overview describes current features; a complete privacy policy, retention schedule and request process are still under review for public launch.</p><div class="inline-actions"><a class="button button-outline" href="/contact?topic=privacy">Contact about privacy</a>@auth<a class="text-link" href="/account/settings">Account settings</a>@endauth</div></section>
+    </div>
+</x-layouts.site>

@@ -34,6 +34,8 @@ Route::get('/pwa/icon/{size}.png', [PwaController::class, 'icon'])->whereIn('siz
 Route::view('/photo-credits', 'photo-credits');
 Route::view('/about', 'pages.about');
 Route::view('/contact', 'pages.contact');
+Route::view('/safety', 'pages.safety');
+Route::view('/privacy-overview', 'pages.privacy-overview');
 Route::get('/users/{user}', [UserProfileController::class, 'show'])->whereNumber('user');
 Route::middleware('auth')->group(function () {
     Route::get('/account/profile', [UserProfileController::class, 'mine']);
@@ -153,6 +155,7 @@ Route::prefix('admin')->middleware(['auth', 'verified', 'can:manage-network'])->
     Route::post('/community/events/{event}', [CommunityModerationController::class, 'events'])->whereNumber('event');
     Route::get('/', [NetworkController::class, 'index']);
     Route::get('/audit', [NetworkController::class, 'audit']);
+    Route::get('/readiness', [NetworkController::class, 'readiness']);
     Route::get('/moderation', [NetworkController::class, 'moderation']);
     Route::get('/business-review', [BusinessReviewController::class, 'index']);
     Route::post('/business-review/{business}', [BusinessReviewController::class, 'profile'])->whereNumber('business');

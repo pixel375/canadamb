@@ -45,6 +45,20 @@ class NetworkTest extends TestCase
             ->get('https://brandonmb.ca/admin')->assertNotFound();
     }
 
+    public function test_safety_help_and_readiness_are_scoped_and_read_only(): void
+    {
+        foreach (['canadamb.ca', 'brandonmb.ca'] as $host) {
+            $this->get("https://$host/safety")->assertOk()->assertSee('Safety and community guidance')->assertSee('Reporting limitations during prelaunch');
+            $this->get("https://$host/privacy-overview")->assertOk()->assertSee('Automated account export and deletion are not yet available');
+            $this->get("https://$host/contact?topic=news")->assertOk()->assertSee('value="news" selected', false);
+            $this->get("https://$host/contact?topic%5B%5D=invalid")->assertOk();
+        }
+        $this->actingAs(User::factory()->create())->get('https://canadamb.ca/admin/readiness')->assertForbidden();
+        $this->actingAs(User::factory()->create(['role' => 'super_admin']))->get('https://canadamb.ca/admin/readiness')
+            ->assertOk()->assertSee('Read-only configuration indicators')->assertSee('Separate acceptance required')
+            ->assertSee('Approved IP entries');
+    }
+
     public function test_admin_dashboard_and_review_filters_remain_role_protected(): void
     {
         $this->actingAs(User::factory()->create())->get('https://canadamb.ca/admin/moderation?status=pending')->assertForbidden();

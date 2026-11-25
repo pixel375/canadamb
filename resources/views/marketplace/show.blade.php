@@ -99,7 +99,7 @@
                         <a class="button button-primary seller-action" href="{{ $currentSite->isNetwork() ? '/login' : '/auth/start' }}">Sign in to message</a>
                     @endauth
                 </section>
-                <section class="panel listing-safety"><h2><x-icon name="shield" size="19"/> Shop safely</h2><p>Inspect the item before paying, meet in a public place when possible, and keep personal or financial details private.</p></section>
+                <section class="panel listing-safety"><h2><x-icon name="shield" size="19"/> Shop safely</h2><p>Inspect the item before paying, meet in a public place when possible, and keep personal or financial details private.</p><a class="text-link" href="/safety">More safety guidance</a></section>
             </aside>
             <div class="listing-detail-recommendations">
                 @if($related->isNotEmpty())

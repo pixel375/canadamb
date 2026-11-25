@@ -49,6 +49,26 @@ class NetworkController extends Controller
         ]);
     }
 
+    public function readiness(NetworkSettings $settings)
+    {
+        $prelaunch = (bool) config('network.prelaunch');
+        $checks = [
+            ['label' => 'Prelaunch access configuration', 'value' => $prelaunch ? 'Enabled' : 'Disabled', 'note' => 'Configuration only; use external HTTP checks to verify enforcement.'],
+            ['label' => 'Approved IP entries', 'value' => count(config('network.prelaunch_ips', [])), 'note' => 'Count only; individual IP addresses are not displayed.'],
+            ['label' => 'Registration', 'value' => $settings->registrationAllowed() ? 'Available' : 'Disabled', 'note' => 'During private testing, registration should remain intentionally controlled.'],
+            ['label' => 'Community sign-in', 'value' => config('network.sso_enabled') ? 'Enabled' : 'Disabled', 'note' => 'Verify a real HTTPS round trip on participating domains.'],
+            ['label' => 'Scheduled queue draining', 'value' => config('network.cron_queue_drain') ? 'Configured' : 'Disabled', 'note' => 'Does not establish that the host scheduler is running.'],
+            ['label' => 'News polling', 'value' => config('network.news_polling') ? 'Configured' : 'Disabled', 'note' => 'Verify real publisher feed access before enabling scheduled ingestion.'],
+            ['label' => 'Private property drafts', 'value' => config('network.property_drafts') ? 'Enabled' : 'Disabled', 'note' => 'Private review is not publication permission.'],
+            ['label' => 'Public property advertisements', 'value' => config('network.real_estate_public_listings') ? 'Enabled' : 'Disabled', 'note' => 'Keep disabled until ownership and publication requirements are approved.'],
+            ['label' => 'Central contact address', 'value' => \App\Support\NetworkUrl::main()->contact_email ? 'Configured' : 'Missing', 'note' => 'Configuration does not verify mailbox delivery or monitoring.'],
+            ['label' => 'Application mail', 'value' => $prelaunch ? 'Suppressed during prelaunch' : 'Delivery requires verification', 'note' => 'Test verification and password reset delivery before public launch.'],
+        ];
+        $unverified = User::whereNull('email_verified_at')->count();
+
+        return view('admin.readiness', compact('checks', 'unverified'));
+    }
+
     public function audit(Request $request)
     {
         $filters = $request->validate(['q' => 'nullable|string|max:100', 'period' => 'nullable|in:7,30,90']);

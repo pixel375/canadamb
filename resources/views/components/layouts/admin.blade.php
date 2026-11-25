@@ -22,6 +22,7 @@
                 @if(config('network.property_drafts'))<a href="/admin/properties" @if(request()->is('admin/properties*')) aria-current="page" @endif>Private property review</a>@endif
                 <a href="/admin/business-review" @if(request()->is('admin/business-review')) aria-current="page" @endif>Business review</a>
                 <strong class="admin-nav-group-label">Operations</strong>
+                <a href="/admin/readiness" @if(request()->is('admin/readiness')) aria-current="page" @endif>Launch readiness</a>
                 <a href="/admin/audit" @if(request()->is('admin/audit')) aria-current="page" @endif>Audit log</a>
                 @endcan
                 @can('manage-news')<a href="/admin/news" @if(request()->is('admin/news*')) aria-current="page" @endif>News editorial</a>@endcan

@@ -399,7 +399,7 @@ const fs = require('node:fs');
         for (const width of [320, 390, 768, 1024, 1440]) {
             await adminPage.setViewportSize({ width, height: 900 });
             for (const path of ['/admin', '/admin/moderation?status=pending', '/admin/community?status=pending',
-                '/admin/jobs?status=pending', '/admin/business-review', '/admin/news', '/admin/audit']) {
+                '/admin/jobs?status=pending', '/admin/business-review', '/admin/news', '/admin/audit', '/admin/readiness']) {
                 const response = await adminPage.goto(host + path);
                 check(response.ok(), 'Admin page failed: ' + path + ' at ' + width);
                 check(await adminPage.locator('.admin-shell').isVisible(), 'Admin layout missing: ' + path);
@@ -486,6 +486,15 @@ const fs = require('node:fs');
         await page.getByRole('link', { name: 'Edit', exact: true }).click();
         check(await existing.count() === 1 && await existing.first().getAttribute('data-existing-photo') === secondId, 'Saved photo removal or cover selection failed');
         console.log('PASS: existing listing photo cover and removal persisted through real form submission');
+        for (const width of [320, 390, 1024, 1440]) {
+            await page.setViewportSize({ width, height: 900 });
+            for (const path of ['/safety', '/privacy-overview', '/contact?topic=news']) {
+                check((await page.goto(host + path)).ok(), 'Help page unavailable: ' + path);
+                check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Help page overflow: ' + path);
+            }
+            check(await page.locator('select[name="topic"]').inputValue() === 'news', 'Contact topic not retained');
+        }
+        console.log('PASS: help, safety, privacy and contact pages at four widths');
 
 
 

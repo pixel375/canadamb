@@ -29,7 +29,7 @@
                 @if($related->isNotEmpty())
                     <section class="panel discussion-related"><h2>Related local news</h2>@foreach($related as $article)<div><a class="text-link" href="/news/{{ $article->id }}">{{ $article->title }}</a><p class="field-note">{{ $article->source->name }} · {{ $article->published_at->timezone('America/Winnipeg')->format('M j, Y') }}</p></div>@endforeach</section>
                 @endif
-                <a class="button button-outline" href="{{ $newsUrl }}">Browse more local news</a>
+                <a class="button button-outline" href="{{ $newsUrl }}">Browse more local news</a><a class="text-link" href="/contact?topic=news">Suggest a correction</a>
             </aside>
         </article>
     </div>

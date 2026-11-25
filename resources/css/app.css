@@ -1774,3 +1774,16 @@ a.market-category-card:hover, a.market-category-card:focus-visible {
 [data-existing-photo].photo-will-remove figcaption { color:var(--muted); }
 [data-existing-controls][hidden] { display:none; }
 [data-existing-controls] .button { white-space:normal; }
+
+/* Help, safety and read-only launch acceptance. */
+.help-topic-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+.help-topic-grid .panel { margin:0; min-width:0; }
+.help-topic-grid h2 { display:flex; align-items:center; gap:9px; font-size:1.2rem; }
+.help-topic-grid h2 svg { flex-shrink:0; color:var(--link); }
+.help-guidelines { list-style:disc; padding-inline-start:1.4rem; display:grid; gap:8px; }
+.readiness-row { flex-wrap:wrap; gap:10px; align-items:start; }
+.readiness-row > div { flex:1 1 230px; min-width:0; }
+.readiness-row > strong { flex:0 1 auto; overflow-wrap:anywhere; font-size:.9rem; }
+.admin-readiness { flex-wrap:wrap; }
+@media(max-width:700px) { .help-topic-grid { grid-template-columns:minmax(0,1fr); } .readiness-row > strong { width:100%; } }
+@media(prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto!important; } }
