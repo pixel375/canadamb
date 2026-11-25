@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AccountNotificationsController;
+use App\Http\Controllers\Admin\AdvertisingReviewController;
 use App\Http\Controllers\Admin\BusinessReviewController;
 use App\Http\Controllers\Admin\CommercialController;
 use App\Http\Controllers\Admin\CommunityController;
@@ -12,6 +13,7 @@ use App\Http\Controllers\Admin\PropertyReviewController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\TestAccountController;
 use App\Http\Controllers\Admin\ThemeController;
+use App\Http\Controllers\AdvertisingController;
 use App\Http\Controllers\BusinessController;
 use App\Http\Controllers\BusinessTeamController;
 use App\Http\Controllers\CommunityEventController;
@@ -133,6 +135,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/account/businesses', [BusinessController::class, 'mine']);
     Route::get('/account/businesses/new', [BusinessController::class, 'create']);
     Route::post('/account/businesses', [BusinessController::class, 'store'])->middleware('throttle:5,1');
+    Route::get('/account/businesses/{business}/advertising', [AdvertisingController::class, 'index'])->whereNumber('business');
+    Route::post('/account/businesses/{business}/advertising', [AdvertisingController::class, 'store'])->whereNumber('business')->middleware('throttle:6,1');
+    Route::post('/account/businesses/{business}/advertising/{campaign}/withdraw', [AdvertisingController::class, 'withdraw'])->whereNumber(['business', 'campaign'])->middleware('throttle:8,1');
     Route::get('/account/businesses/{business}/team', [BusinessTeamController::class, 'index'])->whereNumber('business');
     Route::post('/account/businesses/{business}/team', [BusinessTeamController::class, 'store'])->whereNumber('business')->middleware('throttle:8,1');
     Route::put('/account/businesses/{business}/team/{member}', [BusinessTeamController::class, 'update'])->whereNumber(['business', 'member'])->middleware('throttle:12,1');
@@ -174,6 +179,8 @@ Route::prefix('admin')->middleware(['auth', 'verified', 'can:manage-network'])->
     Route::middleware('can:manage-theme')->group(function () {
         Route::get('/test-accounts', [TestAccountController::class, 'index']);
         Route::post('/test-accounts/{account}/verify', [TestAccountController::class, 'verify'])->whereNumber('account');
+        Route::get('/advertising', [AdvertisingReviewController::class, 'index']);
+        Route::post('/advertising/{campaign}', [AdvertisingReviewController::class, 'decide'])->whereNumber('campaign')->middleware('throttle:12,1');
         Route::get('/commercial', [CommercialController::class, 'index']);
         Route::post('/commercial', [CommercialController::class, 'save'])->middleware('throttle:8,1');
         Route::get('/settings', [SettingsController::class, 'edit']);
