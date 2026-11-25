@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-25 — staged browser acceptance expansion
+
+Browser QA now submits changed job and Marketplace saved filters, verifies event reuse without copied dates and atomic selected withdrawals, checks the metadata-export entry and captures responsive saved-search/export screenshots. Disposable test data only.
+
 ## 2026-11-25 — hiring duplicate and renewal integrity
 
 Under the business lock, reject matching open/pending job submissions and revisions at the same branch (title, type, workplace and application URL). Renewed expired postings get a fresh publication timestamp after independent approval, while ordinary edits preserve original publication. Browser withdrawals use revision tokens, with legacy callers still supported. Regression coverage for duplicate, stale withdrawal and renewal transitions.

@@ -35,7 +35,12 @@ const password = 'New-browser-qa-42';
         await saved.locator('select[name="alerts"]').selectOption('0');
         await saved.getByRole('button', { name: 'Save preferences' }).click();
         await page.getByText('Alerts paused', { exact: true }).waitFor();
-        console.log('PASS: save job search and pause alerts');
+        await saved.getByRole('link', { name: 'Edit filters', exact: true }).click();
+        await page.locator('input[name="q"]').fill('mechanic');
+        await submit(page, page.getByRole('button', { name: 'Save filters', exact: true }), '/account/job-searches');
+        await saved.getByRole('link', { name: 'Open original search' }).click();
+        await page.waitForURL(url => url.pathname === '/jobs' && url.searchParams.get('q') === 'mechanic');
+        console.log('PASS: save job search, pause alerts and revise filters');
 
         await visit(page, '/marketplace?q=oak');
         await page.getByText('Save this Marketplace search', { exact: true }).click();
@@ -48,7 +53,13 @@ const password = 'New-browser-qa-42';
         await page.getByRole('heading', { name: 'Oak furniture search' }).waitFor();
         await page.getByRole('link', { name: 'Run search', exact: true }).click();
         await page.waitForURL(url => url.pathname === '/marketplace' && url.searchParams.get('q') === 'oak');
-        console.log('PASS: saved Marketplace search, rename and run');
+        await visit(page, '/account/marketplace-searches');
+        await page.locator('article').filter({ has: page.getByRole('heading', { name: 'Oak furniture search' }) }).getByRole('link', { name: 'Edit filters' }).click();
+        await page.locator('input[name="max_price"]').fill('75');
+        await submit(page, page.getByRole('button', { name: 'Save filters', exact: true }), '/account/marketplace-searches');
+        await page.getByRole('link', { name: 'Run search', exact: true }).click();
+        await page.waitForURL(url => url.pathname === '/marketplace' && Number(url.searchParams.get('max_price')) === 75);
+        console.log('PASS: saved Marketplace search, rename, revise and run');
 
         await visit(page, '/account/notifications');
         await page.locator('select[name="discussion_replies"]').selectOption('0');
@@ -145,11 +156,23 @@ const password = 'New-browser-qa-42';
         await page.waitForLoadState('load');
         check(new URL(page.url()).pathname === '/account/events', 'Event submission did not redirect to account events: ' + (await page.locator('body').innerText()).slice(0, 2500));
         check(await page.getByRole('heading', { name: 'Recurring browser QA event', exact: true }).count() === 2, 'Expected two event submissions');
-        console.log('PASS: recurring event form creates two reviewed occurrences');
+        const events = page.locator('article').filter({ has: page.getByRole('heading', { name: 'Recurring browser QA event', exact: true }) });
+        await events.first().getByRole('link', { name: 'Reuse event details' }).click();
+        check(await page.locator('input[name="title"]').inputValue() === 'Recurring browser QA event', 'Reused title missing');
+        check(await page.locator('input[name="starts_at"]').inputValue() === '', 'Reused event copied dates');
+        await visit(page, '/account/events');
+        await page.getByText('Cancel selected events', { exact: true }).first().click();
+        for (const input of await events.locator('input[name="events[]"]').all()) await input.check();
+        await page.locator('input[name="confirm_cancel"]').check();
+        await submit(page, page.locator('#event-batch-cancel').getByRole('button', { name: 'Cancel selected events' }), '/account/events');
+        check(await events.locator('[data-status="withdrawn"]').count() === 2, 'Expected both selected submissions withdrawn');
+        console.log('PASS: recurring event form, reuse and selected withdrawal');
+        await visit(page, '/account/data-export');
+        check(await page.locator('select[name="section"] option[value="conversation-metadata"]').count() === 1, 'Conversation metadata export missing');
 
         for (const width of [390, 1440]) {
             await page.setViewportSize({ width, height: 900 });
-            for (const [name, path] of [['searches', '/account/job-searches'], ['notifications', '/account/notifications'], ['privacy', '/account/privacy-requests'], ['events', '/account/events'], ['chat', conversation]]) {
+            for (const [name, path] of [['searches', '/account/job-searches'], ['market-searches', '/account/marketplace-searches'], ['export', '/account/data-export'], ['notifications', '/account/notifications'], ['privacy', '/account/privacy-requests'], ['events', '/account/events'], ['chat', conversation]]) {
                 await visit(page, path);
                 check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), name + ' overflows at ' + width);
                 await page.screenshot({ path: 'test-results/staged-' + name + '-' + width + '.png', fullPage: true });
