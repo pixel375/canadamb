@@ -423,6 +423,29 @@ const fs = require('node:fs');
         await adminPage.close();
         console.log('PASS: admin overview, moderation and audit layouts at five widths, with filtered pending review');
 
+        await page.setViewportSize({ width: 390, height: 900 });
+        await page.goto(host + '/account/settings');
+        await page.locator('summary').filter({ hasText: /^Change password$/ }).click();
+        const current = page.locator('input[name="current_password"]');
+        await current.fill('browser-qa-password-only');
+        const toggle = page.locator('[data-password-toggle][aria-controls="password-field-current_password"]');
+        await toggle.click();
+        check(await current.getAttribute('type') === 'text', 'Password visibility toggle failed');
+        await toggle.click();
+        check(await current.getAttribute('type') === 'password', 'Password hide toggle failed');
+        await page.locator('input[name="password"]').fill('New-browser-qa-42');
+        await page.locator('input[name="password_confirmation"]').fill('New-browser-qa-42');
+        await page.getByRole('button', { name: 'Change password and sign out' }).click();
+        await page.waitForURL(url => url.pathname === '/login');
+        check(await page.getByText('Password changed. Sign in again with your new password.').isVisible(), 'Password change confirmation missing');
+        await page.getByLabel('Email').fill('browser-notifications@example.test');
+        await page.getByLabel('Password').fill('New-browser-qa-42');
+        await page.getByRole('button', { name: 'Sign in' }).click();
+        await page.waitForURL(url => url.pathname !== '/login');
+        check((await page.goto(host + '/account/settings')).ok(), 'New password did not restore access');
+        console.log('PASS: password visibility and authenticated password change with fresh sign-in');
+
+
     } catch (error) {
         try {
             await page.screenshot({ path: 'test-results/auth-qa-failure.png', fullPage: true });

@@ -9,6 +9,25 @@ const fs = require('node:fs');
     try {
         fs.mkdirSync('test-results', { recursive: true });
         for (const host of hosts) {
+            await page.goto(host);
+            await page.waitForFunction(async () => {
+                if (!navigator.serviceWorker) return false;
+                const registration = await navigator.serviceWorker.getRegistration('/');
+                return registration?.active?.state === 'activated';
+            }, null, { timeout: 15000 });
+            const manifest = await page.evaluate(async () => {
+                const link = document.querySelector('link[rel="manifest"]');
+                return (await fetch(link.href)).json();
+            });
+            check(manifest.display === 'standalone' && manifest.scope === '/' && manifest.id === '/', 'Invalid standalone manifest: ' + host);
+            check(manifest.icons.some(icon => icon.sizes === '512x512'), 'Missing large launcher icon');
+            check(await page.locator('#pwa-install').isVisible(), 'App installation guidance missing');
+            if (await page.locator('#pwa-install-button').innerText() === 'App installation help') {
+                await page.locator('#pwa-install-button').click();
+                check(await page.locator('#pwa-install-help').isVisible(), 'Installation help did not open');
+            }
+            console.log('PASS: per-domain standalone manifest and active network-only service worker: ' + host);
+
             for (const width of [320, 390, 768, 1024, 1280, 1440]) {
                 await page.setViewportSize({ width, height: 900 });
                 await page.goto(host);

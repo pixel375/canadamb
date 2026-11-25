@@ -71,6 +71,8 @@ class IdentityController extends Controller
         }
         $code = $query['code'] ?? null;
         if (isset($query['error']) || ! is_string($code) || $code === '' || strlen($code) > 8192) {
+            $request->session()->put('url.intended', NetworkUrl::to($site, $flow['path']));
+
             return $this->signInError();
         }
 
@@ -86,9 +88,13 @@ class IdentityController extends Controller
         try {
             $result = app(AccessTokenController::class)->issueToken($factory->createRequest($exchange), $factory->createResponse(new Response));
         } catch (PassportException) {
+            $request->session()->put('url.intended', NetworkUrl::to($site, $flow['path']));
+
             return $this->signInError();
         }
         if (! $result->isSuccessful()) {
+            $request->session()->put('url.intended', NetworkUrl::to($site, $flow['path']));
+
             return $this->signInError();
         }
         $token = json_decode($result->getContent(), true, flags: JSON_THROW_ON_ERROR);
@@ -97,6 +103,8 @@ class IdentityController extends Controller
                 'HTTP_AUTHORIZATION' => 'Bearer '.$token['access_token'],
             ])));
         } catch (OAuthServerException) {
+            $request->session()->put('url.intended', NetworkUrl::to($site, $flow['path']));
+
             return $this->signInError();
         }
 
@@ -119,7 +127,7 @@ class IdentityController extends Controller
     private function signInError(int $status = 403): Response
     {
         return response()->view('auth.community-error', ['unavailable' => $status === 503], $status)
-            ->header('Referrer-Policy', 'no-referrer');
+            ->header('Referrer-Policy', 'no-referrer')->header('Cache-Control', 'private, no-store');
     }
 
     public function logout(Request $request)

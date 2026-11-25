@@ -134,6 +134,23 @@ class PassOneSsoTest extends TestCase
         $this->actingAs($account->fresh())->get($central.'/email/verify')->assertRedirect('https://brandonmb.ca/auth/start');
     }
 
+    public function test_cancelled_valid_community_sign_in_can_retry_the_original_destination(): void
+    {
+        $site = Site::with('domain')->where('code', 'brandon')->sole();
+        Identity::provision($site);
+        $target = 'https://brandonmb.ca/account/settings';
+        $start = $this->withSession(['url.intended' => $target])->get('https://brandonmb.ca/auth/start')->assertRedirect();
+        parse_str(parse_url($start->headers->get('Location'), PHP_URL_QUERY), $first);
+        $this->get('https://brandonmb.ca/auth/callback?error=access_denied&state='.$first['state'])
+            ->assertForbidden()->assertHeader('Cache-Control', 'no-store, private');
+        $this->assertSame($target, session('url.intended'));
+        $retry = $this->get('https://brandonmb.ca/auth/start')->assertRedirect();
+        parse_str(parse_url($retry->headers->get('Location'), PHP_URL_QUERY), $second);
+        $this->assertNotSame($first['state'], $second['state']);
+        $this->assertSame('/account/settings', session('community_oauth.'.$second['state'].'.path'));
+        $this->assertNull(session('community_oauth.'.$first['state']));
+    }
+
     public function test_return_urls_retain_safe_queries_and_reject_host_and_path_confusion(): void
     {
         $site = Site::with('domain')->where('code', 'brandon')->sole();
