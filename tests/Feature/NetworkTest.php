@@ -86,6 +86,14 @@ class NetworkTest extends TestCase
         $this->get('https://virdenmb.ca/')->assertNotFound();
         $this->post("$base/$id/status", ['status' => 'active'])->assertSessionHasErrors('status');
         $this->assertDatabaseHas('sites', ['id' => $id, 'status' => 'draft']);
+        $draft = Site::findOrFail($id);
+        $old = $draft->readinessVersion();
+        $this->post("$base/$id/readiness", ['dns' => '1', 'version' => $old])->assertRedirect()->assertSessionHasNoErrors();
+        $this->post("$base/$id/readiness", ['tls' => '1', 'version' => $old])->assertSessionHasErrors('version');
+        $this->post("$base/$id/status", ['status' => 'active', 'version' => $old])->assertSessionHasErrors('version');
+        $this->assertDatabaseHas('sites', ['id' => $id, 'status' => 'draft']);
+        $this->assertNotNull($draft->fresh()->domain->dns_confirmed_at);
+        $this->assertNull($draft->fresh()->domain->tls_confirmed_at);
     }
 
     public function test_posting_location_is_enforced_by_web_and_api(): void
@@ -104,11 +112,16 @@ class NetworkTest extends TestCase
     {
         $this->actingAs(User::factory()->create(['role' => 'super_admin']));
         $brandon = Site::where('code', 'brandon')->sole();
-        $this->put("https://canadamb.ca/admin/communities/$brandon->id", [
+        $version = $brandon->configurationVersion();
+        $input = [
             'name' => 'BrandonMB', 'description' => $brandon->description,
             'accent_type' => 'solid', 'accent_colors' => '#228855', 'accent_thickness' => 4, 'accent_direction' => 90,
-            'modules' => ['businesses' => 'hide'],
-        ])->assertSessionHasNoErrors()->assertRedirect();
+            'modules' => ['businesses' => 'hide'], 'version' => $version,
+        ];
+        $url = "https://canadamb.ca/admin/communities/$brandon->id";
+        $this->put($url, $input)->assertSessionHasNoErrors()->assertRedirect();
+        $this->put($url, array_replace($input, ['name' => 'Stale Brandon name']))->assertSessionHasErrors('version');
+        $this->assertSame('BrandonMB', $brandon->fresh()->name);
         $this->get('https://brandonmb.ca/businesses')->assertNotFound();
         $this->get('https://canadamb.ca/businesses')->assertOk();
         $this->get('https://brandonmb.ca/')->assertSee('#228855');

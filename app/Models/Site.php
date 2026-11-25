@@ -17,6 +17,20 @@ class Site extends Model
         return ['accent' => 'array', 'overrides' => 'array'];
     }
 
+    public function configurationVersion(): string
+    {
+        $attributes = $this->getRawOriginal();
+        ksort($attributes);
+
+        return hash('sha256', json_encode($attributes, JSON_THROW_ON_ERROR));
+    }
+
+    public function readinessVersion(): string
+    {
+        return hash('sha256', json_encode([$this->status, $this->domain->host,
+            $this->domain->dns_confirmed_at, $this->domain->tls_confirmed_at], JSON_THROW_ON_ERROR));
+    }
+
     public function location(): BelongsTo
     {
         return $this->belongsTo(Location::class);

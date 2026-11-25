@@ -5,7 +5,7 @@
     </div>
     <form class="panel form-stack" method="post" action="{{ $editing ? '/admin/communities/'.$managed->id : '/admin/communities' }}">
         @csrf
-        @if($editing)@method('PUT')@endif
+        @if($editing)@method('PUT')<input type="hidden" name="version" value="{{ old('version', $managed->configurationVersion()) }}">@endif
         <h2>Identity</h2>
         <div class="form-grid">
             <label>Public name<input name="name" value="{{ old('name', $managed->name) }}" required maxlength="80"></label>
@@ -65,6 +65,7 @@
             <p>At your DNS provider, point this domain to the network host. Add it as a parked domain in Hostinger and confirm a valid HTTPS certificate for this hostname.</p>
             <form method="post" action="/admin/communities/{{ $managed->id }}/readiness" class="form-stack">
                 @csrf
+                <input type="hidden" name="version" value="{{ $managed->readinessVersion() }}">
                 <label class="checkbox"><input type="checkbox" name="dns" value="1" @checked($managed->domain->dns_confirmed_at)> I verified DNS routing.</label>
                 <label class="checkbox"><input type="checkbox" name="tls" value="1" @checked($managed->domain->tls_confirmed_at)> I verified trusted HTTPS.</label>
                 <div><button class="button button-outline">Save operator confirmations</button></div>
@@ -72,6 +73,7 @@
             @unless($managed->isNetwork())
             <form method="post" action="/admin/communities/{{ $managed->id }}/status" class="form-grid">
                 @csrf
+                <input type="hidden" name="version" value="{{ $managed->readinessVersion() }}">
                 <label>Public status<select name="status">@foreach(\App\Models\Site::STATUSES as $status)<option value="{{ $status }}" @selected($managed->status === $status)>{{ str($status)->replace('_', ' ')->title() }}</option>@endforeach</select></label>
                 <button class="button button-primary">Update status</button>
             </form>

@@ -61,10 +61,16 @@ class CommunityController extends Controller
     public function update(Request $request, Site $site)
     {
         $data = $this->validated($request, $site);
-        DB::transaction(function () use ($request, $site, $data) {
+        $version = $request->validate(['version' => 'nullable|string|size:64'])['version'] ?? null;
+        DB::transaction(function () use ($request, $site, $data, $version) {
             $locked = Site::lockForUpdate()->findOrFail($site->id);
+            $this->checkVersion($locked->configurationVersion(), $version);
             $before = $locked->only(array_keys($data));
-            $locked->update($data);
+            $locked->fill($data);
+            if (! $locked->isDirty()) {
+                return;
+            }
+            $locked->save();
             Audit::record('site.updated', $request->user()->id, $site->id, ['before' => $before, 'after' => $data]);
         });
 
@@ -81,19 +87,25 @@ class CommunityController extends Controller
 
     public function readiness(Request $request, Site $site)
     {
-        $data = $request->validate(['dns' => 'nullable|accepted', 'tls' => 'nullable|accepted']);
+        $data = $request->validate(['dns' => 'nullable|accepted', 'tls' => 'nullable|accepted', 'version' => 'nullable|string|size:64']);
         DB::transaction(function () use ($request, $site, $data) {
             $locked = Site::lockForUpdate()->findOrFail($site->id);
-            $domain = $locked->domain;
+            $domain = $locked->domain()->lockForUpdate()->firstOrFail();
+            $locked->setRelation('domain', $domain);
+            $this->checkVersion($locked->readinessVersion(), $data['version'] ?? null);
             if ($locked->status === 'active' && ! $locked->isNetwork()
                 && (! isset($data['dns']) || ! isset($data['tls']))) {
                 throw ValidationException::withMessages(['status' => 'Move this portal out of Active before clearing readiness.']);
             }
 
-            $domain->update([
+            $domain->fill([
                 'dns_confirmed_at' => isset($data['dns']) ? ($domain->dns_confirmed_at ?? now()) : null,
                 'tls_confirmed_at' => isset($data['tls']) ? ($domain->tls_confirmed_at ?? now()) : null,
             ]);
+            if (! $domain->isDirty()) {
+                return;
+            }
+            $domain->save();
             Audit::record('site.readiness', $request->user()->id, $site->id, [
                 'dns' => $domain->dns_confirmed_at !== null, 'tls' => $domain->tls_confirmed_at !== null, 'method' => 'manual',
             ]);
@@ -105,15 +117,20 @@ class CommunityController extends Controller
     public function status(Request $request, Site $site)
     {
         abort_if($site->isNetwork(), 403);
-        $data = $request->validate(['status' => ['required', Rule::in(Site::STATUSES)]]);
+        $data = $request->validate(['status' => ['required', Rule::in(Site::STATUSES)], 'version' => 'nullable|string|size:64']);
         DB::transaction(function () use ($request, $site, $data) {
             $locked = Site::lockForUpdate()->findOrFail($site->id);
+            $locked->setRelation('domain', $locked->domain()->lockForUpdate()->firstOrFail());
+            $this->checkVersion($locked->readinessVersion(), $data['version'] ?? null);
             if (in_array($data['status'], ['active', 'ready'], true)
                 && (! $locked->domain->dns_confirmed_at || ! $locked->domain->tls_confirmed_at)) {
                 throw ValidationException::withMessages(['status' => 'Confirm DNS routing and HTTPS before setting this status.']);
             }
             $from = $locked->status;
-            $locked->update($data);
+            if ($from === $data['status']) {
+                return;
+            }
+            $locked->update(['status' => $data['status']]);
             if ($locked->status === 'active' && config('network.sso_enabled')) {
                 Identity::provision($locked);
             }
@@ -121,6 +138,13 @@ class CommunityController extends Controller
         });
 
         return redirect('/admin/communities/'.$site->id)->with('status', 'Community status updated.');
+    }
+
+    private function checkVersion(string $current, ?string $submitted): void
+    {
+        if ($submitted !== null && ! hash_equals($current, $submitted)) {
+            throw ValidationException::withMessages(['version' => 'Community settings changed. Reload before saving.']);
+        }
     }
 
     private function form(Site $site)
