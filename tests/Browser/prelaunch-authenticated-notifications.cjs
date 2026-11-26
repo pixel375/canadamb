@@ -370,6 +370,9 @@ const fs = require('node:fs');
             check(response.ok(), 'Private property dashboard failed');
             check(await page.locator('.seller-status-tile').count() === 5, 'Private property statuses missing');
             check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Property dashboard overflow at ' + width);
+            await page.getByRole('link', { name: 'Archived history' }).click();
+            await page.getByRole('heading', { name: 'Archived property history' }).waitFor();
+            check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Property archive overflow at ' + width);
         }
         console.log('PASS: real estate discovery, private property workspace and upload limits at four widths');
 
@@ -542,6 +545,17 @@ const fs = require('node:fs');
             check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Reuse posting overflow');
         }
         console.log('PASS: owner team grants, role changes and removals, reusable job forms at two widths');
+        await page.goto(host + '/account/businesses');
+        await page.getByRole('link', { name: 'Manage jobs' }).click();
+        await page.getByText('Extend selected closing dates', { exact: true }).click();
+        const deadlineForm = page.locator('#job-batch-extend');
+        await page.locator('input[form="job-batch-extend"][name="jobs[]"]').first().check();
+        const deadline = await deadlineForm.locator('input[name="new_closing_on"]').getAttribute('max');
+        await deadlineForm.locator('input[name="new_closing_on"]').fill(deadline);
+        await deadlineForm.locator('input[name="confirm_extend"]').check();
+        await deadlineForm.getByRole('button', { name: 'Extend selected deadlines' }).click();
+        await page.getByText('1 job posting deadlines extended for review.', { exact: true }).waitFor();
+        console.log('PASS: selected job deadline extension');
         await page.setViewportSize({ width: 390, height: 900 });
         await page.goto(host + '/account/businesses');
         await page.getByRole('link', { name: 'Manage profile' }).click();

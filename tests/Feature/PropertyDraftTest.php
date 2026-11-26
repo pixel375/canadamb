@@ -53,6 +53,8 @@ class PropertyDraftTest extends TestCase
         $this->get('https://canadamb.ca/account/properties?location='.$draft->location_id.'&min_price=300000&max_price=320000')->assertOk()->assertSee($draft->title);
         $this->get('https://canadamb.ca/account/properties?location='.$outside)->assertOk()->assertDontSee($draft->title);
         $this->get('https://canadamb.ca/account/properties?min_price=400000')->assertOk()->assertDontSee($draft->title);
+        $this->get('https://canadamb.ca/account/properties?max_price=320000')->assertOk()->assertSee($draft->title);
+        $this->getJson('https://canadamb.ca/account/properties?min_price=400000&max_price=300000')->assertUnprocessable();
         $this->get('https://canadamb.ca/account/properties/new?location=brandon&transaction=rent')->assertOk()
             ->assertSee('value="rent" selected', false)->assertSee('value="'.$draft->location_id.'" selected', false);
         $this->actingAs($other)->get('https://canadamb.ca/account/properties')->assertOk()->assertDontSee($draft->title);
