@@ -128,3 +128,5 @@ Owner feedback set 1: 2026-11-26. This file supersedes conflicting earlier roadm
 - F03 and B08 source: initial listing approval 30 days, elapsed previously published listing approval 7 days, re-review before original expiry does not extend it; retain renewal moderation. Shared publication notice on Marketplace, business profiles/updates, discussion/event and job creation/reuse. Exact CI pending. A05 and B03 implementation SHA 8d38ec71 backend 45849119706 and browser 45849119721 passed; live deployment verification remains outstanding for these new changes.
 
 - F01 source foundation: global required markers beside label text, native missing-field error highlighting, unambiguous server field associations and dynamic required/disabled state. No server validation removed. Complex conditional/admin forms and real-device/no-JS fallback require separate manual acceptance before marking complete.
+
+- Staged Chromium regression 45849402835 reached archive menu and timed out on renamed action. Restored descriptive existing label `Archive and mark read` because archive acknowledges unread messages. Keep all staged feature QA intact; rerun exact CI.

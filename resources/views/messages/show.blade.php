@@ -14,7 +14,7 @@
                     @if(\App\Support\MessagingExtensions::enabled())
                         <form method="post" action="/account/messages/{{ $thread->id }}/archive">@csrf
                             @if($thread->{$thread->archiveMarker(auth()->id())})@method('DELETE')@endif
-                            <button class="button button-outline">{{ $thread->{$thread->archiveMarker(auth()->id())} ? 'Restore conversation' : 'Archive conversation' }}</button>
+                            <button class="button button-outline">{{ $thread->{$thread->archiveMarker(auth()->id())} ? 'Restore conversation' : 'Archive and mark read' }}</button>
                         </form>
                     @endif
                     <form method="post" action="/account/messages/{{ $thread->id }}/block">
