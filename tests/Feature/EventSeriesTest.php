@@ -56,9 +56,14 @@ class EventSeriesTest extends TestCase
         $this->actingAs($admin)->post('https://canadamb.ca/admin/community/events/'.$events[0]->id, ['action' => 'approve'])->assertRedirect();
         $this->get($file)->assertOk()->assertHeader('Content-Type', 'text/calendar; charset=UTF-8')
             ->assertSee('SUMMARY:Weekly club\\, meeting', false)->assertSee('DESCRIPTION:Agenda\\nBEGIN:VEVENT', false);
-        $this->get($url.'?month=2026-03')->assertOk()->assertSee('Day-by-day agenda')->assertSee('Weekly club, meeting');
+        $this->get($url.'?month=2026-03')->assertOk()->assertSee('Day-by-day agenda')->assertSee('Weekly club, meeting')->assertSee('Download matching events');
+        $this->get($url.'/calendar?month=2026-03&q=Weekly')->assertOk()->assertHeader('Content-Type', 'text/calendar; charset=UTF-8')
+            ->assertSee('UID:event-'.$events[0]->id.'@canadamb.ca')->assertDontSee('UID:event-'.$events[1]->id.'@canadamb.ca');
+        $this->get($url.'/calendar?month=2026-04')->assertOk()->assertDontSee('BEGIN:VEVENT');
+        $this->get($url.'/calendar?month=2026-03&day=2026-04-01')->assertUnprocessable();
         $this->actingAs($member)->post('https://brandonmb.ca/account/events/'.$events[0]->id.'/cancel')->assertRedirect();
         $this->get($file)->assertNotFound();
+        $this->get($url.'/calendar?month=2026-03')->assertOk()->assertDontSee('BEGIN:VEVENT');
         $this->get('https://brandonmb.ca/events/new?reuse='.$events[1]->id)->assertOk()->assertSee('Weekly club, meeting')->assertSee('choose new dates');
         $this->post($url, array_replace($input, ['title' => 'Invalid DST series', 'starts_at' => '2026-03-01T02:30', 'ends_at' => '2026-03-01T04:00']))->assertSessionHasErrors('starts_at');
         $this->assertDatabaseCount('community_events', 3);

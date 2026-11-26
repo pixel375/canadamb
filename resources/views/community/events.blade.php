@@ -26,7 +26,7 @@
         <div class="browse-results-column">
         @if($month)
             @php
-                $calendarFilters = array_filter(['q' => $filters['q'] ?? null, 'category' => $filters['category'] ?? null, 'location' => $filters['location'] ?? null]);
+                $calendarFilters = array_filter(['q' => $filters['q'] ?? null, 'category' => $filters['category'] ?? null, 'location' => $filters['location'] ?? null], fn ($value) => $value !== null && $value !== '');
                 $currentMonth = $month->format('Y-m');
                 $calendarUrl = fn (array $values) => '/events?'.http_build_query($calendarFilters + $values);
             @endphp
@@ -59,6 +59,9 @@
                 </div>
             </section>
         @else<a class="button button-outline mb-4" href="/events?{{ http_build_query(array_filter($filters) + ['month' => now('America/Winnipeg')->format('Y-m')]) }}">Open this month’s calendar</a>@endif
+        @if($items->total())
+            <div class="inline-actions mb-4"><a class="button button-outline" href="/events/calendar?{{ http_build_query(array_filter($filters, fn ($value) => $value !== null && $value !== '')) }}">Download matching events (.ics)</a><span class="field-note">Calendar snapshot · {{ min($items->total(), 50) }} of {{ $items->total() }} events, earliest first. Future updates are not synchronized.</span></div>
+        @endif
         <div class="browse-feed">
             @forelse($items as $item)
                 <article class="panel event-discovery-card"><div class="event-date-tile"><strong>{{ $item->localStart()->format('j') }}</strong><span>{{ $item->localStart()->format('M') }}</span></div><div>

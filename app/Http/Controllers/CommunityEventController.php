@@ -28,18 +28,9 @@ class CommunityEventController extends Controller
     {
         $site = $request->attributes->get('site');
         abort_unless($this->community->enabled($site, 'events'), 404);
-        $filters = $request->validate([
-            'month' => 'nullable|date_format:Y-m',
-            'location' => ['nullable', 'string', 'max:100', Rule::exists('locations', 'slug')->where('province', 'MB')->where('selectable', true)],
-            'day' => 'nullable|date_format:Y-m-d',
-            'q' => 'nullable|string|max:100', 'category' => ['nullable', Rule::in(array_keys(Community::EVENTS))],
-        ]);
-        $place = LocationScope::forBrowsing($site, $filters['location'] ?? null);
+        [$filters, $place, $query] = $this->publicSelection($request);
         $places = $site->isNetwork() ? Location::selectable()->orderBy('name')->get() : collect();
         $month = isset($filters['month']) ? CarbonImmutable::createFromFormat('!Y-m', $filters['month'], 'America/Winnipeg') : null;
-        $query = $this->community->upcoming($this->community->events($place?->id))
-            ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'body', 'venue', 'organizer']))
-            ->when($filters['category'] ?? null, fn ($query, $category) => $query->where('category', $category));
         $calendar = [];
         $agenda = [];
         if ($month) {
@@ -67,6 +58,46 @@ class CommunityEventController extends Controller
         $items = $query->orderBy('starts_at')->orderBy('id')->paginate(24)->withQueryString();
 
         return view('community.events', compact('items', 'filters', 'month', 'calendar', 'agenda', 'place', 'places'));
+    }
+
+    private function publicSelection(Request $request): array
+    {
+        $site = $request->attributes->get('site');
+        abort_unless($this->community->enabled($site, 'events'), 404);
+        $filters = $request->validate([
+            'month' => 'nullable|date_format:Y-m',
+            'location' => ['nullable', 'string', 'max:100', Rule::exists('locations', 'slug')->where('province', 'MB')->where('selectable', true)],
+            'day' => 'nullable|date_format:Y-m-d',
+            'q' => 'nullable|string|max:100', 'category' => ['nullable', Rule::in(array_keys(Community::EVENTS))],
+        ]);
+        $place = LocationScope::forBrowsing($site, $filters['location'] ?? null);
+        $query = $this->community->upcoming($this->community->events($place?->id))
+            ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'body', 'venue', 'organizer']))
+            ->when($filters['category'] ?? null, fn ($query, $category) => $query->where('category', $category));
+
+        return [$filters, $place, $query];
+    }
+
+    public function calendarSelection(Request $request)
+    {
+        [$filters, , $query] = $this->publicSelection($request);
+        if (isset($filters['month'])) {
+            $month = CarbonImmutable::createFromFormat('!Y-m', $filters['month'], 'America/Winnipeg');
+            $this->community->overlapping($query, $month, $month->addMonth());
+        }
+        if (isset($filters['day'])) {
+            $day = CarbonImmutable::createFromFormat('!Y-m-d', $filters['day'], 'America/Winnipeg');
+            abort_if(isset($filters['month']) && $day->format('Y-m') !== $filters['month'], 422);
+            $this->community->overlapping($query, $day, $day->addDay());
+        }
+        $events = $query->orderBy('starts_at')->orderBy('id')->limit(50)->get();
+
+        return response(CalendarExport::events($events), 200, [
+            'Content-Type' => 'text/calendar; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="canadamb-events.ics"',
+            'Cache-Control' => 'private, no-store',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
     }
 
     public function show(Request $request, int $event)

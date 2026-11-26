@@ -9,8 +9,23 @@ final class CalendarExport
 {
     public static function event(CommunityEvent $event): string
     {
+        return self::events([$event]);
+    }
+
+    public static function events(iterable $events): string
+    {
+        $lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//CanadaMB//Community Events//EN', 'CALSCALE:GREGORIAN'];
+        foreach ($events as $event) {
+            $lines = array_merge($lines, self::eventLines($event));
+        }
+        $lines[] = 'END:VCALENDAR';
+
+        return implode("\r\n", array_map(self::fold(...), $lines))."\r\n";
+    }
+
+    private static function eventLines(CommunityEvent $event): array
+    {
         $lines = [
-            'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//CanadaMB//Community Events//EN', 'CALSCALE:GREGORIAN',
             'BEGIN:VEVENT', 'UID:event-'.$event->id.'@canadamb.ca',
             'DTSTAMP:'.CarbonImmutable::parse($event->updated_at, 'UTC')->utc()->format('Ymd\THis\Z'),
             'DTSTART:'.$event->localStart()->utc()->format('Ymd\THis\Z'),
@@ -22,10 +37,10 @@ final class CalendarExport
             'SUMMARY:'.self::escape($event->title),
             'DESCRIPTION:'.self::escape($event->body),
             'LOCATION:'.self::escape($event->venue.', '.$event->location->name.', Manitoba'),
-            'STATUS:CONFIRMED', 'END:VEVENT', 'END:VCALENDAR',
+            'STATUS:CONFIRMED', 'END:VEVENT',
         ]);
 
-        return implode("\r\n", array_map(self::fold(...), $lines))."\r\n";
+        return $lines;
     }
 
     private static function escape(string $value): string

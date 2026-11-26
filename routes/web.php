@@ -80,6 +80,7 @@ Route::get('/community', [CommunityForumController::class, 'index']);
 Route::get('/community/{thread}/replies/{reply}', [CommunityForumController::class, 'replyPermalink'])->whereNumber(['thread', 'reply']);
 Route::get('/community/{thread}', [CommunityForumController::class, 'thread'])->whereNumber('thread');
 Route::get('/events', [CommunityEventController::class, 'index']);
+Route::get('/events/calendar', [CommunityEventController::class, 'calendarSelection'])->middleware('throttle:10,1,event-calendar-selection');
 Route::get('/events/{event}/calendar', [CommunityEventController::class, 'calendarFile'])->whereNumber('event')->middleware('throttle:30,1,event-calendar');
 Route::get('/events/{event}', [CommunityEventController::class, 'show'])->whereNumber('event');
 Route::get('/jobs', [JobController::class, 'index']);
