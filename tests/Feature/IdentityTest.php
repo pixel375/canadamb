@@ -30,8 +30,11 @@ class IdentityTest extends TestCase
     public function test_registration_verification_and_password_reset_use_the_central_identity(): void
     {
         Notification::fake();
+        $this->post('https://canadamb.ca/register', ['name' => 'Short', 'email' => 'short@example.test',
+            'password' => 'Test123', 'password_confirmation' => 'Test123'])
+            ->assertSessionHasErrors('password');
         $this->post('https://canadamb.ca/register', ['name' => 'Taylor', 'email' => 'Taylor@example.test',
-            'password' => 'A-long-test-password-44', 'password_confirmation' => 'A-long-test-password-44'])
+            'password' => 'Test4567', 'password_confirmation' => 'Test4567'])
             ->assertSessionHasNoErrors()->assertRedirect();
         $user = User::sole();
         $this->assertFalse($user->hasVerifiedEmail());
@@ -48,13 +51,13 @@ class IdentityTest extends TestCase
         $this->post('https://canadamb.ca/forgot-password', ['email' => $user->email])->assertRedirect();
         Notification::assertSentTo($user, ResetPassword::class, function (ResetPassword $email) use ($user) {
             $this->post('https://canadamb.ca/reset-password', [
-                'email' => $user->email, 'token' => $email->token, 'password' => 'Another-test-password-55',
-                'password_confirmation' => 'Another-test-password-55',
+                'email' => $user->email, 'token' => $email->token, 'password' => 'Reset567',
+                'password_confirmation' => 'Reset567',
             ])->assertSessionHasNoErrors()->assertRedirect();
 
             return true;
         });
-        $this->assertTrue(Hash::check('Another-test-password-55', $user->fresh()->password));
+        $this->assertTrue(Hash::check('Reset567', $user->fresh()->password));
         $this->assertSame(2, $user->fresh()->session_version);
     }
 

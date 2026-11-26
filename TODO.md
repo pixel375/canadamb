@@ -116,3 +116,5 @@ Owner feedback set 1: 2026-11-26. This file supersedes conflicting earlier roadm
 - First feedback pass source changes: B09 FAQ, C01 reply edit return, C02 visible permalink removal, E10 inbox simplification and ten-row pagination. Implementation submitted for CI; leave unchecked until exact green verification. README points to this checklist.
 
 - Location UX source pass: B01/B02/B04/B05/B06/B07 simplified homepage, separate community cards and persistent provincial picker, local Communities page, mobile pin, breadcrumb and active-portal invitation. Old public location-search UI removed; location API behavior retained. B03 remaining: consistent direct module browsing and explicit query selection persistence; do not mark fully complete yet. CI pending.
+
+- A04 source implementation: shared registration/reset/change password minimum now eight characters, matching UI; retain letter/number, confirmation, byte limit, rate limits and revocation. Tests exercise eight-character passwords and seven-character rejection. CI pending.

@@ -41,7 +41,7 @@ final class Identity
 
     public static function passwordRules(): array
     {
-        return ['required', 'string', 'confirmed', Password::min(12)->letters()->numbers(),
+        return ['required', 'string', 'confirmed', Password::min(8)->letters()->numbers(),
             function (string $attribute, mixed $value, Closure $fail): void {
                 if (is_string($value) && strlen($value) > 72) {
                     $fail('The password may not exceed 72 bytes.');

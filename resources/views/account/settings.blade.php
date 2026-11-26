@@ -47,9 +47,9 @@
                 <form method="post" action="/account/settings/password" class="form-stack mt-3">@csrf
                     <p class="field-note">Changing your password signs you out on every device and community website, including this one.</p>
                     <x-password-field name="current_password" label="Current password" autocomplete="current-password"/>
-                    <x-password-field name="password" label="New password" autocomplete="new-password" :minimum="12"/>
+                    <x-password-field name="password" label="New password" autocomplete="new-password" :minimum="8"/>
                     <small class="field-note">At least 12 characters, including a letter and a number. Maximum 72 bytes.</small>
-                    <x-password-field name="password_confirmation" label="Confirm new password" autocomplete="new-password" :minimum="12"/>
+                    <x-password-field name="password_confirmation" label="Confirm new password" autocomplete="new-password" :minimum="8"/>
                     <button class="button button-primary">Change password and sign out</button>
                 </form>
             </details>

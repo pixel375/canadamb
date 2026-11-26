@@ -35,10 +35,10 @@
             @if($mode !== 'verify')<label>Email<input type="email" name="email" value="{{ is_string($email) ? $email : '' }}" required maxlength="254" autocomplete="email"></label>@endif
             @if($mode === 'reset')<input type="hidden" name="token" value="{{ $token }}">@endif
             @if(in_array($mode, ['login', 'register', 'reset'], true))
-                <x-password-field name="password" label="Password" :autocomplete="$mode === 'login' ? 'current-password' : 'new-password'" :minimum="$mode === 'login' ? null : 12"/>
-                @if($mode !== 'login')<small id="password-rules" class="field-note">Use at least 12 characters, including a letter and a number. Maximum 72 bytes.</small>@endif
+                <x-password-field name="password" label="Password" :autocomplete="$mode === 'login' ? 'current-password' : 'new-password'" :minimum="$mode === 'login' ? null : 8"/>
+                @if($mode !== 'login')<small id="password-rules" class="field-note">Use at least 8 characters, including a letter and a number. A longer unique password is recommended (maximum 72 bytes).</small>@endif
             @endif
-            @if(in_array($mode, ['register', 'reset'], true))<x-password-field name="password_confirmation" label="Confirm password" autocomplete="new-password" :minimum="12"/>@endif
+            @if(in_array($mode, ['register', 'reset'], true))<x-password-field name="password_confirmation" label="Confirm password" autocomplete="new-password" :minimum="8"/>@endif
             @if($mode === 'verify')<p>Open the verification link in your email. You can request a new link here.</p>@endif
             <div><button class="button button-primary">{{ match($mode) { 'forgot' => 'Send reset link', 'verify' => 'Resend verification link', default => $title } }}</button></div>
         </form>

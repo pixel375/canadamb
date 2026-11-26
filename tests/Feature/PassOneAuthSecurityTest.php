@@ -74,7 +74,7 @@ class PassOneAuthSecurityTest extends TestCase
     {
         $user = User::factory()->create();
         $url = 'https://canadamb.ca/account/settings/password';
-        $replacement = ['password' => 'Replacement-test-42', 'password_confirmation' => 'Replacement-test-42'];
+        $replacement = ['password' => 'Change12', 'password_confirmation' => 'Change12'];
         $this->post($url, $replacement)->assertRedirect('/login');
         $this->actingAs($user)->post($url, ['current_password' => 'incorrect'] + $replacement)->assertSessionHasErrors('current_password');
         $this->assertTrue(Hash::check('password', $user->fresh()->password));
@@ -82,7 +82,7 @@ class PassOneAuthSecurityTest extends TestCase
         $this->post($url, ['current_password' => 'password'] + $replacement)->assertRedirect('/login');
         $this->assertGuest();
         $this->assertSame(1, $user->fresh()->session_version);
-        $this->assertTrue(Hash::check('Replacement-test-42', $user->fresh()->password));
+        $this->assertTrue(Hash::check('Change12', $user->fresh()->password));
         $this->assertDatabaseHas('audit_logs', ['action' => 'user.password-changed', 'actor_id' => $user->id]);
         $this->actingAs($user->fresh())->withSession(['session_version' => 0, 'session_host' => 'brandonmb.ca'])
             ->get('https://brandonmb.ca/account/profile')->assertRedirect('/auth/start');
