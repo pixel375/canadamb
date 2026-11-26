@@ -373,18 +373,23 @@ class CommunityForumController extends Controller
 
     public function notifications(Request $request)
     {
-        $view = $request->validate(['view' => 'sometimes|in:all,unread'])['view'] ?? 'all';
+        $filters = $request->validate(['view' => 'sometimes|in:all,unread', 'q' => 'nullable|string|max:100', 'period' => 'nullable|in:7,30,90']);
+        $view = $filters['view'] ?? 'all';
         $unread = $this->visibleNotifications($request)->whereNull('notifications.read_at');
         $unreadCount = (clone $unread)->count();
         $readCutoff = $unread->max('notifications.id');
-        $notifications = $this->visibleNotifications($request)
+        $matching = $this->visibleNotifications($request)
             ->when($view === 'unread', fn (Builder $query) => $query->whereNull('notifications.read_at'))
-            ->orderByRaw('CASE WHEN notifications.read_at IS NULL THEN 0 ELSE 1 END')
+            ->when($filters['period'] ?? null, fn ($query, $days) => $query->where('notifications.created_at', '>=', now()->subDays((int) $days)));
+        foreach (KeywordSearch::patterns($filters['q'] ?? '') as $pattern) {
+            $matching->whereRaw("LOWER(threads.title) LIKE ? ESCAPE '!'", [$pattern]);
+        }
+        $notifications = $matching->orderByRaw('CASE WHEN notifications.read_at IS NULL THEN 0 ELSE 1 END')
             ->orderByDesc('notifications.id')
             ->paginate(20, ['notifications.id', 'notifications.reply_id', 'notifications.read_at', 'notifications.created_at', 'threads.id as thread_id', 'threads.title'])
             ->withQueryString();
 
-        return view('community.notifications', compact('notifications', 'view', 'unreadCount', 'readCutoff'));
+        return view('community.notifications', compact('notifications', 'view', 'unreadCount', 'readCutoff', 'filters'));
     }
 
     public function readNotification(Request $request, int $notification)

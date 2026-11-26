@@ -106,6 +106,9 @@ class AccountActivityNavigationTest extends TestCase
             ->assertOk()->assertSee('aria-label="1 unread notifications"', false);
         $this->getJson('https://canadamb.ca/account/activity-counts')->assertOk()->assertJsonPath('notifications', 2);
         $this->getJson('https://brandonmb.ca/account/activity-counts')->assertOk()->assertJsonPath('notifications', 1);
+        $this->get('https://canadamb.ca/account/community-notifications?q=NEWS%20Brandon&period=7')->assertOk()->assertSee('Brandon neighbourhood news')->assertDontSee('Winnipeg neighbourhood news');
+        $this->get('https://brandonmb.ca/account/community-notifications?q=Winnipeg')->assertOk()->assertSee('No notifications match these filters')->assertDontSee('Winnipeg neighbourhood news');
+        $this->get('https://canadamb.ca/account/community-notifications?q=Unapproved')->assertOk()->assertDontSee('Unapproved reply hidden');
         $this->get('https://brandonmb.ca/account/notifications')
             ->assertOk()->assertSee('Brandon neighbourhood news')
             ->assertDontSee('Winnipeg neighbourhood news')
