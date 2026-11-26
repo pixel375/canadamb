@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-26 — local portal experience controls
+
+Recovered production `66f76c7` from [successful guarded deploy](https://github.com/pixel375/canadamb/actions/runs/45758835591), with independent private and public audits and exactly two retained releases (21,903 entries). Subsequent source work adds super-admin-only, version-bound per-portal theme presets, clock format and hide-only clock/weather controls. Existing city accent and moderation rules are preserved. The weather endpoint respects portal-level visibility. Network disabled utilities cannot be enabled locally. No actual settings changed or migrations added; verify new source separately.
+
 ## 2026-11-25 — stricter community moderation overrides
 
 Added super-admin-only, version-bound, explicitly confirmed manual-review overrides for each eligible content type on local community configurations. Decisions use the content location rather than its request host, so provincial posting cannot bypass stricter local rules. Ordinary community edits preserve these restrictions. Global manual review cannot be relaxed by a local configuration. No new migrations, published policy changes or launch activation. Includes backend regression coverage; verify exact release separately.

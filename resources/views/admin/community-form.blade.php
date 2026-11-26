@@ -63,6 +63,27 @@
         @can('manage-theme')
             @unless($managed->isNetwork())
                 <section class="panel form-stack">
+                    <h2>Community appearance and utilities</h2>
+                    <p>Use the published network appearance or choose a separate local preset. The existing community accent is retained. Clock and weather visibility can only be reduced locally; a globally disabled utility cannot be enabled here.</p>
+                    <form class="form-stack" method="post" action="/admin/communities/{{ $managed->id }}/experience">
+                        @csrf
+                        <input type="hidden" name="version" value="{{ $managed->configurationVersion() }}">
+                        <label>Theme preset<select name="preset">
+                            <option value="inherit">Inherit network theme</option>
+                            @foreach(\App\Support\Themes::LABELS as $key => $label)
+                                @if($key !== 'custom')<option value="{{ $key }}" @selected(($managed->overrides['experience']['preset'] ?? 'inherit') === $key)>{{ $label }}</option>@endif
+                            @endforeach
+                        </select></label>
+                        <div class="form-grid">
+                            <label>Clock visibility<select name="clock"><option value="inherit">Inherit network visibility</option><option value="hide" @selected(($managed->overrides['experience']['clock'] ?? 'inherit') === 'hide')>Hide clock</option></select></label>
+                            <label>Clock format<select name="clock_format"><option value="inherit">Inherit network format</option><option value="12" @selected(($managed->overrides['experience']['clock_format'] ?? '') === '12')>12-hour</option><option value="24" @selected(($managed->overrides['experience']['clock_format'] ?? '') === '24')>24-hour</option></select></label>
+                            <label>Weather visibility<select name="weather"><option value="inherit">Inherit network visibility</option><option value="hide" @selected(($managed->overrides['experience']['weather'] ?? 'inherit') === 'hide')>Hide weather</option></select></label>
+                        </div>
+                        <p class="field-note">Changes apply immediately to this portal after saving. CanadaMB and other portals are unchanged.</p>
+                        <div><button class="button button-outline">Save community experience</button></div>
+                    </form>
+                </section>
+                <section class="panel form-stack">
                     <h2>Community moderation restrictions</h2>
                     <p>Require manual approval for new content associated with this community, regardless of which portal receives it. These restrictions cannot loosen the published network policy and take effect immediately when saved.</p>
                     <form class="form-stack" method="post" action="/admin/communities/{{ $managed->id }}/publication-policy">

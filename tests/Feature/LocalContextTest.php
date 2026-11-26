@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Location;
+use App\Models\Site;
 use App\Models\User;
 use App\Support\NetworkSettings;
 use Database\Seeders\DatabaseSeeder;
@@ -79,5 +80,43 @@ class LocalContextTest extends TestCase
         $place->update(['latitude' => 49.86]);
         $this->getJson($url)->assertOk()->assertJsonPath('weather.temperature_c', 2);
         Http::assertSentCount(3);
+    }
+
+    public function test_community_experience_overrides_are_role_protected_local_and_cannot_enable_disabled_utilities(): void
+    {
+        Http::preventStrayRequests();
+        $admin = User::factory()->create(['role' => 'super_admin']);
+        $operator = User::factory()->create(['role' => 'network_admin']);
+        $site = Site::where('code', 'brandon')->sole();
+        $site->location->update(['latitude' => 49.84, 'longitude' => -99.95]);
+        $settings = app(NetworkSettings::class);
+        $settings->saveDraft($admin->id, fn (array $current) => array_replace($current, [
+            'weather_enabled' => true, 'weather_key_encrypted' => Crypt::encryptString('fixture-weather-key-123456789'),
+        ]));
+        $settings->publish($admin->id);
+        $base = 'https://canadamb.ca/admin/communities/'.$site->id;
+        $data = ['version' => $site->configurationVersion(), 'preset' => 'forest', 'clock' => 'inherit', 'clock_format' => '24', 'weather' => 'hide'];
+        $this->actingAs($operator)->post($base.'/experience', $data)->assertForbidden();
+        $this->actingAs($admin)->get($base)->assertOk()->assertSee('Community appearance and utilities');
+        $this->post($base.'/experience', $data)->assertRedirect($base)->assertSessionHasNoErrors();
+        $this->post($base.'/experience', $data)->assertSessionHasErrors('version');
+        $this->get('https://brandonmb.ca/')->assertOk()->assertSee('#166534')->assertSee('data-clock-format="24"', false)->assertDontSee('data-local-weather=', false);
+        $this->get('https://canadamb.ca/?location=brandon')->assertOk()->assertDontSee('#166534')->assertSee('data-clock-format="12"', false)->assertSee('data-local-weather=', false);
+        $this->getJson('https://brandonmb.ca/local-weather/'.$site->location_id)->assertNotFound();
+        Http::assertNothingSent();
+        $this->post($base.'/experience', array_replace($data, ['version' => $site->fresh()->configurationVersion(), 'weather' => 'show']))->assertSessionHasErrors('weather');
+        $this->actingAs($operator)->put($base, [
+            'version' => $site->fresh()->configurationVersion(), 'name' => $site->name, 'description' => $site->description,
+            'accent_type' => 'solid', 'accent_colors' => '#228855', 'accent_thickness' => 4, 'accent_direction' => 90,
+        ])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame('forest', $site->fresh()->overrides['experience']['preset']);
+        $this->actingAs($admin)->post($base.'/experience', array_replace($data, [
+            'version' => $site->fresh()->configurationVersion(), 'preset' => 'inherit', 'clock' => 'inherit', 'clock_format' => 'inherit', 'weather' => 'inherit',
+        ]))->assertRedirect()->assertSessionHasNoErrors();
+        $settings->saveDraft($admin->id, fn (array $current) => array_replace($current, ['local_clock_enabled' => false, 'weather_enabled' => false]));
+        $settings->publish($admin->id);
+        $this->get('https://brandonmb.ca/')->assertOk()->assertDontSee('#166534')->assertDontSee('data-manitoba-clock', false)->assertDontSee('data-local-weather=', false);
+        $this->getJson('https://brandonmb.ca/local-weather/'.$site->location_id)->assertNotFound();
+        $this->assertDatabaseHas('audit_logs', ['action' => 'site.experience', 'site_id' => $site->id]);
     }
 }

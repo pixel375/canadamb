@@ -12,6 +12,7 @@ use App\Support\Identity;
 use App\Support\Marketplace;
 use App\Support\NetworkSettings;
 use App\Support\PublicationPolicy;
+use App\Support\Themes;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -102,6 +103,33 @@ class CommunityController extends Controller
         }, attempts: 3);
 
         return redirect('/admin/communities/'.$site->id)->with('status', 'Community moderation restrictions saved.');
+    }
+
+    public function experience(Request $request, Site $site)
+    {
+        abort_if($site->isNetwork(), 403);
+        $data = $request->validate([
+            'version' => 'required|string|size:64',
+            'preset' => ['required', Rule::in(array_merge(['inherit'], array_diff(array_keys(Themes::LABELS), ['custom'])))],
+            'clock' => 'required|in:inherit,hide',
+            'clock_format' => 'required|in:inherit,12,24',
+            'weather' => 'required|in:inherit,hide',
+        ]);
+        DB::transaction(function () use ($request, $site, $data) {
+            $locked = Site::lockForUpdate()->findOrFail($site->id);
+            $this->checkVersion($locked->configurationVersion(), $data['version']);
+            $overrides = $locked->overrides ?? [];
+            $before = $overrides['experience'] ?? [];
+            $after = array_diff_key($data, ['version' => true]);
+            if ($before === $after) {
+                return;
+            }
+            $overrides['experience'] = $after;
+            $locked->update(['overrides' => $overrides]);
+            Audit::record('site.experience', $request->user()->id, $locked->id, ['before' => $before, 'after' => $after]);
+        }, attempts: 3);
+
+        return redirect('/admin/communities/'.$site->id)->with('status', 'Community experience settings saved.');
     }
 
     public function preview(Request $request, Site $site, PublicController $public, Marketplace $marketplace)

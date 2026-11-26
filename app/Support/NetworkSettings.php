@@ -57,6 +57,24 @@ final class NetworkSettings
             }
         }
 
+        if (! $site->isNetwork()) {
+            $experience = $site->overrides['experience'] ?? [];
+            $preset = $experience['preset'] ?? 'inherit';
+            if (isset(Themes::LABELS[$preset]) && $preset !== 'custom') {
+                $settings['preset'] = $preset;
+                $settings['palette'] = Themes::preset($preset);
+            }
+            if (($experience['clock'] ?? 'inherit') === 'hide') {
+                $settings['local_clock_enabled'] = false;
+            }
+            if (in_array($experience['clock_format'] ?? null, ['12', '24'], true)) {
+                $settings['clock_format'] = $experience['clock_format'];
+            }
+            if (($experience['weather'] ?? 'inherit') === 'hide') {
+                $settings['weather_enabled'] = false;
+            }
+        }
+
         return $settings;
     }
 
