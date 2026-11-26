@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-25 — stricter community moderation overrides
+
+Added super-admin-only, version-bound, explicitly confirmed manual-review overrides for each eligible content type on local community configurations. Decisions use the content location rather than its request host, so provincial posting cannot bypass stricter local rules. Ordinary community edits preserve these restrictions. Global manual review cannot be relaxed by a local configuration. No new migrations, published policy changes or launch activation. Includes backend regression coverage; verify exact release separately.
+
 ## 2026-11-25 — recovered production checkpoint and configuration lifecycle
 
 Exact implementation `16035e6` passed backend and browser CI and [guarded Hostinger release](https://github.com/pixel375/canadamb/actions/runs/45754789631), including separate live database/backup and public PWA/prelaunch audits. Retention kept two complete releases (21,888 filesystem entries). This includes local clock, optional encrypted weather settings, configurable publication policy, expanded administration, theme presets and regression fixes. Subsequent source work adds super-admin-only version-bound confirmed discard of the shared unpublished configuration, redacted paginated revision metadata, coordinate-bound weather caching with an observation-age cap, and credential input scrubbing for JSON/form requests. No migrations, setting publication or launch-switch changes. Verify the new commit separately.

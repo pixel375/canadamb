@@ -299,6 +299,7 @@ Route::prefix('admin')->middleware(['auth', 'verified', 'can:manage-network'])->
         Route::post('/local-context', [LocalContextController::class, 'save'])->middleware('throttle:6,1,local-context');
         Route::get('/publication-policy', [PublicationPolicyController::class, 'edit']);
         Route::post('/publication-policy', [PublicationPolicyController::class, 'save'])->middleware('throttle:8,1,publication-policy');
+        Route::post('/communities/{site}/publication-policy', [CommunityController::class, 'publicationPolicy'])->whereNumber('site')->middleware('throttle:8,1,community-publication-policy');
         Route::get('/settings', [SettingsController::class, 'edit']);
         Route::post('/settings', [SettingsController::class, 'save']);
         Route::post('/settings/publish', [SettingsController::class, 'publish']);

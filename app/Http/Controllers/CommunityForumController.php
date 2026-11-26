@@ -318,7 +318,7 @@ class CommunityForumController extends Controller
         $data['location_id'] = $site->isNetwork() && $requested === null ? null : LocationScope::forPublication($site, $requested);
         $item = DB::transaction(function () use ($request, $data) {
             $item = CommunityThread::create($data + ['author_id' => $request->user()->id]);
-            if (PublicationPolicy::allows('discussions', $request->user())) {
+            if (PublicationPolicy::allows('discussions', $request->user(), $item->location_id)) {
                 $item->forceFill(['status' => 'approved', 'last_activity_at' => now()])->save();
                 Audit::record('community.thread.auto-approved', null, context: ['thread' => $item->id]);
             }
@@ -336,7 +336,7 @@ class CommunityForumController extends Controller
             $item = $this->visible($request)->lockForUpdate()->findOrFail($thread);
             abort_if($item->locked, 409, 'This discussion is locked.');
             $reply = $item->replies()->create($data + ['author_id' => $request->user()->id]);
-            if (PublicationPolicy::allows('replies', $request->user())) {
+            if (PublicationPolicy::allows('replies', $request->user(), $item->location_id)) {
                 ReplyPublication::approve($item, $reply);
                 Audit::record('community.reply.auto-approved', null, context: ['reply' => $reply->id]);
             }

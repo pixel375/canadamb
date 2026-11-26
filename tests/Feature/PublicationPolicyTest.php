@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\CommunityReply;
 use App\Models\CommunityThread;
 use App\Models\Listing;
+use App\Models\Site;
 use App\Models\User;
 use App\Support\NetworkSettings;
 use Database\Seeders\DatabaseSeeder;
@@ -54,5 +55,43 @@ class PublicationPolicyTest extends TestCase
         $this->actingAs($fresh)->post('https://brandonmb.ca/community/'.$thread->id.'/replies', ['body' => 'This later reply requires review.'])->assertRedirect();
         $this->assertDatabaseHas('community_replies', ['body' => 'This later reply requires review.', 'status' => 'pending']);
         $this->assertDatabaseHas('community_replies', ['body' => 'I can help with planting.', 'status' => 'approved']);
+    }
+
+    public function test_community_restrictions_cannot_be_bypassed_by_the_provincial_portal_or_ordinary_site_edits(): void
+    {
+        $admin = User::factory()->create(['role' => 'super_admin']);
+        $member = User::factory()->create();
+        $operator = User::factory()->create(['role' => 'network_admin']);
+        $settings = app(NetworkSettings::class);
+        $settings->saveDraft($admin->id, fn (array $current) => array_replace($current, ['publication_policy' => [
+            'listings' => 'verified', 'discussions' => 'verified', 'replies' => 'verified',
+        ]]));
+        $settings->publish($admin->id);
+        $site = Site::where('code', 'brandon')->sole();
+        $base = 'https://canadamb.ca/admin/communities/'.$site->id;
+        $data = ['version' => $site->configurationVersion(), 'confirm_policy' => '1', 'manual' => ['listings' => '1', 'discussions' => '1', 'replies' => '1']];
+        $this->actingAs($operator)->post($base.'/publication-policy', $data)->assertForbidden();
+        $this->actingAs($admin)->get($base)->assertOk()->assertSee('Community moderation restrictions');
+        $this->post($base.'/publication-policy', $data)->assertRedirect($base)->assertSessionHasNoErrors();
+        $this->post($base.'/publication-policy', $data)->assertSessionHasErrors('version');
+        $this->actingAs($operator)->put($base, [
+            'version' => $site->fresh()->configurationVersion(), 'name' => $site->name, 'description' => $site->description,
+            'accent_type' => 'solid', 'accent_colors' => '#228855', 'accent_thickness' => 4, 'accent_direction' => 90,
+        ])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertTrue($site->fresh()->overrides['manual_publication']['listings']);
+        $this->actingAs($member)->post('https://canadamb.ca/marketplace', [
+            'title' => 'Restricted location desk', 'description' => 'A useful desk.', 'price' => 20,
+            'category' => 'furniture', 'condition' => 'good', 'location_id' => $site->location_id,
+        ])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame('pending', Listing::sole()->status);
+        $this->post('https://brandonmb.ca/community', ['title' => 'Restricted city thread', 'body' => 'A local discussion for the community.', 'category' => 'general'])->assertRedirect();
+        $thread = CommunityThread::sole();
+        $this->assertSame('pending', $thread->status);
+        $thread->forceFill(['status' => 'approved'])->save();
+        $this->post('https://canadamb.ca/community/'.$thread->id.'/replies', ['body' => 'This local reply requires review.'])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame('pending', CommunityReply::sole()->status);
+        $this->post('https://canadamb.ca/community', ['title' => 'Province-wide topic', 'body' => 'This topic is for the whole province.', 'category' => 'general'])->assertRedirect();
+        $this->assertDatabaseHas('community_threads', ['title' => 'Province-wide topic', 'status' => 'approved']);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'site.publication-policy', 'site_id' => $site->id]);
     }
 }

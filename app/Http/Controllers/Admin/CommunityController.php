@@ -11,6 +11,7 @@ use App\Support\Audit;
 use App\Support\Identity;
 use App\Support\Marketplace;
 use App\Support\NetworkSettings;
+use App\Support\PublicationPolicy;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -65,6 +66,7 @@ class CommunityController extends Controller
         DB::transaction(function () use ($request, $site, $data, $version) {
             $locked = Site::lockForUpdate()->findOrFail($site->id);
             $this->checkVersion($locked->configurationVersion(), $version);
+            $data['overrides'] = array_replace($locked->overrides ?? [], $data['overrides']);
             $before = $locked->only(array_keys($data));
             $locked->fill($data);
             if (! $locked->isDirty()) {
@@ -75,6 +77,31 @@ class CommunityController extends Controller
         });
 
         return redirect('/admin/communities/'.$site->id)->with('status', 'Community configuration saved.');
+    }
+
+    public function publicationPolicy(Request $request, Site $site)
+    {
+        abort_if($site->isNetwork(), 403);
+        $rules = ['version' => 'required|string|size:64', 'confirm_policy' => 'accepted'];
+        foreach (PublicationPolicy::TYPES as $type => $label) {
+            $rules['manual.'.$type] = 'required|boolean';
+        }
+        $data = $request->validate($rules);
+        DB::transaction(function () use ($request, $site, $data) {
+            $locked = Site::lockForUpdate()->findOrFail($site->id);
+            $this->checkVersion($locked->configurationVersion(), $data['version']);
+            $overrides = $locked->overrides ?? [];
+            $before = $overrides['manual_publication'] ?? [];
+            $after = array_map(fn ($value) => (bool) $value, $data['manual']);
+            if ($before === $after) {
+                return;
+            }
+            $overrides['manual_publication'] = $after;
+            $locked->update(['overrides' => $overrides]);
+            Audit::record('site.publication-policy', $request->user()->id, $locked->id, ['before' => $before, 'after' => $after]);
+        }, attempts: 3);
+
+        return redirect('/admin/communities/'.$site->id)->with('status', 'Community moderation restrictions saved.');
     }
 
     public function preview(Request $request, Site $site, PublicController $public, Marketplace $marketplace)

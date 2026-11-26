@@ -103,7 +103,7 @@ class MarketplaceController extends Controller
                 $item = Listing::create($data + ['user_id' => $request->user()->id, 'status' => 'pending']);
                 $item->media()->createMany($media);
                 $this->marketplace->history($item, null, $request->user()->id);
-                if (PublicationPolicy::allows('listings', $request->user())) {
+                if (PublicationPolicy::allows('listings', $request->user(), $item->location_id)) {
                     $this->marketplace->changeStatus($item, 'active', null, 'Published by configured automatic approval policy.');
                     Audit::record('marketplace.listing.auto-approved', null, context: ['listing' => $item->id]);
                 }

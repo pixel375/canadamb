@@ -60,6 +60,26 @@
     </form>
 
     @if($editing)
+        @can('manage-theme')
+            @unless($managed->isNetwork())
+                <section class="panel form-stack">
+                    <h2>Community moderation restrictions</h2>
+                    <p>Require manual approval for new content associated with this community, regardless of which portal receives it. These restrictions cannot loosen the published network policy and take effect immediately when saved.</p>
+                    <form class="form-stack" method="post" action="/admin/communities/{{ $managed->id }}/publication-policy">
+                        @csrf
+                        <input type="hidden" name="version" value="{{ $managed->configurationVersion() }}">
+                        @foreach(\App\Support\PublicationPolicy::TYPES as $type => $label)
+                            <label>{{ $label }}<select name="manual[{{ $type }}]">
+                                <option value="0" @selected(!($managed->overrides['manual_publication'][$type] ?? false))>Inherit published network policy</option>
+                                <option value="1" @selected($managed->overrides['manual_publication'][$type] ?? false)>Always require manual review</option>
+                            </select></label>
+                        @endforeach
+                        <label class="checkbox"><input type="checkbox" name="confirm_policy" value="1" required> Apply these community restrictions to future submissions</label>
+                        <div><button class="button button-outline">Save moderation restrictions</button></div>
+                    </form>
+                </section>
+            @endunless
+        @endcan
         <div class="panel form-stack">
             <h2>Deployment readiness</h2>
             <p>At your DNS provider, point this domain to the network host. Add it as a parked domain in Hostinger and confirm a valid HTTPS certificate for this hostname.</p>
