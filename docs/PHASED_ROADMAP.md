@@ -32,3 +32,11 @@ Issue #11 delivers a default-off prelaunch registration switch, audited manual v
 - No changes to production `.env`, APP_KEY, Passport keys, database content, or shared media as part of documentation/deployment script fixes.
 - For each phase: tests on SQLite and MariaDB, actual affected-host browser checks, security checks, one release at a time, and reversible UI changes. Use non-destructive migrations with a verified backup/restore strategy.
 - Avoid implementing new monetization or a broad redesign during the deployment-stabilization pass. Capture visual references separately.
+
+## Local context and administration expansion (2026-11-25)
+
+- Responsive Manitoba-local clock: compact desktop utility row and mobile navigation drawer, named timezone and daylight-saving support; configurable visibility/format.
+- Local current weather: optional free-tier compatible WeatherAPI.com integration with protected credential entry, community-level coordinates only, attribution, informational disclaimer, bounded shared cache and provider-call budget. No real key in Git or browser. Keep off until configured and verified.
+- Admin redesign: grouped role-aware navigation, clear operational dashboard, settings shortcuts, accessible responsive layouts; expand theme presets, preview and safe publishing controls.
+- Configurable independent moderation policies for new Marketplace listings, discussions and comments/replies. Default manual review; deliberate super-admin draft/publish, verified-member eligibility, audit trail, no retroactive approval; edits and sensitive workflows retain manual review. Extend further types only after separate acceptance.
+- Follow-up: full theme editor UX, per-community policy overrides, finer trusted-member/anti-spam controls, weather provider acceptance and quota monitoring, real device acceptance.

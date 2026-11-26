@@ -692,3 +692,23 @@ for (const toggle of document.querySelectorAll('[data-password-toggle]')) {
         toggle.setAttribute('aria-pressed', String(visible));
     });
 }
+
+// Manitoba-local clock: use the named timezone, not the visitor device timezone.
+const localClocks = document.querySelectorAll('[data-manitoba-clock]');
+if (localClocks.length) {
+    const timeFormat = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Winnipeg', hour: 'numeric', minute: '2-digit', hour12: true });
+    const dateFormat = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Winnipeg', weekday: 'short', month: 'short', day: 'numeric' });
+    let clockTimer;
+    const updateClocks = () => {
+        clearTimeout(clockTimer);
+        const now = new Date();
+        for (const clock of localClocks) {
+            clock.textContent = timeFormat.format(now);
+            clock.dateTime = now.toISOString();
+        }
+        for (const date of document.querySelectorAll('[data-manitoba-date]')) date.textContent = dateFormat.format(now);
+        if (!document.hidden) clockTimer = setTimeout(updateClocks, 60000 - Date.now() % 60000 + 50);
+    };
+    document.addEventListener('visibilitychange', updateClocks);
+    updateClocks();
+}

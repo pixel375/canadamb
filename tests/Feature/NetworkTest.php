@@ -17,6 +17,15 @@ class NetworkTest extends TestCase
 
     protected $seeder = DatabaseSeeder::class;
 
+    public function test_manitoba_clock_uses_local_timezone_and_both_navigation_surfaces(): void
+    {
+        $this->travelTo('2026-01-15 18:30:00 UTC');
+        $this->get('https://brandonmb.ca/')->assertOk()->assertSee('local-context-bar', false)->assertSee('drawer-local-context', false)
+            ->assertSee('12:30 pm')->assertSee('Manitoba time');
+        $this->travelTo('2026-07-15 18:30:00 UTC');
+        $this->get('https://canadamb.ca/')->assertOk()->assertSee('1:30 pm')->assertSee('Manitoba time');
+    }
+
     public function test_each_active_domain_has_its_own_identity(): void
     {
         $this->get('https://canadamb.ca/')->assertOk()->assertSee('CanadaMB')->assertSee('#E85D75');

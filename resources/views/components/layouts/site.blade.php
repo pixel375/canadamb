@@ -78,6 +78,9 @@
 <?php $registerLink = !config('network.prelaunch') || ($networkSettings['prelaunch_test_registration_enabled'] ?? false) === true ? ($site->isNetwork() ? '/register' : \App\Support\NetworkUrl::to(\App\Support\NetworkUrl::main(), '/register?community='.$site->id)) : null; ?>
 @if($isPreview)<aside class="preview-notice">Preview of {{ $site->name }} <a href="/admin/communities/{{ $site->id }}">Return to community settings</a></aside>@endif
 <header class="site-header">
+    @unless($isPreview)
+        <div class="local-context-bar"><div class="container"><x-local-context :place="$browsePlace" :settings="$networkSettings"/></div></div>
+    @endunless
     <div class="container masthead">
         @unless($isPreview)
             <button id="site-menu-open" class="site-menu-trigger" type="button" aria-label="Open all sections menu" aria-controls="site-drawer" aria-haspopup="dialog">
@@ -196,6 +199,7 @@
         <strong>Explore {{ $site->name }}</strong>
         <button id="site-menu-close" class="site-drawer-close" type="button" aria-label="Close menu"><x-icon name="close" size="22"/></button>
     </div>
+    <div class="drawer-local-context"><x-local-context :place="$browsePlace" :settings="$networkSettings"/></div>
     @if($quickSection)
         <div class="site-drawer-quick">
             <form class="site-drawer-search" action="/{{ $quickSection }}" method="get" role="search">
