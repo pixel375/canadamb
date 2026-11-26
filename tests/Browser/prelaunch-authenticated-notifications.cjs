@@ -75,6 +75,21 @@ const fs = require('node:fs');
             }
         }
 
+        await page.setViewportSize({ width: 390, height: 900 });
+        await page.goto(host + '/account/community-notifications?view=read');
+        check(await page.locator('.discussion-notification-row').count() === 1, 'Read history did not isolate read notification');
+        await page.getByText('Manage selected notifications', { exact: true }).click();
+        const notificationSelection = page.locator('#notification-selection');
+        const selectedNotice = page.locator('input[form="notification-selection"][name="notifications[]"]').first();
+        await selectedNotice.check();
+        await notificationSelection.locator('select[name="action"]').selectOption('unread');
+        const confirmation = notificationSelection.locator('input[type="checkbox"][required]');
+        if (await confirmation.count()) await confirmation.check();
+        await notificationSelection.locator('button[type="submit"], button:not([type])').click();
+        await page.goto(host + '/account/community-notifications?view=unread');
+        check(await page.locator('.discussion-notification-row.is-unread').count() === 2, 'Selected read notification did not become unread');
+        console.log('PASS: selected read history action through mobile browser');
+
         await page.goto(host + '/account/followed-discussions');
         const followingForm = page.locator('form[action="/account/followed-discussions"]');
         await followingForm.locator('input[name="q"]').fill('garden');
@@ -540,6 +555,17 @@ const fs = require('node:fs');
             check(await page.locator('.message-thread').count() === 1, 'Multiword conversation search failed');
             await page.locator('.message-thread').click();
             check(await page.getByText('The oak bookshelf is still available.', { exact: true }).isVisible(), 'Conversation missing message');
+            if (width === 390) {
+                const conversationUrl = page.url();
+                await page.getByText('Search this conversation', { exact: true }).click();
+                const historySearch = page.locator('form[method="get"][action^="/account/messages/"]');
+                await historySearch.locator('input[name="q"]').fill('bookshelf');
+                await historySearch.getByRole('button', { name: 'Search history' }).click();
+                await page.waitForURL(url => url.searchParams.get('q') === 'bookshelf');
+                check(await page.locator('[data-chat-sync]').count() === 0, 'Private history search should not poll live');
+                check(await page.getByText('The oak bookshelf is still available.', { exact: true }).isVisible(), 'Private history search lost matching message');
+                await page.goto(conversationUrl);
+            }
             await page.locator('[data-chat-jump]').click();
             await page.locator('textarea[name="body"]').fill('Thanks for confirming.');
             check((await page.locator('[data-character-feedback]').innerText()).includes('22 / 2000'), 'Chat character counter did not update');

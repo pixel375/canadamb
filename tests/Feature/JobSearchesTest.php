@@ -35,7 +35,7 @@ class JobSearchesTest extends TestCase
         $branch = $business->locations()->create(['location_id' => Location::where('slug', 'brandon')->sole()->id, 'address' => '1 Alert Road']);
         $other = $business->locations()->create(['location_id' => Location::where('slug', 'winnipeg')->sole()->id, 'address' => '2 Alert Road']);
         $base = 'https://brandonmb.ca/account/job-searches';
-        $filters = ['name' => 'Retail search', 'q' => 'clerk', 'type' => 'full-time', 'pay_unit' => 'hour', 'minimum_pay' => '25', 'alerts' => '1'];
+        $filters = ['name' => 'Retail search', 'q' => 'clerk', 'employer' => 'Alert employer', 'type' => 'full-time', 'pay_unit' => 'hour', 'minimum_pay' => '25', 'alerts' => '1'];
         $this->actingAs($member)->post($base, $filters)->assertNotFound();
         config(['network.job_searches' => true]);
         $this->post($base, $filters)->assertRedirect()->assertSessionHasNoErrors();
@@ -55,8 +55,11 @@ class JobSearchesTest extends TestCase
         $make($branch, 'Pending clerk', 'pending');
         $make($other, 'Other city clerk', 'approved');
         $make($branch, 'Low pay clerk', 'approved', 2000);
-        $this->get($base)->assertOk()->assertSee('1 new match')->assertSee('Keywords: clerk')->assertSee('Minimum pay: $25.00');
-        $this->get($url)->assertOk()->assertSee('Matching clerk')->assertDontSee('Pending clerk')->assertDontSee('Other city clerk')->assertDontSee('Low pay clerk');
+        $unrelated = Business::create(['name' => 'Other employer', 'slug' => 'other-alert-employer', 'category' => 'retail', 'status' => 'active']);
+        $unrelatedBranch = $unrelated->locations()->create(['location_id' => $branch->location_id, 'address' => '3 Alert Road']);
+        $make($unrelatedBranch, 'Unrelated employer clerk', 'approved');
+        $this->get($base)->assertOk()->assertSee('1 new match')->assertSee('Keywords: clerk')->assertSee('Employer: Alert employer')->assertSee('Minimum pay: $25.00');
+        $this->get($url)->assertOk()->assertSee('Matching clerk')->assertDontSee('Pending clerk')->assertDontSee('Other city clerk')->assertDontSee('Low pay clerk')->assertDontSee('Unrelated employer clerk');
         $this->get('https://canadamb.ca/account/job-searches/'.$search->id)->assertNotFound();
         $this->actingAs($stranger)->get($url)->assertNotFound();
         $this->post($url.'/read')->assertNotFound();

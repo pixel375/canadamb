@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-26 — member workflow regression coverage
+
+Extended mobile Chromium checks for selected notification unread changes and private message history search, including polling suppression. Saved job-search tests now cover employer-name persistence and exclusion of unrelated employers. No production records changed.
+
 ## 2026-11-26 — employer-focused job discovery
 
 Added employer-name filtering shared with saved searches, deadline sorting, comparable pay sorting restricted to one selected pay period, and related active jobs from the same employer. Public visibility and city scope remain enforced. No migrations or rollout changes.
