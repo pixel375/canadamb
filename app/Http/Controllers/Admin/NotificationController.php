@@ -11,6 +11,7 @@ use App\Support\OwnerNotifications;
 use App\Support\PushDevices;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 final class NotificationController extends Controller
 {
@@ -26,7 +27,7 @@ final class NotificationController extends Controller
         if ($data['audience'] === 'selected') {
             $members = preg_split('/[\s,]+/', trim($data['member_ids']), -1, PREG_SPLIT_NO_EMPTY);
             if (count($members) > 50 || collect($members)->contains(fn ($id) => ! preg_match('/^[1-9][0-9]{0,17}$/D', $id))) {
-                throw \Illuminate\Validation\ValidationException::withMessages(['member_ids' => 'Enter up to 50 positive member reference numbers.']);
+                throw ValidationException::withMessages(['member_ids' => 'Enter up to 50 positive member reference numbers.']);
             }
         }
         $count = BroadcastConsent::audience($data['audience'], $members)->count();
