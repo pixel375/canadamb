@@ -18,6 +18,7 @@ use App\Support\Marketplace;
 use App\Support\MessageAttachments;
 use App\Support\MessagingExtensions;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\Cursor;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -239,11 +240,20 @@ class MessagesController extends Controller
         $id = $request->user()->id;
         $thread = Conversation::forMember($id)->with(['listing:id,title', 'buyer:id,name', 'seller:id,name'])->findOrFail($conversation);
         $request->session()->forget('conversation_history_search');
-        $request->validate(['history' => 'nullable|string|max:512']);
+        $data = $request->validate(['history' => 'nullable|string|max:512']);
+        $encoded = $data['history'] ?? null;
+        $cursor = null;
+        if ($encoded !== null) {
+            $decoded = base64_decode(strtr($encoded, '-_', '+/'), true);
+            $parameters = $decoded !== false ? json_decode($decoded, true) : null;
+            abort_unless(is_array($parameters) && is_int($parameters['id'] ?? null) && $parameters['id'] > 0
+                && is_bool($parameters['_pointsToNextItems'] ?? null), 404);
+            $cursor = new Cursor(['id' => $parameters['id']], $parameters['_pointsToNextItems']);
+        }
         $messages = $thread->messages()->with('sender:id,name')
             ->when(MessageAttachments::enabled(), fn ($query) => $query->withExists('attachment'))
-            ->latest('id')->cursorPaginate(30, ['*'], 'history');
-        $latestPage = ! $request->filled('history');
+            ->latest('id')->cursorPaginate(30, ['*'], 'history', $cursor);
+        $latestPage = $cursor === null;
         if ($latestPage && $latest = $messages->first()?->id) {
             $marker = $thread->marker($id);
             Conversation::whereKey($thread->id)->where($marker, '<', $latest)->update([$marker => $latest, 'updated_at' => DB::raw('updated_at')]);

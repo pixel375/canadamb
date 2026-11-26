@@ -610,6 +610,10 @@ const fs = require('node:fs');
             check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Conversation overflow at ' + width);
         }
         await page.locator('.chat-actions summary').click();
+        await page.keyboard.press('Escape');
+        check(!(await page.locator('.chat-actions').evaluate(el => el.open)), 'Escape did not dismiss chat options');
+        check(await page.locator('textarea[name="body"]').inputValue() === 'Thanks for confirming.', 'Closing options discarded the draft');
+        await page.locator('.chat-actions summary').click();
         await page.getByRole('button', { name: 'Block member', exact: true }).click();
         check(await page.getByText('New messages are blocked for this conversation.').isVisible(), 'Blocked chat state missing');
         await page.goto(host + '/account/blocked-members');

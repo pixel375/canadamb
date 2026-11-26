@@ -113,7 +113,11 @@ const password = 'New-browser-qa-42';
         await visit(page, '/account/messages?q=oak');
         await page.locator('.message-thread').click();
         const conversation = new URL(page.url()).pathname;
+        check(await page.locator('input[name="photo"]').count() === 1, 'Photo input missing');
+        check(!(await page.locator('input[name="photo"]').isVisible()), 'Photo picker should begin collapsed');
+        await page.locator('.chat-attachment-picker summary').click();
         await page.locator('input[name="photo"]').waitFor();
+        await page.locator('.chat-attachment-picker summary').click();
         for (const width of [320, 390, 1440]) {
             await page.setViewportSize({ width, height: 900 });
             await page.locator('.chat-actions summary').click();
@@ -147,7 +151,11 @@ const password = 'New-browser-qa-42';
         await page.locator('#conversation-batch input[name="confirm_selection"]').check();
         await submit(page, page.locator('#conversation-batch').getByRole('button', { name: 'Restore selected', exact: true }), '/account/messages');
         await visit(page, conversation);
+        check(await page.locator('input[name="photo"]').count() === 1, 'Photo input missing');
+        check(!(await page.locator('input[name="photo"]').isVisible()), 'Photo picker should begin collapsed');
+        await page.locator('.chat-attachment-picker summary').click();
         await page.locator('input[name="photo"]').waitFor();
+        await page.locator('.chat-attachment-picker summary').click();
         console.log('PASS: individual and selected conversation archive/restoration and optional photo control');
 
         await visit(page, '/events/new');

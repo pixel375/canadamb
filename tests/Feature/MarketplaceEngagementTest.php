@@ -20,6 +20,33 @@ class MarketplaceEngagementTest extends TestCase
 
     protected $seeder = DatabaseSeeder::class;
 
+    public function test_chat_history_cursor_stays_stable_when_new_messages_arrive(): void
+    {
+        $buyer = User::factory()->create();
+        $seller = User::factory()->create();
+        $stranger = User::factory()->create();
+        $listing = Listing::create(['user_id' => $seller->id, 'location_id' => Location::where('slug', 'brandon')->sole()->id,
+            'title' => 'Cursor history fixture', 'description' => 'A private conversation fixture.', 'category' => 'furniture',
+            'condition' => 'good', 'price_cents' => 100, 'status' => 'active']);
+        $listing->forceFill(['published_at' => now(), 'expires_at' => now()->addDay()])->save();
+        $thread = Conversation::create(['listing_id' => $listing->id, 'buyer_id' => $buyer->id, 'seller_id' => $seller->id]);
+        for ($index = 1; $index <= 35; $index++) {
+            $thread->messages()->create(['sender_id' => $seller->id, 'body' => sprintf('History message %03d.', $index)]);
+        }
+        $url = 'https://brandonmb.ca/account/messages/'.$thread->id;
+        $page = $this->actingAs($buyer)->get($url)->assertOk()->assertSee('History message 006.')->assertDontSee('History message 005.');
+        $older = $page->viewData('messages')->nextPageUrl();
+        $this->assertNotNull($older);
+        $lastRead = $thread->fresh()->buyer_last_read_id;
+        $thread->messages()->create(['sender_id' => $seller->id, 'body' => 'A newly arrived private message.']);
+        $this->get($older)->assertOk()->assertSee('History message 001.')->assertSee('History message 005.')
+            ->assertDontSee('History message 006.')->assertDontSee('A newly arrived private message.');
+        $this->assertEquals($lastRead, $thread->fresh()->buyer_last_read_id);
+        $this->get($url.'?history='.rtrim(strtr(base64_encode('{}'), '+/', '-_'), '='))->assertNotFound();
+        $this->actingAs($stranger)->get($older)->assertNotFound();
+        $this->actingAs($buyer)->get($url)->assertOk()->assertSee('A newly arrived private message.');
+    }
+
     public function test_bulk_bookmark_cleanup_preserves_active_and_other_portal_items(): void
     {
         $member = User::factory()->create();
