@@ -5,7 +5,7 @@
         <form class="panel saved-search" method="get" action="/account/saved">
             <label>Search saved listings<input type="search" name="q" maxlength="100" value="{{ $filters['q'] ?? '' }}" placeholder="Title or description"></label>
             <label>Category<select name="category"><option value="">All categories</option>@foreach($categories as $slug => $label)<option value="{{ $slug }}" @selected(($filters['category'] ?? '') === $slug)>{{ $label }}</option>@endforeach</select></label>
-            @if($currentSite->isNetwork())
+            @if(request()->attributes->get('site')->isNetwork())
                 <label>Community<select name="location"><option value="">All communities</option>@foreach($places as $id => $name)<option value="{{ $id }}" @selected((int) ($filters['location'] ?? 0) === $id)>{{ $name }}</option>@endforeach</select></label>
             @endif
             <label>Sort by<select name="sort">@foreach(['recent' => 'Recently published', 'price-low' => 'Lowest price', 'price-high' => 'Highest price'] as $key => $label)<option value="{{ $key }}" @selected(($filters['sort'] ?? 'recent') === $key)>{{ $label }}</option>@endforeach</select></label>

@@ -4,7 +4,7 @@
         <x-saved-navigation current="jobs" :total="$total"/>
         <form class="panel saved-search" method="get" action="/account/saved-jobs">
             <label>Search saved jobs<input type="search" name="q" maxlength="100" value="{{ $filters['q'] ?? '' }}" placeholder="Title or description"></label>
-            @if($currentSite->isNetwork())
+            @if(request()->attributes->get('site')->isNetwork())
                 <label>Community<input name="location" maxlength="150" value="{{ $filters['location'] ?? '' }}" placeholder="Community name"></label>
             @endif
             <label>Employment<select name="type"><option value="">All types</option>@foreach(\App\Support\JobBoard::TYPES as $key => $label)<option value="{{ $key }}" @selected(($filters['type'] ?? '') === $key)>{{ $label }}</option>@endforeach</select></label>
