@@ -92,6 +92,8 @@ class BusinessDirectoryTest extends TestCase
         $this->get('https://canadamb.ca/admin/business-ownership')->assertForbidden();
         $this->actingAs(User::factory()->create(['role' => 'network_admin']))->get('https://canadamb.ca/admin/business-ownership?q=Team&ownership=claimed')->assertOk()->assertSee('Team Test')->assertSee($owner->name)->assertDontSee($owner->email);
         $this->get('https://canadamb.ca/admin/business-ownership?q=Team&ownership=unclaimed')->assertOk()->assertSee('No matching businesses.');
+        $this->get('https://canadamb.ca/admin/business-ownership?member='.$owner->id.'&status=active')->assertOk()->assertSee('Team Test')->assertDontSee($owner->email);
+        $this->get('https://canadamb.ca/admin/business-ownership?member='.$owner->id.'&ownership=ambiguous')->assertOk()->assertSee('No matching businesses.');
     }
 
     public function test_team_members_can_leave_but_owners_cannot_and_stale_role_changes_are_rejected(): void

@@ -56,14 +56,22 @@ class BusinessReviewController extends Controller
 
     public function ownership(Request $request)
     {
-        $filters = $request->validate(['q' => 'nullable|string|max:100', 'ownership' => 'nullable|in:claimed,unclaimed']);
+        $filters = $request->validate(['q' => 'nullable|string|max:100', 'ownership' => 'nullable|in:claimed,unclaimed,ambiguous',
+            'status' => 'nullable|in:active,pending,rejected', 'location' => 'nullable|integer|exists:locations,id', 'reference' => 'nullable|integer|min:1',
+            'member' => 'nullable|integer|min:1']);
+        $places = Location::selectable()->orderBy('name')->get(['id', 'name']);
         $items = Business::query()->with(['locations.location', 'members' => fn ($query) => $query->select('users.id', 'users.name')])
             ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['name', 'slug']))
+            ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
+            ->when($filters['location'] ?? null, fn ($query, $id) => $query->whereHas('locations', fn ($branch) => $branch->where('location_id', $id)))
+            ->when($filters['reference'] ?? null, fn ($query, $id) => $query->whereKey($id))
+            ->when($filters['member'] ?? null, fn ($query, $id) => $query->whereHas('members', fn ($members) => $members->whereKey($id)))
+            ->when(($filters['ownership'] ?? null) === 'ambiguous', fn ($query) => $query->whereHas('members', fn ($members) => $members->where('business_memberships.role', 'owner'), '>', 1))
             ->when(($filters['ownership'] ?? null) === 'claimed', fn ($query) => $query->whereHas('members', fn ($members) => $members->where('business_memberships.role', 'owner')))
             ->when(($filters['ownership'] ?? null) === 'unclaimed', fn ($query) => $query->whereDoesntHave('members', fn ($members) => $members->where('business_memberships.role', 'owner')))
             ->orderBy('name')->orderBy('id')->paginate(20)->withQueryString();
 
-        return view('admin.business-ownership', compact('items', 'filters'));
+        return view('admin.business-ownership', compact('items', 'filters', 'places'));
     }
 
     public function profile(Request $request, int $business)
