@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-25 — recovered production checkpoint and configuration lifecycle
+
+Exact implementation `16035e6` passed backend and browser CI and [guarded Hostinger release](https://github.com/pixel375/canadamb/actions/runs/45754789631), including separate live database/backup and public PWA/prelaunch audits. Retention kept two complete releases (21,888 filesystem entries). This includes local clock, optional encrypted weather settings, configurable publication policy, expanded administration, theme presets and regression fixes. Subsequent source work adds super-admin-only version-bound confirmed discard of the shared unpublished configuration, redacted paginated revision metadata, coordinate-bound weather caching with an observation-age cap, and credential input scrubbing for JSON/form requests. No migrations, setting publication or launch-switch changes. Verify the new commit separately.
+
 ## 2026-11-25 — staged browser acceptance expansion
 
 Browser QA now submits changed job and Marketplace saved filters, verifies event reuse without copied dates and atomic selected withdrawals, checks the metadata-export entry and captures responsive saved-search/export screenshots. Disposable test data only.

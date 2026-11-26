@@ -6,6 +6,7 @@ use App\Models\Location;
 use App\Models\Site;
 use App\Models\User;
 use App\Support\Audit;
+use App\Support\NetworkSettings;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -46,6 +47,33 @@ class NetworkTest extends TestCase
         $this->post("$url/rollback")->assertRedirect();
         $this->get('https://brandonmb.ca/')->assertDontSee('#7C3AED');
         $this->assertDatabaseCount('audit_logs', 3);
+    }
+
+    public function test_configuration_discard_requires_confirmation_and_current_version_without_touching_published_settings(): void
+    {
+        $base = 'https://canadamb.ca/admin/settings';
+        $settings = app(NetworkSettings::class);
+        $initial = $settings->state();
+        $admin = User::factory()->create(['role' => 'super_admin']);
+        $settings->saveDraft($admin->id, fn (array $current) => array_replace($current, ['weather_key_encrypted' => 'PRIVATE_REVISION_FIXTURE']));
+        $draft = $settings->state();
+        $version = NetworkSettings::stateVersion($draft);
+        $data = ['configuration_version' => $version, 'confirm_discard' => '1'];
+        $this->actingAs(User::factory()->create(['role' => 'network_admin']))->post($base.'/discard', $data)->assertForbidden();
+        $this->actingAs($admin)->get($base)->assertOk()->assertSee('Configuration revision history')->assertSee('Pending draft')->assertDontSee('PRIVATE_REVISION_FIXTURE');
+        $this->post($base.'/discard', ['configuration_version' => $version])->assertSessionHasErrors('confirm_discard');
+        $this->post($base.'/discard', array_replace($data, ['configuration_version' => NetworkSettings::stateVersion($initial)]))->assertSessionHasErrors('configuration_version');
+        $this->assertEquals($draft->draft_id, $settings->state()->draft_id);
+        $this->post($base.'/discard', $data)->assertRedirect($base)->assertSessionHasNoErrors();
+        $after = $settings->state();
+        $this->assertNull($after->draft_id);
+        $this->assertEquals($initial->published_id, $after->published_id);
+        $this->assertEquals($initial->previous_id, $after->previous_id);
+        $this->assertEquals($initial->version, $after->version);
+        $this->assertDatabaseHas('configuration_revisions', ['id' => $draft->draft_id]);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'configuration.discard', 'actor_id' => $admin->id]);
+        $this->post($base.'/discard', $data)->assertSessionHasErrors('configuration_version');
+        $this->get($base)->assertOk()->assertSee('Historical')->assertDontSee('PRIVATE_REVISION_FIXTURE');
     }
 
     public function test_administration_is_provincial_and_role_protected(): void

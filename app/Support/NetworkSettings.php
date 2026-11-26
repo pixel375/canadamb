@@ -126,6 +126,20 @@ final class NetworkSettings
         }, attempts: 3);
     }
 
+    public function discardDraft(int $actor, string $expected): void
+    {
+        DB::transaction(function () use ($actor, $expected) {
+            $state = $this->lockedState();
+            $this->checkState($state, $expected);
+            if ($state->draft_id === null) {
+                throw ValidationException::withMessages(['configuration_version' => 'No pending configuration draft is available.']);
+            }
+
+            DB::table('network_configuration')->where('id', 1)->update(['draft_id' => null]);
+            Audit::record('configuration.discard', $actor, context: ['revision' => $state->draft_id]);
+        }, attempts: 3);
+    }
+
     private function lockedState(): stdClass
     {
         return DB::table('network_configuration')->where('id', 1)->lockForUpdate()->firstOrFail();

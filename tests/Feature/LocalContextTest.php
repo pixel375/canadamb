@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Support\NetworkSettings;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -52,5 +53,31 @@ class LocalContextTest extends TestCase
         $this->getJson($base.$path)->assertStatus(503)->assertJsonPath('weather', null)->assertDontSee($key);
         $this->getJson($base.$path)->assertStatus(503)->assertJsonPath('weather', null);
         Http::assertSentCount(2);
+    }
+
+    public function test_weather_cache_is_coordinate_bound_and_expires_with_observation_age(): void
+    {
+        Http::preventStrayRequests();
+        $place = Location::where('slug', 'brandon')->sole();
+        $place->update(['latitude' => 49.84, 'longitude' => -99.95]);
+        $settings = app(NetworkSettings::class);
+        $admin = User::factory()->create(['role' => 'super_admin']);
+        $settings->saveDraft($admin->id, fn (array $current) => array_replace($current, [
+            'weather_enabled' => true, 'weather_key_encrypted' => Crypt::encryptString('fixture-weather-key-123456789'),
+        ]));
+        $settings->publish($admin->id);
+        Http::fakeSequence('https://api.weatherapi.com/v1/current.json*')
+            ->push(['current' => ['temp_c' => -10, 'condition' => ['text' => 'Cloudy'], 'last_updated_epoch' => now()->subMinutes(115)->timestamp]])
+            ->push(['current' => ['temp_c' => -5, 'condition' => ['text' => 'Clear'], 'last_updated_epoch' => now()->timestamp]])
+            ->push(['current' => ['temp_c' => 2, 'condition' => ['text' => 'Sunny'], 'last_updated_epoch' => now()->timestamp]]);
+        $url = 'https://brandonmb.ca/local-weather/'.$place->id;
+        $this->getJson($url)->assertOk()->assertJsonPath('weather.temperature_c', -10);
+        $this->getJson($url)->assertOk()->assertJsonPath('weather.temperature_c', -10);
+        Http::assertSentCount(1);
+        $this->travel(6)->minutes();
+        $this->getJson($url)->assertOk()->assertJsonPath('weather.temperature_c', -5);
+        $place->update(['latitude' => 49.86]);
+        $this->getJson($url)->assertOk()->assertJsonPath('weather.temperature_c', 2);
+        Http::assertSentCount(3);
     }
 }

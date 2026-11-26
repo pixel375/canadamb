@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Support\NetworkSettings;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class SettingsController extends Controller
 {
@@ -34,6 +35,7 @@ class SettingsController extends Controller
             'state' => $state,
             'settings' => $draft, 'changes' => $changes,
             'modules' => NetworkSettings::OPERATIONAL_MODULES,
+            'revisions' => DB::table('configuration_revisions')->select(['id', 'actor_id', 'created_at'])->orderByDesc('id')->paginate(15, ['*'], 'revisions')->withQueryString(),
         ]);
     }
 
@@ -59,6 +61,14 @@ class SettingsController extends Controller
         }, $data['configuration_version'] ?? null);
 
         return redirect('/admin/settings')->with('status', 'Settings draft saved.');
+    }
+
+    public function discard(Request $request, NetworkSettings $settings)
+    {
+        $data = $request->validate(['configuration_version' => 'required|string|size:64', 'confirm_discard' => 'accepted']);
+        $settings->discardDraft($request->user()->id, $data['configuration_version']);
+
+        return redirect('/admin/settings')->with('status', 'Pending network configuration discarded. Published settings were not changed.');
     }
 
     public function publish(Request $request, NetworkSettings $settings)

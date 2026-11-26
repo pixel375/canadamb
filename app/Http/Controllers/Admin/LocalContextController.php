@@ -21,8 +21,9 @@ final class LocalContextController extends Controller
 
     public function save(Request $request, NetworkSettings $settings)
     {
-        $key = $request->input('weather_api_key');
-        $request->request->remove('weather_api_key');
+        $body = $request->isJson() ? $request->json() : $request->request;
+        $key = $body->all()['weather_api_key'] ?? null;
+        $body->remove('weather_api_key');
         $request->query->remove('weather_api_key');
         $data = $request->validate([
             'configuration_version' => 'required|string|size:64',

@@ -28,12 +28,13 @@ final class LocalWeather
         if (self::configured($settings) === false || self::supported($place) === false) {
             return null;
         }
-        $cacheKey = 'local-weather:v1:'.$place->id.':'.hash('sha256', $settings['weather_key_encrypted']);
+        $coordinates = sprintf('%.3f,%.3f', $place->latitude, $place->longitude);
+        $cacheKey = 'local-weather:v2:'.$place->id.':'.hash('sha256', $coordinates.'|'.$settings['weather_key_encrypted']);
         try {
             if (($cached = Cache::get($cacheKey)) !== null) {
                 return ($cached['unavailable'] ?? false) ? null : $cached;
             }
-            $result = Cache::lock($cacheKey.':lock', 15)->get(function () use ($place, $settings, $cacheKey) {
+            $result = Cache::lock($cacheKey.':lock', 15)->get(function () use ($coordinates, $settings, $cacheKey) {
                 if (($cached = Cache::get($cacheKey)) !== null) {
                     return ($cached['unavailable'] ?? false) ? null : $cached;
                 }
@@ -54,7 +55,7 @@ final class LocalWeather
                     $key = Crypt::decryptString($settings['weather_key_encrypted']);
                     $response = Http::acceptJson()->connectTimeout(2)->timeout(4)->withoutRedirecting()
                         ->get('https://api.weatherapi.com/v1/current.json', [
-                            'key' => $key, 'q' => sprintf('%.3f,%.3f', $place->latitude, $place->longitude), 'aqi' => 'no',
+                            'key' => $key, 'q' => $coordinates, 'aqi' => 'no',
                         ]);
                     $current = $response->successful() ? $response->json('current') : null;
                     if (is_array($current) && is_numeric($current['temp_c'] ?? null) && abs((float) $current['temp_c']) <= 80
@@ -64,7 +65,10 @@ final class LocalWeather
                         && (int) $current['last_updated_epoch'] >= now()->subHours(2)->timestamp) {
                         $result = ['temperature_c' => round((float) $current['temp_c']), 'condition' => $current['condition']['text'],
                             'observed_at' => (int) $current['last_updated_epoch']];
-                        Cache::put($cacheKey, $result, now()->addMinutes(45));
+                        $seconds = min(2700, $result['observed_at'] + 7200 - now()->timestamp);
+                        if ($seconds > 0) {
+                            Cache::put($cacheKey, $result, $seconds);
+                        }
 
                         return $result;
                     }

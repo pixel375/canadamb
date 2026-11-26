@@ -6,6 +6,14 @@
             @if($changes)<ul>@foreach($changes as $change)<li>{{ $change }}</li>@endforeach</ul>@else<p>No differences detected in the listed settings groups.</p>@endif
             <p class="field-note">Publishing applies the entire pending draft across the network, including changes made on other settings pages. Credentials are never shown in this summary.</p>
             <form method="post" action="/admin/settings/publish" class="inline-actions">@csrf<input type="hidden" name="configuration_version" value="{{ \App\Support\NetworkSettings::stateVersion($state) }}"><button class="button button-primary">Publish network settings</button></form>
+            <details><summary>Discard all pending changes</summary>
+                <form method="post" action="/admin/settings/discard" class="form-stack mt-3">@csrf
+                    <input type="hidden" name="configuration_version" value="{{ \App\Support\NetworkSettings::stateVersion($state) }}">
+                    <p class="field-note">This clears the shared unpublished draft, including changes made on other settings pages. The published configuration, previous published version and historical records remain unchanged.</p>
+                    <label class="checkbox"><input type="checkbox" name="confirm_discard" value="1" required> Discard the entire pending draft</label>
+                    <div><button class="button button-outline">Discard unpublished settings</button></div>
+                </form>
+            </details>
         </section>
     @endif
     <form method="post" action="/admin/settings" class="panel form-stack">
@@ -35,4 +43,19 @@
     </form>
     <section class="panel form-stack"><h2>Commercial planning</h2><p>Internal rate cards are versioned with network settings. They cannot activate payments or advertising.</p><a class="text-link" href="/admin/commercial">Advertising and subscription planning</a></section>
 
+    <section class="panel form-stack">
+        <h2>Configuration revision history</h2>
+        <p class="field-note">Read-only revision metadata. Historical revisions are not necessarily published versions; settings values and credentials are never displayed here.</p>
+        <div class="form-stack">
+            @foreach($revisions as $revision)
+                <div class="inline-actions">
+                    <strong>Revision #{{ $revision->id }}</strong>
+                    <span>{{ $revision->id == $state->published_id ? 'Currently published' : ($revision->id == $state->draft_id ? 'Pending draft' : ($revision->id == $state->previous_id ? 'Previous published' : 'Historical')) }}</span>
+                    <span>{{ $revision->created_at }}</span>
+                    <span>Actor: {{ $revision->actor_id ? '#'.$revision->actor_id : 'System or removed account' }}</span>
+                </div>
+            @endforeach
+        </div>
+        {{ $revisions->links() }}
+    </section>
 </x-layouts.admin>
