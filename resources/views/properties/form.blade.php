@@ -44,16 +44,16 @@
                 @if($item->exists && $item->photos->isNotEmpty())
                     <input type="hidden" name="manage_photos" value="1">
                     <h3>Current photos</h3><p class="field-note">Keep, remove or reorder existing photos. New photos are appended after retained photos.</p>
-                    @php
+                    <?php
                         $selection = \App\Support\RetainedPhotoSelection::forEditor($item->photos, old('manage_photos') && old('version') === $item->contentVersion(), old('keep_photos'));
-                    @endphp
+                    ?>
                     @if($selection['restored'])<p class="field-note">Previous photo choices restored. Select any new uploads again.</p>@endif
                     <div class="listing-photo-preview" data-existing-photo-grid>
                         @foreach($selection['photos'] as $photo)
                             <figure data-existing-photo="{{ $photo->id }}">
                                 <img src="/account/properties/{{ $item->id }}/media/{{ $photo->id }}" alt="Current property photo {{ $loop->iteration }}" loading="lazy">
                                 <figcaption data-existing-caption>{{ $loop->first ? 'Cover photo' : 'Photo '.$loop->iteration }}</figcaption>
-                                <label class="checkbox"><input type="checkbox" name="keep_photos[]" value="{{ $photo->id }}" @checked(in_array($photo->id, $selection['keep'], true))> Keep photo</label>
+                                <label class="checkbox"><input type="checkbox" name="keep_photos[]" value="{{ $photo->id }}" {{ in_array($photo->id, $selection['keep'], true) ? 'checked' : '' }}> Keep photo</label>
                                 <div class="listing-photo-actions" data-existing-controls hidden>
                                     <button type="button" class="button button-outline" data-existing-cover>Make cover</button>
                                     <button type="button" class="button button-outline" data-existing-move>Move earlier</button>
