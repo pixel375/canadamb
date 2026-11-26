@@ -152,6 +152,9 @@ class MarketplaceEngagementTest extends TestCase
         $this->put($path, $data + ['manage_photos' => '1', 'photo_version' => $version, 'keep_photos' => [$original[1]->id, $original[0]->id]])->assertRedirect()->assertSessionHasNoErrors();
         $this->assertSame([$original[1]->id, $original[0]->id], $item->media()->pluck('id')->all());
         $this->assertNotSame($version, $item->photoVersion());
+        $this->from($path.'/edit')->put($path, array_replace($data, ['title' => '', 'manage_photos' => '1', 'photo_version' => $item->photoVersion(), 'keep_photos' => [$original[0]->id]]))->assertSessionHasErrors('title');
+        $this->get($path.'/edit')->assertOk()->assertSee('Previous photo choices restored')
+            ->assertSee('value="'.$original[0]->id.'" checked', false)->assertDontSee('value="'.$original[1]->id.'" checked', false);
         $version = $item->photoVersion();
         $this->put($path, $data + ['manage_photos' => '1', 'photo_version' => $version, 'keep_photos' => [$original[1]->id],
             'photos' => [UploadedFile::fake()->image('new.jpg')]])->assertRedirect()->assertSessionHasNoErrors();

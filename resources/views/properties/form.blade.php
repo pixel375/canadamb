@@ -6,6 +6,7 @@
             @if($item->exists)
                 @method('PUT')
                 <input type="hidden" name="version" value="{{ old('version', $item->contentVersion()) }}">
+                @if(old('version') && old('version') !== $item->contentVersion())<p class="notice notice-error">This draft changed. <a href="/account/properties/{{ $item->id }}/edit">Reload the editor</a> before saving.</p>@endif
             @endif
             <section class="panel form-stack listing-editor-section"><h2>1. Property overview</h2>
             <label>Title<input name="title" required maxlength="140" value="{{ old('title', $item->title) }}"></label>
@@ -43,12 +44,16 @@
                 @if($item->exists && $item->photos->isNotEmpty())
                     <input type="hidden" name="manage_photos" value="1">
                     <h3>Current photos</h3><p class="field-note">Keep, remove or reorder existing photos. New photos are appended after retained photos.</p>
+                    @php
+                        $selection = \App\Support\RetainedPhotoSelection::forEditor($item->photos, old('manage_photos') && old('version') === $item->contentVersion(), old('keep_photos'));
+                    @endphp
+                    @if($selection['restored'])<p class="field-note">Previous photo choices restored. Select any new uploads again.</p>@endif
                     <div class="listing-photo-preview" data-existing-photo-grid>
-                        @foreach($item->photos as $photo)
+                        @foreach($selection['photos'] as $photo)
                             <figure data-existing-photo="{{ $photo->id }}">
                                 <img src="/account/properties/{{ $item->id }}/media/{{ $photo->id }}" alt="Current property photo {{ $loop->iteration }}" loading="lazy">
                                 <figcaption data-existing-caption>{{ $loop->first ? 'Cover photo' : 'Photo '.$loop->iteration }}</figcaption>
-                                <label class="checkbox"><input type="checkbox" name="keep_photos[]" value="{{ $photo->id }}" checked> Keep photo</label>
+                                <label class="checkbox"><input type="checkbox" name="keep_photos[]" value="{{ $photo->id }}" @checked(in_array($photo->id, $selection['keep'], true))> Keep photo</label>
                                 <div class="listing-photo-actions" data-existing-controls hidden>
                                     <button type="button" class="button button-outline" data-existing-cover>Make cover</button>
                                     <button type="button" class="button button-outline" data-existing-move>Move earlier</button>
