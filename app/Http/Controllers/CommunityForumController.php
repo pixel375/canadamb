@@ -307,7 +307,9 @@ class CommunityForumController extends Controller
         $approved = $item->replies()->where('status', 'approved')->findOrFail($reply);
         $position = $item->replies()->where('status', 'approved')->where('id', '<=', $approved->id)->count();
         $page = (int) ceil($position / 25);
-        return redirect('/community/'.$item->id.($page > 1 ? '?page='.$page : '').'#reply-'.$approved->id,
+        $destination = NetworkUrl::to($request->attributes->get('site'), '/community/'.$item->id);
+
+        return redirect()->away($destination.($page > 1 ? '?page='.$page : '').'#reply-'.$approved->id,
             302, ['Cache-Control' => 'no-store']);
     }
 

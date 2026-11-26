@@ -153,3 +153,5 @@ Keep this queue updated; do not interrupt independent implementation for these a
 - B12 regression update: existing publication tests now assert provincial 200 detail responses for discussions, events, single-city businesses, jobs, news and staged properties, same shared approved reply on both hosts, and current-host paginated reply permalink. Preserve prior private/hidden scope checks and canonical sitemap assertions. Exact CI pending.
 
 - D01/D02 source: approved discussion notifications show the real public display name and action; opening from either dashboard/list submits a CSRF-protected POST, locks/revalidates the owned approved scoped row, marks only that notification read idempotently and returns a 303 to the current-host reply permalink. No user-supplied destination. Hidden, foreign-recipient and wrong-portal regression tests; other notification event types remain D01 work. Exact CI pending.
+
+- B12 CI first attempts stopped at Pint on reply permalink formatting. Restored established explicit trusted host URL construction using the request's resolved site, not the content canonical site; still same-domain and no untrusted destination.
