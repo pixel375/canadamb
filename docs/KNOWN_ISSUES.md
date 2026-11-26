@@ -1,6 +1,6 @@
 # Known issues and remaining acceptance
 
-**Verified restricted production source at the start of this batch:** `2fdd616d66a7019b287dbab9641adc2746a94c1b`. [Backend CI](https://github.com/pixel375/canadamb/actions/runs/45705083744), [browser QA](https://github.com/pixel375/canadamb/actions/runs/45705083679), and [deployment with independent audits and two-release retention](https://github.com/pixel375/canadamb/actions/runs/45705539051) passed. This is not a public-launch approval.
+**Verified restricted production source at the start of this batch:** `9a96b5c26574c15163d2a317cb42bbbc76267569`. [Backend CI](https://github.com/pixel375/canadamb/actions/runs/45729253428), [browser QA](https://github.com/pixel375/canadamb/actions/runs/45729253469), and [deployment with independent audits and two-release retention](https://github.com/pixel375/canadamb/actions/runs/45729608262) passed. This is not a public-launch approval.
 
 ## Outstanding launch blockers and acceptance
 

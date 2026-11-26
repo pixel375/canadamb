@@ -23,12 +23,17 @@ class BusinessChangeController extends Controller
         $branches = $item->locations()->with('location')->when($site->location_id, fn ($query, $id) => $query->where('location_id', $id))->get();
         $places = $site->isNetwork() ? Location::selectable()->orderBy('name')->get() : collect();
         $isOwner = $item->members()->whereKey($request->user()->id)->wherePivot('role', 'owner')->exists();
+        $filters = $request->validate(['status' => 'nullable|in:pending,approved,rejected,withdrawn,stale',
+            'kind' => 'nullable|in:branch-add,branch-address,branch-close,branch-reopen,branch-relocate,contact', 'reference' => 'nullable|integer|min:1']);
         $items = DB::table('business_change_requests')->where('business_id', $business)
             ->when($site->location_id, fn ($query, $id) => $query->where(fn ($scope) => $scope->where('location_id', $id)->orWhereNull('location_id')))
             ->when(! $isOwner, fn ($query) => $query->where('kind', '!=', 'contact'))
-            ->latest('id')->paginate(20);
+            ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
+            ->when($filters['kind'] ?? null, fn ($query, $kind) => $query->where('kind', $kind))
+            ->when($filters['reference'] ?? null, fn ($query, $reference) => $query->where('id', $reference))
+            ->latest('id')->paginate(20)->withQueryString();
 
-        return view('business.changes', compact('item', 'branches', 'places', 'isOwner', 'items'));
+        return view('business.changes', compact('item', 'branches', 'places', 'isOwner', 'items', 'filters'));
     }
 
     public function store(Request $request, int $business)
@@ -116,7 +121,9 @@ class BusinessChangeController extends Controller
         DB::transaction(function () use ($request, $business, $change) {
             Business::lockForUpdate()->findOrFail($business);
             $this->managed($request, $business);
+            $site = $request->attributes->get('site');
             $row = DB::table('business_change_requests')->where('business_id', $business)->where('id', $change)
+                ->when($site->location_id, fn ($query, $id) => $query->where(fn ($scope) => $scope->where('location_id', $id)->orWhereNull('location_id')))
                 ->where('requester_id', $request->user()->id)->lockForUpdate()->firstOrFail();
             abort_unless($row->status === 'pending', 409);
             $this->decision($change, 'withdrawn', $request->user()->id, $business);

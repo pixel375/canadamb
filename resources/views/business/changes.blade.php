@@ -37,10 +37,18 @@
         @if($isOwner)<section class="panel form-stack"><h2>Public contact email review</h2><p>Current email: {{ $item->public_email ?? 'Not set' }}</p><p>Reviewers must independently confirm control of the exact address. Changing it invalidates prior approval. No public badge or automated email is issued.</p>
             @if($item->public_email)<form method="post" action="/account/businesses/{{ $item->id }}/changes">@csrf<input type="hidden" name="kind" value="contact"><button class="button button-outline">Request contact verification</button></form>@endif
         </section>@endif
-        <section class="panel form-stack"><h2>Change request history</h2>@forelse($items as $row)
-            <article class="admin-review-card form-stack"><h3>{{ ucfirst(str_replace('-', ' ', $row->kind)) }}</h3><p>{{ $row->value }} · {{ ucfirst($row->status) }}</p>
+        <section class="panel form-stack" id="change-history"><h2>Change request history</h2>
+            <form method="get" action="/account/businesses/{{ $item->id }}/changes#change-history" class="form-stack">
+                <div class="form-grid"><label>Status<select name="status"><option value="">All statuses</option>@foreach(['pending','approved','rejected','withdrawn','stale'] as $status)<option value="{{ $status }}" @selected(($filters['status'] ?? '') === $status)>{{ ucfirst($status) }}</option>@endforeach</select></label>
+                <label>Request type<select name="kind"><option value="">All types</option>@foreach(['branch-add','branch-address','branch-close','branch-reopen','branch-relocate','contact'] as $kind)@if($kind !== 'contact' || $isOwner)<option value="{{ $kind }}" @selected(($filters['kind'] ?? '') === $kind)>{{ ucfirst(str_replace('-', ' ', $kind)) }}</option>@endif @endforeach</select></label>
+                <label>Reference<input type="number" name="reference" min="1" value="{{ $filters['reference'] ?? '' }}"></label></div>
+                <div class="inline-actions"><button class="button button-primary">Filter history</button><a class="button button-outline" href="/account/businesses/{{ $item->id }}/changes#change-history">Reset</a></div>
+            </form>
+            <p class="field-note">{{ $items->total() }} matching requests</p>
+            @forelse($items as $row)
+            <article class="admin-review-card form-stack"><h3>{{ ucfirst(str_replace('-', ' ', $row->kind)) }}</h3><p>{{ $row->value }} · {{ ucfirst($row->status) }}</p><p class="field-note">Reference #{{ $row->id }} · Submitted {{ \Illuminate\Support\Carbon::parse($row->created_at)->timezone('America/Winnipeg')->format('M j, Y') }}</p>
                 @if($row->status === 'pending' && (int) $row->requester_id === auth()->id())<form method="post" action="/account/businesses/{{ $item->id }}/changes/{{ $row->id }}/withdraw">@csrf<button class="button button-outline">Withdraw request</button></form>@endif
             </article>
-        @empty<p>No requests submitted.</p>@endforelse{{ $items->links() }}</section>
+        @empty<p>{{ array_filter($filters) ? 'No requests match these filters.' : 'No requests submitted.' }}</p>@endforelse{{ $items->links() }}</section>
     </div>
 </x-layouts.site>

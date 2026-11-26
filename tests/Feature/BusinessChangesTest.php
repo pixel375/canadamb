@@ -66,6 +66,8 @@ class BusinessChangesTest extends TestCase
         $this->assertDatabaseHas('business_change_requests', ['id' => $contact, 'status' => 'approved']);
         $this->actingAs($editor)->put('https://brandonmb.ca/account/businesses/'.$business->id, ['public_email' => 'changed@example.test'])->assertRedirect()->assertSessionHasNoErrors();
         $this->assertDatabaseHas('business_change_requests', ['id' => $contact, 'status' => 'stale']);
+        $this->actingAs($owner)->get($url.'?kind=contact&status=stale&reference='.$contact)->assertOk()->assertSee('Reference #'.$contact)->assertSee('1 matching requests');
+        $this->get($url.'?status=pending&kind=contact')->assertOk()->assertSee('No requests match these filters.');
     }
 
     public function test_relocation_and_closure_preserve_history_and_remove_public_branch_content(): void
