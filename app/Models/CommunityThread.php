@@ -19,7 +19,7 @@ class CommunityThread extends Model
 
     public function contentVersion(): string
     {
-        return hash('sha256', json_encode([$this->title, $this->body, $this->category, $this->status, $this->locked, $this->updated_at?->toIso8601String()], JSON_THROW_ON_ERROR));
+        return hash('sha256', json_encode([$this->title, $this->body, $this->category, $this->status, $this->pinned, $this->locked, $this->updated_at?->toIso8601String()], JSON_THROW_ON_ERROR));
     }
 
     public function location(): BelongsTo

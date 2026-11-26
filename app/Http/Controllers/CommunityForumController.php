@@ -93,14 +93,21 @@ class CommunityForumController extends Controller
         $site = $request->attributes->get('site');
         abort_unless($this->community->enabled($site, 'community'), 404);
         $statuses = ['pending', 'approved', 'rejected', 'withdrawn'];
-        $filters = $request->validate(['status' => ['nullable', Rule::in($statuses)], 'q' => 'nullable|string|max:100']);
+        $filters = $request->validate(['status' => ['nullable', Rule::in($statuses)], 'q' => 'nullable|string|max:100',
+            'category' => ['nullable', Rule::in(array_keys(Community::FORUMS))], 'sort' => 'nullable|in:newest,oldest,replies']);
         $owned = CommunityThread::where('author_id', $request->user()->id)
             ->when($site->location_id, fn ($query, $id) => $query->where('location_id', $id));
         $counts = (clone $owned)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
         $items = $owned->with('location')->withCount(['replies' => fn ($query) => $query->where('status', 'approved')])
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
             ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'body']))
-            ->latest('id')->paginate(18)->withQueryString();
+            ->when($filters['category'] ?? null, fn ($query, $category) => $query->where('category', $category));
+        match ($filters['sort'] ?? 'newest') {
+            'oldest' => $items->oldest('id'),
+            'replies' => $items->orderByDesc('replies_count')->latest('id'),
+            default => $items->latest('id'),
+        };
+        $items = $items->paginate(18)->withQueryString();
 
         $linkedEvents = EventDiscussions::eventIdsForThreads($items->pluck('id')->all());
 
@@ -170,13 +177,15 @@ class CommunityForumController extends Controller
     public function ownedReplies(Request $request)
     {
         $statuses = ['pending', 'approved', 'rejected', 'withdrawn'];
-        $filters = $request->validate(['status' => ['nullable', Rule::in($statuses)], 'q' => 'nullable|string|max:100']);
+        $filters = $request->validate(['status' => ['nullable', Rule::in($statuses)], 'q' => 'nullable|string|max:100',
+            'sort' => 'nullable|in:newest,oldest', 'thread' => 'nullable|integer|min:1']);
         $owned = $this->ownedReplyQuery($request);
         $counts = (clone $owned)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
         $items = $owned->with('thread:id,title,status,locked')
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
             ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['body']))
-            ->latest('id')->paginate(20)->withQueryString();
+            ->when($filters['thread'] ?? null, fn ($query, $thread) => $query->where('thread_id', $thread)->whereHas('thread', fn ($parent) => $parent->where('status', 'approved')))
+            ->orderBy('id', ($filters['sort'] ?? 'newest') === 'oldest' ? 'asc' : 'desc')->paginate(20)->withQueryString();
 
         return view('community.owned-replies', compact('items', 'counts', 'statuses', 'filters'));
     }

@@ -45,6 +45,8 @@ class DiscussionEditingTest extends TestCase
         $this->assertSame('pending', $reply->fresh()->status);
         $this->get($public)->assertOk()->assertDontSee('Edited reply text.')->assertDontSee('Original reply text.');
         $this->get('https://brandonmb.ca/account/replies?status=pending')->assertSee('Edited reply text.');
+        $this->get('https://brandonmb.ca/account/replies?thread='.$thread->id.'&sort=oldest')->assertOk()->assertSee('Edited reply text.');
+        $this->get('https://brandonmb.ca/account/replies?thread='.($thread->id + 1000))->assertOk()->assertDontSee('Edited reply text.');
         $this->actingAs($stranger)->get('https://brandonmb.ca/account/replies')->assertDontSee('Edited reply text.');
         $this->actingAs($admin)->post($review, ['action' => 'approve', 'version' => $version])->assertSessionHasErrors('version');
         $this->post($review, ['action' => 'approve'])->assertSessionHasErrors('version');
@@ -82,6 +84,8 @@ class DiscussionEditingTest extends TestCase
         $this->put($url, $data)->assertRedirect('/account/discussions')->assertSessionHasNoErrors();
         $this->assertSame('pending', $thread->fresh()->status);
         $this->assertFalse($thread->fresh()->pinned);
+        $this->get('https://brandonmb.ca/account/discussions?category=help&sort=replies')->assertOk()->assertSee('Edited discussion');
+        $this->get('https://brandonmb.ca/account/discussions?category=general')->assertOk()->assertDontSee('Edited discussion');
         $this->get($public)->assertNotFound();
         $this->put($url, $data)->assertSessionHasErrors('version');
         $this->actingAs($admin)->post('https://canadamb.ca/admin/community/threads/'.$thread->id, ['action' => 'approve', 'version' => $data['version']])->assertSessionHasErrors('version');
