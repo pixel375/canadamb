@@ -17,6 +17,23 @@ class BusinessDirectoryTest extends TestCase
 
     protected $seeder = DatabaseSeeder::class;
 
+    public function test_dashboard_excludes_business_records_the_reviewer_cannot_moderate(): void
+    {
+        $admin = User::factory()->create(['role' => 'network_admin']);
+        $other = User::factory()->create();
+        foreach ([$admin, $other] as $owner) {
+            $business = Business::create(['slug' => 'review-count-'.$owner->id, 'name' => 'Review Count '.$owner->id, 'category' => 'services', 'status' => 'pending']);
+            $business->members()->attach($owner->id, ['role' => 'owner']);
+            $branch = $business->locations()->create(['location_id' => Location::where('slug', 'brandon')->sole()->id, 'address' => $owner->id.' Review Road']);
+            BusinessUpdate::create(['business_location_id' => $branch->id, 'author_id' => $owner->id, 'title' => 'Review count update', 'body' => 'A pending update for review.', 'type' => 'announcement']);
+        }
+        $this->actingAs($admin)->get('https://canadamb.ca/admin')->assertOk()->assertViewHas('queues', function ($queues) {
+            $counts = collect($queues)->pluck('count', 'label');
+
+            return $counts['Business profiles'] === 1 && $counts['Business updates'] === 1;
+        });
+    }
+
     public function test_selected_business_update_withdrawal_is_atomic_and_role_scoped(): void
     {
         $owner = User::factory()->create();

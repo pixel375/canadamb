@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Business;
+use App\Models\BusinessUpdate;
+use App\Models\JobPosting;
 use App\Models\Listing;
 use App\Models\Location;
 use App\Models\PropertyListing;
@@ -29,18 +32,19 @@ class NetworkController extends Controller
 {
     public function index(NetworkSettings $settings)
     {
+        $reviewer = auth()->id();
+        $listingCount = Listing::where('status', 'pending')->where('user_id', '!=', $reviewer)->count();
         $queues = [
-            ['label' => 'Marketplace listings', 'count' => Listing::where('status', 'pending')->count(), 'url' => '/admin/moderation?status=pending', 'icon' => 'marketplace'],
-            ['label' => 'Open listing reports', 'count' => DB::table('listing_reports')->whereNull('resolved_at')->count(), 'url' => '/admin/moderation#reports', 'icon' => 'shield'],
+            ['label' => 'Marketplace listings', 'count' => $listingCount, 'url' => '/admin/moderation?status=pending', 'icon' => 'marketplace'],
+            ['label' => 'Open listing reports', 'count' => DB::table('listing_reports')->join('listings', 'listings.id', '=', 'listing_reports.listing_id')->whereNull('listing_reports.resolved_at')->where('listing_reports.reporter_id', '!=', $reviewer)->where('listings.user_id', '!=', $reviewer)->count(), 'url' => '/admin/moderation#reports', 'icon' => 'shield'],
             ['label' => 'Discussions', 'count' => DB::table('community_threads')->where('status', 'pending')->count(), 'url' => '/admin/community?status=pending#threads', 'icon' => 'discussions'],
             ['label' => 'Replies', 'count' => DB::table('community_replies')->where('status', 'pending')->whereExists(fn ($query) => $query->selectRaw('1')->from('community_threads')->whereColumn('community_threads.id', 'community_replies.thread_id')->where('community_threads.status', 'approved'))->count(), 'url' => '/admin/community?status=pending#replies', 'icon' => 'messages'],
             ['label' => 'Events', 'count' => DB::table('community_events')->where('status', 'pending')->count(), 'url' => '/admin/community?status=pending#events', 'icon' => 'calendar'],
-            ['label' => 'Job postings', 'count' => DB::table('job_postings')->where('status', 'pending')->count(), 'url' => '/admin/jobs?status=pending', 'icon' => 'briefcase'],
-            ['label' => 'Business profiles', 'count' => DB::table('businesses')->where('status', 'pending')->count(), 'url' => '/admin/business-review#profiles', 'icon' => 'building'],
-            ['label' => 'Ownership claims', 'count' => DB::table('business_claims')->where('status', 'pending')->count(), 'url' => '/admin/business-review#claims', 'icon' => 'person'],
-            ['label' => 'Business updates', 'count' => DB::table('business_updates')->where('status', 'pending')->count(), 'url' => '/admin/business-review#updates', 'icon' => 'news'],
+            ['label' => 'Job postings', 'count' => JobPosting::where('status', 'pending')->where(fn ($query) => $query->whereNull('author_id')->orWhere('author_id', '!=', $reviewer))->whereHas('branch.business', fn ($query) => $query->whereDoesntHave('members', fn ($members) => $members->whereKey($reviewer)))->count(), 'url' => '/admin/jobs?status=pending', 'icon' => 'briefcase'],
+            ['label' => 'Business profiles', 'count' => Business::where('status', 'pending')->whereDoesntHave('members', fn ($members) => $members->whereKey($reviewer))->count(), 'url' => '/admin/business-review#profiles', 'icon' => 'building'],
+            ['label' => 'Ownership claims', 'count' => DB::table('business_claims')->where('status', 'pending')->where('user_id', '!=', $reviewer)->whereNotExists(fn ($query) => $query->selectRaw('1')->from('business_memberships')->whereColumn('business_memberships.business_id', 'business_claims.business_id')->where('user_id', $reviewer))->count(), 'url' => '/admin/business-review#claims', 'icon' => 'person'],
+            ['label' => 'Business updates', 'count' => BusinessUpdate::where('status', 'pending')->where(fn ($query) => $query->whereNull('author_id')->orWhere('author_id', '!=', $reviewer))->whereHas('branch.business', fn ($query) => $query->whereDoesntHave('members', fn ($members) => $members->whereKey($reviewer)))->count(), 'url' => '/admin/business-review#updates', 'icon' => 'news'],
         ];
-        $reviewer = auth()->id();
         if (config('network.property_drafts')) {
             $queues[] = ['label' => 'Private property reviews', 'count' => PropertyListing::where('status', 'submitted')->where('owner_id', '!=', $reviewer)->count(), 'url' => '/admin/properties', 'icon' => 'house'];
         }
@@ -86,7 +90,7 @@ class NetworkController extends Controller
                 ->leftJoin('users', 'users.id', '=', 'audit_logs.actor_id')->latest('audit_logs.id')->limit(6)->get(),
             'sites' => Site::count(), 'active' => Site::where('status', 'active')->count(),
             'locations' => Location::selectable()->count(), 'accounts' => User::count(),
-            'pending' => Listing::where('status', 'pending')->count(), 'version' => $settings->state()->version,
+            'pending' => $listingCount, 'version' => $settings->state()->version,
         ]);
     }
 
