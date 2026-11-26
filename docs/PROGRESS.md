@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-26 — seller inventory discovery and expiry planning
+
+Added owner-scoped location, category, listing reference and publication-period filters, stable newest/oldest/price/expiry sorting, status counts matching the filtered inventory, and visible listing references and categories. Dedicated city portals cannot query another community. Owners can locate listings expiring within seven days and unswept ended publications. No listing states changed; no migrations.
+
 ## 2026-11-26 — bounded selected Marketplace moderation
 
 Added explicit independent-review confirmation, per-listing versions, a maximum ten selected listings and one atomic transaction for approval, rejection or removal. Mixed/ineligible or stale selections are rejected entirely; self-review is forbidden. Reasons remain required for rejection and removal, and each listing receives its own status history and audit entry. No production listings were changed.

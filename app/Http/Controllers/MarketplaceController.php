@@ -130,17 +130,43 @@ class MarketplaceController extends Controller
         $filters = $request->validate([
             'status' => ['nullable', Rule::in($statuses)],
             'q' => ['nullable', 'string', 'max:100'],
+            'location' => ['nullable', 'integer', 'min:1'],
+            'category' => ['nullable', 'string', 'exists:listing_categories,slug'],
+            'reference' => ['nullable', 'integer', 'min:1'],
+            'expiry' => ['nullable', 'in:soon,ended'],
+            'sort' => ['nullable', 'in:newest,oldest,price-low,price-high,expiry'],
         ]);
+        if ($site->location_id !== null && isset($filters['location']) && (int) $filters['location'] !== $site->location_id) {
+            throw ValidationException::withMessages(['location' => 'Use CanadaMB to manage listings in another community.']);
+        }
         $owned = Listing::query()->where('user_id', $request->user()->id)
             ->whereIn('status', $statuses)
             ->when($site->location_id, fn ($query, $id) => $query->where('location_id', $id));
-        $counts = (clone $owned)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
-        $items = $owned->with(['location', 'media'])
-            ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
-            ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'description']))
-            ->latest()->latest('id')->paginate(18)->withQueryString();
+        $places = $site->isNetwork() ? Location::whereIn('id', (clone $owned)->select('location_id'))->orderBy('name')->get(['id', 'name']) : collect();
+        $categories = $this->categories();
+        $matching = $owned->when($filters['location'] ?? null, fn ($query, $id) => $query->where('location_id', $id))
+            ->when($filters['category'] ?? null, fn ($query, $category) => $query->where('category', $category))
+            ->when($filters['reference'] ?? null, fn ($query, $id) => $query->whereKey($id))
+            ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'description']));
+        if (($filters['expiry'] ?? null) === 'soon') {
+            $matching->where('status', 'active')->where('expires_at', '>', now())->where('expires_at', '<=', now()->addDays(7));
+        } elseif (($filters['expiry'] ?? null) === 'ended') {
+            $matching->where(fn ($query) => $query->where('status', 'expired')
+                ->orWhere(fn ($query) => $query->where('status', 'active')->where('expires_at', '<=', now())));
+        }
+        $counts = (clone $matching)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
+        $query = $matching->with(['location', 'media', 'categoryRecord'])
+            ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status));
+        match ($filters['sort'] ?? 'newest') {
+            'oldest' => $query->oldest()->orderBy('id'),
+            'price-low' => $query->orderBy('price_cents')->latest('id'),
+            'price-high' => $query->orderByDesc('price_cents')->latest('id'),
+            'expiry' => $query->orderByRaw('CASE WHEN expires_at IS NULL THEN 1 ELSE 0 END')->orderBy('expires_at')->latest('id'),
+            default => $query->latest()->latest('id'),
+        };
+        $items = $query->paginate(18)->withQueryString();
 
-        return view('marketplace.mine', compact('items', 'counts', 'statuses', 'filters'));
+        return view('marketplace.mine', compact('items', 'counts', 'statuses', 'filters', 'places', 'categories'));
     }
 
     public function history(Request $request, int $listing)

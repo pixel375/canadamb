@@ -7,18 +7,23 @@
         <nav class="seller-status-grid" aria-label="Filter listings by status">
             @foreach(array_merge(['all'], $statuses) as $status)
                 <?php $selected = ($filters['status'] ?? 'all') === $status; ?>
-                <a class="seller-status-tile" href="/account/listings{{ ($query = http_build_query(array_filter(['status' => $status === 'all' ? null : $status, 'q' => $filters['q'] ?? null], fn ($value) => $value !== null && $value !== ''))) ? '?'.$query : '' }}" @if($selected) aria-current="page" @endif>
+                <a class="seller-status-tile" href="/account/listings{{ ($query = http_build_query(array_filter(array_replace($filters, ['status' => $status === 'all' ? null : $status]), fn ($value) => $value !== null && $value !== ''))) ? '?'.$query : '' }}" @if($selected) aria-current="page" @endif>
                     <strong>{{ $status === 'all' ? $counts->sum() : ($counts[$status] ?? 0) }}</strong>
                     <span>{{ $status === 'all' ? 'All listings' : ucfirst($status) }}</span>
                 </a>
             @endforeach
         </nav>
-        <form method="get" action="/account/listings" class="panel seller-listing-search">
+        <form method="get" action="/account/listings" class="panel form-stack">
             @if($filters['status'] ?? null)<input type="hidden" name="status" value="{{ $filters['status'] }}">@endif
-            <label for="seller-listing-q" class="sr-only">Search my listings</label>
-            <input id="seller-listing-q" type="search" name="q" maxlength="100" value="{{ $filters['q'] ?? '' }}" placeholder="Search your listings">
-            <button class="button button-primary"><x-icon name="search" size="16"/> Search</button>
-            @if(filled($filters['q'] ?? null))<a class="text-link" href="/account/listings{{ isset($filters['status']) ? '?status='.$filters['status'] : '' }}">Clear</a>@endif
+            <div class="form-grid">
+                <label>Search my listings<input id="seller-listing-q" type="search" name="q" maxlength="100" value="{{ $filters['q'] ?? '' }}" placeholder="Search your listings"></label>
+                @if($places->isNotEmpty())<label>Community<select name="location"><option value="">All my communities</option>@foreach($places as $place)<option value="{{ $place->id }}" @selected((int) ($filters['location'] ?? 0) === $place->id)>{{ $place->name }}</option>@endforeach</select></label>@endif
+                <label>Category<select name="category"><option value="">All categories</option>@foreach($categories as $key => $name)<option value="{{ $key }}" @selected(($filters['category'] ?? '') === $key)>{{ $name }}</option>@endforeach</select></label>
+                <label>Publication period<select name="expiry"><option value="">Any publication period</option><option value="soon" @selected(($filters['expiry'] ?? '') === 'soon')>Expires within 7 days</option><option value="ended" @selected(($filters['expiry'] ?? '') === 'ended')>Publication ended</option></select></label>
+                <label>Listing reference<input type="number" name="reference" min="1" value="{{ $filters['reference'] ?? '' }}"></label>
+                <label>Sort by<select name="sort">@foreach(['newest' => 'Newest first', 'oldest' => 'Oldest first', 'price-low' => 'Lowest price', 'price-high' => 'Highest price', 'expiry' => 'Earliest expiry'] as $key => $label)<option value="{{ $key }}" @selected(($filters['sort'] ?? 'newest') === $key)>{{ $label }}</option>@endforeach</select></label>
+            </div>
+            <div class="inline-actions"><button class="button button-primary"><x-icon name="search" size="16"/> Search</button><a class="text-link" href="/account/listings">Clear filters</a></div>
         </form>
         <p class="field-note seller-results-count">{{ $items->total() }} {{ \Illuminate\Support\Str::plural('listing', $items->total()) }} found</p>
         @if($items->contains(fn ($item) => in_array($item->status, ['active', 'expired'], true)))
@@ -45,7 +50,7 @@
                         <div class="member-listing-info">
                             <span class="member-listing-status" data-status="{{ $item->status }}">{{ ucfirst($item->status) }}</span>
                             <h3>{{ $item->title }}</h3>
-                            <p>{{ $item->location->name }} · {{ $item->priceLabel() }}</p>
+                            <p>{{ $item->location->name }} · {{ $item->priceLabel() }}<br><small>{{ $item->categoryRecord?->name }} · #{{ $item->id }}</small></p>
                         </div>
                     </div>
                     <p class="seller-lifecycle-note">
@@ -87,7 +92,7 @@
                 </article>
             @empty
                 <div class="panel market-results-empty"><span class="empty-icon"><x-icon name="marketplace" size="24"/></span>
-                    @if(filled($filters['q'] ?? null) || filled($filters['status'] ?? null))
+                    @if(array_filter($filters, fn ($value) => $value !== null && $value !== ''))
                         <h3>No listings match these filters.</h3><a class="button button-outline" href="/account/listings">View all my listings</a>
                     @else
                         <h3>You have no listings on this portal.</h3><p>Post your first item to reach local buyers.</p><a class="button button-primary" href="/marketplace/new">Post a listing</a>

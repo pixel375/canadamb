@@ -143,6 +143,31 @@ class MarketplaceTest extends TestCase
         $this->getJson(self::MAIN.'/account/listings?status=removed')->assertUnprocessable();
     }
 
+    public function test_seller_filters_scope_expiry_reference_category_and_order_to_owned_listings(): void
+    {
+        $seller = User::factory()->create();
+        $other = User::factory()->create();
+        $city = Location::where('slug', 'brandon')->sole();
+        $rural = Location::where('slug', 'elkhorn')->sole();
+        $items = collect();
+        foreach ([[$seller, $city, 'Soon desk', 'furniture', 1000, now()->addDay()],
+            [$seller, $city, 'Later desk', 'furniture', 2000, now()->addDays(20)],
+            [$seller, $rural, 'Ended computer', 'computers', 3000, now()->subDay()],
+            [$other, $city, 'Other private desk', 'furniture', 500, now()->addDay()]] as [$owner, $place, $title, $category, $price, $expiry]) {
+            $item = Listing::create(['user_id' => $owner->id, 'location_id' => $place->id, 'title' => $title,
+                'description' => 'Listing fixture', 'category' => $category, 'condition' => 'good', 'price_cents' => $price, 'status' => 'active']);
+            $item->forceFill(['expires_at' => $expiry])->save();
+            $items->push($item);
+        }
+        $base = self::MAIN.'/account/listings';
+        $this->actingAs($seller)->get($base.'?location='.$city->id.'&category=furniture&sort=price-high')->assertOk()
+            ->assertSee('2 listings found')->assertSeeInOrder(['Later desk', 'Soon desk'])->assertDontSee('Other private desk')->assertDontSee('Ended computer');
+        $this->get($base.'?expiry=soon')->assertOk()->assertSee('1 listing found')->assertSee('Soon desk')->assertDontSee('Later desk');
+        $this->get($base.'?expiry=ended&category=computers')->assertOk()->assertSee('Ended computer')->assertDontSee('Soon desk');
+        $this->get($base.'?reference='.$items[3]->id)->assertOk()->assertSee('0 listings found')->assertDontSee('Other private desk');
+        $this->getJson(self::CITY.'/account/listings?location='.$rural->id)->assertUnprocessable();
+    }
+
     public function test_versioned_listing_edits_do_not_unpublish_unchanged_content(): void
     {
         $seller = User::factory()->create();
