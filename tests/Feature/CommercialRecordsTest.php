@@ -146,6 +146,8 @@ class CommercialRecordsTest extends TestCase
         $grant = ['business_id' => $business->id, 'days' => 30, 'note' => 'Internal test trial.'];
         $this->post($trial, $grant)->assertRedirect()->assertSessionHasNoErrors();
         $this->assertTrue(CommercialRecords::hasTrial($business));
+        $this->get($trial.'?status=active&q=Campaign&business_q=Campaign')->assertOk()->assertSee('1 matching trials')->assertSee('1 eligible businesses');
+        $this->get($trial.'?status=revoked')->assertOk()->assertSee('0 matching trials');
         $this->post($trial, $grant)->assertSessionHasErrors('business_id');
         $id = DB::table('business_entitlements')->value('id');
         $this->actingAs($owner)->get($path.'/export')->assertNotFound();
@@ -156,6 +158,7 @@ class CommercialRecordsTest extends TestCase
         $this->actingAs($admin);
         $this->post($trial.'/'.$id.'/revoke')->assertRedirect();
         $this->assertFalse(CommercialRecords::hasTrial($business));
+        $this->get($trial.'?status=revoked&q=Campaign')->assertOk()->assertSee('1 matching trials')->assertSee('Revoked');
         $this->actingAs($owner)->get($path.'/export')->assertNotFound();
         $this->actingAs($owner)->post($path.'/'.$campaign->id.'/withdraw')->assertRedirect();
         $this->assertSame('withdrawn', $campaign->fresh()->status);
