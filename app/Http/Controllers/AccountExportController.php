@@ -122,7 +122,11 @@ class AccountExportController extends Controller
         $after = (int) ($data['after_id'] ?? 0);
         $next = null;
         if ($section === 'profile') {
-            $records = $user->id > $after ? collect([$user->only(['id', 'name', 'email', 'email_verified_at', 'created_at', 'updated_at'])]) : collect();
+            $profile = $user->only(['id', 'name', 'email', 'email_verified_at', 'created_at', 'updated_at']);
+            if (Schema::hasTable('user_signup_locations')) {
+                $profile['signup_location_id'] = DB::table('user_signup_locations')->where('user_id', $user->id)->value('location_id');
+            }
+            $records = $user->id > $after ? collect([$profile]) : collect();
         } elseif ($section === 'notification-preferences') {
             $records = DB::table('notification_preferences')->where('user_id', $user->id)->where('user_id', '>', $after)
                 ->get(['user_id', 'discussion_replies', 'job_summary', 'updated_at']);

@@ -75,7 +75,7 @@
     $quickTerm = request()->query('q');
     $quickTerm = request()->path() === $quickSection && is_string($quickTerm) ? \Illuminate\Support\Str::limit($quickTerm, 100, '') : '';
 ?>
-<?php $registerLink = !config('network.prelaunch') || ($networkSettings['prelaunch_test_registration_enabled'] ?? false) === true ? ($site->isNetwork() ? '/register' : \App\Support\NetworkUrl::to(\App\Support\NetworkUrl::main(), '/register?community='.$site->id)) : null; ?>
+<?php $registerLink = !config('network.prelaunch') || ($networkSettings['prelaunch_test_registration_enabled'] ?? false) === true ? ($site->isNetwork() || \App\Support\SignupLocations::enabled() ? '/register' : \App\Support\NetworkUrl::to(\App\Support\NetworkUrl::main(), '/register?community='.$site->id)) : null; ?>
 @if($isPreview)<aside class="preview-notice">Preview of {{ $site->name }} <a href="/admin/communities/{{ $site->id }}">Return to community settings</a></aside>@endif
 <header class="site-header">
     @unless($isPreview)

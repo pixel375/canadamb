@@ -12,7 +12,9 @@ use App\Models\CommunityOAuthClient;
 use App\Models\User;
 use App\Support\AccountActivity;
 use App\Support\Identity;
+use App\Support\NetworkUrl;
 use App\Support\NetworkSettings;
+use App\Support\SignupLocations;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Notifications\ResetPassword as ResetNotification;
 use Illuminate\Auth\Notifications\VerifyEmail;
@@ -85,10 +87,17 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(FailedPasswordResetLinkRequestResponse::class, PasswordResetRequested::class);
         $this->app->bind(FailedPasswordResetResponse::class, PasswordResetFailed::class);
         $this->app->bind(SuccessfulPasswordResetLinkRequestResponse::class, PasswordResetRequested::class);
-        Fortify::registerView(fn (Request $request) => view('auth.form', [
-            'mode' => 'register',
-            'registrationCommunity' => Identity::registrationCommunity($request->query->all()['community'] ?? old('community'))?->id,
-        ]));
+        Fortify::registerView(function (Request $request) {
+            $site = $request->attributes->get('site');
+            $locationsEnabled = SignupLocations::enabled();
+
+            return view('auth.form', [
+                'mode' => 'register',
+                'registrationCommunity' => $locationsEnabled ? null : Identity::registrationCommunity($request->query->all()['community'] ?? old('community'))?->id,
+                'signupLocationsEnabled' => $locationsEnabled,
+                'signupChoices' => $locationsEnabled && $site->isNetwork() ? SignupLocations::choices() : collect(),
+            ]);
+        });
         Fortify::requestPasswordResetLinkView(fn () => view('auth.form', ['mode' => 'forgot']));
         Fortify::resetPasswordView(fn (Request $request) => view('auth.form', ['mode' => 'reset', 'token' => $request->route('token')]));
         Fortify::verifyEmailView(fn () => view('auth.form', ['mode' => 'verify']));
@@ -106,9 +115,16 @@ class AppServiceProvider extends ServiceProvider
         Passport::authorizationView('auth.consent');
 
         // Identity links use the central origin even when initiated from a local site.
-        VerifyEmail::createUrlUsing(fn (User $user) => URL::temporarySignedRoute(
-            'verification.verify', now()->addMinutes(60), ['id' => $user->id, 'hash' => sha1($user->getEmailForVerification())],
-        ));
+        VerifyEmail::createUrlUsing(function (User $user) {
+            // Sign against the central origin even when the account was created
+            // on a local portal. Do not mutate the request URL generator.
+            $urls = clone app('url');
+            $urls->forceRootUrl(NetworkUrl::to(NetworkUrl::main(), ''));
+
+            return $urls->temporarySignedRoute('verification.verify', now()->addMinutes(60), [
+                'id' => $user->id, 'hash' => sha1($user->getEmailForVerification()),
+            ]);
+        });
         ResetNotification::createUrlUsing(fn (User $user, string $token) => rtrim(config('app.url'), '/').'/reset-password/'.$token.'?'.http_build_query(['email' => $user->email]));
     }
 }

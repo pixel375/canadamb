@@ -6,6 +6,7 @@ return [
     'prelaunch_ips' => array_values(array_filter(array_map('trim', explode(',', (string) env('CANADAMB_PRELAUNCH_IPS', ''))))),
     'development_hosts' => env('CANADAMB_DEVELOPMENT_HOSTS', false),
     'sso_enabled' => env('CANADAMB_SSO_ENABLED', true),
+    'signup_locations' => env('CANADAMB_SIGNUP_LOCATIONS', false),
     'news_ingest_token' => env('CANADAMB_NEWS_INGEST_TOKEN'),
     'news_candidate_review' => env('CANADAMB_NEWS_CANDIDATE_REVIEW', false),
     'news_polling' => env('CANADAMB_NEWS_POLLING', false),

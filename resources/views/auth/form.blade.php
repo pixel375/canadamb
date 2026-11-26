@@ -6,6 +6,7 @@
         'verify' => ['Verify your email', '/email/verification-notification'],
         default => ['Sign in', '/login'],
     };
+    $site = request()->attributes->get('site');
     $name = old('name');
     $email = old('email', request()->query->all()['email'] ?? null);
     $continuation = request()->query->all()['continuation'] ?? old('continuation');
@@ -32,6 +33,16 @@
                 <p>Prelaunch does not send verification email. Your testing administrator will review your account before you can post or use verified features.</p>
             @endif
             @if($mode === 'register')<label>Public display name<input name="name" value="{{ is_string($name) ? $name : '' }}" required maxlength="80" autocomplete="name"></label>@endif
+            @if($mode === 'register' && ($signupLocationsEnabled ?? false))
+                @if($site->isNetwork())
+                    <label>Signup community<select name="location_id" required><option value="">Select a Manitoba community</option>@foreach($signupChoices as $choice)<option value="{{ $choice->id }}" @selected(is_scalar(old('location_id')) && (string) old('location_id') === (string) $choice->id)>{{ $choice->name }}</option>@endforeach</select></label>
+                @else
+                    <label>Signup community<input value="{{ $site->location->name }}" readonly></label>
+                    <p class="field-note">This signup is for {{ $site->location->name }}. Live elsewhere? <a class="text-link" href="{{ \App\Support\NetworkUrl::to(\App\Support\NetworkUrl::main(), '/register') }}">Register at CanadaMB.ca</a>.</p>
+                @endif
+                <p class="field-note">Your signup community will be shown on your public profile. It does not restrict where you can browse or post across the network.</p>
+                <label class="checkbox-line"><input type="checkbox" name="location_public" value="1" required @checked(old('location_public'))> I understand my signup community is public.</label>
+            @endif
             @if($mode !== 'verify')<label>Email<input type="email" name="email" value="{{ is_string($email) ? $email : '' }}" required maxlength="254" autocomplete="email"></label>@endif
             @if($mode === 'reset')<input type="hidden" name="token" value="{{ $token }}">@endif
             @if(in_array($mode, ['login', 'register', 'reset'], true))

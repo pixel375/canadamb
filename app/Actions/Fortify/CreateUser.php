@@ -5,6 +5,7 @@ namespace App\Actions\Fortify;
 use App\Models\User;
 use App\Support\Audit;
 use App\Support\Identity;
+use App\Support\SignupLocations;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -30,8 +31,12 @@ class CreateUser implements CreatesNewUsers
         }
 
         try {
-            return DB::transaction(function () use ($data) {
+            return DB::transaction(function () use ($data, $input) {
+                $location = SignupLocations::forRegistration($input, request()->attributes->get('site'));
                 $user = User::create($data);
+                if ($location !== null) {
+                    DB::table('user_signup_locations')->insert(['user_id' => $user->id, 'location_id' => $location, 'created_at' => now()]);
+                }
                 if (config('network.prelaunch')) {
                     Audit::record('identity.prelaunch.registered', $user->id);
                 }

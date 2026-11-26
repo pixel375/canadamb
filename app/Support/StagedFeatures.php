@@ -15,6 +15,7 @@ final class StagedFeatures
         'commercial_payment_events' => ['id', 'attempt_id', 'provider_event_id', 'event_type', 'payload_sha256', 'outcome', 'created_at'],
         'content_reports' => ['id', 'reporter_id', 'site_id', 'target_type', 'target_id', 'reason', 'explanation', 'status', 'reviewer_id', 'review_note', 'resolved_at', 'created_at', 'updated_at'],
         'community_event_discussions' => ['event_id', 'thread_id'],
+        'user_signup_locations' => ['user_id', 'location_id', 'created_at'],
         'business_access_requests' => ['id', 'business_id', 'requester_id', 'recipient_id', 'kind', 'status', 'expires_at', 'reviewer_id', 'review_note', 'created_at', 'updated_at'],
         'business_disputes' => ['id', 'business_id', 'claimant_id', 'site_id', 'contact_email', 'explanation', 'status', 'reviewer_id', 'review_note', 'reviewed_at', 'created_at', 'updated_at'],
         'business_change_requests' => ['id', 'business_id', 'requester_id', 'branch_id', 'location_id', 'kind', 'value', 'previous_value', 'status', 'reviewer_id', 'review_note', 'reviewed_at', 'created_at', 'updated_at'],
@@ -34,6 +35,7 @@ final class StagedFeatures
         'commercial_payment_events' => [['id'], ['provider_event_id']],
         'content_reports' => [['id'], ['reporter_id', 'target_type', 'target_id']],
         'community_event_discussions' => [['event_id'], ['thread_id']],
+        'user_signup_locations' => [['user_id']],
         'business_access_requests' => [['id']],
         'business_disputes' => [['id']],
         'business_change_requests' => [['id']],
@@ -48,6 +50,7 @@ final class StagedFeatures
     ];
 
     public const DEFINITIONS = [
+        ['2026_11_26_000015_create_user_signup_locations', 'Registration locations', 'signup_locations', ['user_signup_locations'], [], [], 'Public community only; consent and existing-account handling; central verification remains required.'],
         ['2026_11_24_000001_create_commercial_planning_tables', 'Commercial planning', 'commercial_planning_records', ['advertising_campaigns', 'business_entitlements'], [], [], 'Review commercial retention and campaign approval.'],
         ['2026_11_24_000002_create_test_payment_ledger', 'Test payment ledger', 'commercial_test_checkout', ['commercial_payment_attempts', 'commercial_payment_events'], [], ['commercial_planning_records'], 'Test-only; no live charges or entitlements.'],
         ['2026_11_24_000003_create_content_reports', 'Content reporting', 'content_reports', ['content_reports'], [], [], 'Review moderation staffing and retention.'],

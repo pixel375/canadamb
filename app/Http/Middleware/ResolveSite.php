@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\Domain;
+use App\Support\SignupLocations;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -17,8 +18,13 @@ class ResolveSite
         abort_if($site->status === 'maintenance', 503, 'This community is temporarily offline.');
         abort_unless($site->status === 'active', 404);
 
-        if ($request->is('admin', 'admin/*', 'oauth/*', 'register', 'forgot-password', 'reset-password', 'reset-password/*', 'email/verify', 'email/verify/*', 'email/verification-notification', 'user/*', 'two-factor-challenge') || ($request->is('login') && $request->isMethod('POST'))) {
+        if ($request->is('admin', 'admin/*', 'oauth/*', 'forgot-password', 'reset-password', 'reset-password/*', 'email/verify', 'email/verify/*', 'email/verification-notification', 'user/*', 'two-factor-challenge') || ($request->is('login') && $request->isMethod('POST'))) {
             abort_unless($site->isNetwork(), 404);
+        }
+
+        if ($request->is('register')) {
+            abort_if(config('network.signup_locations') && ! SignupLocations::enabled(), 503);
+            abort_unless($site->isNetwork() || SignupLocations::enabled(), 404);
         }
 
         $site->setRelation('domain', $domain);

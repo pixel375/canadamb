@@ -8,6 +8,7 @@ use App\Support\Audit;
 use App\Support\Identity;
 use App\Support\KeywordSearch;
 use App\Support\Marketplace;
+use App\Support\SignupLocations;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -44,6 +45,7 @@ class UserProfileController extends Controller
 
         return view('account.profile', [
             'member' => $user,
+            'signupLocation' => SignupLocations::publicName($user->id),
             'isOwn' => $request->user()?->is($user) ?? false,
             'listings' => $listings, 'categories' => $categories, 'filters' => $filters, 'listingCount' => $listingCount, 'marketEnabled' => $marketEnabled,
         ]);

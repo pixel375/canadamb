@@ -3,6 +3,7 @@
         <div class="page-intro member-profile-heading">
             <div class="member-profile-identity"><span class="member-profile-avatar"><x-icon name="person" size="30"/></span><div><p class="section-label">CanadaMB member</p><h1>{{ $member->name }}</h1>
                 <p>Member since <time datetime="{{ $member->created_at->toDateString() }}">{{ $member->created_at->format('F Y') }}</time></p>
+                @if($signupLocation)<p><x-icon name="pin" size="16"/> {{ $signupLocation }}, Manitoba <small class="field-note">Signup community</small></p>@endif
             </div></div>
             @if($isOwn)<a class="button button-outline" href="/account/settings">Edit my profile</a>@else<x-content-report-link type="profile" :target="$member->id"/>@endif
         </div>
