@@ -170,3 +170,5 @@ Keep this queue updated; do not interrupt independent implementation for these a
 - Manual queue addition A01/A02/A03/K01: review public signup location disclosure and legacy-account/privacy handling, approve 000015 with reviewed backup/rehearsal and activate only after exact verification; no owner input required to continue coding.
 
 - Signup location regression suite covers mandatory selectable provincial community and explicit disclosure, local location tampering, central signed verification link, one account across hosts, profile export, legacy no-inference and unchanged prelaunch registration/IP gate. Proposed migration remains default-off; exact CI pending.
+
+- Signup regression privacy check explicitly signs out before inspecting public profile (owner intentionally sees their own private email in account details).

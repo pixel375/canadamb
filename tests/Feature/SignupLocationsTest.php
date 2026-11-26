@@ -40,10 +40,11 @@ class SignupLocationsTest extends TestCase
         $this->post($url, $data + ['location_id' => $brandon->id, 'location_public' => '1'])->assertSessionHasNoErrors()->assertRedirect();
         $user = User::where('email', 'new@example.test')->sole();
         $this->assertDatabaseHas('user_signup_locations', ['user_id' => $user->id, 'location_id' => $brandon->id]);
-        $this->get('https://canadamb.ca/users/'.$user->id)->assertOk()->assertSee('Brandon, Manitoba')->assertSee('Signup community')->assertDontSee($user->email);
         $user->forceFill(['email_verified_at' => now()])->save();
         $this->actingAs($user)->post('https://canadamb.ca/account/data-export', ['section' => 'profile', 'current_password' => 'Test4567'])
             ->assertOk()->assertJsonPath('records.0.signup_location_id', $brandon->id);
+        $this->post('https://canadamb.ca/account/logout')->assertRedirect();
+        $this->get('https://canadamb.ca/users/'.$user->id)->assertOk()->assertSee('Brandon, Manitoba')->assertSee('Signup community')->assertDontSee($user->email);
     }
 
     public function test_local_signup_cannot_change_its_location_and_uses_central_verification_link(): void
