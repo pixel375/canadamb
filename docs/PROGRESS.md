@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-26 — optional provider diagnostics
+
+Added a super-admin-only explicit weather credential check using the saved configuration revision and an active, coordinate-supported portal location. No provider calls occur on the settings GET. Diagnostic cache is isolated from public weather, shares the bounded daily request budget, and reports only valid observation availability; no credentials or raw errors are shown. Added local request counter and tests for access, version binding, no publication, cache reuse and budget exhaustion. No provider credentials supplied, external service verified or live settings changed.
+
 ## 2026-11-26 — local portal experience controls
 
 Recovered production `66f76c7` from [successful guarded deploy](https://github.com/pixel375/canadamb/actions/runs/45758835591), with independent private and public audits and exactly two retained releases (21,903 entries). Subsequent source work adds super-admin-only, version-bound per-portal theme presets, clock format and hide-only clock/weather controls. Existing city accent and moderation rules are preserved. The weather endpoint respects portal-level visibility. Network disabled utilities cannot be enabled locally. No actual settings changed or migrations added; verify new source separately.

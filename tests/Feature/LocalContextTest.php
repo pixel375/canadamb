@@ -11,6 +11,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\RateLimiter;
 use Tests\TestCase;
 
 class LocalContextTest extends TestCase
@@ -118,5 +119,41 @@ class LocalContextTest extends TestCase
         $this->get('https://brandonmb.ca/')->assertOk()->assertDontSee('#166534')->assertDontSee('data-manitoba-clock', false)->assertDontSee('data-local-weather=', false);
         $this->getJson('https://brandonmb.ca/local-weather/'.$site->location_id)->assertNotFound();
         $this->assertDatabaseHas('audit_logs', ['action' => 'site.experience', 'site_id' => $site->id]);
+    }
+
+    public function test_admin_can_check_saved_weather_credential_without_publishing_or_exposing_it(): void
+    {
+        Http::preventStrayRequests();
+        $place = Location::where('slug', 'brandon')->sole();
+        $place->update(['latitude' => 49.84, 'longitude' => -99.95]);
+        $admin = User::factory()->create(['role' => 'super_admin']);
+        $settings = app(NetworkSettings::class);
+        $key = 'fixture-diagnostic-key-123456789';
+        $settings->saveDraft($admin->id, fn (array $current) => array_replace($current, [
+            'weather_enabled' => false, 'weather_key_encrypted' => Crypt::encryptString($key),
+        ]));
+        $state = $settings->state();
+        $base = 'https://canadamb.ca/admin/local-context';
+        $data = ['configuration_version' => NetworkSettings::stateVersion($state), 'location_id' => $place->id, 'confirm_test' => '1'];
+        $this->actingAs(User::factory()->create(['role' => 'network_admin']))->post($base.'/diagnostic', $data)->assertForbidden();
+        $this->actingAs($admin)->get($base)->assertOk()->assertSee('Weather diagnostics')->assertSee('Check saved weather credential')->assertDontSee($key);
+        Http::assertNothingSent();
+        $this->post($base.'/diagnostic', array_replace($data, ['configuration_version' => str_repeat('0', 64)]))->assertSessionHasErrors('configuration_version');
+        Http::assertNothingSent();
+        Http::fakeSequence('https://api.weatherapi.com/v1/current.json*')
+            ->push(['current' => ['temp_c' => -10, 'condition' => ['text' => 'Cloudy'], 'last_updated_epoch' => now()->timestamp]]);
+        $this->post($base.'/diagnostic', $data)->assertRedirect($base)->assertSessionHasNoErrors();
+        $this->get($base)->assertSee('A valid diagnostic weather observation is available')->assertSee('1 / 2,000')->assertDontSee($key);
+        $this->assertEquals($state->published_id, $settings->state()->published_id);
+        $this->assertEquals($state->draft_id, $settings->state()->draft_id);
+        $this->getJson('https://brandonmb.ca/local-weather/'.$place->id)->assertNotFound();
+        $this->assertDatabaseHas('audit_logs', ['action' => 'configuration.weather-diagnostic', 'actor_id' => $admin->id]);
+        $this->post($base.'/diagnostic', $data)->assertRedirect($base);
+        Http::assertSentCount(1);
+        $this->travel(46)->minutes();
+        RateLimiter::increment('local-weather:budget:'.now('UTC')->toDateString(), 86400, 2000);
+        $this->post($base.'/diagnostic', $data)->assertRedirect($base);
+        $this->get($base)->assertSee('No valid diagnostic weather observation is available')->assertDontSee($key);
+        Http::assertSentCount(1);
     }
 }

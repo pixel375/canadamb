@@ -11,6 +11,22 @@ use Throwable;
 
 final class LocalWeather
 {
+    public const DAILY_LIMIT = 2000;
+
+    private static function budgetKey(): string
+    {
+        return 'local-weather:budget:'.now('UTC')->toDateString();
+    }
+
+    public function dailyUsage(): ?int
+    {
+        try {
+            return RateLimiter::attempts(self::budgetKey());
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
     public static function configured(array $settings): bool
     {
         return ($settings['weather_enabled'] ?? false) === true && filled($settings['weather_key_encrypted'] ?? null);
@@ -23,13 +39,13 @@ final class LocalWeather
             && (float) $place->longitude + 103 >= 0 && (float) $place->longitude + 88 <= 0;
     }
 
-    public function current(Location $place, array $settings): ?array
+    public function current(Location $place, array $settings, bool $diagnostic = false): ?array
     {
         if (self::configured($settings) === false || self::supported($place) === false) {
             return null;
         }
         $coordinates = sprintf('%.3f,%.3f', $place->latitude, $place->longitude);
-        $cacheKey = 'local-weather:v2:'.$place->id.':'.hash('sha256', $coordinates.'|'.$settings['weather_key_encrypted']);
+        $cacheKey = 'local-weather:v2:'.($diagnostic ? 'diagnostic:' : '').$place->id.':'.hash('sha256', $coordinates.'|'.$settings['weather_key_encrypted']);
         try {
             if (($cached = Cache::get($cacheKey)) !== null) {
                 return ($cached['unavailable'] ?? false) ? null : $cached;
@@ -40,8 +56,8 @@ final class LocalWeather
                 }
                 // Shared daily ceiling: a 31-day month remains below 100,000 calls.
                 $allowed = Cache::lock('local-weather:budget-lock', 5)->get(function () {
-                    $bucket = 'local-weather:budget:'.now('UTC')->toDateString();
-                    if (RateLimiter::tooManyAttempts($bucket, 2000)) {
+                    $bucket = self::budgetKey();
+                    if (RateLimiter::tooManyAttempts($bucket, self::DAILY_LIMIT)) {
                         return false;
                     }
                     RateLimiter::hit($bucket, 86400);

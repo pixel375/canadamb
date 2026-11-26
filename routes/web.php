@@ -297,6 +297,7 @@ Route::prefix('admin')->middleware(['auth', 'verified', 'can:manage-network'])->
         Route::post('/commercial', [CommercialController::class, 'save'])->middleware('throttle:8,1,commercial-rate-card');
         Route::get('/local-context', [LocalContextController::class, 'edit']);
         Route::post('/local-context', [LocalContextController::class, 'save'])->middleware('throttle:6,1,local-context');
+        Route::post('/local-context/diagnostic', [LocalContextController::class, 'diagnostic'])->middleware('throttle:4,1,weather-diagnostic');
         Route::get('/publication-policy', [PublicationPolicyController::class, 'edit']);
         Route::post('/publication-policy', [PublicationPolicyController::class, 'save'])->middleware('throttle:8,1,publication-policy');
         Route::post('/communities/{site}/publication-policy', [CommunityController::class, 'publicationPolicy'])->whereNumber('site')->middleware('throttle:8,1,community-publication-policy');
