@@ -18,7 +18,7 @@ class SettingsController extends Controller
             'Theme and appearance' => ['preset', 'palette'], 'Module availability' => ['modules', 'permitted_module_overrides'],
             'App installation and registration' => ['pwa_install_enabled', 'prelaunch_test_registration_enabled'],
             'Moderation policy' => ['publication_policy'], 'Local clock and weather' => ['local_clock_enabled', 'clock_format', 'weather_enabled', 'weather_key_encrypted'],
-            'Commercial planning' => ['commercial'],
+            'Commercial planning' => ['commercial_catalog'],
         ];
         $changes = [];
         foreach ($sections as $label => $keys) {

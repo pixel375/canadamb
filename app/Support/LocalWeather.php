@@ -13,29 +13,29 @@ final class LocalWeather
 {
     public static function configured(array $settings): bool
     {
-        return ($settings['weather_enabled'] ?? false) === true && ! empty($settings['weather_key_encrypted']);
+        return ($settings['weather_enabled'] ?? false) === true && filled($settings['weather_key_encrypted'] ?? null);
     }
 
     public static function supported(?Location $place): bool
     {
         return $place && is_numeric($place->latitude) && is_numeric($place->longitude)
             && (float) $place->latitude >= 49 && (float) $place->latitude <= 60
-            && (float) $place->longitude >= -103 && (float) $place->longitude <= -88;
+            && (float) $place->longitude + 103 >= 0 && (float) $place->longitude + 88 <= 0;
     }
 
     public function current(Location $place, array $settings): ?array
     {
-        if (! self::configured($settings) || ! self::supported($place)) {
+        if (self::configured($settings) === false || self::supported($place) === false) {
             return null;
         }
         $cacheKey = 'local-weather:v1:'.$place->id.':'.hash('sha256', $settings['weather_key_encrypted']);
         try {
             if (($cached = Cache::get($cacheKey)) !== null) {
-                return $cached['unavailable'] ?? false ? null : $cached;
+                return ($cached['unavailable'] ?? false) ? null : $cached;
             }
-            return Cache::lock($cacheKey.':lock', 15)->get(function () use ($place, $settings, $cacheKey) {
+            $result = Cache::lock($cacheKey.':lock', 15)->get(function () use ($place, $settings, $cacheKey) {
                 if (($cached = Cache::get($cacheKey)) !== null) {
-                    return $cached['unavailable'] ?? false ? null : $cached;
+                    return ($cached['unavailable'] ?? false) ? null : $cached;
                 }
                 // Shared daily ceiling: a 31-day month remains below 100,000 calls.
                 $allowed = Cache::lock('local-weather:budget-lock', 5)->get(function () {
@@ -47,7 +47,7 @@ final class LocalWeather
 
                     return true;
                 });
-                if (! $allowed) {
+                if ($allowed !== true) {
                     return null;
                 }
                 try {
@@ -74,7 +74,9 @@ final class LocalWeather
                 Cache::put($cacheKey, ['unavailable' => true], now()->addMinutes(10));
 
                 return null;
-            }) ?: null;
+            });
+
+            return is_array($result) ? $result : null;
         } catch (Throwable) {
             // Weather is optional. Cache/provider failure must not break site navigation.
             return null;

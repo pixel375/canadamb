@@ -22,3 +22,7 @@
 ## Superseded earlier UX concerns
 
 Category-first Marketplace discovery, original-size galleries, same-domain browsing with canonical URLs, seller dashboards, messaging, existing-photo editing, responsive administration, scoped search and account preferences have been implemented and covered by automated checks. Real device acceptance remains separate. See [PROGRESS.md](PROGRESS.md) and the verified release above.
+
+## Local context and moderation configuration
+
+WeatherAPI.com integration is optional and defaults off. Provider account/key, production outbound HTTPS and commercial terms acceptance are still required. Only community coordinates are queried, with bounded 45-minute caching, daily request ceiling, and failure fallback. No real provider key is included in source. Credential rotation requires revoking old keys at the provider, because old configuration revisions may retain encrypted values. The default manual publication policy remains unchanged; optional new-content auto approval requires super-admin draft/publish and does not replace abuse moderation. Further admin UX work, per-community policies and real-device acceptance remain open.

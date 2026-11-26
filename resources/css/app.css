@@ -1837,7 +1837,7 @@ a.market-category-card:hover, a.market-category-card:focus-visible {
 .weather-disclaimer { font-size:.72rem; color:var(--muted); }
 .local-weather[hidden],.weather-disclaimer[hidden] { display:none; }
 .drawer-local-context .weather-disclaimer { flex-basis:100%; }
-.local-context-bar:has(.local-context:empty),.drawer-local-context:empty { display:none; }
+.local-context-bar:not(:has(.local-context)),.drawer-local-context:not(:has(.local-context)) { display:none; }
 
 /* Control centre: semantic groups, current-page marker, compact responsive navigation. */
 .admin-workspace-head { display:flex; flex-wrap:wrap; align-items:center; gap:10px 18px; padding:0 0 15px; margin-bottom:20px; border-bottom:1px solid var(--border); }

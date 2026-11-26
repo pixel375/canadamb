@@ -1,7 +1,7 @@
 @php($site = request()->attributes->get('site'))
 <x-layouts.site :title="$item->exists ? 'Edit listing' : 'Post a listing'">
     <div class="container page-shell listing-editor">
-        <div class="page-intro"><div><a class="text-link" href="/account/listings">My listings</a><h1>{{ $item->exists ? 'Edit listing' : 'Post a listing' }}</h1><p>Basic listings are free and reviewed before publication.</p></div></div>
+        <div class="page-intro"><div><a class="text-link" href="/account/listings">My listings</a><h1>{{ $item->exists ? 'Edit listing' : 'Post a listing' }}</h1><p>Basic listings are free. Publication follows the network’s moderation policy.</p></div></div>
         @if($duplicating ?? false)<p class="notice">Copied text and item details only. Review the information and upload new photos. This will create a new listing requiring approval; messages, saves and reports stay with the original.</p>@endif
         <form class="listing-editor-form form-stack" method="post" enctype="multipart/form-data" action="{{ $item->exists ? '/account/listings/'.$item->id : '/marketplace' }}" x-data="{ category: @js(old('category', $item->category ?? '')) }">
             @csrf
@@ -79,7 +79,7 @@
             @if($item->exists && old('version') && old('version') !== $item->reviewVersion())
                 <p class="notice notice-error">The listing changed while this form was open. <a href="/account/listings/{{ $item->id }}/edit">Reload the editor</a> before continuing.</p>
             @endif
-            <div class="panel listing-editor-submit"><p>Listings are reviewed before appearing publicly. Check your details before submitting.</p><button class="button button-primary">Submit for review</button></div>
+            <div class="panel listing-editor-submit"><p>New listings may be approved automatically under the published moderation policy. Edited listings require review. Check your details before submitting.</p><button class="button button-primary">Submit for review</button></div>
         </form>
     </div>
 </x-layouts.site>
