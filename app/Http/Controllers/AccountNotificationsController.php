@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Support\AccountActivity;
+use App\Support\Audit;
+use App\Support\BroadcastConsent;
 use App\Support\Community;
 use App\Support\EventDiscussions;
 use App\Support\JobSearches;
@@ -62,6 +64,23 @@ final class AccountNotificationsController extends Controller
         return redirect('/account/notifications');
     }
 
+    public function announcementConsent(Request $request)
+    {
+        abort_unless(BroadcastConsent::enabled(), 404);
+        $data = $request->validate(['opted_in' => 'required|boolean']);
+        $member = $request->user()->id;
+        $next = (bool) $data['opted_in'];
+        DB::transaction(function () use ($member, $next) {
+            User::lockForUpdate()->findOrFail($member);
+            if (BroadcastConsent::optedIn($member) !== $next) {
+                DB::table('broadcast_consents')->updateOrInsert(['user_id' => $member], ['opted_in' => $next, 'updated_at' => now()]);
+                Audit::record('broadcast.consent-changed', $member, context: ['opted_in' => $next]);
+            }
+        }, attempts: 3);
+
+        return redirect('/account/notifications')->with('status', 'Announcement preference saved.');
+    }
+
     public function index(Request $request, AccountActivity $activity)
     {
         $site = $request->attributes->get('site');
@@ -79,6 +98,8 @@ final class AccountNotificationsController extends Controller
         $ownerUnread = $ownerQuery ? (clone $ownerQuery)->whereNull('alert.read_at')->count() : 0;
         $ownerAlerts = $ownerQuery ? $ownerQuery->orderByRaw('CASE WHEN alert.read_at IS NULL THEN 0 ELSE 1 END')->orderByDesc('alert.id')->paginate(15, pageName: 'updates') : null;
         $replyUnread = max(0, $counts['notifications'] - $ownerUnread);
+        $broadcastEnabled = BroadcastConsent::enabled();
+        $broadcastOptedIn = BroadcastConsent::optedIn($user->id);
         $pushEnabled = PushDevices::enabled();
         $pushKey = PushDevices::available($site) ? PushDevices::publicKey() : null;
         $pushDevices = $pushEnabled ? DB::table('push_devices')->join('sites', 'sites.id', '=', 'push_devices.site_id')
@@ -91,7 +112,7 @@ final class AccountNotificationsController extends Controller
         $jobAlertsEnabled = JobSearches::enabled($site) && $preferences['job_summary'];
         $matchingSearches = $jobAlertsEnabled ? JobSearches::alertingSearchCount($user->id, $site) : 0;
 
-        return response()->view('account.notifications', compact('counts', 'discussionsEnabled', 'recent', 'preferencesEnabled', 'preferences', 'jobAlertsEnabled', 'matchingSearches', 'directReplies', 'eventThreads', 'ownerEnabled', 'ownerAlerts', 'ownerUnread', 'replyUnread', 'pushEnabled', 'pushKey', 'pushDevices'))
+        return response()->view('account.notifications', compact('counts', 'discussionsEnabled', 'recent', 'preferencesEnabled', 'preferences', 'jobAlertsEnabled', 'matchingSearches', 'directReplies', 'eventThreads', 'ownerEnabled', 'ownerAlerts', 'ownerUnread', 'replyUnread', 'pushEnabled', 'pushKey', 'pushDevices', 'broadcastEnabled', 'broadcastOptedIn'))
             ->header('Cache-Control', 'private, no-store');
     }
 }

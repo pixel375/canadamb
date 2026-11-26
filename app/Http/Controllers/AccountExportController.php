@@ -92,6 +92,10 @@ class AccountExportController extends Controller
             ->where('property_listings.owner_id', $member)->selectRaw('property_photos.id AS export_id, property_photos.property_listing_id, property_photos.position');
         $sections['listing-photo-metadata'] = DB::query()->fromSub($listingPhotos, 'export_records');
         $sections['property-photo-metadata'] = DB::query()->fromSub($propertyPhotos, 'export_records');
+        if (Schema::hasTable('broadcast_consents')) {
+            $consent = DB::table('broadcast_consents')->where('user_id', $member)->selectRaw('user_id AS export_id, opted_in, updated_at');
+            $sections['announcement-consent'] = DB::query()->fromSub($consent, 'export_records');
+        }
         if (Schema::hasTable('business_inquiry_settings')) {
             $preferences = DB::table('business_inquiry_settings')->where('owner_id', $member)
                 ->selectRaw('business_id AS export_id, business_inquiries, job_inquiries, updated_at');

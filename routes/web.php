@@ -106,6 +106,7 @@ Route::get('/marketplace/{listing}/thumbnail/{photo}', [ListingEngagementControl
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/account/notifications/preferences', [AccountNotificationsController::class, 'preferences'])->middleware('throttle:8,1,notification-preferences');
     Route::get('/account/notifications', [AccountNotificationsController::class, 'index']);
+    Route::post('/account/notifications/announcement-consent', [AccountNotificationsController::class, 'announcementConsent'])->middleware('throttle:8,1,broadcast-consent');
     Route::post('/account/notifications/devices', [PushDeviceController::class, 'store'])->middleware('throttle:8,1,push-register');
     Route::post('/account/notifications/devices/unsubscribe', [PushDeviceController::class, 'unsubscribe'])->middleware('throttle:12,1,push-unsubscribe');
     Route::delete('/account/notifications/devices/{device}', [PushDeviceController::class, 'destroy'])->whereNumber('device')->middleware('throttle:12,1,push-remove');
@@ -311,6 +312,7 @@ Route::prefix('admin')->middleware(['auth', 'verified', 'can:manage-network'])->
         Route::post('/local-context', [LocalContextController::class, 'save'])->middleware('throttle:6,1,local-context');
         Route::post('/local-context/diagnostic', [LocalContextController::class, 'diagnostic'])->middleware('throttle:4,1,weather-diagnostic');
         Route::get('/notifications', [NotificationController::class, 'index'])->middleware('throttle:12,1,notification-admin');
+        Route::post('/notifications/preview', [NotificationController::class, 'preview'])->middleware('throttle:8,1,broadcast-preview');
         Route::get('/seo', [SeoController::class, 'index']);
         Route::post('/seo/{site}', [SeoController::class, 'update'])->whereNumber('site')->middleware('throttle:8,1,seo-settings');
         Route::get('/publication-policy', [PublicationPolicyController::class, 'edit']);

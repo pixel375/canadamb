@@ -34,6 +34,16 @@
                 </div>
             </section>
         </div>
+        @if($broadcastEnabled)
+            <section class="panel form-stack">
+                <h2>Optional network announcements</h2>
+                <p>Choose whether to receive future non-marketing announcements in your CanadaMB notification centre. No broadcasts are being sent yet. This does not enable email, marketing messages or Web Push delivery.</p>
+                <form method="post" action="/account/notifications/announcement-consent" class="form-stack">@csrf
+                    <label>Announcements<select name="opted_in"><option value="0" @selected(!$broadcastOptedIn)>Do not receive announcements</option><option value="1" @selected($broadcastOptedIn)>Receive announcements</option></select></label>
+                    <button class="button button-primary">Save announcement preference</button>
+                </form>
+            </section>
+        @endif
         @if($pushEnabled)
             <section class="panel form-stack" data-push-devices data-public-key="{{ $pushKey ?? '' }}">
                 <h2>Device notifications</h2>

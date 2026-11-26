@@ -13,8 +13,22 @@
         </div>
         <p class="field-note">These are in-site records, not email or push delivery receipts. Hidden discussions and comments are excluded; mirrored records are counted once.</p>
     </section>
+    @if($broadcastEnabled)
+        <section class="panel form-stack">
+            <h2>Preview a network announcement</h2>
+            <p>Only verified members who separately opted into announcements are counted. This is an audited preview, not a send operation.</p>
+            <form method="post" action="/admin/notifications/preview" class="form-stack">@csrf
+                <label>Title<input name="title" required maxlength="120" value="{{ old('title') }}"></label>
+                <label>Message<textarea name="body" required maxlength="1000" rows="5">{{ old('body') }}</textarea></label>
+                <label>Audience<select name="audience"><option value="all">All opted-in members</option><option value="business-owners" @selected(old('audience') === 'business-owners')>Opted-in business owners</option><option value="selected" @selected(old('audience') === 'selected')>Selected opted-in members</option></select></label>
+                <label>Member reference numbers (selected only)<textarea name="member_ids" maxlength="600" rows="2">{{ old('member_ids') }}</textarea></label>
+                <button class="button button-primary">Preview announcement</button>
+            </form>
+        </section>
+    @endif
     <section class="panel form-stack">
         <h2>Availability and preferences</h2>
+        <p>Announcement previews: {{ $broadcastEnabled ? 'Available (no sends)' : 'Staged, not active' }}</p>
         <p>Member preferences: {{ $preferencesEnabled ? 'Available' : 'Staged, not active' }}</p>
         @if($paused !== null)<p>{{ number_format($paused) }} accounts have paused discussion notifications.</p>@endif
         <p>Owner submission updates: {{ $ownerEnabled ? 'Available' : 'Staged, not active' }}</p>

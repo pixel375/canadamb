@@ -18,6 +18,7 @@ final class PushDeviceController extends Controller
         abort_unless(PushDevices::available($site), 404);
         $data = $request->validate([
             'endpoint' => 'required|string|max:2048',
+            'keys' => 'required|array:p256dh,auth',
             'keys.p256dh' => 'required|string|size:87',
             'keys.auth' => 'required|string|size:22',
         ]);
@@ -40,7 +41,8 @@ final class PushDeviceController extends Controller
             if ($existing) {
                 DB::table('push_devices')->where('id', $existing->id)->update($values);
             } else {
-                DB::table('push_devices')->insert($values + ['user_id' => $member, 'site_id' => $site->id, 'endpoint_hash' => $hash, 'created_at' => now()]);
+                $inserted = DB::table('push_devices')->insertOrIgnore($values + ['user_id' => $member, 'site_id' => $site->id, 'endpoint_hash' => $hash, 'created_at' => now()]);
+                abort_unless($inserted === 1, 409, 'Device registration changed. Reload and try again.');
                 Audit::record('push.device-registered', $member, $site->id);
             }
         }, attempts: 3);
