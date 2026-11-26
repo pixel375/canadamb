@@ -103,6 +103,27 @@ const fs = require('node:fs');
         check(await page.locator('.discussion-notification-row.is-unread').count() === 2, 'Selected read notification did not become unread');
         console.log('PASS: selected read history action through mobile browser');
 
+        // Opening a notification is an explicit POST, not a mutation caused
+        // by a prefetch or a GET to a public reply permalink.
+        const notice = page.locator('.discussion-notification-row.is-unread').first();
+        const noticeTitle = await notice.locator('.notification-open-link').innerText();
+        await notice.getByRole('button', { name: 'View reply', exact: true }).click();
+        await page.waitForURL(url => url.origin === host && /^\/community\/\d+$/.test(url.pathname) && url.hash.startsWith('#reply-'));
+        check(await page.getByRole('heading', { name: noticeTitle, exact: true }).isVisible(), 'Notification did not open its approved discussion on Manitoba');
+        const mirroredPath = new URL(page.url()).pathname;
+        const local = await browser.newPage();
+        const localResponse = await local.goto('http://brandonmb.localhost:8000' + mirroredPath);
+        check(localResponse?.ok() && new URL(local.url()).hostname === 'brandonmb.localhost', 'Local discussion redirected away');
+        check(await local.getByRole('heading', { name: noticeTitle, exact: true }).isVisible(), 'Mirrored local discussion missing');
+        await local.close();
+        await page.goto(host + '/account/community-notifications?view=unread');
+        check(await page.locator('.discussion-notification-row.is-unread').count() === 1, 'Opening notification did not acknowledge exactly one');
+        await page.goto(host + '/account/community-notifications?view=read');
+        await page.getByRole('button', { name: 'Mark unread', exact: true }).click();
+        await page.goto(host + '/account/community-notifications?view=unread');
+        check(await page.locator('.discussion-notification-row.is-unread').count() === 2, 'Read-state restore failed');
+        console.log('PASS: notification opens on current portal, mirrored discussion renders on both domains, one notification acknowledged');
+
         await page.goto(host + '/account/followed-discussions');
         const followingForm = page.locator('form[action="/account/followed-discussions"]');
         await followingForm.locator('input[name="q"]').fill('garden');

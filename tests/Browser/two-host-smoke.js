@@ -13,7 +13,9 @@ async page => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(brandon);
     check(await page.getByRole('heading', { name: 'Your Brandon. Your community.' }).isVisible(), 'BrandonMB hero missing');
-    check(await page.getByRole('link', { name: 'Communities', exact: true }).count() === 0, 'Provincial menu leaked into Brandon navigation');
+    await page.goto(brandon + '/communities');
+    check(await page.getByText('You are browsing BrandonMB', { exact: true }).isVisible(), 'Local Communities page missing');
+    await page.goto(brandon);
     check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Mobile homepage overflows');
     check(await page.locator('.site-accent').evaluate(el => getComputedStyle(el).backgroundColor) === 'rgb(34, 160, 107)', 'Brandon accent did not render');
     const navigation = page.getByRole('navigation', { name: 'Main navigation' });
@@ -42,10 +44,10 @@ async page => {
     const cityListing = 'Browser QA Brandon table ' + suffix;
     const ruralListing = 'Browser QA Elkhorn table ' + suffix;
     async function fillListing(title) {
-        await page.getByLabel('Title', { exact: true }).fill(title);
-        await page.getByLabel('Description', { exact: true }).fill('Disposable two-host smoke test listing.');
-        await page.getByRole('combobox', { name: 'Category', exact: true }).selectOption('furniture');
-        await page.getByRole('combobox', { name: 'Condition', exact: true }).selectOption('good');
+        await page.locator('input[name="title"]').fill(title);
+        await page.locator('textarea[name="description"]').fill('Disposable two-host smoke test listing.');
+        await page.locator('select[name="category"]').selectOption('furniture');
+        await page.locator('select[name="condition"]').selectOption('good');
         await page.getByLabel('Price (CAD)').fill('22.25');
     }
     await fillListing(cityListing);
@@ -54,7 +56,7 @@ async page => {
 
     await page.goto(mainland + '/marketplace/new');
     await fillListing(ruralListing);
-    await page.getByRole('combobox', { name: 'Location', exact: true }).selectOption({ label: 'Elkhorn' });
+    await page.locator('select[name="location_id"]').selectOption({ label: 'Elkhorn' });
     await page.getByRole('button', { name: 'Submit for review' }).click();
     await page.waitForURL(mainland + '/account/listings');
 
@@ -68,7 +70,10 @@ async page => {
     check(await page.getByRole('link', { name: cityListing }).isVisible(), 'Provincial feed is missing Brandon content');
     check(await page.getByRole('link', { name: ruralListing }).isVisible(), 'Provincial feed is missing rural content');
     await page.getByRole('link', { name: cityListing }).click();
-    await page.waitForURL(url => url.origin === brandon && /^\/marketplace\/\d+$/.test(url.pathname));
+    await page.waitForURL(url => url.origin === mainland && /^\/marketplace\/\d+$/.test(url.pathname));
+    const listingPath = new URL(page.url()).pathname;
+    await page.goto(brandon + listingPath);
+    check(new URL(page.url()).origin === brandon, 'Mirrored Brandon listing redirected off local portal');
     await page.goto(brandon + '/marketplace');
     check(await page.getByRole('link', { name: cityListing }).isVisible(), 'Brandon feed is missing its approved item');
     check(await page.getByRole('link', { name: ruralListing }).count() === 0, 'Rural content leaked into Brandon');
