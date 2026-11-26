@@ -113,7 +113,7 @@ class PropertyDraftTest extends TestCase
             ]));
         }
         $base = 'https://brandonmb.ca/account/properties';
-        $versions = $items->mapWithKeys(fn ($item) => [$item->id => $item->contentVersion()])->all();
+        $versions = $items->mapWithKeys(fn ($item) => [$item->id => $item->fresh()->contentVersion()])->all();
         $data = ['properties' => [$items[0]->id, $items[1]->id], 'versions' => $versions, 'authorization_capacity' => 'owner', 'advertising_consent' => '1'];
         $this->actingAs($other)->post($base.'/submit-selected', $data)->assertNotFound();
         $this->actingAs($owner)->get($base)->assertOk()->assertSee('Submit selected properties for review');
