@@ -116,11 +116,15 @@ final class NotificationController extends Controller
         $announcementDelivery = Announcements::canSend();
         $announcementHistory = Announcements::enabled() ? DB::table('announcements')->where('created_at', '>=', $since)
             ->orderByDesc('id')->limit(20)->get(['id', 'title', 'audience', 'recipient_count', 'created_at']) : collect();
+        $announcementMetrics = Announcements::enabled() ? DB::table('announcement_receipts')
+            ->join('announcements', 'announcements.id', '=', 'announcement_receipts.announcement_id')
+            ->where('announcements.created_at', '>=', $since)
+            ->selectRaw('COUNT(*) AS retained, COUNT(announcement_receipts.read_at) AS read_total')->first() : null;
         $pushEnabled = PushDevices::enabled();
         $pushKeyConfigured = PushDevices::publicKey() !== null;
         $pushCount = $pushEnabled ? DB::table('push_devices')->count() : null;
 
-        return response()->view('admin.notifications', compact('days', 'metrics', 'preferencesEnabled', 'paused', 'eventsEnabled', 'ownerEnabled', 'ownerMetrics', 'pushEnabled', 'pushKeyConfigured', 'pushCount', 'broadcastEnabled', 'announcementDelivery', 'announcementHistory'))
+        return response()->view('admin.notifications', compact('days', 'metrics', 'preferencesEnabled', 'paused', 'eventsEnabled', 'ownerEnabled', 'ownerMetrics', 'pushEnabled', 'pushKeyConfigured', 'pushCount', 'broadcastEnabled', 'announcementDelivery', 'announcementHistory', 'announcementMetrics'))
             ->header('Cache-Control', 'private, no-store');
     }
 }

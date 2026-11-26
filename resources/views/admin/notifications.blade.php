@@ -30,6 +30,10 @@
         <h2>Availability and preferences</h2>
         <p>Announcement previews: {{ $broadcastEnabled ? 'Available' : 'Staged, not active' }}</p>
         <p>In-site delivery: {{ $announcementDelivery ? 'Available with explicit confirmation' : 'Disabled' }}</p>
+        @if($announcementMetrics)
+            <p>{{ number_format($announcementMetrics->retained) }} retained member receipts in this period · {{ number_format($announcementMetrics->read_total) }} marked read.</p>
+            <p class="field-note">These are in-site read markers, not proof a person read the message. Account deletion may remove receipts without changing historical delivery counts.</p>
+        @endif
         @if($announcementHistory->isNotEmpty())
             <h3>Recent in-site announcements (up to 20)</h3>
             @foreach($announcementHistory as $sent)<div class="item-row"><div><strong>{{ $sent->title }}</strong><p>{{ $sent->recipient_count }} notification centres · {{ $sent->created_at }}</p></div></div>@endforeach

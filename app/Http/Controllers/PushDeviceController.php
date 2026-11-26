@@ -28,8 +28,10 @@ final class PushDeviceController extends Controller
         }
         $hash = hash('sha256', $data['endpoint']);
         $member = $request->user()->id;
-        DB::transaction(function () use ($site, $data, $hash, $member) {
-            User::lockForUpdate()->findOrFail($member);
+        $sessionVersion = $request->user()->session_version;
+        DB::transaction(function () use ($site, $data, $hash, $member, $sessionVersion) {
+            $user = User::lockForUpdate()->findOrFail($member);
+            abort_unless($user->session_version === $sessionVersion, 409, 'Your session changed. Sign in again.');
             $existing = DB::table('push_devices')->where('endpoint_hash', $hash)->lockForUpdate()->first();
             if ($existing && ((int) $existing->user_id !== $member || (int) $existing->site_id !== $site->id)) {
                 abort(409, 'Remove the existing browser subscription before registering another account.');

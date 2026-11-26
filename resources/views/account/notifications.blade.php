@@ -73,7 +73,7 @@
                         <form method="post" action="/account/notifications/devices/{{ $device->id }}">@csrf @method('DELETE')<button class="button button-outline">Remove registration</button></form>
                     </div>
                 @empty<p>No registered devices.</p>@endforelse
-                <p class="field-note">Remove registrations on shared or lost devices. Browser notification permission can also be revoked in browser settings.</p>
+                <p class="field-note">Signing out of the network or changing your password removes your registered devices. Register again after signing in if desired. Browser notification permission can also be revoked in browser settings.</p>
             </section>
         @endif
         @if($ownerEnabled)

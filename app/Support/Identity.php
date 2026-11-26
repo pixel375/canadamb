@@ -8,6 +8,7 @@ use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 use Laravel\Passport\ClientRepository;
@@ -94,6 +95,11 @@ final class Identity
             DB::table('oauth_access_tokens')->where('user_id', $user->id)->update(['revoked' => true]);
             DB::table('oauth_refresh_tokens')->whereIn('access_token_id',
                 DB::table('oauth_access_tokens')->select('id')->where('user_id', $user->id))->update(['revoked' => true]);
+            // Network-wide logout/password change already revoke every session.
+            // Also remove device registrations, including when the feature is disabled.
+            if (Schema::hasTable('push_devices')) {
+                DB::table('push_devices')->where('user_id', $user->id)->delete();
+            }
         });
     }
 }

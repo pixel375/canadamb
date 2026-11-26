@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Support\Identity;
 use App\Support\PushDevices;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
@@ -53,5 +54,12 @@ class PushDevicesTest extends TestCase
         $this->postJson($url.'/unsubscribe', ['endpoint' => $data['endpoint']])->assertOk();
         $this->assertDatabaseCount('push_devices', 0);
         $this->assertFalse(PushDevices::endpointValid('https://fcm.googleapis.com@evil.test/test'));
+        $this->postJson($url, $data)->assertOk();
+        $otherData = array_replace($data, ['endpoint' => 'https://fcm.googleapis.com/fcm/send/other-test-fixture']);
+        $this->actingAs($other)->postJson($url, $otherData)->assertOk();
+        config(['network.push_devices' => false]);
+        Identity::revoke($member);
+        $this->assertDatabaseMissing('push_devices', ['user_id' => $member->id]);
+        $this->assertDatabaseHas('push_devices', ['user_id' => $other->id]);
     }
 }
