@@ -99,8 +99,9 @@ class CommunityForumController extends Controller
             ->orderByDesc('last_activity_at')->latest('id')->limit(3)->get();
 
         $event = EventDiscussions::publicEvent($site, $item);
+        $eventReviewPending = ! $event && EventDiscussions::pendingReview($site, $item);
 
-        return view('community.thread', compact('item', 'canonical', 'replies', 'following', 'related', 'event'));
+        return view('community.thread', compact('item', 'canonical', 'replies', 'following', 'related', 'event', 'eventReviewPending'));
     }
 
     public function owned(Request $request)

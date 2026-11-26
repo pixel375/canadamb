@@ -38,7 +38,12 @@
                     <section class="panel form-stack"><p class="section-label">Linked community event</p><h2>{{ $event->title }}</h2>
                         @if($event->status === 'cancelled')<p class="notice notice-error">This event has been cancelled.</p>@endif
                         <p>{{ $event->localStart()->format('l, F j, Y · g:i a T') }}@if($event->localEnd()) – {{ $event->localEnd()->format('M j · g:i a T') }}@endif</p>
-                        <p>{{ $event->venue }} · {{ $event->organizer }}</p><a class="button button-outline" href="/events/{{ $event->id }}">Official event details</a>
+                        <p>{{ $event->venue }} · {{ $event->organizer }}</p><a class="button button-outline" href="/events/{{ $event->id }}">Go to event</a>
+                    </section>
+                @elseif($eventReviewPending)
+                    <section class="panel form-stack"><p class="section-label">Linked community event</p>
+                        <button class="button button-outline" type="button" disabled>Review pending</button>
+                        <p class="field-note">The event calendar entry is awaiting review.</p>
                     </section>
                 @endif
                 <div class="discussion-original-copy prose-text">{{ $item->body }}</div>

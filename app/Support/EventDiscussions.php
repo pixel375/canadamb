@@ -94,10 +94,18 @@ final class EventDiscussions
             ->whereIn('id', DB::table('community_event_discussions')->where('thread_id', $thread->id)->select('event_id'))->first();
     }
 
-    public static function eventPath(Site $site, CommunityEvent $event): string
+    public static function pendingReview(Site $site, CommunityThread $thread): bool
     {
-        $thread = self::publicThread($site, $event);
+        $community = app(Community::class);
+        if (! self::enabled() || ! $community->enabled($site, 'events') || ! $community->enabled($site, 'community')
+            || $thread->status !== 'approved' || ($site->location_id && $thread->location_id !== $site->location_id)) {
+            return false;
+        }
 
-        return $thread ? '/community/'.$thread->id : '/events/'.$event->id;
+        // Expose only a review-state indicator, never hidden venue, dates, ID,
+        // external ticket link or moderation notes.
+        return CommunityEvent::where('status', 'pending')->where('author_id', $thread->author_id)
+            ->where('location_id', $thread->location_id)
+            ->whereIn('id', DB::table('community_event_discussions')->where('thread_id', $thread->id)->select('event_id'))->exists();
     }
 }
