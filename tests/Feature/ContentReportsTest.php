@@ -97,7 +97,7 @@ class ContentReportsTest extends TestCase
         $this->get($eventUrl)->assertOk()->assertDontSee('Join event discussion');
         $this->post('https://canadamb.ca/admin/community/threads/'.$thread->id, ['action' => 'approve'])->assertRedirect();
         $this->get($eventUrl)->assertSee('Join event discussion');
-        $this->get($threadUrl)->assertOk()->assertSee('Official event details');
+        $this->get($threadUrl)->assertOk()->assertSee('Go to event');
         $this->get('https://brandonmb.ca/events')->assertSee('href="/community/'.$thread->id.'"', false);
         $this->actingAs($owner);
         $edit = 'https://brandonmb.ca/account/events/'.$event->id;
