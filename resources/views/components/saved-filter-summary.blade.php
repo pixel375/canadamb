@@ -1,7 +1,7 @@
 @props(['filters', 'kind', 'categories' => [], 'groups' => [], 'places' => []])
 @php
     $labels = [
-        'q' => 'Keywords', 'location' => 'Location', 'type' => 'Employment type',
+        'q' => 'Keywords', 'location' => 'Location', 'employer' => 'Employer', 'type' => 'Employment type',
         'workplace' => 'Workplace', 'pay_unit' => 'Pay period', 'minimum_pay' => 'Minimum pay',
         'category' => 'Category', 'group' => 'Category group', 'condition' => 'Condition',
         'min_price' => 'Minimum price', 'max_price' => 'Maximum price',

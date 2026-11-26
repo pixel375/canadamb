@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-26 — employer-focused job discovery
+
+Added employer-name filtering shared with saved searches, deadline sorting, comparable pay sorting restricted to one selected pay period, and related active jobs from the same employer. Public visibility and city scope remain enforced. No migrations or rollout changes.
+
 ## 2026-11-26 — local event date discovery and related events
 
 Added today, seven-day, weekend and thirty-day shortcuts using Manitoba-local date boundaries, shared by calendar snapshot exports. Explicit date selection and period preservation in monthly navigation, matching counts, ongoing/end-time labels, and related approved same-community events on detail pages. Tests cover hidden/remote events, Sunday weekend behavior and export consistency. No publishing switches changed.

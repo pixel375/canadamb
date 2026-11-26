@@ -9,10 +9,12 @@
             <form method="get" action="/jobs" class="panel filter-bar">
             <label>Search jobs<input type="search" name="q" maxlength="100" value="{{ $filters['q'] ?? '' }}"></label>
             @if(request()->attributes->get('site')->isNetwork())<label>Location<input type="search" name="location" maxlength="150" value="{{ $filters['location'] ?? '' }}"></label>@endif
+            <label>Employer<input type="search" name="employer" maxlength="140" value="{{ $filters['employer'] ?? '' }}" placeholder="Business name"></label>
             <label>Employment type<select name="type"><option value="">All types</option>@foreach(\App\Support\JobBoard::TYPES as $id => $label)<option value="{{ $id }}" @selected(($filters['type'] ?? null) === $id)>{{ $label }}</option>@endforeach</select></label>
             <label>Workplace<select name="workplace"><option value="">Any workplace</option>@foreach(\App\Support\JobBoard::WORKPLACES as $id => $label)<option value="{{ $id }}" @selected(($filters['workplace'] ?? null) === $id)>{{ $label }}</option>@endforeach</select></label>
             <label>Pay period<select name="pay_unit"><option value="">Any pay period</option><option value="hour" @selected(($filters['pay_unit'] ?? null) === 'hour')>Hourly</option><option value="year" @selected(($filters['pay_unit'] ?? null) === 'year')>Annual</option></select></label>
             <label>Minimum pay (CAD)<input name="minimum_pay" type="number" min="0" step="0.01" value="{{ $filters['minimum_pay'] ?? '' }}"></label>
+            <label>Sort<select name="sort">@foreach(['newest' => 'Newest postings', 'deadline' => 'Closing soonest', 'pay-high' => 'Highest advertised pay'] as $key => $label)<option value="{{ $key }}" @selected(($filters['sort'] ?? 'newest') === $key)>{{ $label }}</option>@endforeach</select><small class="field-note">Select a pay period before sorting by compensation.</small></label>
             <button type="submit" class="button button-primary">Filter jobs</button>
         </form>
         </details>

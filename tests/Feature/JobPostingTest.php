@@ -17,6 +17,30 @@ class JobPostingTest extends TestCase
 
     protected $seeder = DatabaseSeeder::class;
 
+    public function test_job_employer_filter_and_related_jobs_respect_visibility_and_pay_units(): void
+    {
+        $business = Business::create(['name' => 'Fixture repair employer', 'slug' => 'fixture-repair-employer', 'category' => 'services', 'status' => 'active']);
+        $items = collect();
+        foreach ([['brandon', 'First local mechanic', 'approved', 2500, 'hour'], ['brandon', 'Second local mechanic', 'approved', 4000, 'hour'],
+            ['brandon', 'Private mechanic fixture', 'pending', 5000, 'hour'], ['elkhorn', 'Remote community mechanic', 'approved', 6000, 'hour'],
+            ['brandon', 'Annual salary mechanic', 'approved', 8000000, 'year']] as [$place, $title, $status, $pay, $unit]) {
+            $branch = $business->locations()->create(['location_id' => Location::where('slug', $place)->sole()->id, 'address' => $title.' Road']);
+            $job = JobPosting::create(['business_location_id' => $branch->id, 'title' => $title, 'description' => 'A local employment fixture.',
+                'employment_type' => 'full-time', 'workplace' => 'on-site', 'apply_url' => 'https://example.test/apply',
+                'closing_on' => today('America/Winnipeg')->addWeek()->toDateString(), 'pay_min' => $pay, 'pay_max' => $pay, 'pay_unit' => $unit]);
+            $job->forceFill(['status' => $status, 'published_at' => now()])->save();
+            $items->push($job);
+        }
+        $base = 'https://brandonmb.ca/jobs';
+        $this->get($base.'?employer=fixture%20repair&pay_unit=hour&sort=pay-high')->assertOk()
+            ->assertSeeInOrder(['Second local mechanic', 'First local mechanic'])->assertDontSee('Annual salary mechanic')
+            ->assertDontSee('Private mechanic fixture')->assertDontSee('Remote community mechanic');
+        $this->getJson($base.'?sort=pay-high')->assertUnprocessable()->assertJsonValidationErrors('pay_unit');
+        $this->get($base.'/'.$items[0]->id)->assertOk()->assertSee('More jobs from this employer')->assertSee('Second local mechanic')
+            ->assertDontSee('Remote community mechanic')->assertDontSee('Private mechanic fixture');
+        $this->get($base.'?employer=nonexistent')->assertOk()->assertDontSee('First local mechanic');
+    }
+
     public function test_bulk_job_bookmark_cleanup_preserves_open_and_other_portal_items(): void
     {
         $member = User::factory()->create();

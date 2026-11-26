@@ -6,6 +6,7 @@
             <label>Search name<input name="name" required maxlength="80" value="{{ old('name', $item->name) }}"></label>
             <label>Keywords<input name="q" maxlength="100" value="{{ old('q', $item->filters['q'] ?? '') }}"></label>
             @if(request()->attributes->get('site')->isNetwork())<label>Location<input name="location" maxlength="150" value="{{ old('location', $item->filters['location'] ?? '') }}"></label>@endif
+            <label>Employer<input name="employer" maxlength="140" value="{{ old('employer', $item->filters['employer'] ?? '') }}"></label>
             <label>Employment type<select name="type"><option value="">All types</option>@foreach(\App\Support\JobBoard::TYPES as $id => $label)<option value="{{ $id }}" @selected(old('type', $item->filters['type'] ?? '') === $id)>{{ $label }}</option>@endforeach</select></label>
             <label>Workplace<select name="workplace"><option value="">Any workplace</option>@foreach(\App\Support\JobBoard::WORKPLACES as $id => $label)<option value="{{ $id }}" @selected(old('workplace', $item->filters['workplace'] ?? '') === $id)>{{ $label }}</option>@endforeach</select></label>
             <label>Pay period<select name="pay_unit"><option value="">Any pay period</option>@foreach(['hour' => 'Hourly', 'year' => 'Annual'] as $id => $label)<option value="{{ $id }}" @selected(old('pay_unit', $item->filters['pay_unit'] ?? '') === $id)>{{ $label }}</option>@endforeach</select></label>

@@ -39,6 +39,11 @@
                     </dl>
                     <h2 class="listing-detail-subhead">Job description</h2><p class="prose-text">{{ $item->description }}</p>
                 </section>
+                @if($related->isNotEmpty())
+                    <section class="panel"><h2>More jobs from this employer</h2>
+                        @foreach($related as $other)<x-job-result :item="$other" :show-description="false"/>@endforeach
+                    </section>
+                @endif
             </div>
             <aside class="public-profile-aside">
                 <section class="panel form-stack">

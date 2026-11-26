@@ -41,7 +41,7 @@ class JobBoard
         return [
             'q' => 'nullable|string|max:100', 'type' => ['nullable', Rule::in(array_keys(self::TYPES))],
             'workplace' => ['nullable', Rule::in(array_keys(self::WORKPLACES))], 'location' => 'nullable|string|max:150',
-            'pay_unit' => 'required_with:minimum_pay|nullable|in:hour,year', 'minimum_pay' => 'nullable|numeric|decimal:0,2|min:0|max:10000000',
+            'employer' => 'nullable|string|max:140', 'pay_unit' => 'required_with:minimum_pay|nullable|in:hour,year', 'minimum_pay' => 'nullable|numeric|decimal:0,2|min:0|max:10000000',
         ];
     }
 
@@ -49,6 +49,7 @@ class JobBoard
     {
         return $query
             ->when(isset($filters['q']), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'description']))
+            ->when(filled($filters['employer'] ?? null), fn ($query) => $query->whereHas('branch.business', fn ($business) => KeywordSearch::apply($business, $filters['employer'], ['name'])))
             ->when($filters['type'] ?? null, fn ($query, $type) => $query->where('employment_type', $type))
             ->when($filters['workplace'] ?? null, fn ($query, $workplace) => $query->where('workplace', $workplace))
             ->when($filters['pay_unit'] ?? null, fn ($query, $unit) => $query->where('pay_unit', $unit))

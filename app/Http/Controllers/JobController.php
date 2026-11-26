@@ -22,9 +22,17 @@ class JobController extends Controller
     {
         $site = $request->attributes->get('site');
         $query = $this->visible($request);
-        $filters = $request->validate(JobBoard::searchRules());
-        $items = $this->jobs->filter($query, $site, $filters)
-            ->latest('published_at')->latest('id')->paginate(18)->withQueryString();
+        $filters = $request->validate(JobBoard::searchRules() + ['sort' => 'nullable|in:newest,deadline,pay-high']);
+        $query = $this->jobs->filter($query, $site, $filters);
+        if (($filters['sort'] ?? '') === 'deadline') {
+            $query->orderBy('closing_on');
+        } elseif (($filters['sort'] ?? '') === 'pay-high') {
+            if (! isset($filters['pay_unit'])) {
+                throw ValidationException::withMessages(['pay_unit' => 'Select hourly or annual pay to compare compensation.']);
+            }
+            $query->orderByRaw('CASE WHEN pay_max IS NULL THEN 1 ELSE 0 END')->orderByDesc('pay_max');
+        }
+        $items = $query->latest('published_at')->latest('id')->paginate(18)->withQueryString();
 
         return view('jobs.index', compact('items', 'filters'));
     }
@@ -39,7 +47,11 @@ class JobController extends Controller
         $saved = $request->user() && DB::table('job_posting_bookmarks')
             ->where(['user_id' => $request->user()->id, 'job_posting_id' => $job])->exists();
 
-        return view('jobs.show', compact('item', 'saved', 'canonical'));
+        $related = $this->jobs->visible($request->attributes->get('site')->location_id)
+            ->whereKeyNot($item->id)->whereHas('branch', fn ($query) => $query->where('business_id', $item->branch->business_id))
+            ->latest('published_at')->latest('id')->limit(4)->get();
+
+        return view('jobs.show', compact('item', 'saved', 'canonical', 'related'));
     }
 
     public function business(Request $request, int $business)
