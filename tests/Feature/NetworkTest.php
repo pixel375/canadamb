@@ -77,6 +77,11 @@ class NetworkTest extends TestCase
         $this->get('https://canadamb.ca/admin')->assertOk()->assertSee('Moderation queues')->assertSee('Open listing reports')->assertSee('Recent administration activity')
             ->assertSee('Settings &amp; experience', false)->assertSee('Moderation policy')->assertSee('Local time &amp; weather', false)->assertSee('Ownership directory');
         $this->get('https://canadamb.ca/admin/theme')->assertOk()->assertSee('Prairie Forest')->assertSee('Warm Amber')->assertSee('Soft Rose');
+        $this->actingAs(User::factory()->create(['role' => 'news_editor']))->get('https://canadamb.ca/admin/news/feed-health')->assertOk()
+            ->assertSee('Editorial')->assertDontSee('Moderation policy')->assertDontSee('Media inventory');
+        $this->actingAs(User::factory()->create(['role' => 'network_admin']))->get('https://canadamb.ca/admin')->assertOk()
+            ->assertSee('Ownership directory')->assertDontSee('Local time &amp; weather', false);
+        $this->actingAs(User::factory()->create(['role' => 'super_admin']));
         $this->get('https://canadamb.ca/admin/moderation?status=pending&q=desk')->assertOk()->assertSee('Review status');
         $this->get('https://canadamb.ca/admin/community?status=pending&q=meeting')->assertOk()->assertSee('Community review sections');
         $this->get('https://canadamb.ca/admin/jobs?status=pending&q=mechanic')->assertOk()->assertSee('Review status');

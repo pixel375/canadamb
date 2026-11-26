@@ -413,12 +413,23 @@ const fs = require('node:fs');
         for (const width of [320, 390, 768, 1024, 1440]) {
             await adminPage.setViewportSize({ width, height: 900 });
             for (const path of ['/admin', '/admin/moderation?status=pending', '/admin/community?status=pending',
-                '/admin/jobs?status=pending', '/admin/business-review', '/admin/business-ownership', '/admin/news', '/admin/audit', '/admin/readiness', '/admin/commercial']) {
+                '/admin/jobs?status=pending', '/admin/business-review', '/admin/business-ownership', '/admin/news', '/admin/audit', '/admin/readiness', '/admin/commercial', '/admin/local-context', '/admin/publication-policy', '/admin/theme', '/admin/settings']) {
                 const response = await adminPage.goto(host + path);
                 check(response.ok(), 'Admin page failed: ' + path + ' at ' + width);
                 check(await adminPage.locator('.admin-shell').isVisible(), 'Admin layout missing: ' + path);
                 check(await adminPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
                     'Admin page overflow: ' + path + ' at ' + width);
+                check(await adminPage.locator('.admin-nav-group').count() >= 5, 'Grouped admin navigation is missing');
+                check(await adminPage.locator('.admin-nav a[aria-current="page"]').count() === 1, 'Admin current section is ambiguous');
+                if (path === '/admin/local-context') {
+                    check(await adminPage.locator('input[name="weather_api_key"]').getAttribute('type') === 'password', 'Weather key must be hidden');
+                    check(await adminPage.locator('input[name="weather_api_key"]').inputValue() === '', 'Weather key must never be redisplayed');
+                }
+                if (path === '/admin/publication-policy') {
+                    for (const key of ['listings', 'discussions', 'replies']) {
+                        check(await adminPage.locator('select[name="policy[' + key + ']"]').inputValue() === 'manual', 'Default policy must require review');
+                    }
+                }
                 if (path === '/admin') {
                     check(await adminPage.locator('.admin-queue-card').count() >= 9, 'Dashboard review counts missing');
                     check(await adminPage.locator('.admin-queue-card').filter({ hasText: 'Discussions' }).locator('strong').innerText() === '1',

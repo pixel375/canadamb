@@ -78,6 +78,9 @@ const fs = require('node:fs');
                     await hamburger.click();
                     check(await page.locator('#site-drawer').evaluate(node => node.open),
                         'Tablet/mobile drawer did not open: ' + width);
+                    const mobileClock = page.locator('.drawer-local-context [data-manitoba-clock]');
+                    check(await mobileClock.isVisible(), 'Manitoba clock missing in mobile drawer at ' + width);
+                    check(await mobileClock.evaluate(clock => Number.isFinite(Date.parse(clock.dateTime))), 'Clock datetime is invalid');
                     check(await page.locator('.site-drawer-search input[name="q"]').isVisible(),
                         'Drawer has no Marketplace quick search at ' + width);
                     check(await page.locator('.site-drawer-post').isVisible(),
@@ -96,6 +99,10 @@ const fs = require('node:fs');
                     check(!(await page.locator('#site-drawer').evaluate(node => node.open)),
                         'Escape failed to close drawer: ' + width);
                 } else {
+                    const desktopClock = page.locator('.local-context-bar [data-manitoba-clock]');
+                    check(await desktopClock.isVisible(), 'Desktop local clock missing at ' + width);
+                    const expectedTime = await page.evaluate(() => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Winnipeg', hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date()));
+                    check((await desktopClock.innerText()).trim().toLowerCase() === expectedTime.toLowerCase(), 'Desktop local clock has the wrong timezone');
                     const groups = page.locator('.desktop-nav-group');
                     check(await groups.count() === 2, 'Expected Businesses and Discussions desktop menus');
                     check(await page.locator('.navigation a.desktop-real-estate').isVisible(),
