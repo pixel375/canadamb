@@ -1831,3 +1831,10 @@ a.market-category-card:hover, a.market-category-card:focus-visible {
 .drawer-local-context { padding:10px 18px; border-bottom:1px solid var(--border); background:var(--soft); flex:0 0 auto; }
 .drawer-local-context .local-context { font-size:.83rem; }
 @media(min-width:1024px) { .local-context-bar { display:block; } }
+
+.local-weather { border-left:1px solid var(--border); padding-left:10px; }
+.local-weather strong { color:var(--text); }
+.weather-disclaimer { font-size:.72rem; color:var(--muted); }
+.local-weather[hidden],.weather-disclaimer[hidden] { display:none; }
+.drawer-local-context .weather-disclaimer { flex-basis:100%; }
+.local-context-bar:has(.local-context:empty),.drawer-local-context:empty { display:none; }

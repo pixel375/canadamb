@@ -696,7 +696,7 @@ for (const toggle of document.querySelectorAll('[data-password-toggle]')) {
 // Manitoba-local clock: use the named timezone, not the visitor device timezone.
 const localClocks = document.querySelectorAll('[data-manitoba-clock]');
 if (localClocks.length) {
-    const timeFormat = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Winnipeg', hour: 'numeric', minute: '2-digit', hour12: true });
+    const timeFormat = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Winnipeg', hour: 'numeric', minute: '2-digit', hour12: localClocks[0].dataset.clockFormat !== '24' });
     const dateFormat = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Winnipeg', weekday: 'short', month: 'short', day: 'numeric' });
     let clockTimer;
     const updateClocks = () => {
@@ -711,4 +711,32 @@ if (localClocks.length) {
     };
     document.addEventListener('visibilitychange', updateClocks);
     updateClocks();
+}
+
+// Fetch only for a rendered, configured community, once per page. No client credential.
+const weatherWidgets = [...document.querySelectorAll('[data-local-weather]')];
+if (weatherWidgets.length) {
+    const endpoint = weatherWidgets[0].dataset.localWeather;
+    const loadWeather = async () => {
+        try {
+            const response = await fetch(endpoint, { credentials: 'same-origin', cache: 'no-store', headers: { Accept: 'application/json' } });
+            if (!response.ok || response.redirected) return;
+            const { weather } = await response.json();
+            if (!weather || !Number.isFinite(weather.temperature_c) || !Number.isFinite(weather.observed_at)) return;
+            for (const widget of weatherWidgets) {
+                widget.querySelector('[data-weather-value]').textContent = weather.temperature_c + '°C · ' + weather.condition;
+                widget.querySelector('[data-weather-observed]').textContent = ' · ' + new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Winnipeg', hour: 'numeric', minute: '2-digit' }).format(new Date(weather.observed_at * 1000));
+                widget.hidden = false;
+                widget.parentElement.querySelector('[data-weather-disclaimer]').hidden = false;
+            }
+        } catch { /* Optional utility; keep navigation usable when offline. */ }
+    };
+    if (window.matchMedia('(min-width: 1024px)').matches) loadWeather();
+    else {
+        const drawer = document.getElementById('site-drawer');
+        if (drawer) {
+            const observer = new MutationObserver(() => { if (drawer.open) { observer.disconnect(); loadWeather(); } });
+            observer.observe(drawer, { attributes: true, attributeFilter: ['open'] });
+        }
+    }
 }
