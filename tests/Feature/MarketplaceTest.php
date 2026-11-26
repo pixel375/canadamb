@@ -190,6 +190,41 @@ class MarketplaceTest extends TestCase
         $this->assertDatabaseCount('listing_status_history', 2);
     }
 
+    public function test_selected_moderation_is_independent_atomic_and_versioned(): void
+    {
+        $seller = User::factory()->create();
+        $reviewer = User::factory()->create(['role' => 'network_admin']);
+        $location = Location::where('slug', 'brandon')->sole()->id;
+        $items = collect();
+        foreach ([$seller, $seller, $reviewer] as $owner) {
+            $items->push(Listing::create(['user_id' => $owner->id, 'location_id' => $location,
+                'title' => 'Selected review item', 'description' => 'Local furniture', 'category' => 'furniture',
+                'condition' => 'good', 'price_cents' => 1000, 'status' => 'pending'])->fresh());
+        }
+        $url = self::MAIN.'/admin/moderation/selected';
+        $versions = $items->mapWithKeys(fn ($item) => [$item->id => $item->reviewVersion()])->all();
+        $data = ['status' => 'active', 'listings' => [$items[0]->id, $items[1]->id], 'versions' => $versions, 'confirm_review' => '1'];
+        $this->actingAs($seller)->post($url, $data)->assertForbidden();
+        $this->actingAs($reviewer)->get(self::MAIN.'/admin/moderation')->assertOk()->assertSee('Review selected listings');
+        $this->post($url, array_replace($data, ['listings' => [$items[0]->id, $items[2]->id]]))->assertForbidden();
+        $this->post($url, array_replace($data, ['versions' => array_replace($versions, [$items[1]->id => str_repeat('0', 64)])]))->assertSessionHasErrors('listings');
+        $this->post($url, array_replace($data, ['status' => 'rejected']))->assertSessionHasErrors('reason');
+        $this->assertSame('pending', $items[0]->fresh()->status);
+        $this->assertDatabaseCount('listing_status_history', 0);
+        $this->post($url, $data)->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame('active', $items[0]->fresh()->status);
+        $this->assertSame('active', $items[1]->fresh()->status);
+        $this->assertSame('pending', $items[2]->fresh()->status);
+        $this->assertNotNull($items[0]->fresh()->expires_at);
+        $this->assertDatabaseCount('listing_status_history', 2);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'listing.active', 'actor_id' => $reviewer->id]);
+        $versions = $items->mapWithKeys(fn ($item) => [$item->id => $item->fresh()->reviewVersion()])->all();
+        $this->post($url, array_replace($data, ['status' => 'removed', 'reason' => 'Duplicate public advertisements', 'versions' => $versions]))->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame('removed', $items[0]->fresh()->status);
+        $this->assertSame('removed', $items[1]->fresh()->status);
+        $this->assertDatabaseCount('listing_status_history', 4);
+    }
+
     public function test_member_inventory_is_paginated_searchable_and_never_includes_private_or_other_portal_listings(): void
     {
         $seller = User::factory()->create();

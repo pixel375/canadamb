@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-26 — bounded selected Marketplace moderation
+
+Added explicit independent-review confirmation, per-listing versions, a maximum ten selected listings and one atomic transaction for approval, rejection or removal. Mixed/ineligible or stale selections are rejected entirely; self-review is forbidden. Reasons remain required for rejection and removal, and each listing receives its own status history and audit entry. No production listings were changed.
+
 ## 2026-11-26 — detailed publication and restoration review
 
 Added allowlisted current-versus-draft and previous-published comparisons for modules, local-hide permissions, theme/palette, PWA, test registration, clock, weather, moderation and commercial rates. Credential changes are described without values. Restoration through Global settings is explicitly confirmed and version-bound, with a warning about retained drafts; theme UI links to this central review instead of direct mutation forms. Legacy authorized theme endpoints remain for compatibility. No production settings changed.

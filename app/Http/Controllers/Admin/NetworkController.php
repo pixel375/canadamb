@@ -29,6 +29,7 @@ use App\Support\StagedFeatures;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class NetworkController extends Controller
 {
@@ -193,6 +194,37 @@ class NetworkController extends Controller
         });
 
         return redirect('/admin/moderation')->with('status', 'Listing report resolved.');
+    }
+
+    public function moderateSelected(Request $request, Marketplace $marketplace)
+    {
+        $data = $request->validate([
+            'status' => 'required|in:active,rejected,removed',
+            'reason' => 'required_unless:status,active|nullable|string|max:240',
+            'listings' => 'required|array|list|min:1|max:10',
+            'listings.*' => 'required|integer|distinct|min:1',
+            'versions' => 'required|array|max:25', 'versions.*' => 'required|string|size:64',
+            'confirm_review' => 'accepted',
+        ]);
+        $reviewer = $request->user()->id;
+        DB::transaction(function () use ($data, $marketplace, $reviewer) {
+            $items = Listing::whereIn('id', $data['listings'])->orderBy('id')->lockForUpdate()->get();
+            abort_unless($items->count() === count($data['listings']), 404);
+            foreach ($items as $item) {
+                abort_if($item->user_id === $reviewer, 403);
+                $requiredStatus = $data['status'] === 'removed' ? 'active' : 'pending';
+                if ($item->status !== $requiredStatus || ! isset($data['versions'][$item->id])
+                    || ! hash_equals($item->reviewVersion(), $data['versions'][$item->id])) {
+                    throw ValidationException::withMessages(['listings' => 'A selected listing changed or is ineligible. No moderation actions were saved.']);
+                }
+            }
+            foreach ($items as $item) {
+                $marketplace->changeStatus($item, $data['status'], $reviewer, $data['reason'] ?? null);
+                Audit::record('listing.'.$data['status'], $reviewer, context: ['listing' => $item->id, 'batch' => true]);
+            }
+        }, attempts: 3);
+
+        return redirect('/admin/moderation')->with('status', count($data['listings']).' selected listings moderated.');
     }
 
     public function moderate(Request $request, int $listing, Marketplace $marketplace)

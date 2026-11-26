@@ -28,6 +28,19 @@
             @endforelse
             {{ $reports->links() }}
     </section>
+    @if($items->contains(fn ($item) => in_array($item->status, ['pending', 'active'], true)))
+        <details class="panel form-stack mb-4">
+            <summary>Review selected listings</summary>
+            <form method="post" action="/admin/moderation/selected" id="listing-batch-review" class="form-stack mt-3">
+                @csrf
+                <p class="field-note">Select up to ten listings on this page after individually reviewing their content and photos. All selected listings must be eligible for the same action. Nothing is changed if any selected listing is stale or ineligible.</p>
+                <label>Review action<select name="status"><option value="active">Approve pending listings</option><option value="rejected">Reject pending listings</option><option value="removed">Remove active listings</option></select></label>
+                <label>Shared reason (required for rejection or removal)<input name="reason" maxlength="240"></label>
+                <label class="checkbox"><input name="confirm_review" type="checkbox" value="1" required> I have independently reviewed every selected listing</label>
+                <div><button class="button button-outline">Apply selected moderation action</button></div>
+            </form>
+        </details>
+    @endif
     @forelse($items as $item)
         <article class="panel form-stack admin-review-card">
             <div><span class="member-listing-status" data-status="{{ $item->status }}">{{ ucfirst($item->status) }}</span><h2>{{ $item->title }}</h2><p>{{ $item->seller?->name ?? 'Former member' }} · {{ $item->location->name }} · {{ $item->categoryRecord->name }} · {{ $item->priceLabel() }} · {{ ucfirst($item->status) }}</p></div>
@@ -37,6 +50,8 @@
             @endif
             <p class="prose-text">{{ $item->description }}</p>
             @if(in_array($item->status, ['pending', 'active'], true))
+            <label class="checkbox"><input form="listing-batch-review" type="checkbox" name="listings[]" value="{{ $item->id }}"> Select this listing for review</label>
+            <input form="listing-batch-review" type="hidden" name="versions[{{ $item->id }}]" value="{{ $item->reviewVersion() }}">
             <form action="/admin/moderation/{{ $item->id }}" method="post" class="form-stack">
                 @csrf
                 <input type="hidden" name="version" value="{{ $item->reviewVersion() }}">

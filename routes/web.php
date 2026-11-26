@@ -281,6 +281,7 @@ Route::prefix('admin')->middleware(['auth', 'verified', 'can:manage-network'])->
     Route::post('/business-review/{business}', [BusinessReviewController::class, 'profile'])->whereNumber('business');
     Route::post('/business-claims/{claim}', [BusinessReviewController::class, 'claim'])->whereNumber('claim');
     Route::post('/business-updates/{update}', [BusinessReviewController::class, 'update'])->whereNumber('update');
+    Route::post('/moderation/selected', [NetworkController::class, 'moderateSelected'])->middleware('throttle:8,1,listing-batch-moderation');
     Route::post('/moderation/{listing}', [NetworkController::class, 'moderate'])->whereNumber('listing');
     Route::post('/moderation/reports/{report}', [NetworkController::class, 'resolveReport'])->whereNumber('report');
     Route::middleware('can:manage-theme')->group(function () {
