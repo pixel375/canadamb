@@ -1,10 +1,12 @@
 # Hostinger Git auto-deployment — options and safe approach (2026-11-19)
 
+**Current policy (2026-11-26):** All development and production-prelaunch deployments use `main` only. Exact backend and browser push CI automatically dispatch a guarded SHA-pinned deploy, followed by independent live audits and two-release retention. Earlier branch-specific/manual-only instructions below are historical, not current operating instructions. No unapproved schema/flag or public-access changes.
+
 ## 2026-11-21 — Routine deployment now automated after green CI
 
 The trusted default-branch `.github/workflows/hostinger-autodeploy.yml` listens for
 successful **push** runs of **Verify CanadaMB** on
-`implementation/network-foundation` only. It checks that the exact green SHA
+`main` only. It checks that the exact green SHA
 is still the implementation branch tip and dispatches the existing guarded
 `Deploy CanadaMB Prelaunch` workflow, explicitly setting
 `allow_reviewed_database_changes=false`. PRs, other branches, failed CI and

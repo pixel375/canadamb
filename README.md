@@ -25,3 +25,7 @@ On PowerShell, use Copy-Item and New-Item -ItemType File for the copy and touch 
 ## Project status
 
 See [progress](docs/PROGRESS.md), the [implementation plan](docs/IMPLEMENTATION_PLAN.md), [testing](docs/TESTING.md), and the [Hostinger deployment runbook](docs/DEPLOYMENT.md).
+
+## Main-only development and release workflow
+
+All development, TODO updates, CI and deployment originate from `main`. The former implementation branch is historical only. See [master launch checklist](TODO.md). Exact green backend and browser push CI dispatch the guarded Hostinger release; verify independent live audits before claiming deployment. Production remains IP-restricted, registration/indexing stay gated, and unattended migrations/seeders remain prohibited. After successful live audits, retention preserves the active release and one verified rollback copy, private backups and shared storage. Bounded lock waits avoid transient contention without bypassing locks.

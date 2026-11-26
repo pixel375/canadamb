@@ -1,0 +1,89 @@
+name: CanadaMB postdeploy production verification (read only)
+on:
+  workflow_call:
+    inputs:
+      commit_sha:
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: 'Full 40-character release SHA to audit'
+        required: true
+        type: string
+permissions:
+  contents: read
+  actions: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: hostinger-prelaunch
+    env:
+      SSH_HOST: ${{ vars.HOSTINGER_HOST }}
+      SSH_PORT: ${{ vars.HOSTINGER_PORT }}
+      SSH_USER: ${{ vars.HOSTINGER_USER }}
+      SSH_PRIVATE_KEY: ${{ secrets.HOSTINGER_SSH_PRIVATE_KEY }}
+      SSH_KNOWN_HOSTS: ${{ secrets.HOSTINGER_KNOWN_HOSTS }}
+    steps:
+      - name: Validate exact audited SHA
+        id: expected
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ inputs.commit_sha }}
+        run: |
+          set -Eeuo pipefail
+          [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
+          echo "sha=$EXPECTED_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Verify deployed SHA, DB readiness, private backups, cron script and original public root
+        shell: bash
+        env:
+          AUDIT_SHA: ${{ steps.expected.outputs.sha }}
+        run: |
+          set -Eeuo pipefail
+          [[ "$AUDIT_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
+          [[ "$SSH_HOST" =~ ^[A-Za-z0-9.-]+$ && "$SSH_USER" =~ ^[A-Za-z0-9_-]+$ &&
+             "$SSH_PORT" =~ ^[0-9]{1,5}$ && -n "$SSH_PRIVATE_KEY" && -n "$SSH_KNOWN_HOSTS" ]] || exit 1
+          umask 077
+          dir=$(mktemp -d)
+          trap 'rm -rf -- "$dir"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$dir/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$dir/known_hosts"
+          chmod 600 "$dir/key" "$dir/known_hosts"
+          ssh-keygen -y -P '' -f "$dir/key" >/dev/null
+          ssh -T -o BatchMode=yes -o ConnectTimeout=20 -o StrictHostKeyChecking=yes \
+            -o "UserKnownHostsFile=$dir/known_hosts" -o IdentitiesOnly=yes -i "$dir/key" -p "$SSH_PORT" \
+            "$SSH_USER@$SSH_HOST" bash -se -- "$AUDIT_SHA" <<'REMOTE'
+          set -Eeuo pipefail
+          sha=$1
+          site="$HOME/domains/canadamb.ca"
+          app="$site/canadamb-app"
+          web="$site/public_html"
+          actual=$(readlink -e "$app/current")
+          [[ "$actual" == "$app/releases/$sha" ]] || {
+            echo "::error::Wrong active release"; exit 1;
+          }
+          [[ $(stat -c '%i' "$web") == 446174247 && ! -L "$web" ]] || {
+            echo "::error::Public root inode changed"; exit 1;
+          }
+          [[ -f "$web/index.php" && -f "$web/.htaccess" &&
+             ! -e "$web/.git" && ! -e "$web/.env" ]] || exit 1
+          [[ -d "$web/build/assets" ]] && find "$web/build/assets" -maxdepth 1 -type f -name "*.css" -print -quit | grep -q . || exit 1
+          [[ ! -e "$app/update.pause" && ! -e "$actual/storage/framework/down" ]] || exit 1
+          [[ -s "$app/hostinger-cron.sh" ]] || exit 1
+          grep -Fq 'update.pause' "$app/hostinger-cron.sh"
+          [[ -s "$app/shared/storage/oauth-private.key" && -s "$app/shared/storage/oauth-public.key" ]] || exit 1
+          backup="$app/shared/backups/$sha"
+          [[ -s "$backup/u713153343_canadamb.sql" && -s "$backup/storage.tar.gz" ]] || exit 1
+          (cd "$backup" && sha256sum -c --status checksums.sha256)
+          tar -tzf "$backup/storage.tar.gz" >/dev/null
+          /usr/bin/php "$actual/artisan" network:deployment-check --hostinger --production-database=u713153343_canadamb --database --migration-state
+          echo "LIVE POSTDEPLOY VERIFIED $sha"
+          echo "Private backup and stable cron wrapper verified; original public_html inode preserved"
+          REMOTE
+          for host in canadamb.ca brandonmb.ca; do
+            status=$(curl -sS --max-time 15 -o /dev/null -w '%{http_code}' "https://$host/")
+            [[ "$status" == 403 ]] || exit 1
+            echo "$host: external HTTP 403 gate intact"
+          done

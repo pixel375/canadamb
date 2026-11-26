@@ -1,0 +1,72 @@
+name: CanadaMB public PWA metadata vs private prelaunch audit
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Public manifest/icon fetch and sensitive routes remain HTTP 403
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          tmp=$(mktemp -d)
+          trap 'rm -rf "$tmp"' EXIT
+
+          for host in canadamb.ca brandonmb.ca; do
+            echo "Inspecting https://$host from outside the approved IP list"
+            manifest_status=$(curl -sSL --max-time 20 -D "$tmp/headers" -o "$tmp/manifest.json" \
+              -w '%{http_code}' "https://$host/app.webmanifest")
+            [[ "$manifest_status" == 200 ]] || { echo "::error::$host manifest returned HTTP $manifest_status"; exit 1; }
+            grep -qi '^content-type: application/manifest+json' "$tmp/headers" || exit 1
+            grep -qi '^cache-control:.*public' "$tmp/headers" || exit 1
+            grep -qi '^x-robots-tag:.*noindex' "$tmp/headers" || exit 1
+            python3 - "$tmp/manifest.json" "$host" <<'PY'
+          import json,sys
+          with open(sys.argv[1]) as f:
+              data=json.load(f)
+          expected={'canadamb.ca':'CanadaMB','brandonmb.ca':'BrandonMB'}[sys.argv[2]]
+          assert data['name']==expected, (expected,data['name'])
+          assert data['display']=='standalone'
+          assert data['scope']=='/'
+          assert data['start_url']=='/'
+          assert data['theme_color']=='#121C2A', data['theme_color']
+          assert data['background_color']=='#0E1622', data['background_color']
+          assert any(e['src']=='/pwa/icon/192.png?v=2' for e in data['icons'])
+          assert any(e['src']=='/pwa/icon/512.png?v=2' for e in data['icons'])
+          assert all(any(e['sizes']==size and e['type']=='image/png' for e in data['icons']) for size in ['192x192','512x512'])
+          print('Valid host-specific manifest for', data['name'])
+          PY
+
+            for size in 192 512; do
+              code=$(curl -sSL --max-time 20 -D "$tmp/headers" -o "$tmp/icon.png" \
+                -w '%{http_code}' "https://$host/pwa/icon/$size.png")
+              [[ "$code" == 200 ]] || { echo "::error::$host icon $size returned HTTP $code"; exit 1; }
+              grep -qi '^content-type: image/png' "$tmp/headers" || exit 1
+              python3 - "$tmp/icon.png" "$size" <<'PY'
+          import sys,struct
+          with open(sys.argv[1],'rb') as f:
+              raw=f.read(24)
+          assert raw[:8]==b'\x89PNG\r\n\x1a\n'
+          w,h=struct.unpack('>II',raw[16:24])
+          expected=int(sys.argv[2])
+          assert (w,h)==(expected,expected),(w,h)
+          print('Public PWA icon verified:', expected)
+          PY
+            done
+            for sensitive in / /marketplace /account/messages /admin /sw.js; do
+              code=$(curl -sSL --max-time 20 -o /dev/null -w '%{http_code}' \
+                "https://$host$sensitive")
+              [[ "$code" == 403 ]] || {
+                echo "::error::$host$sensitive unexpectedly returned HTTP $code"; exit 1;
+              }
+            done
+            echo "$host install metadata publicly fetchable, private site and worker still HTTP 403"
+          done
+          echo "PWA PUBLIC METADATA / PRELAUNCH PRIVATE ACCESS AUDIT PASSED"

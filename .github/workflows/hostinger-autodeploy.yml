@@ -1,0 +1,76 @@
+name: CanadaMB automatic guarded deploy after green CI
+
+# Routine implementation pushes deploy without operator clicks.
+# CI must complete successfully on the trusted main branch. The
+# downstream trusted manual deploy workflow independently verifies the exact
+# commit's green PUSH CI, ancestry, build, SSH host key, production backups,
+# and IP-restricted prelaunch gates. Unreviewed DB migrations/seeders are
+# always disabled for automation.
+on:
+  workflow_run:
+    workflows: ['Verify CanadaMB', 'Prelaunch desktop navigation hotfix browser QA']
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: canadamb-automatic-deploy-dispatch
+  cancel-in-progress: false
+
+jobs:
+  dispatch:
+    name: Dispatch trusted SHA-pinned Hostinger deploy
+    if: >-
+      github.repository == 'pixel375/canadamb' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == 'pixel375/canadamb' &&
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Dispatch only the current green main commit
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_SHA: ${{ github.event.workflow_run.head_sha }}
+          TRIGGER_RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          set -Eeuo pipefail
+          [[ "$GITHUB_REPOSITORY" == 'pixel375/canadamb' && "$TARGET_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
+          latest=$(gh api "/repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
+          if [[ "$latest" != "$TARGET_SHA" ]]; then
+            echo "A newer main commit superseded $TARGET_SHA; skipping old CI result."
+            exit 0
+          fi
+
+          # Both exact-SHA push checks must be green. Select the last completed
+          # check to avoid dispatching twice when both completion events queue.
+          runs=$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$TARGET_SHA&event=push&per_page=100")
+          ready=$(jq -r '
+            [.workflow_runs[] | select(.head_branch == "main" and
+              (.name == "Verify CanadaMB" or .name == "Prelaunch desktop navigation hotfix browser QA"))]
+            | group_by(.name) | map(max_by([.run_number,.run_attempt]))
+            | if length == 2 and all(.[]; .status == "completed" and .conclusion == "success")
+              then (max_by([.updated_at,.id]) | .id) else "" end
+          ' <<<"$runs")
+          if [[ -z "$ready" ]]; then
+            echo "Waiting for both exact-SHA verification and browser QA to pass."
+            exit 0
+          fi
+          if [[ "$ready" != "$TRIGGER_RUN_ID" ]]; then
+            echo "The later successful check owns the deployment dispatch."
+            exit 0
+          fi
+
+          # Keep the production SSH secret in the trusted deployment workflow,
+          # not in this workflow_run dispatcher. The target workflow checks
+          # exact green CI and refuses unattended migration/seeder changes.
+          gh workflow run hostinger-deploy.yml \
+            --repo "$GITHUB_REPOSITORY" \
+            --ref main \
+            -f commit_sha="$TARGET_SHA" \
+            -f allow_reviewed_database_changes=false
+          echo "Guarded production-prelaunch deployment dispatched for $TARGET_SHA."

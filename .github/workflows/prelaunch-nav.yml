@@ -3,7 +3,7 @@ name: Prelaunch desktop navigation hotfix browser QA
 on:
   push:
     branches:
-      - implementation/network-foundation
+      - main
   pull_request:
     paths:
       - 'resources/**'

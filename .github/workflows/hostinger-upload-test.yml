@@ -1,0 +1,71 @@
+name: Hostinger Private Upload Test
+
+# One-time harmless SSH/SFTP transport test. Does NOT deploy application files.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Private SSH and SFTP transport probe
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    environment: hostinger-prelaunch
+    env:
+      HOST: ${{ vars.HOSTINGER_HOST }}
+      PORT: ${{ vars.HOSTINGER_PORT }}
+      USER: ${{ vars.HOSTINGER_USER }}
+      KEY: ${{ secrets.HOSTINGER_SSH_PRIVATE_KEY }}
+      KNOWN: ${{ secrets.HOSTINGER_KNOWN_HOSTS }}
+    steps:
+      - name: Verify upload and remove private probe
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          [[ "$HOST" =~ ^[A-Za-z0-9.-]+$ &&
+             "$PORT" =~ ^[0-9]{1,5}$ &&
+             "$USER" =~ ^[A-Za-z0-9_-]+$ ]] || exit 1
+          [[ -n "$KEY" && -n "$KNOWN" ]] || exit 1
+          umask 077
+          dir=$(mktemp -d)
+          trap 'rm -rf -- "$dir"' EXIT
+          printf '%s\n' "$KEY" > "$dir/key"
+          printf '%s\n' "$KNOWN" > "$dir/hosts"
+          chmod 600 "$dir/key" "$dir/hosts"
+          ssh-keygen -y -P '' -f "$dir/key" >/dev/null
+          name="transport-probe-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT.txt"
+          printf 'private transport verification %s\n' "$GITHUB_RUN_ID" > "$dir/$name"
+          sum=$(sha256sum "$dir/$name" | cut -d' ' -f1)
+
+          ssh -T -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            -o "UserKnownHostsFile=$dir/hosts" -o IdentitiesOnly=yes \
+            -i "$dir/key" -p "$PORT" "$USER@$HOST" \
+            bash -se -- "$name" <<'REMOTE'
+          set -Eeuo pipefail
+          name=$1
+          [[ "$name" =~ ^transport-probe-[0-9]+-[0-9]+\.txt$ ]] || exit 1
+          test -d "$HOME/domains/canadamb.ca/canadmb-app" && exit 1 # intentionally false path? NO
+          install -d -m 700 "$HOME/domains/canadamb.ca/.builds"
+          REMOTE
+
+          scp -B -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            -o "UserKnownHostsFile=$dir/hosts" -o IdentitiesOnly=yes \
+            -i "$dir/key" -P "$PORT" "$dir/$name" \
+            "$USER@$HOST:domains/canadamb.ca/.builds/$name"
+
+          ssh -T -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            -o "UserKnownHostsFile=$dir/hosts" -o IdentitiesOnly=yes \
+            -i "$dir/key" -p "$PORT" "$USER@$HOST" \
+            bash -se -- "$name" "$sum" <<'REMOTE'
+          set -Eeuo pipefail
+          name=$1
+          sum=$2
+          [[ "$name" =~ ^transport-probe-[0-9]+-[0-9]+\.txt$ ]] || exit 1
+          file="$HOME/domains/canadamb.ca/.builds/$name"
+          trap 'rm -f -- "$file"' EXIT
+          [[ -f "$file" && ! -L "$file" ]] || exit 1
+          echo "$sum  $file" | sha256sum -c --status
+          echo "PRIVATE SFTP UPLOAD VERIFIED"
+          REMOTE

@@ -1,0 +1,265 @@
+name: Deploy CanadaMB Prelaunch
+
+# Deliberately MANUAL. This workflow is trusted from the default branch.
+# It does not run for pull requests, tags, or ordinary pushes.
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: "Full 40-character main branch commit SHA, with green verification and browser QA"
+        required: true
+        type: string
+      allow_reviewed_database_changes:
+        description: "Permit changes to migrations/seeders after explicit review? (normally OFF)"
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: canadamb-production-prelaunch-deploy
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Verify SHA, CI and build exact assets without production secrets
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DEPLOY_SHA: ${{ inputs.commit_sha }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Reject incorrect SHA or repository
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          [[ "$GITHUB_REPOSITORY" == 'pixel375/canadamb' ]] || exit 1
+          [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]] || {
+            echo "::error::Use the full 40-character commit SHA."; exit 1;
+          }
+      - name: Checkout exact requested commit
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.commit_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Ensure target is an main branch ancestor
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          [[ "$(git rev-parse HEAD)" == "$DEPLOY_SHA" ]] || exit 1
+          git fetch --no-tags origin '+refs/heads/main:refs/remotes/origin/main'
+          git merge-base --is-ancestor "$DEPLOY_SHA" refs/remotes/origin/main || {
+            echo "::error::Commit SHA is not in the approved main branch."; exit 1;
+          }
+          for file in deploy/hostinger-upgrade.sh deploy/hostinger-release.sh deploy/hostinger-backup.php; do
+            [[ -s "$file" ]] || { echo "::error::Required deployment helper missing: $file"; exit 1; }
+          done
+          bash -n deploy/hostinger-upgrade.sh
+          bash -n deploy/hostinger-release.sh
+      - name: Require successful verification and browser QA on exact SHA
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          runs=$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$DEPLOY_SHA&event=push&per_page=100")
+          jq -e '
+            [.workflow_runs[] | select(.head_branch == "main" and
+              (.name == "Verify CanadaMB" or .name == "Prelaunch desktop navigation hotfix browser QA"))]
+            | group_by(.name) | map(max_by([.run_number,.run_attempt]))
+            | length == 2 and all(.[]; .status == "completed" and .conclusion == "success")
+          ' <<<"$runs" >/dev/null || {
+            echo "::error::Both exact-SHA verification and browser QA must pass."; exit 1;
+          }
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Build only matched public Vite assets
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          npm ci
+          npm run build
+          [[ -s public/build/manifest.json && -d public/build/assets ]] || exit 1
+          printf '%s\n' "$DEPLOY_SHA" > public/build/source-commit
+          tar -czf /tmp/canadamb-build.tgz -C public/build manifest.json source-commit assets
+          sha256sum /tmp/canadamb-build.tgz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: prelaunch-build-${{ inputs.commit_sha }}
+          path: /tmp/canadamb-build.tgz
+          if-no-files-found: error
+          retention-days: 2
+
+  deploy:
+    name: Approved private Hostinger production-prelaunch update
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: hostinger-prelaunch
+    env:
+      DEPLOY_SHA: ${{ inputs.commit_sha }}
+      ALLOW_DATABASE_CHANGES: ${{ inputs.allow_reviewed_database_changes }}
+      SSH_HOST: ${{ vars.HOSTINGER_HOST }}
+      SSH_PORT: ${{ vars.HOSTINGER_PORT }}
+      SSH_USER: ${{ vars.HOSTINGER_USER }}
+      SSH_PRIVATE_KEY: ${{ secrets.HOSTINGER_SSH_PRIVATE_KEY }}
+      SSH_KNOWN_HOSTS: ${{ secrets.HOSTINGER_KNOWN_HOSTS }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: prelaunch-build-${{ inputs.commit_sha }}
+          path: /tmp/canadamb-download
+      - name: Verify connection configuration and artifact before transfer
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
+          [[ "$SSH_HOST" =~ ^[A-Za-z0-9.-]+$ &&
+             "$SSH_USER" =~ ^[A-Za-z0-9_-]+$ &&
+             "$SSH_PORT" =~ ^[0-9]{1,5}$ ]] || exit 1
+          (( SSH_PORT >= 1 && SSH_PORT <= 65535 )) || exit 1
+          [[ -n "$SSH_PRIVATE_KEY" && -n "$SSH_KNOWN_HOSTS" ]] || exit 1
+          [[ -s /tmp/canadamb-download/canadamb-build.tgz ]] || exit 1
+          mkdir -m 700 -p "$RUNNER_TEMP/canadamb-ssh"
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$RUNNER_TEMP/canadamb-ssh/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$RUNNER_TEMP/canadamb-ssh/known_hosts"
+          chmod 600 "$RUNNER_TEMP/canadamb-ssh/key" "$RUNNER_TEMP/canadamb-ssh/known_hosts"
+          ssh-keygen -y -P '' -f "$RUNNER_TEMP/canadamb-ssh/key" >/dev/null
+          tar -tzf /tmp/canadamb-download/canadamb-build.tgz | while IFS= read -r path; do
+            [[ "$path" == "manifest.json" || "$path" == "source-commit" ||
+               "$path" == "assets/" || "$path" =~ ^assets/[A-Za-z0-9_.-]+$ ]] || {
+                echo "::error::Unexpected asset path in build archive."; exit 1;
+            }
+          done
+          echo "Trusted source and asset archive verified."
+      - name: Create private Hostinger intake directory
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ssh -T -o BatchMode=yes -o ConnectTimeout=20 -o StrictHostKeyChecking=yes \
+              -o "UserKnownHostsFile=$RUNNER_TEMP/canadamb-ssh/known_hosts" -o IdentitiesOnly=yes \
+              -i "$RUNNER_TEMP/canadamb-ssh/key" -p "$SSH_PORT" \
+              "$SSH_USER@$SSH_HOST" bash -se -- "$DEPLOY_SHA" <<'REMOTE'
+          set -Eeuo pipefail
+          umask 077
+          sha=$1
+          [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || exit 1
+          site="$HOME/domains/canadamb.ca"
+          [[ -d "$site/canadamb-app/source/.git" && -s "$site/canadamb-app/shared/.env" ]] || exit 1
+          app="$site/canadamb-app"
+          echo "CanadaMB release entries before deployment: $(find -P "$app/releases" -xdev -printf '.' | wc -c)"
+          # Filesystem free inodes are volume-wide, not the hosting account's quota.
+          df -Pi "$app" | awk 'NR==2 {print "Filesystem free inodes (not account quota):", $4}'
+          if command -v quota >/dev/null 2>&1; then
+            timeout 10 quota -s || echo 'Account quota unavailable via SSH.'
+          fi
+          install -d -m 700 "$site/.builds/$sha"
+          REMOTE
+      - name: Upload only reviewed public assets into private intake
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          scp -B -o BatchMode=yes -o ConnectTimeout=20 -o StrictHostKeyChecking=yes \
+              -o "UserKnownHostsFile=$RUNNER_TEMP/canadamb-ssh/known_hosts" -o IdentitiesOnly=yes \
+              -i "$RUNNER_TEMP/canadamb-ssh/key" -P "$SSH_PORT" \
+              /tmp/canadamb-download/canadamb-build.tgz \
+              "$SSH_USER@$SSH_HOST:domains/canadamb.ca/.builds/$DEPLOY_SHA/canadamb-build.tgz"
+      - name: Verify remote Git object, backup, preflight and approved activation
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ssh -T -o BatchMode=yes -o ConnectTimeout=20 -o StrictHostKeyChecking=yes \
+              -o "UserKnownHostsFile=$RUNNER_TEMP/canadamb-ssh/known_hosts" -o IdentitiesOnly=yes \
+              -i "$RUNNER_TEMP/canadamb-ssh/key" -p "$SSH_PORT" \
+              "$SSH_USER@$SSH_HOST" bash -se -- "$DEPLOY_SHA" "$ALLOW_DATABASE_CHANGES" <<'REMOTE'
+          set -Eeuo pipefail
+          umask 077
+          sha=$1
+          allow=$2
+          [[ "$sha" =~ ^[0-9a-f]{40}$ && ( "$allow" == true || "$allow" == false ) ]] || exit 1
+          site="$HOME/domains/canadamb.ca"
+          app="$site/canadamb-app"
+          incoming="$site/.builds/$sha"
+          [[ -s "$incoming/canadamb-build.tgz" ]] || exit 1
+          [[ -d "$app/source/.git" ]] || exit 1
+
+          git -C "$app/source" fetch --no-tags origin \
+              '+refs/heads/main:refs/remotes/origin/main'
+          git -C "$app/source" cat-file -e "$sha^{commit}"
+          git -C "$app/source" merge-base --is-ancestor "$sha" refs/remotes/origin/main
+
+          # Do not extract non-asset paths or links.
+          tar -tzf "$incoming/canadamb-build.tgz" | while IFS= read -r item; do
+            [[ "$item" == manifest.json || "$item" == source-commit ||
+               "$item" == assets/ || "$item" =~ ^assets/[A-Za-z0-9_.-]+$ ]] || exit 1
+          done
+          tar -xzf "$incoming/canadamb-build.tgz" -C "$incoming"
+          [[ -s "$incoming/source-commit" && $(cat "$incoming/source-commit") == "$sha" ]] || exit 1
+
+          git -C "$app/source" show "$sha:deploy/hostinger-upgrade.sh" > "$incoming/hostinger-upgrade.sh"
+          [[ -s "$incoming/hostinger-upgrade.sh" ]] || exit 1
+          expected=$(git -C "$app/source" rev-parse "$sha:deploy/hostinger-upgrade.sh")
+          actual=$(git -C "$app/source" hash-object "$incoming/hostinger-upgrade.sh")
+          [[ "$actual" == "$expected" ]] || exit 1
+          bash -n "$incoming/hostinger-upgrade.sh"
+
+          export CANADAMB_PRODUCTION_DB=u713153343_canadamb
+          export CANADAMB_PHP_BIN=/usr/bin/php
+          export CANADAMB_COMPOSER_BIN=/usr/local/bin/composer
+          bash "$incoming/hostinger-upgrade.sh" "$site" "$sha" "$incoming" "$allow"
+          [[ "$(readlink -f "$app/current")" == "$app/releases/$sha" ]] || exit 1
+          [[ ! -f "$app/releases/$sha/storage/framework/down" && ! -e "$app/update.pause" ]] || exit 1
+          echo "Deployment receipt verified for $sha."
+          REMOTE
+      - name: Check both production hosts remain prelaunch-gated
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          for host in canadamb.ca brandonmb.ca; do
+            for attempt in 1 2 3 4 5 6; do
+              code=$(curl --silent --show-error --max-time 20 --output /dev/null \
+                   --write-out '%{http_code}' "https://$host/")
+              [[ "$code" == 403 ]] && break
+              # A just-ended maintenance window can briefly return 503.
+              # Never retry or accept 2xx, redirects, or other gate failures.
+              [[ "$code" == 503 && "$attempt" != 6 ]] || break
+              echo "$host still returning HTTP 503 after activation; rechecking in 5 seconds."
+              sleep 5
+            done
+            [[ "$code" == 403 ]] || {
+              echo "::warning::$host returned HTTP $code to an external runner; review prelaunch gate immediately."
+              exit 1
+            }
+            echo "$host: prelaunch access gate returned HTTP 403."
+          done
+          echo "External runner cannot perform allowlisted browser/SSO smoke; authorized operator acceptance remains required."
+      - name: Remove local credentials
+        if: always()
+        shell: bash
+        run: |
+          rm -rf "$RUNNER_TEMP/canadamb-ssh"
+
+  verify_private:
+    name: Independent exact-SHA database, backup and prelaunch audit
+    needs: deploy
+    uses: ./.github/workflows/hostinger-postdeploy-audit.yml
+    with:
+      commit_sha: ${{ inputs.commit_sha }}
+    secrets: inherit
+
+  verify_public:
+    name: Independent PWA metadata and private-access audit
+    needs: deploy
+    uses: ./.github/workflows/pwa-external-installability-smoke.yml
+
+  retain_releases:
+    name: Retain active release plus one rollback copy
+    needs: [verify_private, verify_public]
+    uses: ./.github/workflows/hostinger-release-retention.yml
+    with:
+      reclaim: true
+    secrets: inherit

@@ -34,7 +34,7 @@ composer="${CANADAMB_COMPOSER_BIN:-/usr/local/bin/composer}"
 
 # Serialize complete updates independently of per-command release locks.
 exec 8>"$app/update.lock"
-flock -n 8 || { echo "An update is already active." >&2; exit 1; }
+flock -w 120 8 || { echo "Update lock remained busy after 120 seconds; no release changed." >&2; exit 1; }
 old=$(readlink -e "$app/current" || true)
 [[ "$old" == "$app/releases/"* && -s "$old/artisan" && "$old" != "$release" ]] || {
     echo "No valid previous live release, or requested SHA is already active." >&2

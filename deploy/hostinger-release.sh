@@ -44,7 +44,7 @@ for directory in "$private_dir/releases" "$shared" "$shared/storage" "$shared/st
 done
 mkdir -p "$private_dir/releases" "$shared/storage/logs"
 exec 9>"$private_dir/release.lock"
-flock -n 9 || { echo "Another release operation is active." >&2; exit 1; }
+flock -w 120 9 || { echo "Release lock remained busy after 120 seconds; no release step started." >&2; exit 1; }
 log="$shared/storage/logs/release-$commit.log"
 trap 'echo "Release step failed (line $LINENO). Inspect $log and the deployment runbook." >&2' ERR
 # Hostinger shared hosting does not reliably expose /dev/fd process substitution.

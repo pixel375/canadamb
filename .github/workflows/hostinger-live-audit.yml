@@ -1,0 +1,179 @@
+name: CanadaMB one-time preflight audit (read only)
+
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/hostinger-live-audit.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: hostinger-prelaunch
+    env:
+      SSH_HOST: ${{ vars.HOSTINGER_HOST }}
+      SSH_PORT: ${{ vars.HOSTINGER_PORT }}
+      SSH_USER: ${{ vars.HOSTINGER_USER }}
+      SSH_PRIVATE_KEY: ${{ secrets.HOSTINGER_SSH_PRIVATE_KEY }}
+      SSH_KNOWN_HOSTS: ${{ secrets.HOSTINGER_KNOWN_HOSTS }}
+    steps:
+      - name: Read-only inspection of deployed SHA, PHP, DB, cron, backup tools and public root
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          [[ "$SSH_HOST" =~ ^[A-Za-z0-9.-]+$ && "$SSH_USER" =~ ^[A-Za-z0-9_-]+$ &&
+             "$SSH_PORT" =~ ^[0-9]{1,5}$ ]] || exit 1
+          [[ -n "$SSH_PRIVATE_KEY" && -n "$SSH_KNOWN_HOSTS" ]] || exit 1
+          umask 077
+          dir=$(mktemp -d)
+          trap 'rm -rf -- "$dir"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$dir/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$dir/known_hosts"
+          chmod 600 "$dir/key" "$dir/known_hosts"
+          ssh-keygen -y -P '' -f "$dir/key" >/dev/null
+          ssh -T -o BatchMode=yes -o ConnectTimeout=20 -o StrictHostKeyChecking=yes \
+            -o "UserKnownHostsFile=$dir/known_hosts" -o IdentitiesOnly=yes \
+            -i "$dir/key" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" 'bash -se' <<'REMOTE'
+          set -Eeuo pipefail
+          site="$HOME/domains/canadamb.ca"
+          app="$site/canadamb-app"
+          web="$site/public_html"
+          old=$(readlink -e "$app/current")
+          sha=${old##*/}
+          [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || exit 1
+          [[ -d "$web" && ! -L "$web" && -f "$web/index.php" && -f "$web/.htaccess" ]] || exit 1
+          [[ ! -e "$web/.env" && ! -e "$web/.git" && ! -e "$web/composer.json" ]] || exit 1
+          [[ -f "$app/shared/.env" && -s "$old/artisan" ]] || exit 1
+          printf 'Existing public_html inode: %s\n' "$(stat -c '%i' "$web")"
+          printf 'Active SHA: %s\n' "$sha"
+          if [[ -e "$old/storage/framework/down" ]]; then
+             echo 'FAIL: live release is in maintenance mode'
+             exit 1
+          fi
+          for marker in down maintenance.php; do
+            if [[ -e "$old/storage/framework/$marker" ]]; then
+              echo "Maintenance artifact present: $marker"
+              exit 1
+            fi
+          done
+          for file in "$web/index.php" "$old/vendor/autoload.php" "$old/bootstrap/app.php"; do
+            [[ -r "$file" ]] || { echo 'Required entry point unreadable'; exit 1; }
+          done
+          if [[ -e "$app/update.pause" ]]; then
+             echo 'FAIL: pre-existing update.pause marker found'
+             exit 1
+          fi
+          if [[ -s "$app/shared/storage/oauth-private.key" && -s "$app/shared/storage/oauth-public.key" ]]; then
+             echo 'Persistent OAuth keys present'
+          else
+             echo 'FAIL: Persistent OAuth keys not found'
+             exit 1
+          fi
+          for command in php composer git tar flock timeout sha256sum mariadb-dump; do
+            if command -v "$command" >/dev/null; then
+              printf '%s: available\n' "$command"
+            else
+              printf '%s: MISSING\n' "$command"
+              exit 1
+            fi
+          done
+          if [[ -s "$app/source/deploy/hostinger-cron.sh" ]]; then
+            echo 'Live source working-copy cron script is non-empty'
+          else
+            echo 'Live source working-copy cron script missing or empty'
+          fi
+          if [[ -s "$app/source/deploy/hostinger-release.sh" ]]; then
+            echo 'Live source working-copy release script is non-empty'
+          else
+            echo 'Live source working-copy release script missing or empty'
+          fi
+          if command -v crontab >/dev/null; then
+            entries=$(crontab -l 2>/dev/null || true)
+            if [[ "$entries" == *hostinger-cron.sh* ]]; then
+              echo 'User crontab contains hostinger-cron.sh reference'
+            elif [[ -z "$entries" ]]; then
+              echo 'No user crontab entries detected (hPanel cron may use another mechanism)'
+            else
+              echo 'User crontab populated; no hostinger-cron.sh reference'
+            fi
+          else
+            echo 'crontab command unavailable; inspect Hostinger hPanel cron separately'
+          fi
+          echo 'Read-only failed preparation diagnostics (classification only)'
+          target=8851bdd89340fabdec55cceab36f417ce067b7c2
+          log="$app/shared/storage/logs/release-$target.log"
+          failed_release="$app/releases/$target"
+          if [[ -f "$log" && ! -L "$log" ]]; then
+            for pattern in 'No space left on device' 'Disk quota exceeded' 'Permission denied' 'Cannot allocate memory' 'Could not resolve host' 'Failed to download' 'Your lock file does not contain a compatible set' 'PHP Fatal error' 'SQLSTATE' 'Release step failed' 'route:cache' 'Unable to prepare route' 'Blade' 'configuration cached' 'Configuration cached' 'Routes cached' 'Blade templates cached' 'deployment checks passed' 'Found an unexpected file' 'failed to open stream' 'Class .* not found' 'already been assigned name' 'Uncaught' 'Killed' 'No such file or directory'; do
+              if grep -Eqi -- "$pattern" "$log"; then printf 'Matched diagnostic category: %s\n' "$pattern"; fi
+            done
+            printf 'Log size (bytes): %s\n' "$(stat -c %s "$log")"
+          else
+            echo 'Preparation log not present'
+          fi
+          for file in artisan vendor/autoload.php bootstrap/cache/config.php bootstrap/cache/routes-v7.php .prepared; do
+            if [[ -s "$failed_release/$file" || -f "$failed_release/$file" ]]; then printf 'Target %s present\n' "$file"; else printf 'Target %s absent\n' "$file"; fi
+          done
+          df -Pk "$app" | awk 'NR==2 {print "Filesystem free KiB:", $4}'
+          df -Pi "$app" | awk 'NR==2 {print "Filesystem free inodes:", $4}'
+          echo 'Read-only storage accounting (KiB; no private file names)'
+          for part in releases failed-releases shared/backups shared/storage source; do
+            if [[ -d "$app/$part" && ! -L "$app/$part" ]]; then
+              printf '%s: ' "$part"
+              du -sk "$app/$part" | awk '{print $1}'
+            fi
+          done
+          if [[ -d "$site/.builds" && ! -L "$site/.builds" ]]; then
+            printf 'builds: '; du -sk "$site/.builds" | awk '{print $1}'
+          fi
+          echo 'Retained release inventory (SHA, KiB, active, backup receipt)'
+          for dir in "$app/releases/"*; do
+            [[ -d "$dir" && ! -L "$dir" && ${dir##*/} =~ ^[a-f0-9]{40}$ ]] || continue
+            id=${dir##*/}
+            active=no; [[ "$dir" != "$old" ]] || active=yes
+            backup=no; [[ ! -s "$app/shared/backups/$id/checksums.sha256" ]] || backup=yes
+            printf '%s %s active=%s backup=%s\n' "$id" "$(du -sk "$dir" | awk '{print $1}')" "$active" "$backup"
+          done
+          echo 'Read-only retained exception classification'
+          target=b5f16a6c08eefcd804deb1970f52490220af67f5
+          root="$app/releases/$target"
+          log="$app/shared/storage/logs/release-$target.log"
+          if [[ -d "$root" && ! -L "$root" && "$root" != "$old" ]]; then
+            for marker in .prepared .preflight .last-preflight storage/framework/down storage/framework/maintenance.php; do
+              if [[ -e "$root/$marker" ]]; then printf 'Retained exception marker %s present\n' "$marker"; else printf 'Retained exception marker %s absent\n' "$marker"; fi
+            done
+            for part in .env storage/app storage/logs storage/oauth-private.key storage/oauth-public.key; do
+              if [[ -L "$root/$part" ]]; then printf 'Retained exception %s is a symlink\n' "$part"; elif [[ -e "$root/$part" ]]; then printf 'Retained exception %s is local\n' "$part"; else printf 'Retained exception %s absent\n' "$part"; fi
+            done
+            if [[ -f "$log" && ! -L "$log" ]]; then
+              for pattern in 'production-initial prepare' 'production-initial preflight' 'production-initial activate' 'production-update prepare' 'production-update preflight' 'production-update activate' 'Prepared ' 'Activated ' 'Release step failed'; do
+                printf 'Retained exception log count %s: %s\n' "$pattern" "$(grep -Fc "$pattern" "$log" || true)"
+              done
+            else
+              echo 'Retained exception log absent'
+            fi
+            if [[ -e "$app/shared/backups/$target" ]]; then echo 'Retained exception backup directory present'; else echo 'Retained exception backup directory absent'; fi
+          fi
+          echo 'Checking active Laravel production configuration and database read-only'
+          /usr/bin/php "$old/artisan" network:deployment-check --hostinger --production-database=u713153343_canadamb --database --migration-state
+          echo 'LIVE PREDEPLOY AUDIT OK'
+          REMOTE
+          failed=0
+          for host in canadamb.ca brandonmb.ca; do
+            for path in / "/?prelaunch_audit=${GITHUB_RUN_ID}" "/robots.txt?prelaunch_audit=${GITHUB_RUN_ID}"; do
+              code=$(curl --silent --show-error --max-time 15 --header 'Cache-Control: no-cache' \
+                --dump-header "$dir/headers" -o /dev/null -w '%{http_code}' "https://$host$path") || code=000
+              printf '%s%s returned HTTP %s\n' "$host" "$path" "$code"
+              grep -Ei '^(server|age|cache-control|retry-after|x-litespeed-cache|x-cache|via):' "$dir/headers" || true
+              expected=403
+              [[ "$path" == /robots.txt* ]] && expected=200
+              if [[ "$code" != "$expected" ]]; then
+                failed=1
+              fi
+            done
+          done
+          [[ "$failed" == 0 ]] || { echo '::error::External prelaunch audit failed; do not approve release.'; exit 1; }

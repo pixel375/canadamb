@@ -1,0 +1,79 @@
+name: Hostinger SSH Connection Test
+
+# This file deliberately lives on the default branch. It has NO deploy/write path.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: canadamb-hostinger-ssh-test
+  cancel-in-progress: false
+
+jobs:
+  connection:
+    name: Read-only Hostinger prelaunch inspection
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    environment: hostinger-prelaunch
+    env:
+      SSH_HOST: ${{ vars.HOSTINGER_HOST }}
+      SSH_PORT: ${{ vars.HOSTINGER_PORT }}
+      SSH_USER: ${{ vars.HOSTINGER_USER }}
+      SSH_PRIVATE_KEY: ${{ secrets.HOSTINGER_SSH_PRIVATE_KEY }}
+      SSH_KNOWN_HOSTS: ${{ secrets.HOSTINGER_KNOWN_HOSTS }}
+    steps:
+      - name: Validate configuration and connect read-only
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          [[ "${SSH_HOST:-}" =~ ^[A-Za-z0-9.-]+$ ]] || { echo "::error::Set HOSTINGER_HOST environment variable"; exit 1; }
+          [[ "${SSH_USER:-}" =~ ^[A-Za-z0-9_-]+$ ]] || { echo "::error::Set HOSTINGER_USER environment variable"; exit 1; }
+          [[ "${SSH_PORT:-}" =~ ^[0-9]{1,5}$ ]] && (( SSH_PORT >= 1 && SSH_PORT <= 65535 )) || {
+            echo "::error::Set a valid HOSTINGER_PORT environment variable"; exit 1;
+          }
+          [[ -n "${SSH_PRIVATE_KEY:-}" && -n "${SSH_KNOWN_HOSTS:-}" ]] || {
+            echo "::error::Set HOSTINGER_SSH_PRIVATE_KEY and HOSTINGER_KNOWN_HOSTS environment secrets"; exit 1;
+          }
+
+          umask 077
+          dir=$(mktemp -d)
+          trap 'rm -rf -- "$dir"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$dir/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$dir/known_hosts"
+          chmod 600 "$dir/key" "$dir/known_hosts"
+          ssh-keygen -y -P '' -f "$dir/key" >/dev/null || {
+            echo "::error::The SSH key must be an unencrypted OpenSSH private key"; exit 1;
+          }
+          ssh -T -o BatchMode=yes -o ConnectTimeout=20 -o ConnectionAttempts=1 \
+              -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$dir/known_hosts" \
+              -o IdentitiesOnly=yes -i "$dir/key" -p "$SSH_PORT" \
+              "$SSH_USER@$SSH_HOST" 'bash -se' <<'REMOTE'
+          set -Eeuo pipefail
+          site="$HOME/domains/canadamb.ca"
+          app="$site/canadamb-app"
+          web="$site/public_html"
+          [[ -d "$web" && ! -L "$web" ]] || { echo "Expected real Hostinger public_html directory"; exit 1; }
+          [[ -f "$web/index.php" && -f "$web/.htaccess" ]] || { echo "Public entrypoint missing"; exit 1; }
+          [[ ! -e "$web/.git" && ! -e "$web/.env" && ! -e "$web/composer.json" ]] || {
+            echo "Unsafe public web root content detected"; exit 1;
+          }
+          [[ -f "$app/shared/.env" && ! -L "$app/shared/.env" ]] || {
+            echo "Private application environment missing"; exit 1;
+          }
+          current=$(readlink -e "$app/current")
+          [[ "$current" == "$app/releases/"* && -s "$current/artisan" ]] || {
+            echo "Missing active Laravel release"; exit 1;
+          }
+          sha=${current##*/}
+          [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || exit 1
+          [[ -s "$current/vendor/autoload.php" && -s "$current/public/build/manifest.json" ]] || exit 1
+          for program in php git flock tar mariadb-dump; do command -v "$program" >/dev/null; done
+          php -r 'if (!extension_loaded("sodium") || !extension_loaded("pdo_mysql")) exit(1);'
+          echo "SSH CONNECTION OK"
+          echo "Document root: original directory, private application layout verified"
+          echo "Active release: $sha"
+          echo "PHP $(php -r 'echo PHP_VERSION;') / required extensions OK"
+          echo "Database was NOT queried; no application or website files were changed"
+          REMOTE

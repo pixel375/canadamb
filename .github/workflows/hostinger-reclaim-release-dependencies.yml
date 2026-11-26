@@ -1,0 +1,111 @@
+name: CanadaMB one-time inactive release dependency reclaim
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reclaim:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: hostinger-prelaunch
+    env:
+      SSH_HOST: ${{ vars.HOSTINGER_HOST }}
+      SSH_PORT: ${{ vars.HOSTINGER_PORT }}
+      SSH_USER: ${{ vars.HOSTINGER_USER }}
+      SSH_PRIVATE_KEY: ${{ secrets.HOSTINGER_SSH_PRIVATE_KEY }}
+      SSH_KNOWN_HOSTS: ${{ secrets.HOSTINGER_KNOWN_HOSTS }}
+    steps:
+      - name: Verify known active release and reclaim only enumerated inactive Composer vendor directories
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          [[ "$SSH_HOST" =~ ^[A-Za-z0-9.-]+$ && "$SSH_USER" =~ ^[A-Za-z0-9_-]+$ && "$SSH_PORT" =~ ^[0-9]{1,5}$ ]] || exit 1
+          [[ -n "$SSH_PRIVATE_KEY" && -n "$SSH_KNOWN_HOSTS" ]] || exit 1
+          umask 077
+          dir=$(mktemp -d)
+          trap 'rm -rf -- "$dir"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$dir/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$dir/known_hosts"
+          chmod 600 "$dir/key" "$dir/known_hosts"
+          ssh-keygen -y -P '' -f "$dir/key" >/dev/null
+          ssh -T -o BatchMode=yes -o ConnectTimeout=20 -o StrictHostKeyChecking=yes \
+            -o "UserKnownHostsFile=$dir/known_hosts" -o IdentitiesOnly=yes \
+            -i "$dir/key" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" 'bash -se' <<'REMOTE'
+          set -Eeuo pipefail
+          app="$HOME/domains/canadamb.ca/canadamb-app"
+          expected=ba1ee92045150944dd0d0db3a7eeebde5e244661
+          [[ -d "$app" && ! -L "$app" && -d "$app/releases" && ! -L "$app/releases" && ! -e "$app/update.pause" ]] || exit 1
+          exec 8>"$app/update.lock"
+          flock -n 8 || { echo 'Update active; refusing cleanup'; exit 1; }
+          old=$(readlink -e "$app/current")
+          [[ "$old" == "$app/releases/$expected" && -s "$old/vendor/autoload.php" ]] || exit 1
+          candidates=(
+            036ee697612132dc56a89a726e7f7f43bface343
+            076c7ef7260af559f919a501db246a9e7bd31e90
+            0a7a9ab8ccb40438ebc9392f742e3ac1ae11e420
+            0b2359f5eb4587f9fd5dfad1b36402df2b7d5349
+            0be04dc080fa89ce615705423280528b5b241d3e
+            113acdfca18975f55468a7f77668e4e8eb03cc58
+            12d74fc687eec78006fc5aa8cf34378637c5cb3c
+            225a737fc29ae9c88ea8b1069dd27e87387162a3
+            330f2e7232a6cb11174bac4bc9aa6ea2987888f3
+            44448bd0de1b736a51909f6ec87f692a41d57950
+            4476da386c8f8a16034f1ff41e3de626568e20a3
+            45c549a7002c79e42b9551dd5c83fd735b739616
+            4a9c880963b809425e2f6c4d175e465da3a4519a
+            4b0505ce6ad1eeb3fa3f6c037ce7cefeca61fccc
+            4c9aa41e00e6e21579583345d1acf48e32f60492
+            5d9119ab467898c3e57889826fe183c8fea48564
+            696b5fc633f0b842c20bf63376b4c76d4425d392
+            7702f240537b3e39e7102854f6ed2e17b0b07277
+            7c86e4cef9986c54e8a72b3ee0fffc3f63a58d32
+            8242ac1813e124ef9267bbf2a9418814e102c04c
+          )
+          # Confirm every candidate first. Keep Git source, release metadata,
+          # all backups, public_html, shared storage, and unlisted releases intact.
+          total=0
+          eligible=()
+          for id in "${candidates[@]}"; do
+            [[ "$id" =~ ^[a-f0-9]{40}$ && "$id" != "$expected" ]] || exit 1
+            root="$app/releases/$id"
+            [[ -d "$root" && ! -L "$root" && $(readlink -e "$root") == "$root" ]] || exit 1
+            [[ -s "$root/composer.lock" && -s "$root/artisan" ]] || exit 1
+            git -C "$app/source" cat-file -e "$id^{commit}"
+            git -C "$app/source" merge-base --is-ancestor "$id" "$expected"
+            backup="$app/shared/backups/$id/checksums.sha256"
+            [[ -s "$backup" && ! -L "$backup" ]] || exit 1
+            sha256sum --check --status "$backup"
+            vendor="$root/vendor"
+            [[ ! -L "$vendor" ]] || exit 1
+            if [[ ! -e "$vendor" ]]; then
+              printf 'Already reclaimed: %s\n' "$id"
+              continue
+            fi
+            [[ -d "$vendor" && $(readlink -e "$vendor") == "$vendor" ]] || exit 1
+            [[ -s "$vendor/autoload.php" ]] || exit 1
+            size=$(du -sk "$vendor" | awk '{print $1}')
+            printf 'Verified candidate %s: %s KiB rebuildable dependencies\n' "$id" "$size"
+            total=$((total + size))
+            eligible+=("$id")
+          done
+          for id in "${eligible[@]}"; do
+            [[ $(readlink -e "$app/current") == "$old" && ! -e "$app/update.pause" ]] || exit 1
+            root="$app/releases/$id"
+            [[ -d "$root/vendor" && ! -L "$root/vendor" && $(readlink -e "$root/vendor") == "$root/vendor" ]] || exit 1
+            rm -rf -- "$root/vendor"
+            [[ ! -e "$root/vendor" ]] || exit 1
+            printf 'Reclaimed inactive dependencies: %s\n' "$id"
+          done
+          printf 'Reclaimed %s candidate vendor trees (%s KiB before removal).\n' "${#eligible[@]}" "$total"
+          [[ $(readlink -e "$app/current") == "$old" && -s "$old/vendor/autoload.php" && ! -e "$app/update.pause" ]] || exit 1
+          /usr/bin/php "$old/artisan" network:deployment-check --hostinger --production-database=u713153343_canadamb --database --migration-state
+          echo 'Live release and database verified after reclaim'
+          REMOTE
+          for host in canadamb.ca brandonmb.ca; do
+            code=$(curl -sS --max-time 15 -o /dev/null -w '%{http_code}' "https://$host/?quota_audit=${GITHUB_RUN_ID}")
+            printf '%s prelaunch access HTTP %s\n' "$host" "$code"
+            [[ "$code" == 403 ]] || exit 1
+          done

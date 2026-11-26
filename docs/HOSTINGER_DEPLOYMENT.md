@@ -1,5 +1,7 @@
 # CanadaMB production-first prelaunch on Hostinger
 
+**Current policy (2026-11-26):** All development and production-prelaunch deployments use `main` only. Exact backend and browser push CI automatically dispatch a guarded SHA-pinned deploy, followed by independent live audits and two-release retention. Earlier branch-specific/manual-only instructions below are historical, not current operating instructions. No unapproved schema/flag or public-access changes.
+
 > **LIVE CHECKPOINT — 2026-11-19:** Initial installation/activation of commit `b5f16a6c08eefcd804deb1970f52490220af67f5` already completed successfully and both domains passed owner-verified IP-restricted browser acceptance. The first-install commands below are **historical** and must **not** be repeated against an already populated production schema. See [current live state](LIVE_STATE_2026-11-19.md) and [deployment automation plan](DEPLOYMENT_AUTOMATION.md).
 >
 > **Hostinger-specific correction:** Renaming or replacing the `public_html` directory caused both domain requests to return 404, so future cutovers must retain the existing directory inode and only modify reviewed allowlisted **contents**. The old `.git` checkout was privately quarantined during initial activation. The original Bash process-substitution logger failed at `/dev/fd/62`; release-script fix is now versioned, but repeatability of a new live update is unverified. **Do not activate a new release merely because Hostinger Git pulled files.**
@@ -31,11 +33,11 @@ unset CANADAMB_STAGING_DB CANADAMB_ACTIVATION_CONFIRMED CANADAMB_PRODUCTION_CONF
 export CANADAMB_PHP_BIN=/usr/bin/php CANADAMB_COMPOSER_BIN=/usr/local/bin/composer
 install -d -m 700 "$APP" "$APP/shared" "$SITE_HOME/.builds/$SHA"
 if [[ ! -d "$APP/source/.git" ]]; then
-  git clone --branch implementation/network-foundation --single-branch \
+  git clone --branch main --single-branch \
     https://github.com/pixel375/canadamb.git "$APP/source"
 fi
-git -C "$APP/source" fetch origin implementation/network-foundation
-git -C "$APP/source" merge-base --is-ancestor "$SHA" origin/implementation/network-foundation
+git -C "$APP/source" fetch origin main
+git -C "$APP/source" merge-base --is-ancestor "$SHA" origin/main
 git -C "$APP/source" switch --detach "$SHA"
 if [[ ! -e "$APP/shared/.env" && ! -L "$APP/shared/.env" ]]; then
   (set -o noclobber; cat "$SITE_HOME/private/.env" > "$APP/shared/.env")
