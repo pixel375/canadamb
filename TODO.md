@@ -174,3 +174,5 @@ Keep this queue updated; do not interrupt independent implementation for these a
 - Signup regression privacy check explicitly signs out before inspecting public profile (owner intentionally sees their own private email in account details).
 
 - C03/D01 staged source: immutable parent reply edge (proposed 000016, flag CANADAMB_REPLY_LINKS false), approved same-thread comment reply links (including own), selected composer/cancel, bounded parent excerpt and current-host jump, hidden parents omitted, parent-author notification on approval respecting preferences and deduplication, direct-reply notification text. Existing flat pagination retained; no recursive tree or hidden parent snapshot. No schema activated. Regression and exact CI pending.
+
+- C03/D01 regression covers flag-off behavior, both portals, approved-only parent selector, cross-thread/pending rejection, moderated publication, parent excerpt removal after withdrawal, self-replies, direct notification without following, follower deduplication and opt-out. 000016 remains in manual schema approval queue after independent rehearsal.
