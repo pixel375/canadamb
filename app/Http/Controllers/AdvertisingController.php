@@ -22,15 +22,21 @@ class AdvertisingController extends Controller
         $item = $this->owned($request, $business);
         $locations = $item->openLocations()->pluck('location_id');
         $portals = Site::where('status', 'active')->where(fn ($query) => $query->whereNull('location_id')->orWhereIn('location_id', $locations))->orderBy('name')->get();
-        $filters = $request->validate(['status' => 'nullable|in:pending,approved,rejected,withdrawn', 'q' => 'nullable|string|max:100']);
-        $campaigns = AdvertisingCampaign::where('business_id', $business)->with('site')
+        $filters = $request->validate(['status' => 'nullable|in:pending,approved,rejected,withdrawn', 'q' => 'nullable|string|max:100',
+            'site_id' => 'nullable|integer|exists:sites,id', 'placement' => ['nullable', Rule::in(array_keys(CommercialCatalog::PLACEMENTS))]]);
+        $owned = AdvertisingCampaign::where('business_id', $business);
+        $counts = (clone $owned)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
+        $historyPortals = Site::whereIn('id', (clone $owned)->select('site_id'))->orderBy('name')->get(['id', 'name']);
+        $campaigns = $owned->with('site')
+            ->when($filters['site_id'] ?? null, fn ($query, $id) => $query->where('site_id', $id))
+            ->when($filters['placement'] ?? null, fn ($query, $placement) => $query->where('placement', $placement))
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
-            ->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'body']))->latest('id')->paginate(15)->withQueryString();
+            ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'body']))->latest('id')->paginate(15)->withQueryString();
         $catalog = CommercialCatalog::fromSettings(app(NetworkSettings::class)->published());
         $trial = CommercialRecords::hasTrial($item);
         $canExport = $trial && config('network.commercial_trial_export');
 
-        return view('business.advertising', compact('item', 'portals', 'campaigns', 'catalog', 'trial', 'filters', 'canExport'));
+        return view('business.advertising', compact('item', 'portals', 'campaigns', 'catalog', 'trial', 'filters', 'canExport', 'counts', 'historyPortals'));
     }
 
     public function export(Request $request, int $business)
@@ -101,11 +107,15 @@ class AdvertisingController extends Controller
     public function withdraw(Request $request, int $business, int $campaign)
     {
         $this->owned($request, $business);
-        DB::transaction(function () use ($request, $business, $campaign) {
+        $data = $request->validate(['version' => 'nullable|string|size:64']);
+        DB::transaction(function () use ($request, $business, $campaign, $data) {
             Business::lockForUpdate()->findOrFail($business);
             $this->owned($request, $business);
             $item = AdvertisingCampaign::where('business_id', $business)->lockForUpdate()->findOrFail($campaign);
             abort_unless(in_array($item->status, ['pending', 'approved'], true), 409);
+            if (isset($data['version'])) {
+                abort_unless(hash_equals($item->reviewVersion(), $data['version']), 409, 'Campaign changed. Reload before withdrawing.');
+            }
             $item->forceFill(['status' => 'withdrawn'])->save();
             Audit::record('advertising.withdrawn', $request->user()->id, context: ['campaign' => $campaign]);
         }, attempts: 3);

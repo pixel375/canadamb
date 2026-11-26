@@ -17,6 +17,14 @@ class AdvertisingCampaign extends Model
         return ['starts_on' => 'date', 'weeks' => 'integer', 'estimated_cents' => 'integer', 'reviewed_at' => 'datetime'];
     }
 
+    public function reviewVersion(): string
+    {
+        $attributes = $this->getRawOriginal();
+        ksort($attributes);
+
+        return hash('sha256', json_encode($attributes, JSON_THROW_ON_ERROR));
+    }
+
     public function endsOn(): Carbon
     {
         return $this->starts_on->copy()->addWeeks($this->weeks);

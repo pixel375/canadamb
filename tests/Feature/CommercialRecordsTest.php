@@ -67,11 +67,15 @@ class CommercialRecordsTest extends TestCase
         $this->actingAs($stranger)->post($export, $input)->assertOk()->assertJsonCount(0, 'records');
         $this->actingAs($owner);
         $this->get($path)->assertOk()->assertSee($data['title']);
+        $this->get($path.'?placement=home-banner&site_id='.$site->id)->assertOk()->assertSee($data['title']);
+        $this->get($path.'?placement=marketplace-banner')->assertOk()->assertDontSee($data['title']);
         $this->get('https://canadamb.ca/')->assertDontSee($data['title']);
         $this->actingAs($stranger)->get($path)->assertNotFound();
         $review = 'https://canadamb.ca/admin/advertising/'.$campaign->id;
         $this->post($review, ['decision' => 'approved', 'note' => 'Verified request.'])->assertForbidden();
-        $this->actingAs($admin)->post($review, ['decision' => 'approved', 'note' => 'Verified request.'])->assertRedirect()->assertSessionHasNoErrors();
+        $this->actingAs($admin)->get('https://canadamb.ca/admin/advertising?placement=home-banner')->assertOk()->assertSee($campaign->reviewVersion());
+        $this->post($review, ['decision' => 'approved', 'note' => 'Verified request.', 'version' => str_repeat('0', 64)])->assertConflict();
+        $this->post($review, ['decision' => 'approved', 'note' => 'Verified request.', 'version' => $campaign->reviewVersion()])->assertRedirect()->assertSessionHasNoErrors();
         $campaign->refresh();
         // Model a reviewed stored price for this isolated test. The adapter
         // must not accept caller-supplied payment amounts.

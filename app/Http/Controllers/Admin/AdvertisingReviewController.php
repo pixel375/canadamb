@@ -13,6 +13,7 @@ use App\Support\CommercialRecords;
 use App\Support\KeywordSearch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class AdvertisingReviewController extends Controller
@@ -22,12 +23,16 @@ class AdvertisingReviewController extends Controller
         abort_unless(CommercialRecords::enabled(), 404);
         $filters = $request->validate([
             'status' => 'nullable|in:pending,approved,rejected,withdrawn', 'q' => 'nullable|string|max:100',
-            'site_id' => 'nullable|integer|exists:sites,id',
+            'site_id' => 'nullable|integer|exists:sites,id', 'placement' => ['nullable', Rule::in(array_keys(CommercialCatalog::PLACEMENTS))],
         ]);
         $portals = Site::orderBy('name')->get(['id', 'name']);
-        $items = AdvertisingCampaign::with(['business', 'site'])->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
+        $items = AdvertisingCampaign::with(['business', 'site'])
+            ->where(fn ($query) => $query->whereNull('author_id')->orWhere('author_id', '!=', $request->user()->id))
+            ->whereDoesntHave('business.members', fn ($query) => $query->where('users.id', $request->user()->id))
+            ->when($filters['placement'] ?? null, fn ($query, $placement) => $query->where('placement', $placement))
+            ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
             ->when($filters['site_id'] ?? null, fn ($query, $site) => $query->where('site_id', $site))
-            ->when($filters['q'] ?? null, fn ($query, $term) => KeywordSearch::apply($query, $term, ['title', 'body']))
+            ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'body']))
             ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")->latest('id')->paginate(20)->withQueryString();
 
         return view('admin.advertising-review', compact('items', 'filters', 'portals'));
@@ -48,13 +53,16 @@ class AdvertisingReviewController extends Controller
     public function decide(Request $request, int $campaign)
     {
         abort_unless(CommercialRecords::enabled(), 404);
-        $data = $request->validate(['decision' => 'required|in:approved,rejected', 'note' => 'required|string|min:8|max:1200']);
+        $data = $request->validate(['decision' => 'required|in:approved,rejected', 'note' => 'required|string|min:8|max:1200', 'version' => 'nullable|string|size:64']);
         DB::transaction(function () use ($request, $campaign, $data) {
             $record = AdvertisingCampaign::findOrFail($campaign);
             $business = Business::lockForUpdate()->findOrFail($record->business_id);
             $item = AdvertisingCampaign::lockForUpdate()->findOrFail($campaign);
             abort_unless($item->status === 'pending', 409);
             abort_if((int) $item->author_id === $request->user()->id || $business->members()->whereKey($request->user()->id)->exists(), 403);
+            if (isset($data['version'])) {
+                abort_unless(hash_equals($item->reviewVersion(), $data['version']), 409, 'Campaign changed. Reload before reviewing.');
+            }
             if ($data['decision'] === 'approved' && (! CommercialRecords::eligible($business, $item->site, $item->placement)
                 || $item->starts_on->toDateString() < today('America/Winnipeg')->toDateString())) {
                 throw ValidationException::withMessages(['decision' => 'The request is no longer eligible. Reject it and ask the owner to submit a new request.']);
