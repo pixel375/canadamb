@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-26 — event weekend regression fixture correction
+
+The first full patched-dependency backend run passed Composer audit and formatting, then found a Sunday fixture already in the past because a naive test clock string used the application timezone while event starts were UTC. Set the fixture clock explicitly to UTC; the event's future/upcoming semantics remain unchanged.
+
 ## 2026-11-26 — private search URL hardening
 
 Replaced message-body GET search with CSRF-protected POST and a single 15-minute member/conversation-bound session search token. Result links no longer contain message search terms; no-referrer and no-store headers are explicit. Returning to the live chat clears the search. Tests cover token ownership, cleanup, literal wildcard handling, and actual mobile form submission. No message data is changed by search.
