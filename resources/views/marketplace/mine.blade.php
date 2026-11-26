@@ -29,8 +29,8 @@
         @if($items->contains(fn ($item) => in_array($item->status, ['active', 'expired'], true)))
             <details class="panel form-stack mb-4"><summary>Manage selected listings</summary>
                 <form method="post" id="listing-batch-status" action="/account/listings/batch-status" class="form-stack mt-3">@csrf
-                    <p class="field-note">Select up to ten listings below. All must be eligible for the same action; renewal returns them to moderation.</p>
-                    <label>Action<select name="status"><option value="sold">Mark active listings sold</option><option value="pending">Renew expired listings</option></select></label>
+                    <p class="field-note">Select up to ten listings below. All must be eligible for the same action; renewal returns them to moderation for another 7 days.</p>
+                    <label>Action<select name="status"><option value="sold">Mark active listings sold</option><option value="pending">Renew expired listings for 7 days</option></select></label>
                     <label class="checkbox-line"><input type="checkbox" name="confirm_batch" value="1" required> Confirm changes to selected listings</label>
                     <button class="button button-outline">Apply to selected listings</button>
                 </form>
@@ -57,10 +57,10 @@
                         @switch($item->status)
                             @case('active')
                                 @if($item->expires_at?->isFuture()) Visible to buyers · Expires {{ $item->expires_at->format('M j, Y') }}
-                                @else Publication period ended. Renew to submit for review again. @endif
+                                @else Publication period ended. Renew for 7 days after review. @endif
                                 @break
                             @case('pending') Awaiting moderator approval. Your listing is not public yet. @break
-                            @case('expired') No longer public. Renew to submit for review again. @break
+                            @case('expired') No longer public. Renew for 7 days after review. @break
                             @case('rejected') Not approved. Edit the listing before submitting it again. @break
                             @case('sold') Marked sold. No longer visible in Marketplace. @break
                         @endswitch
@@ -76,7 +76,7 @@
                         @endif
                         @if($item->status === 'active' || $item->status === 'expired')
                             <form method="post" action="/account/listings/{{ $item->id }}/status">@csrf<input type="hidden" name="version" value="{{ $item->reviewVersion() }}">
-                                @if($item->status === 'active' && $item->expires_at?->isFuture())<button class="button button-outline" name="status" value="sold">Mark sold</button>@else<button class="button button-primary" name="status" value="pending">Renew</button>@endif
+                                @if($item->status === 'active' && $item->expires_at?->isFuture())<button class="button button-outline" name="status" value="sold">Mark sold</button>@else<button class="button button-primary" name="status" value="pending">Renew for 7 days</button>@endif
                             </form>
                         @endif
                     </div>

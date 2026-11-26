@@ -17,6 +17,7 @@
         @if($postType === 'event')
             <form method="post" action="/events" class="panel form-stack">
                 @csrf
+                <x-shared-publication-note/>
                 <label>Event title<input name="title" required maxlength="140" value="{{ old('title') }}"></label>
                 <label>Event category<select name="category" required><option value="">Choose a category</option>@foreach(\App\Support\Community::EVENTS as $key => $label)<option value="{{ $key }}" @selected(old('category') === $key)>{{ $label }}</option>@endforeach</select></label>
                 <x-community-location :places="$places" :suggested-location="$suggestedLocation"/>
@@ -36,6 +37,7 @@
         @else
             <form method="post" action="/community" class="panel form-stack">
                 @csrf
+                <x-shared-publication-note/>
                 <label>Discussion title<input name="title" required maxlength="140" value="{{ old('title') }}"></label>
                 <label>Category<select name="category" required><option value="">Choose a category</option>@foreach(\App\Support\Community::FORUMS as $key => $label)<option value="{{ $key }}" @selected(old('category', $suggestedCategory) === $key)>{{ $label }}</option>@endforeach</select></label>
                 <x-community-location :places="$places" :suggested-location="$suggestedLocation" :allow-network="true"/>

@@ -25,6 +25,7 @@
         @endif
         <form class="panel form-stack" method="post" action="{{ $business->exists ? '/account/businesses/'.$business->id : '/account/businesses' }}">
             @csrf
+            @unless($business->exists)<x-shared-publication-note/>@endunless
             <h2>{{ $business->exists ? 'Profile information' : 'Business information' }}</h2>
             @if($business->exists)@method('PUT')<input type="hidden" name="version" value="{{ old('version', $business->profileVersion()) }}">
             @else
@@ -51,6 +52,7 @@
         @endif
         @if($business->status === 'active' && $branches->contains(fn ($branch) => $branch->isOpen()))
             <form class="panel form-stack" method="post" action="/account/businesses/{{ $business->id }}/updates">@csrf
+                <x-shared-publication-note/>
                 <h2>Publish a business update</h2>
                 <label>Branch<select name="business_location_id" required>@foreach($branches->filter(fn ($branch) => $branch->isOpen()) as $branch)<option value="{{ $branch->id }}" @selected((int) old('business_location_id') === $branch->id)>{{ $branch->location->name }} · {{ $branch->address }}</option>@endforeach</select></label>
                 <label>Type<select name="type" required>@foreach(['announcement', 'promotion', 'update'] as $type)<option value="{{ $type }}" @selected(old('type') === $type)>{{ ucfirst($type) }}</option>@endforeach</select></label>

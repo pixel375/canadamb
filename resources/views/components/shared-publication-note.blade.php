@@ -1,0 +1,1 @@
+<p class="field-note shared-publication-note">Approved local content appears on CanadaMB and the dedicated community website, where available and enabled. <a class="text-link" href="/faq">How it works</a></p>

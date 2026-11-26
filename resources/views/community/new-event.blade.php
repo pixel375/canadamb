@@ -2,6 +2,7 @@
     <div class="container page-shell narrow">
         <div class="page-intro"><div><h1>Submit an event</h1><p>New events appear after moderation. @if($source) Reusing your event details; choose new dates. The original event and discussion are unchanged.@endif</p></div></div>
         <form method="post" action="/events" class="panel form-stack">@csrf
+            <x-shared-publication-note/>
             <label>Title<input name="title" required maxlength="140" value="{{ old('title', $source?->title) }}"></label>
             <label>Category<select name="category" required><option value="">Choose a category</option>@foreach(\App\Support\Community::EVENTS as $id => $label)<option value="{{ $id }}" @selected(old('category', $source?->category) === $id)>{{ $label }}</option>@endforeach</select></label>
             <x-community-location :places="$places" :suggested-location="$suggestedLocation"/>

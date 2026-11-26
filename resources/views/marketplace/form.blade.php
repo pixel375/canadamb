@@ -5,6 +5,7 @@
         @if($duplicating ?? false)<p class="notice">Copied text and item details only. Review the information and upload new photos. This will create a new listing requiring approval; messages, saves and reports stay with the original.</p>@endif
         <form class="listing-editor-form form-stack" method="post" enctype="multipart/form-data" action="{{ $item->exists ? '/account/listings/'.$item->id : '/marketplace' }}" x-data="{ category: @js(old('category', $item->category ?? '')) }">
             @csrf
+            @unless($item->exists)<x-shared-publication-note/><p class="field-note">Listings are active for 30 days; expired listings can be renewed for 7 days after review.</p>@endunless
             @if($item->exists)@method('PUT')<input type="hidden" name="version" value="{{ old('version', $item->reviewVersion()) }}">@endif
             <section class="panel form-stack listing-editor-section" aria-labelledby="listing-details-heading">
                 <h2 id="listing-details-heading">1. Item details</h2>

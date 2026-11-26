@@ -7,7 +7,7 @@ Owner feedback set 1: 2026-11-26. This file supersedes conflicting earlier roadm
 - [ ] A02 Require selectable Manitoba signup location on CanadaMB; local signup permits only that site's fixed location, enforced server-side. Note other residents should register at CanadaMB.ca.
 - [ ] A03 Display signup location on profile; distinguish from editable browsing preference; review privacy and existing-account backfill.
 - [x] A04 Reduce minimum password length from 12 to 8 consistently (registration, reset, account change); retain rate limits, sensible maximum and strong password guidance.
-- [ ] A05 Persistent login by default on each host and seamless cross-host SSO without repeated password prompts; review remember-token/session revocation, expiry, logout-all and recovery. Avoid shared cross-domain cookies, caching credentials, or leaking tokens. Document any required host setup and user testing.
+- [x] A05 Persistent login by default on each host and seamless cross-host SSO without repeated password prompts; review remember-token/session revocation, expiry, logout-all and recovery. Avoid shared cross-domain cookies, caching credentials, or leaking tokens. Document any required host setup and user testing.
 - [ ] A06 Configure production SMTP and test verification, reset, recovery and branded mail on both domains; monitored support mailbox.
 - [ ] A07 Anti-spam/bot protection, account suspension/ban, account settings/profile polish.
 - [ ] A08 Password-confirmed exports, privacy request fulfillment, deletion/anonymization and data retention; protect other participants' records.
@@ -16,7 +16,7 @@ Owner feedback set 1: 2026-11-26. This file supersedes conflicting earlier roadm
 ## B — Locations and navigation (P1)
 - [x] B01 Remove homepage Explore by location block; location selection belongs on Communities page.
 - [x] B02 Provincial Communities: separate dedicated active local website cards from simple alphabetical Manitoba location filter dropdown (optional typeahead, not separate Find a community search).
-- [ ] B03 Location selection persists by default; remove browse-once/remember choices; clear to all Manitoba. Apply scope consistently to browsing/navigation, never override a fixed local host or publication authorization.
+- [x] B03 Location selection persists by default; remove browse-once/remember choices; clear to all Manitoba. Apply scope consistently to browsing/navigation, never override a fixed local host or publication authorization.
 - [x] B04 On CanadaMB filtered to a location with an active local domain, show a compact clickable below-header invitation to that site and explain shared account.
 - [x] B05 On local hosts, Manitoba > local city breadcrumb with Manitoba linking to provincial site.
 - [x] B06 Local location pin shows actual city, not CanadaMB network, and opens its own Communities page; mobile pin near top of drawer.
@@ -124,3 +124,5 @@ Owner feedback set 1: 2026-11-26. This file supersedes conflicting earlier roadm
 - Current source: A05 default 30-day persistent login on central and local SSO, central opt-out, token revocation on password change, browser restoration/revocation test. B03 applies chosen provincial preference to direct module browsing (preserves filters; explicit GET scope overrides for that visit without mutating preference). Location selector POST remains the only persistent preference write; fixed local scope and APIs unchanged. Exact CI pending.
 
 - Chat redesign source pass: E01 public-only context card and thumbnail, E05 remove private history search endpoint/session/UI, E06 compact clickable identity/back and no footer, E07 viewport history and pinned composer/keyboard handling, E08 no jump or routine status text, E09 icon options and latest received-message reporting when staged reports enabled. Full chat report evidence workflow remains a separate task; no private message browsing added. Exact CI pending.
+
+- F03 and B08 source: initial listing approval 30 days, elapsed previously published listing approval 7 days, re-review before original expiry does not extend it; retain renewal moderation. Shared publication notice on Marketplace, business profiles/updates, discussion/event and job creation/reuse. Exact CI pending. A05 and B03 implementation SHA 8d38ec71 backend 45849119706 and browser 45849119721 passed; live deployment verification remains outstanding for these new changes.

@@ -12,7 +12,8 @@
         @if($openBranches->isNotEmpty())
             <details class="panel job-posting-editor" @if($errors->any()) open @endif><summary><x-icon name="plus" size="18"/> Post a job</summary>
                 <form method="post" action="/account/businesses/{{ $employer->id }}/jobs" class="form-stack mt-3">@csrf
-                    <p class="field-note">New postings are reviewed before publication. Provide a working HTTPS application link.</p>
+                    <x-shared-publication-note/>
+                    <p class="field-note">Provide a working HTTPS application link.</p>
                     <label>Business branch<select name="business_location_id" required>
                         @foreach($openBranches as $branch)<option value="{{ $branch->id }}" @selected((string) old('business_location_id') === (string) $branch->id)>{{ $branch->location->name }} · {{ $branch->address }}</option>@endforeach
                     </select></label>

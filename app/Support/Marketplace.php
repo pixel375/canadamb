@@ -93,8 +93,13 @@ final class Marketplace
         $from = $listing->status;
         $listing->status = $status;
         if ($status === 'active') {
-            $listing->published_at = now();
-            $listing->expires_at = now()->addDays(30);
+            if (! $listing->published_at) {
+                $listing->published_at = now();
+                $listing->expires_at = now()->addDays(30);
+            } elseif (! $listing->expires_at?->isFuture()) {
+                $listing->published_at = now();
+                $listing->expires_at = now()->addDays(7);
+            }
         }
         $listing->save();
         $this->history($listing, $from, $actor, $reason);

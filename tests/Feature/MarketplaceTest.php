@@ -309,4 +309,34 @@ class MarketplaceTest extends TestCase
         return ['title' => $title, 'description' => 'Includes the table and chairs.', 'category' => 'furniture',
             'condition' => 'good', 'price' => '200.25'];
     }
+
+    public function test_expired_listing_renewal_after_review_is_seven_days_and_edits_do_not_extend_active_period(): void
+    {
+        $this->freezeSecond();
+        $owner = User::factory()->create();
+        $admin = User::factory()->create(['role' => 'network_admin']);
+        $rural = Location::where('slug', 'elkhorn')->sole();
+        $this->actingAs($owner)->postJson(self::MAIN.'/api/v1/marketplace', $this->listing('Renewal fixture') + ['location_id' => $rural->id])->assertCreated();
+        $item = Listing::sole();
+        $moderate = self::MAIN.'/admin/moderation/'.$item->id;
+        $status = self::MAIN.'/account/listings/'.$item->id.'/status';
+        $this->actingAs($admin)->post($moderate, ['status' => 'active', 'version' => $item->fresh()->reviewVersion()])->assertRedirect();
+        $this->assertSame(now()->addDays(30)->timestamp, $item->fresh()->expires_at->timestamp);
+        $this->travel(31)->days();
+        $this->artisan('marketplace:expire')->assertSuccessful();
+        $this->actingAs(User::factory()->create())->post($status, ['status' => 'pending', 'version' => $item->fresh()->reviewVersion()])->assertNotFound();
+        $this->actingAs($owner)->get(self::MAIN.'/account/listings?status=expired')->assertOk()->assertSee('Renew for 7 days');
+        $version = $item->fresh()->reviewVersion();
+        $this->post($status, ['status' => 'pending', 'version' => $version])->assertRedirect();
+        $this->assertSame('pending', $item->fresh()->status);
+        $this->post($status, ['status' => 'pending', 'version' => $version])->assertConflict();
+        $this->actingAs($admin)->post($moderate, ['status' => 'active', 'version' => $item->fresh()->reviewVersion()])->assertRedirect();
+        $expires = $item->fresh()->expires_at->timestamp;
+        $this->assertSame(now()->addDays(7)->timestamp, $expires);
+        $this->travel(1)->days();
+        $item->refresh()->forceFill(['status' => 'pending'])->save();
+        $this->post($moderate, ['status' => 'active', 'version' => $item->fresh()->reviewVersion()])->assertRedirect();
+        $this->assertSame($expires, $item->fresh()->expires_at->timestamp);
+    }
+
 }
