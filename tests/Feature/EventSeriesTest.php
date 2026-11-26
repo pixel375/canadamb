@@ -14,6 +14,25 @@ class EventSeriesTest extends TestCase
 
     protected $seeder = DatabaseSeeder::class;
 
+    public function test_selected_rescheduling_preserves_wall_time_and_rejects_duplicates_atomically(): void
+    {
+        $this->travelTo('2026-02-25 12:00:00');
+        config(['network.recurring_events' => true]);
+        $member = User::factory()->create();
+        $this->actingAs($member)->post('https://brandonmb.ca/events', ['title' => 'Club shift', 'body' => 'A recurring club meeting.', 'category' => 'community',
+            'venue' => 'Hall', 'organizer' => 'Club', 'starts_at' => '2026-03-01T10:00', 'ends_at' => '2026-03-01T11:00', 'repeat' => 'weekly', 'occurrences' => 3])->assertRedirect()->assertSessionHasNoErrors();
+        $events = CommunityEvent::orderBy('starts_at')->get();
+        $data = ['events' => [$events[0]->id, $events[1]->id], 'versions' => $events->mapWithKeys(fn ($item) => [$item->id => $item->contentVersion()])->all(), 'days' => 7, 'confirm_shift' => '1'];
+        $url = 'https://brandonmb.ca/account/events/shift-selected';
+        $this->post($url, $data)->assertSessionHasErrors('days');
+        $this->assertSame('2026-03-01', $events[0]->fresh()->localStart()->toDateString());
+        $this->post($url, array_replace($data, ['days' => 6]))->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame('2026-03-07 10:00', $events[0]->fresh()->localStart()->format('Y-m-d H:i'));
+        $this->assertSame('2026-03-14 11:00', $events[1]->fresh()->localEnd()->format('Y-m-d H:i'));
+        $this->assertSame('2026-03-15', $events[2]->fresh()->localStart()->toDateString());
+        $this->post($url, array_replace($data, ['days' => 1]))->assertSessionHasErrors('version');
+    }
+
     public function test_bounded_repeat_preserves_local_time_and_exports_only_approved_occurrences(): void
     {
         $this->travelTo('2026-02-25 12:00:00');

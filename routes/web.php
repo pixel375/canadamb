@@ -155,6 +155,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/account/events', [CommunityEventController::class, 'owned']);
     Route::get('/account/events/{event}/edit', [CommunityEventController::class, 'edit'])->whereNumber('event');
     Route::put('/account/events/{event}', [CommunityEventController::class, 'update'])->whereNumber('event')->middleware('throttle:8,1,event-edit');
+    Route::post('/account/events/shift-selected', [CommunityEventController::class, 'shiftSelected'])->middleware('throttle:5,1,event-batch-shift');
     Route::post('/account/events/revise-selected', [CommunityEventController::class, 'reviseSelected'])->middleware('throttle:5,1,event-batch-edit');
     Route::post('/account/events/cancel-selected', [CommunityEventController::class, 'cancelSelected'])->middleware('throttle:5,1,event-batch-cancel');
     Route::post('/account/events/{event}/cancel', [CommunityEventController::class, 'cancel'])->whereNumber('event');

@@ -7,6 +7,19 @@ use Illuminate\Validation\ValidationException;
 
 final class EventSeries
 {
+    public static function shift(Community $community, string $start, ?string $end, int $days): array
+    {
+        // Shift the local calendar date, not a fixed number of UTC seconds.
+        $shift = fn (string $value) => CarbonImmutable::createFromFormat('!Y-m-d\TH:i', $value, 'UTC')->addDays($days)->format('Y-m-d\TH:i');
+        $dates = self::dates($community, $shift($start), $end === null ? null : $shift($end), 'none', 1)[0];
+        $utc = CarbonImmutable::parse($dates['starts_at'], 'UTC');
+        if ($utc->isPast() || $utc->greaterThan(now('UTC')->addYear())) {
+            throw ValidationException::withMessages(['days' => 'Every revised occurrence must be upcoming and within the next year.']);
+        }
+
+        return $dates;
+    }
+
     public static function dates(Community $community, string $start, ?string $end, string $frequency, int $count): array
     {
         $dates = [];

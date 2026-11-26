@@ -31,6 +31,16 @@
                 </form>
             </details>
         @endif
+        @if(config('network.recurring_events') && $items->contains(fn ($item) => in_array($item->status, ['pending', 'approved', 'rejected'], true) && !$item->localStart()->isPast()))
+            <details class="panel form-stack mb-4"><summary>Reschedule selected events</summary>
+                <form id="event-batch-shift" method="post" action="/account/events/shift-selected" class="form-stack mt-3">@csrf
+                    <p class="field-note">Move up to eight upcoming occurrences by the same number of calendar days. Local start and end times stay the same; changed dates require independent review.</p>
+                    <label>Days to move<input type="number" name="days" min="-30" max="30" required><small class="field-note">Use a negative number to move earlier or a positive number to move later.</small></label>
+                    <label class="checkbox-line"><input type="checkbox" name="confirm_shift" value="1" required> Confirm rescheduling</label>
+                    <button class="button button-outline">Reschedule selected events</button>
+                </form>
+            </details>
+        @endif
         <section class="seller-listing-grid">
             @forelse($items as $item)
                 <article class="panel seller-listing-card">
@@ -48,6 +58,8 @@
                     @if(config('network.recurring_events') && in_array($item->status, ['pending', 'approved', 'rejected'], true) && !$item->localStart()->isPast())
                         <label class="checkbox-line"><input form="event-batch-edit" type="checkbox" name="events[]" value="{{ $item->id }}"> Select for shared detail update</label>
                         <input form="event-batch-edit" type="hidden" name="versions[{{ $item->id }}]" value="{{ $item->contentVersion() }}">
+                        <label class="checkbox-line"><input form="event-batch-shift" type="checkbox" name="events[]" value="{{ $item->id }}"> Select for rescheduling</label>
+                        <input form="event-batch-shift" type="hidden" name="versions[{{ $item->id }}]" value="{{ $item->contentVersion() }}">
                     @endif
                     <a class="text-link" href="/events/new?reuse={{ $item->id }}">Reuse event details</a>
                     @if(in_array($item->status, ['pending', 'approved'], true))

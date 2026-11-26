@@ -333,6 +333,48 @@ class CommunityEventController extends Controller
         return redirect('/account/events')->with('status', $changed.' selected events updated. Changed events require moderation.');
     }
 
+    public function shiftSelected(Request $request)
+    {
+        abort_unless(config('network.recurring_events'), 404);
+        $data = $request->validate([
+            'events' => 'required|array|list|min:1|max:8', 'events.*' => 'required|integer|distinct|min:1',
+            'versions' => 'required|array|max:20', 'versions.*' => 'required|string|size:64',
+            'days' => 'required|integer|between:-30,30|not_in:0', 'confirm_shift' => 'accepted',
+        ]);
+        $author = $request->user()->id;
+        DB::transaction(function () use ($request, $data, $author) {
+            User::lockForUpdate()->findOrFail($author);
+            $items = $this->ownedEvent($request)->whereIn('id', $data['events'])->orderBy('id')->lockForUpdate()->get();
+            abort_unless($items->count() === count($data['events']), 404);
+            $proposed = [];
+            foreach ($items as $item) {
+                abort_unless(in_array($item->status, ['pending', 'approved', 'rejected'], true) && ! $item->localStart()->isPast(), 409);
+                if (! isset($data['versions'][$item->id])) {
+                    throw ValidationException::withMessages(['versions' => 'Reload the event list before rescheduling.']);
+                }
+                $this->checkVersion($item, $data['versions'][$item->id]);
+                $dates = EventSeries::shift($this->community, $item->localStart()->format('Y-m-d\TH:i'), $item->localEnd()?->format('Y-m-d\TH:i'), (int) $data['days']);
+                $key = json_encode([$item->location_id, mb_strtolower($item->title), $dates['starts_at']], JSON_THROW_ON_ERROR);
+                if (isset($proposed[$key]) || CommunityEvent::where('author_id', $author)->where('location_id', $item->location_id)
+                    ->whereNotIn('id', $items->modelKeys())->where('title', $item->title)->where('starts_at', $dates['starts_at'])
+                    ->whereIn('status', ['pending', 'approved'])->exists()) {
+                    throw ValidationException::withMessages(['days' => 'A revised occurrence would duplicate another event. No events changed.']);
+                }
+                $proposed[$key] = true;
+                $item->fill($dates);
+            }
+            if (CommunityEvent::where('author_id', $author)->where('status', 'pending')->count() + $items->where('status', '!=', 'pending')->count() > 24) {
+                throw ValidationException::withMessages(['events' => 'You can have up to 24 pending event submissions. No events changed.']);
+            }
+            foreach ($items as $item) {
+                $item->forceFill(['status' => 'pending'])->save();
+                Audit::record('community.event.edited', $author, context: ['event' => $item->id]);
+            }
+        }, attempts: 3);
+
+        return redirect('/account/events')->with('status', count($data['events']).' selected events rescheduled for review.');
+    }
+
     public function cancelSelected(Request $request)
     {
         $site = $request->attributes->get('site');
