@@ -186,6 +186,26 @@ class BusinessDirectoryTest extends TestCase
         $this->get('https://canadamb.ca/sitemap.xml')->assertDontSee('businesses/'.$business->slug);
     }
 
+    public function test_multicommunity_profiles_preserve_local_branches_and_provincial_canonical_profile(): void
+    {
+        $brandon = Location::where('slug', 'brandon')->sole();
+        $rural = Location::where('slug', 'elkhorn')->sole();
+        $business = Business::create(['slug' => 'multi-repair', 'name' => 'Multi Repair', 'category' => 'services', 'status' => 'active', 'phone' => '204-555-0123']);
+        $business->locations()->create(['location_id' => $brandon->id, 'address' => '1 Brandon Fixture Road']);
+        $business->locations()->create(['location_id' => $rural->id, 'address' => '2 Elkhorn Fixture Road']);
+        $other = Business::create(['slug' => 'other-repair', 'name' => 'Other Repair', 'category' => 'services', 'status' => 'active', 'website' => 'https://example.test']);
+        $other->locations()->create(['location_id' => $brandon->id, 'address' => '3 Fixture Road']);
+        $this->get('https://brandonmb.ca/businesses/multi-repair')->assertOk()->assertSee('1 Brandon Fixture Road')->assertDontSee('2 Elkhorn Fixture Road')
+            ->assertSee('View all Manitoba branches')->assertSee('<link rel="canonical" href="https://canadamb.ca/businesses/multi-repair">', false);
+        $this->get('https://canadamb.ca/businesses/multi-repair')->assertOk()->assertSee('1 Brandon Fixture Road')->assertSee('2 Elkhorn Fixture Road');
+        $this->get('https://canadamb.ca/sitemap.xml')->assertSee('https://canadamb.ca/businesses/multi-repair');
+        $this->get('https://brandonmb.ca/sitemap.xml')->assertDontSee('businesses/multi-repair');
+        $this->get('https://brandonmb.ca/businesses?contact=phone')->assertOk()->assertSee('Multi Repair')->assertDontSee('Other Repair');
+        $this->get('https://canadamb.ca/businesses?location=brandon&sort=name-desc')->assertOk()->assertSeeInOrder(['Other Repair', 'Multi Repair']);
+        $this->actingAs(User::factory()->create())->get('https://canadamb.ca/account/businesses/new?location=elkhorn')->assertOk()
+            ->assertSee('value="'.$rural->id.'" selected', false);
+    }
+
     public function test_verified_claim_requires_review_and_grants_business_editing_to_the_claimant(): void
     {
         $business = Business::create(['slug' => 'test-repair', 'name' => 'Test Repair', 'category' => 'services', 'status' => 'active']);

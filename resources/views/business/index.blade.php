@@ -1,6 +1,6 @@
 <x-layouts.site title="Business directory">
     <div class="container page-shell browse-page">
-        <div class="page-intro"><div><h1>Business directory</h1><p>Find businesses and services in {{ request()->attributes->get('site')->location?->name ?? $places->firstWhere('slug', $filters['location'] ?? null)?->name ?? 'Manitoba' }}.</p></div><a class="button button-primary" href="/account/businesses/new"><x-icon name="plus" size="16"/> Add your business</a></div>
+        <div class="page-intro"><div><h1>Business directory</h1><p>Find businesses and services in {{ request()->attributes->get('site')->location?->name ?? $places->firstWhere('slug', $filters['location'] ?? null)?->name ?? 'Manitoba' }}.</p></div><a class="button button-primary" href="{{ \App\Support\LocationScope::browseUrl(request()->attributes->get('site'), '/account/businesses/new', $places->firstWhere('slug', $filters['location'] ?? null)) }}"><x-icon name="plus" size="16"/> Add your business</a></div>
         <div class="browse-workspace">
         <details class="search-disclosure browse-sidebar" @if(!empty($filters)) open @endif>
             <summary><x-icon name="search" size="18"/> Find businesses <x-icon class="disclosure-arrow" name="chevron-down" size="17"/></summary>
@@ -8,6 +8,8 @@
             <label>Business or service<input type="search" name="q" placeholder="Search names and services" value="{{ $filters['q'] ?? '' }}" maxlength="100"></label>
             <label>Category<select name="category"><option value="">All categories</option>@foreach($categories as $key => $category)<option value="{{ $key }}" @selected(($filters['category'] ?? '') === $key)>{{ $category }}</option>@endforeach</select></label>
             @if($places->isNotEmpty())<label>Location<select name="location"><option value="">All Manitoba</option>@foreach($places as $place)<option value="{{ $place->slug }}" @selected(($filters['location'] ?? '') === $place->slug)>{{ $place->name }}</option>@endforeach</select></label>@endif
+            <label>Contact method<select name="contact"><option value="">Any contact method</option>@foreach(['website' => 'Website available', 'phone' => 'Phone available', 'email' => 'Public email available'] as $key => $label)<option value="{{ $key }}" @selected(($filters['contact'] ?? '') === $key)>{{ $label }}</option>@endforeach</select></label>
+            <label>Sort by<select name="sort">@foreach(['name' => 'Name A–Z', 'name-desc' => 'Name Z–A', 'newest' => 'Recently added'] as $key => $label)<option value="{{ $key }}" @selected(($filters['sort'] ?? 'name') === $key)>{{ $label }}</option>@endforeach</select></label>
             <button class="button button-primary"><x-icon name="search" size="16"/> Find businesses</button>
         </form>
         </details>
@@ -55,7 +57,7 @@
                         @if($selectedPlace)
                             <a class="button button-outline" href="{{ $wideUrl }}">Search all Manitoba</a>
                         @endif
-                        <a class="button button-primary" href="/account/businesses/new"><x-icon name="plus" size="16"/> Add your business</a>
+                        <a class="button button-primary" href="{{ \App\Support\LocationScope::browseUrl(request()->attributes->get('site'), '/account/businesses/new', $places->firstWhere('slug', $filters['location'] ?? null)) }}"><x-icon name="plus" size="16"/> Add your business</a>
                     </div>
                 </div>
             @else

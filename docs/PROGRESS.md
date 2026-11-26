@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-26 — multi-community business profiles and directory discovery
+
+Businesses with open branches in multiple communities now have a province-wide canonical profile and retain local branch-specific views on city domains, instead of redirecting away from the visitor's community. Single-community canonical redirects remain unchanged. Added contact-method filters, deterministic sorting and community-prefilled new business forms. Tests cover local branch privacy/visibility, canonical sitemap placement and filters.
+
 ## 2026-11-26 — category-specific public Marketplace discovery
 
 Previous batch `8ad96bf` independently verified live in [deployment 45760538127](https://github.com/pixel375/canadamb/actions/runs/45760538127); two releases, 21,906 entries. Added scalar, category-scoped structured filters for vehicle/RV/farm/electronics details, range checks, portable numeric JSON comparisons, saved-search edit and summary support, and web/API visibility regression coverage. No new tables, production content or switches changed.

@@ -31,7 +31,7 @@
                 <label>Business name<input name="name" value="{{ old('name') }}" required maxlength="140"></label>
                 <label>Category<select name="category" required><option value="">Choose a category</option>@foreach($categories as $key => $category)<option value="{{ $key }}" @selected(old('category') === $key)>{{ $category }}</option>@endforeach</select></label>
                 <label>Public business address<input name="address" value="{{ old('address') }}" maxlength="255" required></label>
-                @if($site->isNetwork())<label>Location<select name="location_id" required><option value="">Choose a Manitoba community</option>@foreach($places as $place)<option value="{{ $place->id }}" @selected((int) old('location_id') === $place->id)>{{ $place->name }}</option>@endforeach</select></label>
+                @if($site->isNetwork())<label>Location<select name="location_id" required><option value="">Choose a Manitoba community</option>@foreach($places as $place)<option value="{{ $place->id }}" @selected((int) old('location_id', $suggestedLocation?->id ?? null) === $place->id)>{{ $place->name }}</option>@endforeach</select></label>
                 @else
                     <label>Location<input value="{{ $site->location->name }}" readonly></label>
                     <p class="field-note">Posting for another Manitoba location? <a href="{{ \App\Support\NetworkUrl::to(\App\Support\NetworkUrl::main(), '/account/businesses/new') }}">Visit CanadaMB.ca to choose your community.</a></p>

@@ -34,6 +34,7 @@
             <aside class="public-profile-aside">
                 <section class="panel form-stack">
                     <h2>Contact and locations</h2><x-content-report-link type="business" :target="$business->id"/>
+                    @if($multiCommunity && !request()->attributes->get('site')->isNetwork())<p class="field-note">Showing branches on this portal. <a class="text-link" href="{{ $canonical }}">View all Manitoba branches</a>.</p>@endif
                     @foreach($branches as $branch)<div class="business-contact-row"><x-icon name="pin" size="20"/><div><h3>{{ $branch->location->name }}</h3><p>{{ $branch->address }}</p></div></div>@endforeach
                     @if($business->hours)<div class="business-contact-row"><x-icon name="clock" size="20"/><div><h3>Hours</h3><p class="whitespace-pre-line">{{ $business->hours }}</p></div></div>@endif
                     @if($business->website)<a class="button button-primary" href="{{ $business->website }}" rel="nofollow ugc">Visit website <x-icon name="arrow" size="16"/></a>@endif

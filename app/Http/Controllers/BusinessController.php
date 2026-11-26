@@ -29,14 +29,25 @@ class BusinessController extends Controller
         $filters = $request->validate([
             'q' => 'nullable|string|max:100', 'category' => ['nullable', Rule::in(array_keys(BusinessDirectory::CATEGORIES))],
             'location' => 'nullable|string|max:100',
+            'contact' => 'nullable|in:website,phone,email',
+            'sort' => 'nullable|in:name,name-desc,newest',
         ]);
         $matching = $this->directory->visible($site)
             ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['name', 'description']))
             ->when($site->isNetwork() && filled($filters['location'] ?? null), fn ($query) => $query->whereHas('openLocations.location', fn ($location) => $location->where('slug', $filters['location'])));
+        if (isset($filters['contact'])) {
+            $column = match ($filters['contact']) { 'email' => 'public_email', 'phone' => 'phone', default => 'website' };
+            $matching->whereNotNull($column)->where($column, '!=', '');
+        }
         $categoryCounts = (clone $matching)->selectRaw('category, COUNT(*) as total')->groupBy('category')->pluck('total', 'category');
-        $businesses = $matching->with(['openLocations.location'])
-            ->when($filters['category'] ?? null, fn ($query, $category) => $query->where('category', $category))
-            ->orderBy('name')->orderBy('id')->paginate(18)->withQueryString();
+        $query = $matching->with(['openLocations.location'])
+            ->when($filters['category'] ?? null, fn ($query, $category) => $query->where('category', $category));
+        match ($filters['sort'] ?? 'name') {
+            'name-desc' => $query->orderByDesc('name')->orderBy('id'),
+            'newest' => $query->latest('created_at')->latest('id'),
+            default => $query->orderBy('name')->orderBy('id'),
+        };
+        $businesses = $query->paginate(18)->withQueryString();
 
         return view('business.index', compact('businesses', 'filters', 'categoryCounts') + [
             'categories' => BusinessDirectory::CATEGORIES,
@@ -51,7 +62,8 @@ class BusinessController extends Controller
         $business = $this->directory->visible($site)->with('openLocations.location')->where('slug', $slug)->firstOrFail();
         $owner = $this->directory->canonicalSite($business);
         $canonical = NetworkUrl::to($owner, '/businesses/'.$business->slug);
-        if ($owner->id !== $site->id) {
+        $multiCommunity = $business->openLocations->pluck('location_id')->unique()->count() > 1;
+        if ($owner->id !== $site->id && ! $multiCommunity) {
             return redirect()->away($canonical, 301, ['Cache-Control' => 'no-store']);
         }
         $branches = $business->openLocations->when($site->location_id, fn ($locations, $id) => $locations->where('location_id', $id));
@@ -65,7 +77,7 @@ class BusinessController extends Controller
         $managesProfile = $request->user() && $business->members()->whereKey($request->user()->id)
             ->wherePivotIn('role', ['owner', 'manager', 'editor'])->exists();
 
-        return view('business.show', compact('business', 'branches', 'updates', 'claimed', 'canonical', 'openJobs', 'managesProfile'));
+        return view('business.show', compact('business', 'branches', 'updates', 'claimed', 'canonical', 'openJobs', 'managesProfile', 'multiCommunity'));
     }
 
     public function updates(Request $request)
@@ -159,6 +171,7 @@ class BusinessController extends Controller
         return view('business.form', [
             'business' => new Business, 'places' => $site->isNetwork() ? Location::selectable()->orderBy('name')->get() : collect(),
             'branches' => collect(), 'categories' => BusinessDirectory::CATEGORIES,
+            'suggestedLocation' => LocationScope::forBrowsing($site, $request->query('location', $request->cookie(LocationScope::PREFERENCE_COOKIE))),
         ]);
     }
 
