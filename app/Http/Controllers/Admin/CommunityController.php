@@ -111,7 +111,7 @@ class CommunityController extends Controller
         abort_if($site->isNetwork(), 403);
         $rules = ['version' => 'required|string|size:64', 'confirm_policy' => 'accepted'];
         foreach (PublicationPolicy::TYPES as $type => $label) {
-            $rules['manual.'.$type] = 'required|boolean';
+            $rules['manual.'.$type] = $type === 'events' ? 'sometimes|boolean' : 'required|boolean';
         }
         $data = $request->validate($rules);
         DB::transaction(function () use ($request, $site, $data) {
@@ -119,7 +119,7 @@ class CommunityController extends Controller
             $this->checkVersion($locked->configurationVersion(), $data['version']);
             $overrides = $locked->overrides ?? [];
             $before = $overrides['manual_publication'] ?? [];
-            $after = array_map(fn ($value) => (bool) $value, $data['manual']);
+            $after = array_replace($before, array_map(fn ($value) => (bool) $value, $data['manual']));
             if ($before === $after) {
                 return;
             }

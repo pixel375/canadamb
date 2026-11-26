@@ -151,8 +151,8 @@ class HomeDiscoveryNavigationTest extends TestCase
             'author_id' => $author->id, 'location_id' => $brandon->id,
             'title' => 'Brandon discussion scope fixture', 'category' => 'general',
             'body' => 'A discussion that must not change the browsing location.',
-            'status' => 'approved', 'last_activity_at' => now(),
         ]);
+        $thread->forceFill(['status' => 'approved', 'last_activity_at' => now()])->save();
         $url = 'https://canadamb.ca/community/'.$thread->id;
         $this->get($url)->assertOk()
             ->assertSee('All Manitoba')

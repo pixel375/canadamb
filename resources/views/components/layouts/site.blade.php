@@ -8,7 +8,7 @@
         $seoPlace = $site->location?->name ?? 'Manitoba';
         $brand = $site->name.' '.$seoPlace.' Community';
         $seoTitle = $title ? $title.' | '.$brand : ($site->seo_title ?? $brand);
-        $seoDescription = \Illuminate\Support\Str::limit(\Illuminate\Support\Str::squish(strip_tags($description ?? $site->description ?? '')), 160);
+        $seoDescription = \Illuminate\Support\Str::limit(\Illuminate\Support\Str::squish(strip_tags($description ?? $site->overrides['seo_description'] ?? $site->description ?? '')), 160);
         $seoCanonical = $canonical ?? (request()->is('/') ? \App\Support\NetworkUrl::to($site) : null);
     @endphp
     <title>{{ $seoTitle }}</title>

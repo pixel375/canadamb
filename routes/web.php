@@ -16,6 +16,7 @@ use App\Http\Controllers\Admin\LocalContextController;
 use App\Http\Controllers\Admin\NetworkController;
 use App\Http\Controllers\Admin\PropertyReviewController;
 use App\Http\Controllers\Admin\PublicationPolicyController;
+use App\Http\Controllers\Admin\SeoController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\TestAccountController;
 use App\Http\Controllers\Admin\ThemeController;
@@ -303,6 +304,8 @@ Route::prefix('admin')->middleware(['auth', 'verified', 'can:manage-network'])->
         Route::get('/local-context', [LocalContextController::class, 'edit']);
         Route::post('/local-context', [LocalContextController::class, 'save'])->middleware('throttle:6,1,local-context');
         Route::post('/local-context/diagnostic', [LocalContextController::class, 'diagnostic'])->middleware('throttle:4,1,weather-diagnostic');
+        Route::get('/seo', [SeoController::class, 'index']);
+        Route::post('/seo/{site}', [SeoController::class, 'update'])->whereNumber('site')->middleware('throttle:8,1,seo-settings');
         Route::get('/publication-policy', [PublicationPolicyController::class, 'edit']);
         Route::post('/publication-policy', [PublicationPolicyController::class, 'save'])->middleware('throttle:8,1,publication-policy');
         Route::post('/communities/{site}/publication-policy', [CommunityController::class, 'publicationPolicy'])->whereNumber('site')->middleware('throttle:8,1,community-publication-policy');

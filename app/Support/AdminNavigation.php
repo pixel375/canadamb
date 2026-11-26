@@ -44,6 +44,7 @@ final class AdminNavigation
             $groups['Experience & configuration'] = [
                 ['/admin/settings', 'Global settings', 'settings'],
                 ['/admin/theme', 'Theme & appearance', 'moon'],
+                ['/admin/seo', 'SEO & search visibility', 'search'],
                 ['/admin/local-context', 'Local time & weather', 'clock'],
             ];
             $groups['Commercial planning'] = array_values(array_filter([

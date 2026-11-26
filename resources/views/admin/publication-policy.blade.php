@@ -1,6 +1,6 @@
 <x-layouts.admin title="Moderation policy">
     <div class="page-intro"><div><p class="section-label">Content &amp; safety</p><h1>Moderation policy</h1><p>Choose which new submissions require manual approval across the network.</p></div></div>
-    <p class="notice">Automatic approval is not a spam or safety check. Existing pending content, edits, events, jobs, real estate, business claims, news and payments remain under their separate review workflows. Report and removal tools remain available.</p>
+    <p class="notice">Automatic approval is not a spam or safety check. Existing pending content and edits are not auto-approved. Jobs, real estate, business claims, news and payments remain under separate review workflows. Calendar events and their linked discussions have independent policies. Report and removal tools remain available.</p>
     <p class="field-note">Individual community configurations may enforce stricter manual review for content associated with that location. <a class="text-link" href="/admin/communities">Manage communities</a>.</p>
     <form class="panel form-stack" method="post" action="/admin/publication-policy">@csrf
         <input type="hidden" name="configuration_version" value="{{ \App\Support\NetworkSettings::stateVersion($state) }}">

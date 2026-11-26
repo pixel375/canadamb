@@ -7,7 +7,7 @@ use App\Models\User;
 
 final class PublicationPolicy
 {
-    public const TYPES = ['listings' => 'New Marketplace listings', 'discussions' => 'New discussions', 'replies' => 'New comments and replies'];
+    public const TYPES = ['listings' => 'New Marketplace listings', 'discussions' => 'New discussions', 'replies' => 'New comments and replies', 'events' => 'New calendar events'];
 
     public const MODES = ['manual' => 'Manual moderation', 'established' => 'Verified members with accounts at least 7 days old', 'verified' => 'All email-verified members'];
 

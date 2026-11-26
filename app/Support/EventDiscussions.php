@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Models\CommunityEvent;
 use App\Models\CommunityThread;
 use App\Models\Site;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -67,6 +68,11 @@ final class EventDiscussions
             'category' => 'general',
         ]);
         DB::table('community_event_discussions')->insert(['event_id' => $event->id, 'thread_id' => $thread->id]);
+        $author = User::findOrFail($event->author_id);
+        if (PublicationPolicy::allows('discussions', $author, $event->location_id)) {
+            $thread->forceFill(['status' => 'approved', 'last_activity_at' => now()])->save();
+            Audit::record('community.thread.auto-approved', null, context: ['thread' => $thread->id, 'event' => $event->id]);
+        }
     }
 
     public static function publicThread(Site $site, CommunityEvent $event): ?CommunityThread

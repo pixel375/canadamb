@@ -23,11 +23,11 @@ final class PublicationPolicyController extends Controller
     {
         $rules = ['configuration_version' => 'required|string|size:64', 'confirm_policy' => 'accepted'];
         foreach (PublicationPolicy::TYPES as $type => $label) {
-            $rules['policy.'.$type] = ['required', Rule::in(array_keys(PublicationPolicy::MODES))];
+            $rules['policy.'.$type] = [$type === 'events' ? 'sometimes' : 'required', Rule::in(array_keys(PublicationPolicy::MODES))];
         }
         $data = $request->validate($rules);
         $settings->saveDraft($request->user()->id, function (array $current) use ($data) {
-            $current['publication_policy'] = $data['policy'];
+            $current['publication_policy'] = array_replace($current['publication_policy'] ?? [], $data['policy']);
 
             return $current;
         }, $data['configuration_version']);

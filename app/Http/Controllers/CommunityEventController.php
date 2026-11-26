@@ -13,6 +13,7 @@ use App\Support\EventDiscussions;
 use App\Support\EventSeries;
 use App\Support\KeywordSearch;
 use App\Support\LocationScope;
+use App\Support\PublicationPolicy;
 use App\Support\NetworkUrl;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
@@ -204,6 +205,10 @@ class CommunityEventController extends Controller
                 }
                 $event = CommunityEvent::create($eventData + ['author_id' => $author]);
                 Audit::record('community.event.submitted', $author, context: ['event' => $event->id]);
+                if (PublicationPolicy::allows('events', $request->user(), $event->location_id)) {
+                    $event->forceFill(['status' => 'approved'])->save();
+                    Audit::record('community.event.auto-approved', null, context: ['event' => $event->id]);
+                }
                 if (EventDiscussions::enabled() && $this->community->enabled($site, 'community')) {
                     EventDiscussions::create($event);
                 }
