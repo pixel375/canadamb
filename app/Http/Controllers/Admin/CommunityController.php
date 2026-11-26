@@ -22,11 +22,37 @@ use Illuminate\Validation\ValidationException;
 
 class CommunityController extends Controller
 {
-    public function index(NetworkSettings $settings)
+    public function index(Request $request, NetworkSettings $settings)
     {
+        $filters = $request->validate([
+            'q' => 'nullable|string|max:100',
+            'status' => ['nullable', Rule::in(Site::STATUSES)],
+            'readiness' => 'nullable|in:confirmed,incomplete',
+        ]);
+        $query = Site::query();
+        $term = trim($filters['q'] ?? '');
+        if ($term !== '') {
+            $query->where(function ($query) use ($term) {
+                $query->whereLike('name', '%'.$term.'%')
+                    ->orWhereHas('domain', fn ($query) => $query->whereLike('host', '%'.$term.'%'))
+                    ->orWhereHas('location', fn ($query) => $query->whereLike('name', '%'.$term.'%'));
+            });
+        }
+        if (($filters['readiness'] ?? null) === 'confirmed') {
+            $query->whereHas('domain', fn ($query) => $query->whereNotNull('dns_confirmed_at')->whereNotNull('tls_confirmed_at'));
+        } elseif (($filters['readiness'] ?? null) === 'incomplete') {
+            $query->where(function ($query) {
+                $query->whereDoesntHave('domain')->orWhereHas('domain', fn ($query) => $query->whereNull('dns_confirmed_at')->orWhereNull('tls_confirmed_at'));
+            });
+        }
+        $counts = (clone $query)->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status');
+        if (filled($filters['status'] ?? null)) {
+            $query->where('status', $filters['status']);
+        }
+
         return view('admin.communities', [
-            'sites' => Site::with(['location', 'domain'])->orderByRaw("CASE WHEN code = 'network' THEN 0 ELSE 1 END")->orderBy('name')->paginate(25),
-            'settings' => $settings,
+            'sites' => $query->with(['location', 'domain'])->orderByRaw("CASE WHEN code = 'network' THEN 0 ELSE 1 END")->orderBy('name')->orderBy('id')->paginate(25)->withQueryString(),
+            'settings' => $settings, 'filters' => $filters, 'counts' => $counts,
         ]);
     }
 

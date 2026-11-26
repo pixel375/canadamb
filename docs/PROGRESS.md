@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-26 — searchable responsive community control centre
+
+Replaced the wide portal table with responsive portal cards and search by name, domain or community, status and saved DNS/TLS readiness filters, scoped status counts, pagination and explicit effective appearance, utilities, modules and manual-review settings. Added read-only access and filter tests plus mobile Chromium portal management and clock override save/reset. No actual portal settings were modified by the source change.
+
 ## 2026-11-26 — optional provider diagnostics
 
 Added a super-admin-only explicit weather credential check using the saved configuration revision and an active, coordinate-supported portal location. No provider calls occur on the settings GET. Diagnostic cache is isolated from public weather, shares the bounded daily request budget, and reports only valid observation availability; no credentials or raw errors are shown. Added local request counter and tests for access, version binding, no publication, cache reuse and budget exhaustion. No provider credentials supplied, external service verified or live settings changed.

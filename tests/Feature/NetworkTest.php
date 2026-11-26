@@ -147,6 +147,26 @@ class NetworkTest extends TestCase
         $this->assertNull($draft->fresh()->domain->tls_confirmed_at);
     }
 
+    public function test_community_directory_filters_and_effective_configuration_are_read_only(): void
+    {
+        $base = 'https://canadamb.ca/admin/communities';
+        $site = Site::where('code', 'brandon')->sole();
+        $site->update(['overrides' => [
+            'experience' => ['preset' => 'forest', 'clock' => 'hide', 'weather' => 'hide'],
+            'manual_publication' => ['listings' => true],
+        ]]);
+        $site->domain->update(['dns_confirmed_at' => now(), 'tls_confirmed_at' => now()]);
+        $this->actingAs(User::factory()->create())->get($base)->assertForbidden();
+        $this->actingAs(User::factory()->create(['role' => 'network_admin']));
+        $this->get($base.'?q=brandonmb.ca&status=active&readiness=confirmed')->assertOk()
+            ->assertSee('1 matching portal.')->assertSee('Prairie Forest')->assertSee('New Marketplace listings')
+            ->assertSee('data-admin-portal="'.$site->id.'"', false);
+        $this->get($base.'?q=brandonmb.ca&readiness=incomplete')->assertOk()->assertSee('No communities match these filters.');
+        $this->get($base.'?q=brandon&status=draft')->assertOk()->assertSee('No communities match these filters.');
+        $this->getJson($base.'?status=invalid')->assertUnprocessable();
+        $this->assertDatabaseCount('audit_logs', 0);
+    }
+
     public function test_posting_location_is_enforced_by_web_and_api(): void
     {
         $user = User::factory()->create();

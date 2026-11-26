@@ -413,7 +413,7 @@ const fs = require('node:fs');
         for (const width of [320, 390, 768, 1024, 1440]) {
             await adminPage.setViewportSize({ width, height: 900 });
             for (const path of ['/admin', '/admin/moderation?status=pending', '/admin/community?status=pending',
-                '/admin/jobs?status=pending', '/admin/business-review', '/admin/business-ownership', '/admin/news', '/admin/audit', '/admin/readiness', '/admin/commercial', '/admin/local-context', '/admin/publication-policy', '/admin/theme', '/admin/settings']) {
+                '/admin/jobs?status=pending', '/admin/communities', '/admin/business-review', '/admin/business-ownership', '/admin/news', '/admin/audit', '/admin/readiness', '/admin/commercial', '/admin/local-context', '/admin/publication-policy', '/admin/theme', '/admin/settings']) {
                 const response = await adminPage.goto(host + path);
                 check(response.ok(), 'Admin page failed: ' + path + ' at ' + width);
                 check(await adminPage.locator('.admin-shell').isVisible(), 'Admin layout missing: ' + path);
@@ -440,6 +440,24 @@ const fs = require('node:fs');
                 }
             }
         }
+        await adminPage.setViewportSize({ width: 390, height: 900 });
+        await adminPage.goto(host + '/admin/communities');
+        await adminPage.locator('form[action="/admin/communities"] input[name="q"]').fill('Brandon');
+        await adminPage.getByRole('button', { name: 'Filter portals' }).click();
+        await adminPage.waitForURL(url => url.searchParams.get('q') === 'Brandon');
+        check(await adminPage.locator('[data-admin-portal]').count() === 1, 'Community search did not isolate Brandon');
+        await adminPage.locator('[data-admin-portal]').getByRole('link', { name: 'Manage portal' }).click();
+        check(await adminPage.getByRole('heading', { name: 'Community appearance and utilities' }).isVisible(), 'Local experience settings missing');
+        const experienceForm = adminPage.locator('form[action$="/experience"]');
+        await experienceForm.locator('select[name="clock_format"]').selectOption('24');
+        await experienceForm.getByRole('button', { name: 'Save community experience' }).click();
+        await adminPage.waitForLoadState('domcontentloaded');
+        check(await experienceForm.locator('select[name="clock_format"]').inputValue() === '24', 'Local clock format did not persist');
+        await experienceForm.locator('select[name="clock_format"]').selectOption('inherit');
+        await experienceForm.getByRole('button', { name: 'Save community experience' }).click();
+        await adminPage.waitForLoadState('domcontentloaded');
+        check(await experienceForm.locator('select[name="clock_format"]').inputValue() === 'inherit', 'Local clock inheritance was not restored');
+        console.log('PASS: responsive portal directory and local experience save and reset');
         await adminPage.goto(host + '/admin/community?status=pending&q=local+garden');
         check(await adminPage.getByText('Pending local garden discussion for moderation', { exact: true }).count() === 1,
             'Pending review search did not find the seeded discussion');
