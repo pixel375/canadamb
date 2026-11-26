@@ -5,8 +5,18 @@
             @foreach($members as $member)
                 <article class="item-row business-team-row"><div><strong>{{ $member->name }}</strong><p>{{ ucfirst($member->pivot->role) }} @if($member->id === auth()->id()) · You @endif</p></div>
                 @if($isOwner && $item->status === 'active' && in_array($member->pivot->role, ['manager','editor'], true))
-                    <details><summary>Manage access</summary><form class="form-stack mt-2" method="post" action="/account/businesses/{{ $item->id }}/team/{{ $member->id }}">@csrf @method('PUT')<label>Role<select name="role"><option value="manager" @selected($member->pivot->role === 'manager')>Manager</option><option value="editor" @selected($member->pivot->role === 'editor')>Editor</option></select></label><button class="button button-outline">Save role</button></form>
-                    <form class="form-stack mt-3" method="post" action="/account/businesses/{{ $item->id }}/team/{{ $member->id }}">@csrf @method('DELETE')<p class="field-note">Removal immediately revokes business access.</p><button class="button button-outline">Confirm remove member</button></form></details>
+                    <details><summary>Manage access</summary><form class="form-stack mt-2" method="post" action="/account/businesses/{{ $item->id }}/team/{{ $member->id }}">@csrf @method('PUT')<input type="hidden" name="expected_role" value="{{ $member->pivot->role }}"><label>Role<select name="role"><option value="manager" @selected($member->pivot->role === 'manager')>Manager</option><option value="editor" @selected($member->pivot->role === 'editor')>Editor</option></select></label><button class="button button-outline">Save role</button></form>
+                    <form class="form-stack mt-3" method="post" action="/account/businesses/{{ $item->id }}/team/{{ $member->id }}">@csrf @method('DELETE')<input type="hidden" name="expected_role" value="{{ $member->pivot->role }}"><p class="field-note">Removal immediately revokes business access.</p><button class="button button-outline">Confirm remove member</button></form></details>
+                @endif
+                @if($member->id === auth()->id() && in_array($member->pivot->role, ['manager', 'editor'], true))
+                    <details><summary>Leave business team</summary>
+                        <form method="post" action="/account/businesses/{{ $item->id }}/team/leave" class="form-stack mt-2">@csrf
+                            <input type="hidden" name="expected_role" value="{{ $member->pivot->role }}">
+                            <p class="field-note">Leaving revokes your management access. Existing authored records and conversations are not deleted or reassigned.</p>
+                            <label class="checkbox-line"><input type="checkbox" name="confirm_leave" value="1" required> Confirm leaving this team</label>
+                            <button class="button button-outline">Leave team</button>
+                        </form>
+                    </details>
                 @endif
                 </article>
             @endforeach

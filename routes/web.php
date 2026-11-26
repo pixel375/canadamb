@@ -215,6 +215,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/account/businesses/{business}/changes', [BusinessChangeController::class, 'index'])->whereNumber('business');
     Route::post('/account/businesses/{business}/changes', [BusinessChangeController::class, 'store'])->whereNumber('business')->middleware('throttle:6,1,business-change');
     Route::post('/account/businesses/{business}/changes/{change}/withdraw', [BusinessChangeController::class, 'withdraw'])->whereNumber(['business', 'change'])->middleware('throttle:8,1,business-change-withdraw');
+    Route::post('/account/businesses/{business}/team/leave', [BusinessTeamController::class, 'leave'])->whereNumber('business')->middleware('throttle:5,1,team-leave');
     Route::get('/account/businesses/{business}/team', [BusinessTeamController::class, 'index'])->whereNumber('business');
     Route::post('/account/businesses/{business}/team', [BusinessTeamController::class, 'store'])->whereNumber('business')->middleware('throttle:8,1');
     Route::put('/account/businesses/{business}/team/{member}', [BusinessTeamController::class, 'update'])->whereNumber(['business', 'member'])->middleware('throttle:12,1');

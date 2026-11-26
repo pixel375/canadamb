@@ -48,6 +48,28 @@ class BusinessDirectoryTest extends TestCase
         $this->get('https://canadamb.ca/admin/business-ownership?q=Team&ownership=unclaimed')->assertOk()->assertSee('No matching businesses.');
     }
 
+    public function test_team_members_can_leave_but_owners_cannot_and_stale_role_changes_are_rejected(): void
+    {
+        $owner = User::factory()->create();
+        $editor = User::factory()->create();
+        $business = Business::create(['slug' => 'leave-team', 'name' => 'Leave Team', 'category' => 'services', 'status' => 'active']);
+        $business->members()->attach($owner->id, ['role' => 'owner']);
+        $business->members()->attach($editor->id, ['role' => 'editor']);
+        $url = 'https://canadamb.ca/account/businesses/'.$business->id.'/team';
+        $this->actingAs($owner)->put($url.'/'.$editor->id, ['role' => 'editor', 'expected_role' => 'editor'])->assertRedirect();
+        $this->assertDatabaseMissing('audit_logs', ['action' => 'business.member-role-changed']);
+        $this->put($url.'/'.$editor->id, ['role' => 'manager', 'expected_role' => 'editor'])->assertRedirect();
+        $this->delete($url.'/'.$editor->id, ['expected_role' => 'editor'])->assertSessionHasErrors('expected_role');
+        $this->post($url.'/leave', ['expected_role' => 'manager', 'confirm_leave' => '1'])->assertNotFound();
+        $this->actingAs($editor)->get($url)->assertOk()->assertSee('Leave business team');
+        $this->post($url.'/leave', ['expected_role' => 'editor', 'confirm_leave' => '1'])->assertSessionHasErrors('expected_role');
+        $this->post($url.'/leave', ['expected_role' => 'manager'])->assertSessionHasErrors('confirm_leave');
+        $this->post($url.'/leave', ['expected_role' => 'manager', 'confirm_leave' => '1'])->assertRedirect('/account/businesses');
+        $this->get($url)->assertNotFound();
+        $this->assertDatabaseCount('business_memberships', 1);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'business.member-left', 'actor_id' => $editor->id]);
+    }
+
     public function test_business_profile_editor_preserves_concurrent_changes_and_audits_real_edits(): void
     {
         $owner = User::factory()->create();

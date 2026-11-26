@@ -43,10 +43,14 @@ class BusinessTeamController extends Controller
 
     public function update(Request $request, int $business, int $member)
     {
-        $data = $request->validate(['role' => 'required|in:manager,editor']);
+        $data = $request->validate(['role' => 'required|in:manager,editor', 'expected_role' => 'nullable|in:manager,editor']);
         DB::transaction(function () use ($request, $business, $member, $data) {
             $item = $this->owner($request, $business);
             $target = $this->editableMember($item, $member);
+            $this->checkRole($target, $data['expected_role'] ?? null);
+            if ($target->pivot->role === $data['role']) {
+                return;
+            }
             $item->members()->updateExistingPivot($member, ['role' => $data['role']]);
             Audit::record('business.member-role-changed', $request->user()->id, context: ['business' => $business, 'member' => $member, 'from' => $target->pivot->role, 'to' => $data['role']]);
         }, attempts: 3);
@@ -56,14 +60,38 @@ class BusinessTeamController extends Controller
 
     public function remove(Request $request, int $business, int $member)
     {
-        DB::transaction(function () use ($request, $business, $member) {
+        $data = $request->validate(['expected_role' => 'nullable|in:manager,editor']);
+        DB::transaction(function () use ($request, $business, $member, $data) {
             $item = $this->owner($request, $business);
-            $this->editableMember($item, $member);
+            $target = $this->editableMember($item, $member);
+            $this->checkRole($target, $data['expected_role'] ?? null);
             $item->members()->detach($member);
             Audit::record('business.member-removed', $request->user()->id, context: ['business' => $business, 'member' => $member]);
         }, attempts: 3);
 
         return $this->success($business);
+    }
+
+    public function leave(Request $request, int $business)
+    {
+        $data = $request->validate(['confirm_leave' => 'accepted', 'expected_role' => 'required|in:manager,editor']);
+        $member = $request->user()->id;
+        DB::transaction(function () use ($business, $member, $data) {
+            $item = Business::lockForUpdate()->findOrFail($business);
+            $target = $this->editableMember($item, $member);
+            $this->checkRole($target, $data['expected_role']);
+            $item->members()->detach($member);
+            Audit::record('business.member-left', $member, context: ['business' => $business, 'role' => $target->pivot->role]);
+        }, attempts: 3);
+
+        return redirect('/account/businesses')->with('status', 'You left the business team. Your management access has ended.');
+    }
+
+    private function checkRole(User $member, ?string $expected): void
+    {
+        if ($expected !== null && $member->pivot->role !== $expected) {
+            throw ValidationException::withMessages(['expected_role' => 'This membership changed. Reload the team before continuing.']);
+        }
     }
 
     private function owner(Request $request, int $business): Business
