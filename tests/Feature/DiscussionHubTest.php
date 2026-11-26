@@ -6,6 +6,7 @@ use App\Models\CommunityEvent;
 use App\Models\CommunityThread;
 use App\Models\Location;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -66,7 +67,7 @@ class DiscussionHubTest extends TestCase
         $this->get($base.'/calendar?period=weekend')->assertOk()->assertSee('Weekend date fixture')->assertDontSee('Thursday date fixture');
         $this->get($base.'?period=week')->assertOk()->assertSee('Thursday date fixture')->assertSee('Weekend date fixture')->assertDontSee('Next week fixture');
         $this->get($base.'/'.$today->id)->assertOk()->assertSee('More upcoming events in Brandon')->assertSee('Weekend date fixture')->assertDontSee('Hidden weekend fixture');
-        $this->travelTo(\Carbon\CarbonImmutable::parse('2026-11-29 16:00:00', 'UTC'));
+        $this->travelTo(CarbonImmutable::parse('2026-11-29 16:00:00', 'UTC'));
         $this->event($brandon, 'Sunday date fixture', '2026-11-29 20:00:00');
         $this->get($base.'?period=weekend')->assertOk()->assertSee('Sunday date fixture')->assertDontSee('Next week fixture');
         $this->getJson($base.'?period=invalid')->assertUnprocessable();
