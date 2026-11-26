@@ -222,11 +222,12 @@ class JobController extends Controller
 
     public function saved(Request $request)
     {
-        $filters = $request->validate(['q' => 'nullable|string|max:100', 'sort' => 'nullable|in:recent,closing']);
+        $filters = $request->validate(JobBoard::searchRules() + ['sort' => 'nullable|in:recent,closing']);
         $matching = $this->visible($request)->whereIn('id', DB::table('job_posting_bookmarks')
             ->where('user_id', $request->user()->id)->select('job_posting_id'));
         $total = (clone $matching)->count();
-        $items = $matching->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'description']));
+        $site = $request->attributes->get('site');
+        $items = $this->jobs->filter($matching, $site, $filters);
         if (($filters['sort'] ?? 'recent') === 'closing') {
             $items->orderBy('closing_on');
         }

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Listing;
+use App\Models\ListingCategory;
+use App\Models\Location;
 use App\Support\KeywordSearch;
 use App\Support\Marketplace;
 use Illuminate\Http\Request;
@@ -58,7 +60,8 @@ class ListingEngagementController extends Controller
     {
         $site = $request->attributes->get('site');
         abort_unless($this->marketplace->enabled($site), 404);
-        $filters = $request->validate(['q' => 'nullable|string|max:100', 'sort' => 'nullable|in:recent,price-low,price-high']);
+        $filters = $request->validate(['q' => 'nullable|string|max:100', 'sort' => 'nullable|in:recent,price-low,price-high', 'category' => 'nullable|string|max:64|exists:listing_categories,slug',
+            'location' => 'nullable|integer|exists:locations,id']);
         $unavailable = DB::table('listing_favourites')->join('listings', 'listings.id', '=', 'listing_favourites.listing_id')
             ->where('listing_favourites.user_id', $request->user()->id)
             ->when($site->location_id, fn ($query, $id) => $query->where('listings.location_id', $id))
@@ -69,7 +72,11 @@ class ListingEngagementController extends Controller
             $query->selectRaw('1')->from('listing_favourites')->whereColumn('listing_id', 'listings.id')->where('user_id', $request->user()->id);
         });
         $total = (clone $matching)->count();
-        $items = $matching->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'description']));
+        $categories = ListingCategory::whereIn('slug', (clone $matching)->reorder()->select('category')->distinct())->orderBy('name')->pluck('name', 'slug');
+        $places = $site->isNetwork() ? Location::whereIn('id', (clone $matching)->reorder()->select('location_id')->distinct())->orderBy('name')->pluck('name', 'id') : collect();
+        $items = $matching->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'description']))
+            ->when($filters['category'] ?? null, fn ($query, $category) => $query->where('category', $category))
+            ->when($filters['location'] ?? null, fn ($query, $id) => $query->where('location_id', $id));
         match ($filters['sort'] ?? 'recent') {
             'price-low' => $items->orderBy('price_cents'),
             'price-high' => $items->orderByDesc('price_cents'),
@@ -77,7 +84,7 @@ class ListingEngagementController extends Controller
         };
         $items = $items->latest('id')->paginate(18)->withQueryString();
 
-        return view('marketplace.saved', compact('items', 'filters', 'total', 'unavailable'));
+        return view('marketplace.saved', compact('items', 'filters', 'total', 'unavailable', 'categories', 'places'));
     }
 
     public function clearUnavailable(Request $request)

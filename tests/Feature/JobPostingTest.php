@@ -122,6 +122,8 @@ class JobPostingTest extends TestCase
         $this->get('https://canadamb.ca/account/saved-jobs')->assertSee($input['title']);
         $this->get('https://canadamb.ca/account/saved-jobs?q=STOREFRONT&sort=closing')->assertOk()->assertSee($input['title']);
         $this->get('https://canadamb.ca/account/saved-jobs?q=zzmissing')->assertOk()->assertDontSee($input['title']);
+        $this->get('https://canadamb.ca/account/saved-jobs?type='.$input['employment_type'].'&workplace='.$input['workplace'].'&location=Brandon')->assertOk()->assertSee($input['title']);
+        $this->get('https://canadamb.ca/account/saved-jobs?location=Winnipeg')->assertOk()->assertDontSee($input['title']);
         $this->actingAs($owner)->get($url)->assertOk()->assertSee($input['title']);
         $this->get("$url/$job->id/edit")->assertOk()->assertSee($input['title']);
         $oldVersion = $job->fresh()->reviewVersion();

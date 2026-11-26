@@ -4,6 +4,11 @@
         <x-saved-navigation current="jobs" :total="$total"/>
         <form class="panel saved-search" method="get" action="/account/saved-jobs">
             <label>Search saved jobs<input type="search" name="q" maxlength="100" value="{{ $filters['q'] ?? '' }}" placeholder="Title or description"></label>
+            @if($currentSite->isNetwork())
+                <label>Community<input name="location" maxlength="150" value="{{ $filters['location'] ?? '' }}" placeholder="Community name"></label>
+            @endif
+            <label>Employment<select name="type"><option value="">All types</option>@foreach(\App\Support\JobBoard::TYPES as $key => $label)<option value="{{ $key }}" @selected(($filters['type'] ?? '') === $key)>{{ $label }}</option>@endforeach</select></label>
+            <label>Workplace<select name="workplace"><option value="">All workplaces</option>@foreach(\App\Support\JobBoard::WORKPLACES as $key => $label)<option value="{{ $key }}" @selected(($filters['workplace'] ?? '') === $key)>{{ $label }}</option>@endforeach</select></label>
             <label>Sort by<select name="sort"><option value="recent" @selected(($filters['sort'] ?? 'recent') === 'recent')>Recently published</option><option value="closing" @selected(($filters['sort'] ?? '') === 'closing')>Closing soonest</option></select></label>
             <button class="button button-primary">Search</button><a class="text-link" href="/account/saved-jobs">Reset</a>
         </form>
