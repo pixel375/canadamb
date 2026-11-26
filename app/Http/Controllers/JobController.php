@@ -53,17 +53,35 @@ class JobController extends Controller
         $filters = $request->validate([
             'status' => ['nullable', Rule::in($statuses)],
             'q' => 'nullable|string|max:100',
-            'branch' => 'nullable|integer|min:1',
+            'branch' => 'nullable|integer|min:1', 'reference' => 'nullable|integer|min:1',
+            'type' => ['nullable', Rule::in(array_keys(JobBoard::TYPES))],
+            'workplace' => ['nullable', Rule::in(array_keys(JobBoard::WORKPLACES))],
+            'closing' => 'nullable|in:week,month,past', 'sort' => 'nullable|in:recent,deadline,oldest',
         ]);
         if (isset($filters['branch']) && ! $branches->contains('id', (int) $filters['branch'])) {
             throw ValidationException::withMessages(['branch' => 'Choose a branch on this portal.']);
         }
         $owned = $this->jobs->scope($site->location_id)->whereIn('business_location_id', $branches->pluck('id'))
-            ->when($filters['branch'] ?? null, fn ($query, $branch) => $query->where('business_location_id', $branch));
+            ->when($filters['branch'] ?? null, fn ($query, $branch) => $query->where('business_location_id', $branch))
+            ->when($filters['reference'] ?? null, fn ($query, $id) => $query->whereKey($id))
+            ->when($filters['type'] ?? null, fn ($query, $type) => $query->where('employment_type', $type))
+            ->when($filters['workplace'] ?? null, fn ($query, $workplace) => $query->where('workplace', $workplace))
+            ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'description']));
+        $today = today('America/Winnipeg');
+        match ($filters['closing'] ?? null) {
+            'week' => $owned->whereBetween('closing_on', [$today->toDateString(), $today->copy()->addDays(7)->toDateString()]),
+            'month' => $owned->whereBetween('closing_on', [$today->toDateString(), $today->copy()->addDays(30)->toDateString()]),
+            'past' => $owned->where('closing_on', '<', $today->toDateString()),
+            default => null,
+        };
         $counts = (clone $owned)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
-        $items = $owned->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
-            ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'description']))
-            ->latest('id')->paginate(12)->withQueryString();
+        $items = $owned->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status));
+        match ($filters['sort'] ?? 'recent') {
+            'deadline' => $items->orderBy('closing_on')->orderBy('id'),
+            'oldest' => $items->orderBy('id'),
+            default => $items->latest('id'),
+        };
+        $items = $items->paginate(12)->withQueryString();
 
         return view('jobs.business', compact('employer', 'branches', 'openBranches', 'items', 'statuses', 'filters', 'counts'));
     }

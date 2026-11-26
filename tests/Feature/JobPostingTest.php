@@ -132,6 +132,10 @@ class JobPostingTest extends TestCase
         $this->assertDatabaseCount('job_postings', 1);
         $this->get($url.'?status=pending&q=Storefront')->assertOk()->assertSee('1 job found')->assertSee($input['title']);
         $this->get($url.'?status=approved')->assertOk()->assertSee('No jobs match these filters.');
+        $this->get($url.'?type=full-time&workplace=on-site&closing=month&reference='.$job->id)->assertOk()->assertSee('1 job found')->assertSee('Reference #'.$job->id);
+        $this->get($url.'?type=part-time')->assertOk()->assertSee('No jobs match these filters.');
+        $this->get($url.'?closing=past')->assertOk()->assertSee('No jobs match these filters.');
+        $this->get($url.'?q=0')->assertOk()->assertSee('No jobs match these filters.');
         $this->actingAs($stranger)->get($url)->assertNotFound();
         $this->actingAs($owner);
 

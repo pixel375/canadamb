@@ -3,7 +3,7 @@
         <div class="page-intro"><div><a href="/account/businesses/{{ $employer->id }}" class="text-link">Business dashboard</a><h1>{{ $employer->name }} jobs</h1><p>Manage hiring across your business branches.</p></div></div>
         <nav class="seller-status-grid" aria-label="Filter jobs by status">
             @foreach(array_merge(['all'], $statuses) as $status)
-                <?php $selected = ($filters['status'] ?? 'all') === $status; $query = http_build_query(array_filter(['status' => $status === 'all' ? null : $status, 'q' => $filters['q'] ?? null, 'branch' => $filters['branch'] ?? null])); ?>
+                <?php $selected = ($filters['status'] ?? 'all') === $status; $query = http_build_query(array_filter(array_replace($filters, ['status' => $status === 'all' ? null : $status]), fn ($value) => $value !== null && $value !== '')); ?>
                 <a class="seller-status-tile" href="/account/businesses/{{ $employer->id }}/jobs{{ $query ? '?'.$query : '' }}" @if($selected) aria-current="page" @endif>
                     <strong>{{ $status === 'all' ? $counts->sum() : ($counts[$status] ?? 0) }}</strong><span>{{ $status === 'all' ? 'All jobs' : ucfirst($status) }}</span>
                 </a>
@@ -21,11 +21,16 @@
                 </form>
             </details>
         @else <p class="notice">This business has no open branches in the current portal.</p> @endif
-        <form class="panel seller-listing-search" method="get" action="/account/businesses/{{ $employer->id }}/jobs">
+        <form class="panel saved-search" method="get" action="/account/businesses/{{ $employer->id }}/jobs">
             @if($filters['status'] ?? null)<input type="hidden" name="status" value="{{ $filters['status'] }}">@endif
-            <label for="job-owner-search" class="sr-only">Search your jobs</label><input type="search" id="job-owner-search" name="q" maxlength="100" value="{{ $filters['q'] ?? '' }}" placeholder="Search your job postings">
+            <label for="job-owner-search">Search your jobs<input type="search" id="job-owner-search" name="q" maxlength="100" value="{{ $filters['q'] ?? '' }}" placeholder="Search your job postings"></label>
             <label>Branch<select name="branch"><option value="">All branches</option>@foreach($branches as $branch)<option value="{{ $branch->id }}" @selected((int) ($filters['branch'] ?? 0) === $branch->id)>{{ $branch->location->name }} · {{ $branch->address }}</option>@endforeach</select></label>
-            <button class="button button-primary"><x-icon name="search" size="16"/> Search</button>
+            <label>Employment type<select name="type"><option value="">All types</option>@foreach(\App\Support\JobBoard::TYPES as $key => $label)<option value="{{ $key }}" @selected(($filters['type'] ?? '') === $key)>{{ $label }}</option>@endforeach</select></label>
+            <label>Workplace<select name="workplace"><option value="">All workplaces</option>@foreach(\App\Support\JobBoard::WORKPLACES as $key => $label)<option value="{{ $key }}" @selected(($filters['workplace'] ?? '') === $key)>{{ $label }}</option>@endforeach</select></label>
+            <label>Closing date<select name="closing"><option value="">All deadlines</option>@foreach(['week' => 'Next 7 days','month' => 'Next 30 days','past' => 'Past deadline'] as $key => $label)<option value="{{ $key }}" @selected(($filters['closing'] ?? '') === $key)>{{ $label }}</option>@endforeach</select></label>
+            <label>Sort<select name="sort">@foreach(['recent' => 'Newest posting','deadline' => 'Earliest closing date','oldest' => 'Oldest posting'] as $key => $label)<option value="{{ $key }}" @selected(($filters['sort'] ?? 'recent') === $key)>{{ $label }}</option>@endforeach</select></label>
+            <label>Reference<input type="number" name="reference" min="1" value="{{ $filters['reference'] ?? '' }}"></label>
+            <button class="button button-primary"><x-icon name="search" size="16"/> Search</button><a class="text-link" href="/account/businesses/{{ $employer->id }}/jobs">Reset</a>
         </form>
         <p class="field-note seller-results-count">{{ $items->total() }} {{ \Illuminate\Support\Str::plural('job', $items->total()) }} found</p>
         @if($items->contains(fn ($item) => in_array($item->status, ['pending', 'approved'], true)))
@@ -54,7 +59,7 @@
                         <span class="member-listing-status" data-status="{{ $item->status }}">{{ ucfirst($item->status) }}</span>
                         <h2>{{ $item->title }}</h2><p>{{ $item->branch->location->name }} @if(!$item->branch->isOpen()) (closed branch) @endif · {{ \App\Support\JobBoard::TYPES[$item->employment_type] ?? $item->employment_type }} · {{ \App\Support\JobBoard::WORKPLACES[$item->workplace] ?? $item->workplace }}</p>
                         @if($item->payLabel())<p>{{ $item->payLabel() }}</p>@endif
-                        <p>Closes {{ $item->closing_on->format('M j, Y') }}</p>
+                        <p>Closes {{ $item->closing_on->format('M j, Y') }}</p><p class="field-note">Reference #{{ $item->id }}</p>
                     </div>
                     <p class="seller-lifecycle-note">
                         @switch($item->status)
@@ -80,7 +85,7 @@
                         <details class="seller-remove-listing"><summary>Withdraw posting</summary><p class="field-note">Withdraw this job from publication and review.</p><form method="post" action="/account/businesses/{{ $employer->id }}/jobs/{{ $item->id }}/withdraw">@csrf<input type="hidden" name="version" value="{{ $item->reviewVersion() }}"><button class="button button-outline">Confirm withdrawal</button></form></details>
                     @endif
                 </article>
-            @empty<div class="panel market-results-empty"><x-icon name="briefcase" size="30"/><h2>{{ filled($filters['status'] ?? null) || filled($filters['q'] ?? null) || filled($filters['branch'] ?? null) ? 'No jobs match these filters.' : 'No jobs have been posted for these branches.' }}</h2><a class="button button-outline" href="/account/businesses/{{ $employer->id }}/jobs">View all jobs</a></div>@endforelse
+            @empty<div class="panel market-results-empty"><x-icon name="briefcase" size="30"/><h2>{{ array_filter($filters, fn ($value) => $value !== null && $value !== '') ? 'No jobs match these filters.' : 'No jobs have been posted for these branches.' }}</h2><a class="button button-outline" href="/account/businesses/{{ $employer->id }}/jobs">View all jobs</a></div>@endforelse
         </section>
         {{ $items->links() }}
     </div>
