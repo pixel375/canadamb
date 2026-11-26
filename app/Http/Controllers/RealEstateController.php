@@ -78,9 +78,6 @@ class RealEstateController extends Controller
         $local = Site::with('domain')->where('location_id', $item->location_id)->where('status', 'active')->first();
         $canonicalSite = $local && app(Marketplace::class)->enabled($local) ? $local : NetworkUrl::main();
         $canonical = NetworkUrl::to($canonicalSite, '/real-estate/'.$item->id);
-        if (parse_url($canonical, PHP_URL_HOST) !== $site->domain->host) {
-            return redirect()->away($canonical, 301, ['Cache-Control' => 'no-store']);
-        }
 
         return view('real-estate.show', compact('item', 'canonical'));
     }

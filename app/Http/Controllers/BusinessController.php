@@ -67,9 +67,6 @@ class BusinessController extends Controller
         $owner = $this->directory->canonicalSite($business);
         $canonical = NetworkUrl::to($owner, '/businesses/'.$business->slug);
         $multiCommunity = $business->openLocations->pluck('location_id')->unique()->count() > 1;
-        if ($owner->id !== $site->id && ! $multiCommunity) {
-            return redirect()->away($canonical, 301, ['Cache-Control' => 'no-store']);
-        }
         $branches = $business->openLocations->when($site->location_id, fn ($locations, $id) => $locations->where('location_id', $id));
         $updates = $this->directory->updates($site->location_id)->whereIn('business_location_id', $branches->pluck('id'))->paginate(12);
         $claimed = $business->members()->wherePivot('role', 'owner')->exists();

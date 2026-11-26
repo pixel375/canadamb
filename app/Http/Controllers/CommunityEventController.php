@@ -118,9 +118,6 @@ class CommunityEventController extends Controller
         abort_unless($this->community->enabled($site, 'events'), 404);
         $item = $this->community->events($site->location_id)->whereIn('status', ['approved', 'cancelled'])->findOrFail($event);
         $canonical = NetworkUrl::to($this->community->canonicalSite($item, 'events'), '/events/'.$item->id);
-        if (parse_url($canonical, PHP_URL_HOST) !== $site->domain->host) {
-            return redirect()->away($canonical, 301, ['Cache-Control' => 'no-store']);
-        }
 
         $discussion = EventDiscussions::publicThread($site, $item);
 

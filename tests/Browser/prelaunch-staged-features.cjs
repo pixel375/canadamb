@@ -16,7 +16,7 @@ const password = 'New-browser-qa-42';
     const login = async (p, email, secret) => {
         await visit(p, '/login');
         await p.getByLabel('Email').fill(email);
-        await p.getByLabel('Password', { exact: true }).fill(secret);
+        await p.locator('input[name="password"]').fill(secret);
         await p.getByRole('button', { name: 'Sign in', exact: true }).click();
         await p.waitForURL(url => !url.pathname.startsWith('/login'));
     };

@@ -2,33 +2,36 @@
 
 Owner feedback set 1: 2026-11-26. This file supersedes conflicting earlier roadmap/UX preferences. Use it at the start and end of every implementation session. Keep stable IDs; add discovered work rather than losing it in chat. Check an item only when its specified work is implemented and tested; distinguish source implementation, exact green CI, independent live verification and physical-device/operational acceptance. Record evidence and new blockers in the checkpoint section. Never enable public access, registration, email, polling, commercial features or unapproved migrations merely to complete a checklist item. P0 = launch gate; P1 = desired full free launch feature; P2 = optional/expansion. Owner can change scope. MFA is excluded.
 
+**Owner instructions (2026-11-26, apply to every future session):** Do all independently executable development, configuration preparation, automated verification and documentation first. If a step requires owner input, credentials, physical-device testing, a legal/business decision, approval or a manual action, complete all feasible preparatory work without it, record the precise remaining action and dependency in the Manual actions — last queue, and continue with other unblocked checklist work. Do not repeatedly stop to request input; bring the consolidated manual queue to the owner only after all independently doable checklist work is complete (unless a genuine safety/security blocker requires immediate attention). Do not bypass approvals, fabricate credentials or enable protected production features. For every completed TODO item, append a concise item-specific completion note directly on its checked line or immediately below it: what changed, exact source/CI/live evidence, and any residual physical-device/manual acceptance. Update the notes every session; keep IDs stable and never mark an unverified feature as deployed.
+
 ## A — Registration and identity (P0)
 - [ ] A01 Separate signup UX on provincial and each local host; retain one network-wide identity/account and safe SSO. No separate user databases.
 - [ ] A02 Require selectable Manitoba signup location on CanadaMB; local signup permits only that site's fixed location, enforced server-side. Note other residents should register at CanadaMB.ca.
 - [ ] A03 Display signup location on profile; distinguish from editable browsing preference; review privacy and existing-account backfill.
-- [x] A04 Reduce minimum password length from 12 to 8 consistently (registration, reset, account change); retain rate limits, sensible maximum and strong password guidance.
-- [x] A05 Persistent login by default on each host and seamless cross-host SSO without repeated password prompts; review remember-token/session revocation, expiry, logout-all and recovery. Avoid shared cross-domain cookies, caching credentials, or leaking tokens. Document any required host setup and user testing.
+- [x] A04 Reduce minimum password length from 12 to 8 consistently (registration, reset, account change); retain rate limits, sensible maximum and strong password guidance. **Completion:** Eight-character shared password rule and form hints; retains rate limits and token revocation. e65c47a live audit 45845814596.
+- [x] A05 Persistent login by default on each host and seamless cross-host SSO without repeated password prompts; review remember-token/session revocation, expiry, logout-all and recovery. Avoid shared cross-domain cookies, caching credentials, or leaking tokens. Document any required host setup and user testing. **Completion:** 30-day host-only remember tokens, opt-out on central login, password-change revocation; 8d38ec71 backend 45849119706/browser 45849119721 green; live/physical-device acceptance pending.
 - [ ] A06 Configure production SMTP and test verification, reset, recovery and branded mail on both domains; monitored support mailbox.
 - [ ] A07 Anti-spam/bot protection, account suspension/ban, account settings/profile polish.
 - [ ] A08 Password-confirmed exports, privacy request fulfillment, deletion/anonymization and data retention; protect other participants' records.
 - [ ] A09 Physical-device registration/sign-in/reset/logout testing; public signup remains off until authorized.
 
 ## B — Locations and navigation (P1)
-- [x] B01 Remove homepage Explore by location block; location selection belongs on Communities page.
-- [x] B02 Provincial Communities: separate dedicated active local website cards from simple alphabetical Manitoba location filter dropdown (optional typeahead, not separate Find a community search).
-- [x] B03 Location selection persists by default; remove browse-once/remember choices; clear to all Manitoba. Apply scope consistently to browsing/navigation, never override a fixed local host or publication authorization.
-- [x] B04 On CanadaMB filtered to a location with an active local domain, show a compact clickable below-header invitation to that site and explain shared account.
-- [x] B05 On local hosts, Manitoba > local city breadcrumb with Manitoba linking to provincial site.
-- [x] B06 Local location pin shows actual city, not CanadaMB network, and opens its own Communities page; mobile pin near top of drawer.
-- [x] B07 Communities tab on every host; local Communities page identifies current site, links to provincial site for all Manitoba using same account, shows only other active dedicated website cards, notes all other communities are on CanadaMB.
+- [x] B01 Remove homepage Explore by location block; location selection belongs on Communities page. **Completion:** Removed homepage location selector; e65c47a live audit 45845814596.
+- [x] B02 Provincial Communities: separate dedicated active local website cards from simple alphabetical Manitoba location filter dropdown (optional typeahead, not separate Find a community search). **Completion:** Alphabetical provincial dropdown and separate active dedicated portal cards; e65c47a live audit 45845814596.
+- [x] B03 Location selection persists by default; remove browse-once/remember choices; clear to all Manitoba. Apply scope consistently to browsing/navigation, never override a fixed local host or publication authorization. **Completion:** Persistent selection applies to direct provincial module URLs; explicit query remains an override, local scope unchanged. 8d38ec71 backend/browser green; exact live audit pending.
+- [x] B04 On CanadaMB filtered to a location with an active local domain, show a compact clickable below-header invitation to that site and explain shared account. **Completion:** Below-header active-portal invitation and shared-account explanation; e65c47a live audit 45845814596.
+- [x] B05 On local hosts, Manitoba > local city breadcrumb with Manitoba linking to provincial site. **Completion:** Local Manitoba breadcrumb; e65c47a live audit 45845814596.
+- [x] B06 Local location pin shows actual city, not CanadaMB network, and opens its own Communities page; mobile pin near top of drawer. **Completion:** Actual location pin and top drawer location link; e65c47a live audit 45845814596.
+- [x] B07 Communities tab on every host; local Communities page identifies current site, links to provincial site for all Manitoba using same account, shows only other active dedicated website cards, notes all other communities are on CanadaMB. **Completion:** Communities page on both hosts with active dedicated cards, current local site and provincial link; e65c47a live audit 45845814596.
 - [ ] B08 Concise shared-publication explanation on FAQ and applicable Marketplace, discussion/event, business and job creation forms: approved local content also appears provincially, and approved provincial content for a location appears on its dedicated site where available and enabled.
-- [x] B09 Clear FAQ on both hosts covering network, shared account, location filtering and posting.
+- [x] B09 Clear FAQ on both hosts covering network, shared account, location filtering and posting. **Completion:** FAQ and footer/drawer navigation; e65c47a live audit 45845814596.
 - [ ] B10 Authoritative Manitoba locations import/validation, municipality relationships, Indigenous/northern locations, boundary and address review; verify portal scope.
 - [ ] B11 Simplify new portal onboarding, DNS/TLS/SSO, branding and location picker; Steinbach/Winnipeg can follow later.
+- [ ] B12 Preserve the browsing domain for **all** mirrored public content and actions (Marketplace, real estate, business profiles/updates, jobs, discussions/reply permalinks, events, news, related content, notifications, saved items, search and chat context). CanadaMB detail URLs must render the same approved shared records locally instead of redirecting to a dedicated community domain; local hosts retain their fixed geographic scope and module permissions. Only explicit selection of a dedicated website from Communities cards or the below-header invitation should switch the visitor to a local domain. Preserve necessary user-initiated SSO returns, external source/application links, and SEO canonical metadata separately from human navigation. Audit all links, redirects, pagination, forms and future modules; test both hosts, hidden records, out-of-scope records and staged features.
 
 ## C — Discussions and events (P1)
-- [x] C01 Reply edit cancel/back/save returns to originating discussion page (including pagination); preserve My replies entry behavior and reject unsafe redirect targets.
-- [x] C02 Remove visible Link to this reply control; retain safe internal deep links for notifications.
+- [x] C01 Reply edit cancel/back/save returns to originating discussion page (including pagination); preserve My replies entry behavior and reject unsafe redirect targets. **Completion:** Origin-aware reply editing return to thread pagination, fixed server-generated destination; e65c47a live audit 45845814596.
+- [x] C02 Remove visible Link to this reply control; retain safe internal deep links for notifications. **Completion:** Visible reply permalink removed, internal notification links retained; e65c47a live audit 45845814596.
 - [ ] C03 Clean reply-to-comment flow (including own comment), with appropriate parent linkage, visibility, moderation and mobile layout; review schema.
 - [ ] C04 Events created only through discussion composer as final separated Event category, not independent posting; existing event history retained; date required, time optional, city fixed locally, descriptive address/venue required. Review all-day/timezone handling.
 - [ ] C05 Separate discussion vs calendar event automatic/manual approval settings with independent status, audit, safe default and review.
@@ -55,7 +58,7 @@ Owner feedback set 1: 2026-11-26. This file supersedes conflicting earlier roadm
 - [ ] E07 Keep composer/character count/safety/attachment/send controls visible at bottom; handle virtual keyboard, safe-area, history paging and scroll preservation.
 - [ ] E08 Remove Jump to latest button and automatic refresh explanatory text; keep accessible new-message/failure feedback and correct scrolling without forced jump.
 - [ ] E09 Icon-only chat options with accessible label, concise block/unblock, report chat; no long block description or manage-blocked link in dropdown.
-- [x] E10 Inbox: remove My account button, move subdued Blocked members link below card; paginate newest ten by default.
+- [x] E10 Inbox: remove My account button, move subdued Blocked members link below card; paginate newest ten by default. **Completion:** Ten-conversation default pagination and simplified inbox links; e65c47a live audit 45845814596.
 - [ ] E11 Activate extended inquiries/archives, photo/inquiry settings and report review; verify delivery/read state, blocked participants, private media retention. Shared business inbox later.
 
 ## F — Site-wide UX and Marketplace (P1)
@@ -132,3 +135,17 @@ Owner feedback set 1: 2026-11-26. This file supersedes conflicting earlier roadm
 - Staged Chromium regression 45849402835 reached archive menu and timed out on renamed action. Restored descriptive existing label `Archive and mark read` because archive acknowledges unread messages. Keep all staged feature QA intact; rerun exact CI.
 
 - Renewal backend CI 45849726010 stopped at Pint class attribute separation. Moved new regression before private listing fixture helper, removed trailing blank line. Chat backend CI 45849402762 passed. Latest release must pass all checks before promotion.
+
+## Manual actions — last (consolidated owner queue)
+
+Keep this queue updated; do not interrupt independent implementation for these actions. Complete automated preparation first. Do not mark a dependent feature complete until the remaining action and verification are recorded.
+
+- A06: production SMTP credentials and monitored support address/real delivered-email acceptance; prepare templates, diagnostics, documentation and test coverage first.
+- A09/L01/M05: physical desktop/mobile/PWA installation, keyboard, cross-host login and real-world acceptance; finish automated browser coverage first.
+- G01/G02, J01/K01/K02: owner/legal/privacy and staged schema/flag activation decisions; complete code, migration rehearsals, rollback/backup plan and evidence first.
+- L02: weather provider account/key and terms approval; prepare integration and diagnostic steps first.
+- M01/M04: approve policies, external Search Console/analytics accounts, branding and community launch promotion; prepare drafts, configuration and metadata first.
+- N02: commercial/payment credentials and live payment approval (post-launch optional); sandbox and safe verification first.
+- M05: public access, registration and indexing approval only after the full launch checklist and outstanding manual gates are satisfied.
+
+- Current B12 source pass removes six public-detail forced redirects (Marketplace already stays local); reply deep links use current host. Canonical metadata preserved. Full cross-module regression test and link audit pending. Previous backend SHA 7a67fcad passed 45850016351; browser 45850016419 failed because required marker changed Playwright exact password label text. Staged browser login now uses stable password input selector, preserving the actual required marker and native validation. Latest CI pending.

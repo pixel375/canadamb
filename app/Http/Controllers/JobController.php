@@ -41,9 +41,6 @@ class JobController extends Controller
     {
         $item = $this->visible($request)->findOrFail($job);
         $canonical = NetworkUrl::to($this->jobs->canonicalSite($item), '/jobs/'.$item->id);
-        if (parse_url($canonical, PHP_URL_HOST) !== $request->getHost()) {
-            return redirect()->away($canonical, 301, ['Cache-Control' => 'no-store']);
-        }
         $saved = $request->user() && DB::table('job_posting_bookmarks')
             ->where(['user_id' => $request->user()->id, 'job_posting_id' => $job])->exists();
 

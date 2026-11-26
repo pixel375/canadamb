@@ -47,9 +47,6 @@ class NewsController extends Controller
         $item = $news->visible($site->location_id)->findOrFail($article);
         $owner = $news->canonicalSite($item);
         $canonical = NetworkUrl::to($owner, '/news/'.$item->id);
-        if ($owner->id !== $site->id) {
-            return redirect()->away($canonical, 301, ['Cache-Control' => 'no-store']);
-        }
 
         $related = $news->visible($item->location_id)->where('location_id', $item->location_id)
             ->where('category', $item->category)->whereKeyNot($item->id)->limit(4)->get();

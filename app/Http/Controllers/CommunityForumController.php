@@ -88,9 +88,6 @@ class CommunityForumController extends Controller
         $item = $this->visible($request)->findOrFail($thread);
         $site = $request->attributes->get('site');
         $canonical = NetworkUrl::to($this->community->canonicalSite($item, 'community'), '/community/'.$item->id);
-        if (parse_url($canonical, PHP_URL_HOST) !== $site->domain->host) {
-            return redirect()->away($canonical, 301, ['Cache-Control' => 'no-store']);
-        }
 
         $replies = $item->replies()->where('status', 'approved')->with('author')->oldest('id')->paginate(25);
         $following = $request->user() && DB::table('community_thread_follows')
@@ -310,9 +307,7 @@ class CommunityForumController extends Controller
         $approved = $item->replies()->where('status', 'approved')->findOrFail($reply);
         $position = $item->replies()->where('status', 'approved')->where('id', '<=', $approved->id)->count();
         $page = (int) ceil($position / 25);
-        $canonical = NetworkUrl::to($this->community->canonicalSite($item, 'community'), '/community/'.$item->id);
-
-        return redirect()->away($canonical.($page > 1 ? '?page='.$page : '').'#reply-'.$approved->id,
+        return redirect('/community/'.$item->id.($page > 1 ? '?page='.$page : '').'#reply-'.$approved->id,
             302, ['Cache-Control' => 'no-store']);
     }
 
