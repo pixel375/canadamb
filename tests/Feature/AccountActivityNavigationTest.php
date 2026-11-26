@@ -79,15 +79,24 @@ class AccountActivityNavigationTest extends TestCase
         $thread->messages()->create(['sender_id' => $other->id, 'body' => 'Bring a trailer']);
         $base = 'https://canadamb.ca/account/messages';
         $url = $base.'/'.$thread->id;
-        $this->actingAs($stranger)->get($url.'?q=Saturday')->assertNotFound();
-        $this->actingAs($member)->get($url.'?q=SATURDAY&sender=other')->assertOk()->assertSee('Delivery on Saturday')
+        $this->actingAs($stranger)->post($url.'/search', ['q' => 'Saturday'])->assertNotFound();
+        $response = $this->actingAs($member)->post($url.'/search', ['q' => 'SATURDAY', 'sender' => 'other'])->assertRedirect();
+        $resultUrl = $response->headers->get('Location');
+        $this->assertStringContainsString('search=', $resultUrl);
+        $this->assertStringNotContainsString('SATURDAY', $resultUrl);
+        $this->get($resultUrl)->assertOk()->assertSee('Delivery on Saturday')
             ->assertDontSee('Saturday works for me')->assertDontSee('Bring a trailer')->assertDontSee('data-chat-sync=', false)
-            ->assertSee('1 matching messages')->assertHeader('Cache-Control', 'no-store, private');
+            ->assertSee('1 matching message')->assertHeader('Cache-Control', 'no-store, private')->assertHeader('Referrer-Policy', 'no-referrer');
+        $this->actingAs($other)->get($resultUrl)->assertNotFound();
+        $this->actingAs($member);
         $this->assertSame(0, $thread->fresh()->buyer_last_read_id);
         $this->get($base.'?role=sent')->assertOk()->assertSee('Private search fixture');
         $this->get($base.'?role=received')->assertOk()->assertDontSee('Private search fixture');
         $this->actingAs($other)->get($base.'?role=received')->assertOk()->assertSee('Private search fixture');
-        $this->get($url.'?q=%25')->assertOk()->assertSee('No matching messages.');
+        $response = $this->post($url.'/search', ['q' => '%'])->assertRedirect();
+        $this->get($response->headers->get('Location'))->assertOk()->assertSee('No matching messages.');
+        $this->get($url)->assertOk();
+        $this->get($response->headers->get('Location'))->assertNotFound();
     }
 
     public function test_bulk_message_read_keeps_later_messages_and_other_members_unread(): void

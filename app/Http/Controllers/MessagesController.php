@@ -233,18 +233,48 @@ class MessagesController extends Controller
         return redirect('/account/messages'.($archive ? '?view=archived' : ''))->with('status', $archive ? 'Conversation archived and marked read.' : 'Conversation restored.');
     }
 
+    public function searchHistory(Request $request, int $conversation)
+    {
+        $member = $request->user()->id;
+        Conversation::forMember($member)->findOrFail($conversation);
+        $filters = $request->validate(['q' => 'nullable|string|max:100', 'sender' => 'nullable|in:me,other']);
+        if (! filled($filters['q'] ?? null) && ! filled($filters['sender'] ?? null)) {
+            $request->session()->forget('conversation_history_search');
+
+            return redirect('/account/messages/'.$conversation);
+        }
+        $token = bin2hex(random_bytes(16));
+        // Keep only one short-lived search per session. Message text never
+        // becomes a query-string parameter in the normal search flow.
+        $request->session()->put('conversation_history_search', [
+            'member' => $member, 'conversation' => $conversation, 'token' => $token,
+            'expires' => now()->addMinutes(15)->timestamp, 'filters' => $filters,
+        ]);
+
+        return redirect('/account/messages/'.$conversation.'?search='.$token)->header('Cache-Control', 'private, no-store');
+    }
+
     public function show(Request $request, int $conversation)
     {
         $id = $request->user()->id;
         $thread = Conversation::forMember($id)->with(['listing:id,title', 'buyer:id,name', 'seller:id,name'])->findOrFail($conversation);
-        $filters = $request->validate(['q' => 'nullable|string|max:100', 'sender' => 'nullable|in:me,other']);
-        $searching = filled($filters['q'] ?? null) || filled($filters['sender'] ?? null);
+        $token = $request->validate(['search' => 'nullable|string|size:32|alpha_num'])['search'] ?? null;
+        $filters = [];
+        $searching = $token !== null;
+        if ($searching) {
+            $saved = $request->session()->get('conversation_history_search');
+            abort_unless(is_array($saved) && $saved['member'] === $id && $saved['conversation'] === $conversation
+                && $saved['expires'] > now()->timestamp && hash_equals($saved['token'], $token), 404, 'Search expired. Open the conversation to search again.');
+            $filters = $saved['filters'];
+        } else {
+            $request->session()->forget('conversation_history_search');
+        }
         $messages = $thread->messages()->with('sender:id,name')
             ->when(MessageAttachments::enabled(), fn ($query) => $query->withExists('attachment'))
             ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['body']))
             ->when(($filters['sender'] ?? null) === 'me', fn ($query) => $query->where('sender_id', $id))
             ->when(($filters['sender'] ?? null) === 'other', fn ($query) => $query->where('sender_id', '!=', $id))
-            ->latest('id')->paginate(30)->withQueryString();
+            ->latest('id')->paginate(30)->appends($searching ? ['search' => $token] : []);
         if (! $searching && $messages->onFirstPage() && $latest = $messages->first()?->id) {
             $marker = $thread->marker($id);
             Conversation::whereKey($thread->id)->where($marker, '<', $latest)->update([$marker => $latest, 'updated_at' => DB::raw('updated_at')]);
@@ -252,7 +282,7 @@ class MessagesController extends Controller
         $mine = DB::table('user_blocks')->where(['user_id' => $id, 'blocked_id' => $thread->other($id)])->exists();
 
         return response()->view('messages.show', ['thread' => $thread, 'messages' => $messages, 'blocked' => $this->isBlocked($id, $thread->other($id)) || ! MessagingExtensions::canReply($thread), 'myBlock' => $mine,
-            'filters' => $filters, 'searching' => $searching])->header('Cache-Control', 'private, no-store');
+            'filters' => $filters, 'searching' => $searching])->header('Cache-Control', 'private, no-store')->header('Referrer-Policy', 'no-referrer');
     }
 
     public function sync(Request $request, int $conversation, AccountActivity $activity)

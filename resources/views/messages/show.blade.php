@@ -29,13 +29,13 @@
             </header>
             <details class="panel form-stack" @if($searching) open @endif>
                 <summary>Search this conversation</summary>
-                <form method="get" action="/account/messages/{{ $thread->id }}" class="form-stack mt-2">
+                <form method="post" action="/account/messages/{{ $thread->id }}/search" class="form-stack mt-2">@csrf
                     <div class="form-grid"><label>Message text<input name="q" type="search" maxlength="100" value="{{ $filters['q'] ?? '' }}"></label>
                     <label>Sent by<select name="sender"><option value="">Either participant</option><option value="me" @selected(($filters['sender'] ?? '') === 'me')>Me</option><option value="other" @selected(($filters['sender'] ?? '') === 'other')>Other participant</option></select></label></div>
                     <div class="inline-actions"><button class="button button-primary">Search history</button><a class="text-link" href="/account/messages/{{ $thread->id }}">Return to latest messages</a></div>
                 </form>
             </details>
-            @if($searching)<p class="field-note">{{ $messages->total() }} matching messages. Searching does not mark messages read. Live refresh is paused in search results.</p>@endif
+            @if($searching)<p class="field-note">{{ $messages->total() }} {{ \Illuminate\Support\Str::plural('matching message', $messages->total()) }}. Searching does not mark messages read. Live refresh is paused in search results. Searches expire after 15 minutes or when you return to the conversation.</p>@endif
             <nav class="chat-history-nav" aria-label="Conversation history">
                 @if($messages->hasMorePages())<a class="text-link" href="{{ $messages->nextPageUrl() }}">Older messages</a>@endif
                 @if(!$messages->onFirstPage())<a class="text-link" href="{{ $messages->previousPageUrl() }}">Newer messages</a><a class="text-link" href="/account/messages/{{ $thread->id }}">Latest messages</a>@endif

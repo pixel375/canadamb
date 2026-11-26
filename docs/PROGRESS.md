@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-26 — private search URL hardening
+
+Replaced message-body GET search with CSRF-protected POST and a single 15-minute member/conversation-bound session search token. Result links no longer contain message search terms; no-referrer and no-store headers are explicit. Returning to the live chat clears the search. Tests cover token ownership, cleanup, literal wildcard handling, and actual mobile form submission. No message data is changed by search.
+
 ## 2026-11-26 — urgent Symfony security lock refresh
 
 Composer audit detected seven November 25 advisories in four locked Symfony packages. A read-only PHP 8.3 resolver workflow (45820975032) selected Symfony HTTP foundation, HTTP kernel, mailer, routing and serializer v7.4.24, with no installs/removals and no ignored advisories. Reconstructed the resolved lockfile from its emitted metadata and verified the exact SHA-256 against the resolver artifact (047b04ec145dc8451fbc68731c7a5ed56d0ec436033c192a074934f177e40f5c). The resolver audit passed. Full standard CI and guarded production deployment remain required.

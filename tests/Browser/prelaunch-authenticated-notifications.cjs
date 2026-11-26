@@ -558,10 +558,11 @@ const fs = require('node:fs');
             if (width === 390) {
                 const conversationUrl = page.url();
                 await page.getByText('Search this conversation', { exact: true }).click();
-                const historySearch = page.locator('form[method="get"][action^="/account/messages/"]');
+                const historySearch = page.locator('form[method="post"][action$="/search"]');
                 await historySearch.locator('input[name="q"]').fill('bookshelf');
                 await historySearch.getByRole('button', { name: 'Search history' }).click();
-                await page.waitForURL(url => url.searchParams.get('q') === 'bookshelf');
+                await page.waitForURL(url => url.searchParams.has('search'));
+                check(!page.url().includes('bookshelf'), 'Private history search leaked keywords into URL');
                 check(await page.locator('[data-chat-sync]').count() === 0, 'Private history search should not poll live');
                 check(await page.getByText('The oak bookshelf is still available.', { exact: true }).isVisible(), 'Private history search lost matching message');
                 await page.goto(conversationUrl);
