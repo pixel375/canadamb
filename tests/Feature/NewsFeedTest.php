@@ -76,6 +76,12 @@ class NewsFeedTest extends TestCase
         $this->assertDatabaseHas('news_feed_checks', ['source_id' => $source->id, 'status' => 'success', 'new_candidates' => 1]);
         $this->assertDatabaseHas('news_feed_candidates', ['title' => 'Local park reopening']);
         $this->assertDatabaseHas('news_sources', ['id' => $source->id, 'poll_failures' => 0]);
+        $url = 'https://canadamb.ca/admin/news/feed-health';
+        $this->actingAs(User::factory()->create())->get($url)->assertForbidden();
+        $this->actingAs(User::factory()->create(['role' => 'news_editor']))->get($url.'?source_id='.$source->id.'&period=7&status=failed')
+            ->assertOk()->assertSee('1 successful checks')->assertSee('1 failed checks')->assertSee('Retry source')->assertDontSee('Connection failed');
+        $this->get($url.'?status=success')->assertOk()->assertSee('New candidates');
+        $this->assertDatabaseCount('news_feed_checks', 2);
     }
 
     public function test_network_admin_can_configure_only_same_host_feeds(): void

@@ -54,6 +54,25 @@ class EditorialController extends Controller
         ]);
     }
 
+    public function feedHealth(Request $request)
+    {
+        $filters = $request->validate([
+            'source_id' => 'nullable|integer|exists:news_sources,id',
+            'status' => 'nullable|in:success,failed', 'period' => 'nullable|in:1,7,30,90',
+        ]);
+        $sources = NewsSource::orderBy('name')->get(['id', 'name', 'enabled', 'reuse', 'feed_url', 'next_poll_at', 'poll_failures']);
+        $period = (int) ($filters['period'] ?? 7);
+        $query = DB::table('news_feed_checks')->join('news_sources', 'news_sources.id', '=', 'news_feed_checks.source_id')
+            ->where('news_feed_checks.created_at', '>=', now()->subDays($period))
+            ->when($filters['source_id'] ?? null, fn ($query, $id) => $query->where('news_feed_checks.source_id', $id));
+        $counts = (clone $query)->selectRaw('news_feed_checks.status, COUNT(*) AS total')->groupBy('news_feed_checks.status')->pluck('total', 'status');
+        $checks = $query->when($filters['status'] ?? null, fn ($query, $status) => $query->where('news_feed_checks.status', $status))
+            ->latest('news_feed_checks.id')->paginate(25, ['news_feed_checks.id', 'news_feed_checks.status', 'news_feed_checks.new_candidates', 'news_feed_checks.created_at', 'news_sources.name'])->withQueryString();
+        $polling = (bool) config('network.news_polling') && ! config('network.prelaunch');
+
+        return response()->view('admin.feed-health', compact('sources', 'checks', 'counts', 'filters', 'period', 'polling'))->header('Cache-Control', 'private, no-store');
+    }
+
     public function source(Request $request)
     {
         $data = $request->validate([

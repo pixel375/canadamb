@@ -312,6 +312,7 @@ Route::prefix('admin')->middleware(['auth', 'verified', 'can:manage-network'])->
 
 Route::prefix('admin/news')->middleware(['auth', 'verified', 'can:manage-news'])->group(function () {
     Route::get('/', [EditorialController::class, 'index']);
+    Route::get('/feed-health', [EditorialController::class, 'feedHealth']);
     Route::post('/source', [EditorialController::class, 'source'])->middleware('can:manage-network');
     Route::post('/source/{source}', [EditorialController::class, 'sourceStatus'])->whereNumber('source')->middleware('can:manage-network');
     Route::post('/source/{source}/rights', [EditorialController::class, 'sourceRights'])->whereNumber('source')->middleware(['can:manage-network', 'throttle:8,1,news-rights']);

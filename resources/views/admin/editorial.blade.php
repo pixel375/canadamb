@@ -2,7 +2,7 @@
     <div class="page-intro"><div><h1>News editorial</h1><p>Review source rights, dates and claims before publishing.</p></div></div>
     <nav class="inline-actions admin-jump-links" aria-label="Editorial sections"><a class="button button-outline" href="#editorial-queue">Editorial queue ({{ $articles->total() }})</a><a class="button button-outline" href="#feed-candidates">Feed candidates ({{ $feedCandidates->total() }})</a><a class="button button-outline" href="#news-sources">Sources</a></nav>
     <section class="panel" id="news-sources">
-        <h2>Sources</h2>
+        <div class="section-heading"><h2>Sources</h2><a class="button button-outline" href="/admin/news/feed-health">Feed health history</a></div>
         @foreach($sources as $source)
             <div class="item-row"><div><h3>{{ $source->name }}</h3><p>{{ $source->url }} · {{ $source->reuse }}</p>
                 @if($source->feed_url)<p>Feed configured · {{ $source->poll_failures }} consecutive poll failures</p>@endif
