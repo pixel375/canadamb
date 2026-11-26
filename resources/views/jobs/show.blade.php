@@ -16,9 +16,9 @@
         ]];
     }
 @endphp
-<x-layouts.site :title="$item->title" :canonical="$canonical" :structured-data="$jobData" :location="$item->branch->location">
+<x-layouts.site :title="$item->title.' | Jobs in '.$item->branch->location->name" :description="\Illuminate\Support\Str::limit($item->description, 155)" :canonical="$canonical" :structured-data="$jobData">
     <div class="container page-shell">
-        <a href="{{ \App\Support\LocationScope::browseUrl(request()->attributes->get('site'), '/jobs', $item->branch->location) }}" class="text-link mb-4">Job board</a>
+        <a href="{{ \App\Support\LocationScope::browseUrl(request()->attributes->get('site'), '/jobs', \App\Support\LocationScope::currentBrowsing(request()->attributes->get('site'))) }}" class="text-link mb-4">Job board</a>
         <header class="panel public-business-hero">
             <span class="public-business-avatar"><x-icon name="briefcase" size="38"/></span>
             <div class="public-business-heading">

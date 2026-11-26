@@ -30,6 +30,18 @@ final class LocationScope
         return $site->isNetwork() ? self::forBrowsing($site, $value) : null;
     }
 
+    /** Content location must never become the visitor's browsing preference. */
+    public static function currentBrowsing(Site $site): ?Location
+    {
+        $request = request();
+        if ($request->is('/', 'marketplace', 'real-estate', 'businesses', 'business-updates', 'community', 'jobs', 'events', 'news')
+            && $request->query->has('location')) {
+            return self::forBrowsing($site, $request->query('location'), $request->is('jobs'));
+        }
+
+        return $site->location ?? self::preferred($site, $request->cookie(self::PREFERENCE_COOKIE));
+    }
+
     public static function browseUrl(Site $site, string $path, ?Location $place): string
     {
         if (! $site->isNetwork() || ! $place) {

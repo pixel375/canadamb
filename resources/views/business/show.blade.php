@@ -1,5 +1,5 @@
 @php($structured = ['@context' => 'https://schema.org', '@type' => 'LocalBusiness', 'name' => $business->name, 'url' => $canonical, 'address' => ['@type' => 'PostalAddress', 'streetAddress' => $branches->first()->address, 'addressLocality' => $branches->first()->location->name, 'addressRegion' => 'MB', 'addressCountry' => 'CA']])
-<x-layouts.site :title="$business->name.' | Business directory'" :canonical="$canonical" :structured-data="$structured">
+<x-layouts.site :title="$business->name.' | '.($branches->pluck('location.name')->unique()->count() === 1 ? $branches->first()->location->name : 'Manitoba').' business directory'" :description="\Illuminate\Support\Str::limit($business->description ?? ($business->name.' business profile and contact information.'), 155)" :canonical="$canonical" :structured-data="$structured">
     <div class="container page-shell">
         <a class="text-link mb-4" href="/businesses"><x-icon name="building" size="16"/> Business directory</a>
         <header class="panel public-business-hero">

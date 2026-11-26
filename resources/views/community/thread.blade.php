@@ -1,11 +1,11 @@
 @php($currentSite = request()->attributes->get('site'))
 @php($canParticipate = auth()->check() && auth()->user()->hasVerifiedEmail())
-<x-layouts.site :title="$item->title.' | Discussions'" :description="\Illuminate\Support\Str::limit($item->body, 155)" :canonical="$canonical" :location="$item->location">
+<x-layouts.site :title="$item->title.' | Discussions in '.($item->location?->name ?? 'Manitoba')" :description="\Illuminate\Support\Str::limit($item->body, 155)" :canonical="$canonical">
     <div class="container page-shell discussion-thread-shell">
         <nav class="discussion-breadcrumb" aria-label="Discussion navigation">
-            <a class="text-link" href="{{ \App\Support\LocationScope::browseUrl($currentSite, '/community', $item->location) }}">Discussions</a>
+            <a class="text-link" href="{{ \App\Support\LocationScope::browseUrl($currentSite, '/community', \App\Support\LocationScope::currentBrowsing(request()->attributes->get('site'))) }}">Discussions</a>
             <x-icon name="chevron" size="14"/>
-            <a class="text-link" href="/community?{{ http_build_query(array_filter(['category' => $item->category, 'location' => $currentSite->isNetwork() ? $item->location?->slug : null])) }}">{{ \App\Support\Community::FORUMS[$item->category] }}</a>
+            <a class="text-link" href="/community?{{ http_build_query(array_filter(['category' => $item->category, 'location' => $currentSite->isNetwork() ? \App\Support\LocationScope::currentBrowsing($currentSite)?->slug : null])) }}">{{ \App\Support\Community::FORUMS[$item->category] }}</a>
         </nav>
 
         <div class="discussion-thread-layout">
@@ -93,7 +93,7 @@
                 @if($related->isNotEmpty())
                     <section class="panel discussion-related"><h2>Related discussions</h2>@foreach($related as $topic)<div><a class="text-link" href="/community/{{ $topic->id }}">{{ $topic->title }}</a><p class="field-note">{{ $topic->replies_count }} {{ \Illuminate\Support\Str::plural('reply', $topic->replies_count) }}</p></div>@endforeach</section>
                 @endif
-                <a class="discussion-thread-all" href="{{ \App\Support\LocationScope::browseUrl($currentSite, '/community', $item->location) }}"><x-icon name="arrow" size="16"/> Browse more discussions</a>
+                <a class="discussion-thread-all" href="{{ \App\Support\LocationScope::browseUrl($currentSite, '/community', \App\Support\LocationScope::currentBrowsing(request()->attributes->get('site'))) }}"><x-icon name="arrow" size="16"/> Browse more discussions</a>
             </aside>
 
             <section id="discussion-replies" class="panel discussion-replies" aria-labelledby="discussion-replies-heading">

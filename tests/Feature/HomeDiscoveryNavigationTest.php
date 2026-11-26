@@ -143,6 +143,33 @@ class HomeDiscoveryNavigationTest extends TestCase
             ->assertSee('Brandon neighbourhood cleanup');
     }
 
+    public function test_detail_location_does_not_replace_the_browsing_location(): void
+    {
+        $author = User::factory()->create();
+        $brandon = Location::where('slug', 'brandon')->sole();
+        $thread = CommunityThread::create([
+            'author_id' => $author->id, 'location_id' => $brandon->id,
+            'title' => 'Brandon discussion scope fixture', 'category' => 'general',
+            'body' => 'A discussion that must not change the browsing location.',
+            'status' => 'approved', 'last_activity_at' => now(),
+        ]);
+        $url = 'https://canadamb.ca/community/'.$thread->id;
+        $this->get($url)->assertOk()
+            ->assertSee('All Manitoba')
+            ->assertSee('href="/community"', false)
+            ->assertDontSee('href="/community?location=brandon"', false)
+            ->assertDontSee('Visit BrandonMB —')
+            ->assertSee('Brandon discussion scope fixture | Discussions in Brandon | CanadaMB Manitoba Community');
+        $this->withCookie('canadamb_community', 'winnipeg')->get($url)->assertOk()
+            ->assertSee('href="/community?location=winnipeg"', false)
+            ->assertDontSee('href="/community?location=brandon"', false)
+            ->assertDontSee('Visit BrandonMB —');
+        $this->get('https://canadamb.ca/community')->assertRedirect('/community?location=winnipeg');
+        $this->get('https://brandonmb.ca/community/'.$thread->id)->assertOk()
+            ->assertSee('BrandonMB Brandon Community')
+            ->assertSee('href="/community"', false);
+    }
+
     public function test_home_search_uses_real_site_scoped_get_routes_without_javascript(): void
     {
         $this->get('https://canadamb.ca/?location=brandon')

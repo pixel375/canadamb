@@ -7,15 +7,15 @@
         'organizer' => ['@type' => 'Organization', 'name' => $item->organizer],
     ];
 @endphp
-<x-layouts.site :title="$item->title" :canonical="$canonical" :structured-data="array_filter($eventData)" :location="$item->location">
+<x-layouts.site :title="$item->title.' | Events in '.$item->location->name" :description="\Illuminate\Support\Str::limit($item->body, 155)" :canonical="$canonical" :structured-data="array_filter($eventData)">
     <div class="container page-shell">
         <?php $site = request()->attributes->get('site'); ?>
         <nav class="discussion-breadcrumb" aria-label="Event navigation">
             @if(app(\App\Support\Community::class)->enabled($site, 'community'))
-                <a class="text-link" href="{{ \App\Support\LocationScope::browseUrl($site, '/community', $item->location) }}">Discussions</a>
+                <a class="text-link" href="{{ \App\Support\LocationScope::browseUrl($site, '/community', \App\Support\LocationScope::currentBrowsing(request()->attributes->get('site'))) }}">Discussions</a>
                 <x-icon name="chevron" size="14"/>
             @endif
-            <a class="text-link" href="{{ \App\Support\LocationScope::browseUrl($site, '/events', $item->location) }}">Events calendar</a>
+            <a class="text-link" href="{{ \App\Support\LocationScope::browseUrl($site, '/events', \App\Support\LocationScope::currentBrowsing(request()->attributes->get('site'))) }}">Events calendar</a>
         </nav>
         <header class="panel public-business-hero">
             <div class="event-date-tile event-hero-date"><strong>{{ $item->localStart()->format('j') }}</strong><span>{{ $item->localStart()->format('M Y') }}</span></div>
@@ -38,7 +38,7 @@
                 @if($item->status === 'approved')<a class="button button-outline" href="/events/{{ $item->id }}/calendar">Add to my calendar (.ics)</a>@endif
                 @if($item->event_url && $item->status === 'approved')<a class="button button-primary" rel="nofollow ugc" href="{{ $item->event_url }}">Event or ticket information <x-icon name="arrow" size="16"/></a>@endif
                 @if(auth()->id() === $item->author_id)<a class="button button-outline" href="/account/events">Manage my events</a>@endif
-                <a class="text-link" href="{{ \App\Support\LocationScope::browseUrl($site, '/events', $item->location) }}">Find more local events <x-icon name="arrow" size="16"/></a>
+                <a class="text-link" href="{{ \App\Support\LocationScope::browseUrl($site, '/events', \App\Support\LocationScope::currentBrowsing(request()->attributes->get('site'))) }}">Find more local events <x-icon name="arrow" size="16"/></a>
             </section></aside>
         </div>
     </div>

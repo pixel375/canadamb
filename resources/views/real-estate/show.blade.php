@@ -1,6 +1,6 @@
-<x-layouts.site :title="$item->title.' | Real Estate'" :canonical="$canonical" :location="$item->location">
+<x-layouts.site :title="$item->title.' | Real Estate in '.$item->location->name" :canonical="$canonical">
     <div class="container page-shell property-private-detail">
-        <a class="text-link mb-4" href="{{ \App\Support\LocationScope::browseUrl(request()->attributes->get('site'), '/real-estate', $item->location) }}">Real Estate listings</a>
+        <a class="text-link mb-4" href="{{ \App\Support\LocationScope::browseUrl(request()->attributes->get('site'), '/real-estate', \App\Support\LocationScope::currentBrowsing(request()->attributes->get('site'))) }}">Real Estate listings</a>
         <article class="panel">
             <p class="section-label">{{ $item->transaction === 'rent' ? 'For rent' : 'For sale' }} · {{ $item->location->name }}, Manitoba</p>
             <h1>{{ $item->title }}</h1>

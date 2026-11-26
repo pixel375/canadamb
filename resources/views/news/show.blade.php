@@ -1,10 +1,10 @@
 @php($structured = ['@context' => 'https://schema.org', '@type' => 'Article', 'headline' => $item->title, 'url' => $canonical, 'datePublished' => $item->published_at->toAtomString(), 'dateModified' => $item->updated_at->toAtomString(), 'citation' => $item->source_url])
-<x-layouts.site :title="$item->title" :description="\Illuminate\Support\Str::limit($item->body, 155)" :canonical="$canonical" :structured-data="$structured" :location="$item->location">
+<x-layouts.site :title="$item->title.' | News in '.($item->location?->name ?? 'Manitoba')" :description="\Illuminate\Support\Str::limit($item->body, 155)" :canonical="$canonical" :structured-data="$structured">
     <div class="container page-shell">
         <?php
             $site = request()->attributes->get('site');
-            $newsUrl = \App\Support\LocationScope::browseUrl($site, '/news', $item->location);
-            $categoryUrl = '/news?'.http_build_query(array_filter(['category' => $item->category, 'location' => $site->isNetwork() ? $item->location?->slug : null]));
+            $newsUrl = \App\Support\LocationScope::browseUrl($site, '/news', \App\Support\LocationScope::currentBrowsing(request()->attributes->get('site')));
+            $categoryUrl = '/news?'.http_build_query(array_filter(['category' => $item->category, 'location' => $site->isNetwork() ? \App\Support\LocationScope::currentBrowsing($site)?->slug : null]));
         ?>
         <nav class="discussion-breadcrumb" aria-label="News navigation"><a class="text-link" href="{{ $newsUrl }}">Local news</a><x-icon name="chevron" size="14"/><a class="text-link" href="{{ $categoryUrl }}">{{ \App\Support\News::CATEGORIES[$item->category] }}</a></nav>
         <article class="public-profile-layout news-article-layout">

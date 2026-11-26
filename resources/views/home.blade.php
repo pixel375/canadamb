@@ -338,7 +338,7 @@
         @if($site->isNetwork() && $activePortals->isNotEmpty())
             <section class="home-portal-directory" aria-label="Dedicated community websites">
                 @foreach($activePortals as $portal)
-                    <a class="panel home-portal-link" href="{{ \App\Support\NetworkUrl::to($portal) }}">
+                    <a class="panel home-portal-link" href="/communities">
                         <span class="home-portal-accent" style="background:{{ $portal->accentCss() }}"></span>
                         <span><strong>{{ $portal->name }}</strong><small>{{ $portal->location->name }}, Manitoba</small></span>
                         <x-icon name="arrow" size="18"/>

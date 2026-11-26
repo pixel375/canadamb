@@ -4,15 +4,25 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ $title ?? $site->seo_title ?? $site->name.' | '.$site->subtitle }}</title>
-    <meta name="description" content="{{ $description ?? $site->description }}">
-    @if($preview ?? false)
+    @php
+        $seoPlace = $site->location?->name ?? 'Manitoba';
+        $brand = $site->name.' '.$seoPlace.' Community';
+        $seoTitle = $title ? $title.' | '.$brand : ($site->seo_title ?? $brand);
+        $seoDescription = \Illuminate\Support\Str::limit(\Illuminate\Support\Str::squish(strip_tags($description ?? $site->description ?? '')), 160);
+        $seoCanonical = $canonical ?? (request()->is('/') ? \App\Support\NetworkUrl::to($site) : null);
+    @endphp
+    <title>{{ $seoTitle }}</title>
+    <meta name="description" content="{{ $seoDescription }}">
+    @if($preview || config('network.prelaunch') || request()->is('account*', 'admin*', 'auth*', 'login', 'register', 'forgot-password', 'reset-password*', 'email/*'))
         <meta name="robots" content="noindex, nofollow">
-    @elseif(isset($canonical) || request()->is('/'))
-        <link rel="canonical" href="{{ $canonical ?? \App\Support\NetworkUrl::to($site) }}">
     @endif
-    <meta property="og:title" content="{{ $title ?? $site->name }}">
-    <meta property="og:description" content="{{ $description ?? $site->description }}">
+    @if(!$preview && $seoCanonical)
+        <link rel="canonical" href="{{ $seoCanonical }}">
+        <meta property="og:url" content="{{ $seoCanonical }}">
+    @endif
+    <meta property="og:title" content="{{ $seoTitle }}">
+    <meta property="og:description" content="{{ $seoDescription }}">
+    <meta property="og:site_name" content="{{ $site->name }}">
     @if($structuredData && ! $preview)
         <script type="application/ld+json">{!! json_encode($structuredData, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_THROW_ON_ERROR) !!}</script>
     @endif
@@ -54,10 +64,7 @@
 <?php $marketEnabled = $networkSettings['modules']['marketplace'] ?? false; ?>
 <?php $localLabel = $site->location?->name ?? 'Manitoba'; ?>
 <?php
-    $browsePaths = ['/', 'marketplace', 'real-estate', 'businesses', 'business-updates', 'community', 'jobs', 'events', 'news'];
-    $browsePlace = $location ?? (in_array(request()->path(), $browsePaths, true)
-        ? \App\Support\LocationScope::forBrowsing($site, request()->query('location'), request()->is('jobs'))
-        : ($site->location ?? \App\Support\LocationScope::preferred($site, request()->cookie(\App\Support\LocationScope::PREFERENCE_COOKIE))));
+    $browsePlace = $isPreview ? $location : \App\Support\LocationScope::currentBrowsing($site);
     $browseLink = fn (string $path) => \App\Support\LocationScope::browseUrl($site, $path, $browsePlace);
     $searchSections = array_filter([
         'marketplace' => $marketEnabled ? 'Marketplace' : null,
