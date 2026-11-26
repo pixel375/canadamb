@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-26 — cumulative test fixture corrections
+
+The first Marketplace detail-filter commit passed both CI suites. Intermediate cumulative builds identified formatting and two test issues: Winnipeg already has a seeded draft portal, and the new public directory intentionally shows local accent swatches without changing the provincial header accent. Corrected the fixtures/assertions to test the actual header CSS variable and reuse the existing Winnipeg draft. No production data changed; exact cumulative CI remains necessary.
+
 ## 2026-11-26 — category-aware listing creation and cards
 
 Category and location are carried into new-listing forms from browsing. Added numeric category-detail input constraints, compact vehicle/equipment/electronics facts on listing cards, allowlisted detail presentation, and a version-bound owner mark-sold form. Mobile Chromium coverage exercises detail filter submission and switching to an unrelated category, while feature tests exercise card summaries and prefill. Existing saved numeric data remains compatible without rewriting listings.

@@ -32,13 +32,11 @@ class HomeDiscoveryNavigationTest extends TestCase
     public function test_active_community_portals_are_discovered_dynamically_and_drafts_remain_hidden(): void
     {
         $virden = Location::where('slug', 'virden')->sole();
-        $winnipeg = Location::where('slug', 'winnipeg')->sole();
         $prototype = Site::where('code', 'brandon')->sole();
-        foreach ([[$virden, 'VirdenMB', 'active', 'virdenmb.ca'], [$winnipeg, 'Winnipeg draft portal', 'draft', 'wpgmb.ca']] as [$place, $name, $status, $host]) {
-            $portal = Site::create(['code' => $place->slug, 'location_id' => $place->id, 'name' => $name, 'description' => 'Community fixture.',
-                'subtitle' => 'Manitoba network', 'tagline' => 'Local community', 'status' => $status, 'accent' => $prototype->accent, 'overrides' => []]);
-            $portal->domain()->create(['host' => $host]);
-        }
+        $portal = Site::create(['code' => 'virden', 'location_id' => $virden->id, 'name' => 'VirdenMB', 'description' => 'Community fixture.',
+            'subtitle' => 'Manitoba network', 'tagline' => 'Local community', 'status' => 'active', 'accent' => $prototype->accent, 'overrides' => []]);
+        $portal->domain()->create(['host' => 'virdenmb.ca']);
+        Site::where('code', 'winnipeg')->sole()->update(['name' => 'Winnipeg draft portal', 'status' => 'draft']);
         $this->get('https://canadamb.ca/?location=virden')->assertOk()->assertSee('Dedicated community websites')
             ->assertSee('https://virdenmb.ca')->assertSee('VirdenMB')->assertDontSee('wpgmb.ca')->assertDontSee('Winnipeg draft portal')
             ->assertSee('href="/marketplace?view=all&amp;location=virden"', false);

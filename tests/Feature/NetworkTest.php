@@ -221,8 +221,9 @@ class NetworkTest extends TestCase
         $this->assertSame('BrandonMB', $brandon->fresh()->name);
         $this->get('https://brandonmb.ca/businesses')->assertNotFound();
         $this->get('https://canadamb.ca/businesses')->assertOk();
-        $this->get('https://brandonmb.ca/')->assertSee('#228855');
-        $this->get('https://canadamb.ca/')->assertSee('#E85D75')->assertDontSee('#228855');
+        $this->get('https://brandonmb.ca/')->assertSee('--site-accent: #228855;', false);
+        $this->get('https://canadamb.ca/')->assertSee('--site-accent: linear-gradient(', false)
+            ->assertDontSee('--site-accent: #228855;', false)->assertSee('background:#228855', false);
 
         $this->post('https://canadamb.ca/admin/settings', [
             'modules' => ['businesses' => 1, 'marketplace' => 1, 'news' => 1],
