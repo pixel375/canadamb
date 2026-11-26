@@ -33,7 +33,7 @@ final class MarketplaceSearch
         if ($site->isNetwork()) {
             $rules['location'] = ['bail', 'nullable', 'string', 'max:100', Rule::exists(Location::class, 'slug')->where('province', 'MB')->where('selectable', true)];
         }
-        $filters = array_filter($request->validate($rules), fn ($value) => $value !== null && $value !== '');
+        $filters = MarketplaceDetailFilters::normalize(array_filter($request->validate($rules + MarketplaceDetailFilters::rules()), fn ($value) => $value !== null && $value !== ''));
         if (($filters['sort'] ?? null) === 'newest') {
             unset($filters['sort']);
         }
@@ -59,6 +59,7 @@ final class MarketplaceSearch
             ->when(isset($filters['min_price']), fn ($query) => $query->where('price_cents', '>=', (int) round((float) $filters['min_price'] * 100)))
             ->when(isset($filters['max_price']), fn ($query) => $query->where('price_cents', '<=', (int) round((float) $filters['max_price'] * 100)))
             ->when(isset($filters['location']), fn ($query) => $query->whereHas('location', fn ($location) => $location->selectable()->where('slug', $filters['location'])));
+        MarketplaceDetailFilters::apply($query, $filters);
         if (isset($filters['sort'])) {
             $query->orderBy('price_cents', $filters['sort'] === 'price_asc' ? 'asc' : 'desc');
         }

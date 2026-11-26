@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-26 — category-specific public Marketplace discovery
+
+Previous batch `8ad96bf` independently verified live in [deployment 45760538127](https://github.com/pixel375/canadamb/actions/runs/45760538127); two releases, 21,906 entries. Added scalar, category-scoped structured filters for vehicle/RV/farm/electronics details, range checks, portable numeric JSON comparisons, saved-search edit and summary support, and web/API visibility regression coverage. No new tables, production content or switches changed.
+
 ## 2026-11-26 — selected independent job moderation
 
 Added bounded selected approval/rejection for up to ten job postings with explicit review confirmation, per-posting version checks, deterministic business and posting locks, current employer/branch/closing-date eligibility, conflict-of-interest exclusion and individual audit records. All selected actions succeed together or none do. Rejection requires a shared reason. No production job status or settings were changed.

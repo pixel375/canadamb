@@ -123,9 +123,9 @@
                 <span>Search Marketplace @if($activeFilterCount) <small>({{ $activeFilterCount }} active {{ \Illuminate\Support\Str::plural('filter', $activeFilterCount) }})</small> @endif</span>
                 <x-icon class="disclosure-arrow" name="chevron-down" size="17"/>
             </summary>
-            <form class="panel filter-bar" method="get" action="/marketplace">
+            <form class="panel filter-bar" method="get" action="/marketplace" x-data="{ detailCategory: @js($filters['category'] ?? '') }">
                 <label>Search<input type="search" name="q" maxlength="100" value="{{ $filters['q'] ?? '' }}" placeholder="Search listings"></label>
-                <label>Category<select name="category"><option value="">All categories</option>
+                <label>Category<select name="category" x-model="detailCategory"><option value="">All categories</option>
                     @foreach($categoryGroups as $group)
                         <optgroup label="{{ $group['name'] }}">
                             @foreach($group['available'] as $key => $label)<option value="{{ $key }}" @selected(($filters['category'] ?? '') === $key)>{{ $label }}</option>@endforeach
@@ -133,6 +133,7 @@
                     @endforeach
                 </select></label>
                 @if($locations->isNotEmpty())<label>Location<select name="location"><option value="">All Manitoba</option>@foreach($locations as $place)<option value="{{ $place->slug }}" @selected(($filters['location'] ?? '') === $place->slug)>{{ $place->name }}</option>@endforeach</select></label>@endif
+                <x-marketplace-detail-filters :filters="$filters"/>
                 <label>Condition<select name="condition"><option value="">Any condition</option>@foreach(\App\Support\Marketplace::CONDITIONS as $key => $label)<option value="{{ $key }}" @selected(($filters['condition'] ?? '') === $key)>{{ $label }}</option>@endforeach</select></label>
                 <label>Min price (CAD)<input type="number" name="min_price" value="{{ $filters['min_price'] ?? '' }}" min="0" max="9999999.99" step="0.01" placeholder="No minimum"></label>
                 <label>Max price (CAD)<input type="number" name="max_price" value="{{ $filters['max_price'] ?? '' }}" min="0" max="9999999.99" step="0.01" placeholder="No maximum"></label>

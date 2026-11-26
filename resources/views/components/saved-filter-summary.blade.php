@@ -5,7 +5,7 @@
         'workplace' => 'Workplace', 'pay_unit' => 'Pay period', 'minimum_pay' => 'Minimum pay',
         'category' => 'Category', 'group' => 'Category group', 'condition' => 'Condition',
         'min_price' => 'Minimum price', 'max_price' => 'Maximum price',
-    ];
+    ] + array_map(fn ($field) => $field['label'], \App\Support\MarketplaceDetailFilters::FIELDS);
 @endphp
 @if(count(array_intersect_key($labels, $filters)))
     <ul class="field-note" aria-label="Saved filters">

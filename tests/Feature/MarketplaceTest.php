@@ -106,6 +106,33 @@ class MarketplaceTest extends TestCase
         $this->getJson(self::CITY.'/api/v1/marketplace?q=chairs%20OAK')->assertOk()->assertJsonCount(0, 'data');
     }
 
+    public function test_category_detail_filters_match_only_public_scoped_listings_and_validate_ranges(): void
+    {
+        $seller = User::factory()->create();
+        $admin = User::factory()->create(['role' => 'network_admin']);
+        $brandon = Location::where('slug', 'brandon')->sole();
+        $rural = Location::where('slug', 'elkhorn')->sole();
+        foreach ([
+            [$brandon, 'Matching car', '2020', '45000', 'active'],
+            [$brandon, 'High mileage car', 2020, 200000, 'active'],
+            [$brandon, 'Old car', 2005, 45000, 'active'],
+            [$brandon, 'Private car', 2020, 20000, 'pending'],
+            [$rural, 'Rural car', 2021, 30000, 'active'],
+        ] as [$place, $title, $year, $mileage, $status]) {
+            $item = Listing::create(['user_id' => $seller->id, 'location_id' => $place->id, 'title' => $title,
+                'description' => 'A vehicle fixture.', 'category' => 'cars', 'condition' => 'good', 'price_cents' => 100000,
+                'status' => $status, 'attributes' => ['make' => 'Honda', 'model' => 'Civic', 'year' => $year, 'mileage' => $mileage]]);
+            $item->forceFill(['published_at' => now(), 'expires_at' => now()->addWeek()])->save();
+        }
+        $this->getJson(self::CITY.'/api/v1/marketplace?category=cars&make=HONDA&year_min=2018&mileage_max=50000')
+            ->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.title', 'Matching car');
+        $this->get(self::MAIN.'/marketplace?category=cars&make=Honda&year_min=2018&mileage_max=50000')
+            ->assertOk()->assertSee('Matching car')->assertSee('Rural car')->assertDontSee('Private car')->assertDontSee('High mileage car');
+        $this->getJson(self::CITY.'/api/v1/marketplace?category=furniture&year_min=2018')->assertUnprocessable()->assertJsonValidationErrors('year_min');
+        $this->getJson(self::CITY.'/api/v1/marketplace?category=cars&year_min=2020&year_max=2010')->assertUnprocessable()->assertJsonValidationErrors('year_max');
+        $this->getJson(self::CITY.'/api/v1/marketplace?category=cars&mileage_max=-1')->assertUnprocessable();
+    }
+
     public function test_seller_dashboard_filters_own_listings_with_portal_scope(): void
     {
         $seller = User::factory()->create();
