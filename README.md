@@ -1,5 +1,7 @@
 # CanadaMB
 
+**Development handoff:** [Master launch checklist (TODO.md)](TODO.md). Owner requirements take priority over older roadmap notes; update task status and evidence after every pass.
+
 CanadaMB is a shared community network for Manitoba. The first two portal configurations are CanadaMB.ca and BrandonMB.ca. One Laravel installation and one database serve both domains. Hostinger Business Web Hosting is the initial production target.
 
 ## Local development

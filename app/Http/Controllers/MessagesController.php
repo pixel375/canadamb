@@ -60,7 +60,7 @@ class MessagesController extends Controller
                 }
             })
             ->orderBy('updated_at', ($filters['sort'] ?? '') === 'oldest' ? 'asc' : 'desc')
-            ->orderBy('id', ($filters['sort'] ?? '') === 'oldest' ? 'asc' : 'desc')->paginate(20)->withQueryString();
+            ->orderBy('id', ($filters['sort'] ?? '') === 'oldest' ? 'asc' : 'desc')->paginate(10)->withQueryString();
 
         $unreadThreads = $this->activeInbox($id)->whereHas('messages', $unread);
         $readCutoff = Message::whereIn('conversation_id', $unreadThreads->select('id'))->where('sender_id', '!=', $id)->max('id');

@@ -1,6 +1,6 @@
 <x-layouts.site title="Messages">
     <div class="container page-shell message-workspace">
-        <div class="page-intro"><div><h1>Messages</h1><p>Private conversations with members and businesses.</p></div><div class="inline-actions"><a class="text-link" href="/account/profile">My account</a><a class="button button-outline" href="/account/blocked-members">Blocked members</a></div></div>
+        <div class="page-intro"><div><h1>Messages</h1></div></div>
         <?php
             $unreadOnly = ($filters['view'] ?? null) === 'unread';
             $archived = ($filters['view'] ?? null) === 'archived';
@@ -81,5 +81,6 @@
             </div>
             {{ $threads->links() }}
         </div>
+        <p class="field-note mt-2"><a class="text-link" href="/account/blocked-members">Blocked members</a></p>
     </div>
 </x-layouts.site>

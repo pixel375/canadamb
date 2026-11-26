@@ -37,7 +37,12 @@ class DiscussionEditingTest extends TestCase
         $this->assertDatabaseCount('community_notifications', 1);
         $this->actingAs($stranger)->get($base.'/edit')->assertNotFound();
         $this->put($base, ['body' => 'Unauthorized change.', 'version' => $version])->assertNotFound();
-        $this->actingAs($owner)->get($public)->assertSee('Edit my reply');
+        $this->actingAs($owner)->get($public)->assertSee('Edit my reply')->assertDontSee('Link to this reply');
+        $this->get($base.'/edit?from=discussion&page=2')->assertOk()
+            ->assertSee('href="/community/'.$thread->id.'?page=2#replies"', false);
+        $this->put($base, ['body' => 'Original reply text.', 'version' => $version, 'from' => 'discussion', 'page' => 2])
+            ->assertRedirect('/community/'.$thread->id.'?page=2#replies');
+        $this->put($base, ['body' => 'Original reply text.', 'version' => $version, 'from' => 'https://example.test'])->assertSessionHasErrors('from');
         $this->get($base.'/edit')->assertOk()->assertSee('Original reply text.');
         $this->put($base, ['body' => 'Original reply text.', 'version' => $version])->assertRedirect()->assertSessionHasNoErrors();
         $this->assertSame('approved', $reply->fresh()->status);

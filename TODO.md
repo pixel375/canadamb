@@ -112,3 +112,5 @@ Owner feedback set 1: 2026-11-26. This file supersedes conflicting earlier roadm
 ## Checkpoints
 - 2026-11-26 baseline: 2f6af59 exact backend and browser CI passed (45821957973, 45821957920); guarded deployment 45822402212 independently verified live with two retained releases, 21,916 entries. Prior code includes many foundations and staged features; unchecked items mean remaining implementation, activation, polish or operational acceptance, not necessarily absence of code.
 - Scope decisions: Owner feedback overrides earlier recommendation to keep conversation history search, centralized-only signup UX, separate event posting and browse-once location choices. Keep one account/database, restricted prelaunch and safe authorization. Push notifications moved into intended launch feature set. Broad admin message visibility requires privacy/legal review. No MFA.
+
+- First feedback pass source changes: B09 FAQ, C01 reply edit return, C02 visible permalink removal, E10 inbox simplification and ten-row pagination. Implementation submitted for CI; leave unchecked until exact green verification. README points to this checklist.

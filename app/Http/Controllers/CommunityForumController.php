@@ -213,12 +213,16 @@ class CommunityForumController extends Controller
         $item = $this->ownedReplyQuery($request)->with('thread')->findOrFail($reply);
         $this->ensureReplyEditable($item->thread, $item);
 
-        return view('community.edit-reply', compact('item'));
+        $origin = $request->validate(['from' => 'nullable|in:discussion', 'page' => 'nullable|integer|min:1|max:100000']);
+        $returnPath = $this->replyReturnPath($item, $origin);
+
+        return view('community.edit-reply', compact('item', 'origin', 'returnPath'));
     }
 
     public function updateReply(Request $request, int $reply)
     {
-        $data = $request->validate(['body' => 'required|string|min:5|max:3000', 'version' => 'required|string|size:64']);
+        $data = $request->validate(['body' => 'required|string|min:5|max:3000', 'version' => 'required|string|size:64', 'from' => 'nullable|in:discussion', 'page' => 'nullable|integer|min:1|max:100000']);
+        $returnPath = $this->replyReturnPath($this->ownedReplyQuery($request)->findOrFail($reply), $data);
         DB::transaction(function () use ($request, $reply, $data) {
             $initial = $this->ownedReplyQuery($request)->findOrFail($reply);
             $thread = CommunityThread::lockForUpdate()->findOrFail($initial->thread_id);
@@ -232,7 +236,17 @@ class CommunityForumController extends Controller
             Audit::record('community.reply.edited', $request->user()->id, context: ['reply' => $reply]);
         }, attempts: 3);
 
-        return redirect('/account/replies')->with('status', 'Reply saved. Changed content requires moderation before publication.');
+        return redirect($returnPath)->with('status', 'Reply saved. Changed content requires moderation before publication.');
+    }
+
+    private function replyReturnPath(CommunityReply $item, array $origin): string
+    {
+        if (($origin['from'] ?? null) !== 'discussion') {
+            return '/account/replies';
+        }
+        $page = (int) ($origin['page'] ?? 1);
+
+        return '/community/'.$item->thread_id.($page > 1 ? '?page='.$page : '').'#replies';
     }
 
     public function withdrawReply(Request $request, int $reply)

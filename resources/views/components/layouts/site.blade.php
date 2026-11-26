@@ -256,6 +256,7 @@
         @endauth
         <hr>
         <a href="/about">About us</a>
+        <a href="/faq">FAQ</a>
         <a href="/contact">Contact us</a>
         <a href="/safety">Safety and help</a>
         <a href="/privacy-overview">Privacy overview</a>
@@ -345,6 +346,7 @@
             @else<a href="{{ \App\Support\NetworkUrl::to(\App\Support\NetworkUrl::main()) }}">Part of CanadaMB</a>@endif
             @if($site->contact_email)<a href="mailto:{{ $site->contact_email }}">Contact</a>@endif
             <a href="/about">About us</a>
+        <a href="/faq">FAQ</a>
             <a href="/contact">Contact us</a>
             <a href="/safety">Safety and help</a>
             <a href="/privacy-overview">Privacy overview</a>
