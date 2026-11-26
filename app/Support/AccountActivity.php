@@ -31,7 +31,9 @@ final class AccountActivity
 
         $owner = OwnerNotifications::enabled() ? OwnerNotifications::visible($user, $site)->whereNull('alert.read_at')->count() : 0;
 
-        return ['messages' => $messages, 'notifications' => $replies + $owner];
+        $announcements = Announcements::enabled() ? Announcements::visible($member)->whereNull('receipt.read_at')->count() : 0;
+
+        return ['messages' => $messages, 'notifications' => $replies + $owner + $announcements];
     }
 
     public function discussionNotifications(User $user, Site $site): Builder

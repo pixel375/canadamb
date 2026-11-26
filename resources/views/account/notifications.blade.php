@@ -34,10 +34,23 @@
                 </div>
             </section>
         </div>
+        @if($announcements)
+            <section class="homepage-section activity-panel">
+                <div class="section-heading"><h2>Network announcements</h2><span>{{ $announcementUnread }} unread</span></div>
+                <div class="panel">
+                    @forelse($announcements as $announcement)
+                        <article class="item-row"><div><p class="section-label">Official CanadaMB announcement</p><h3>{{ $announcement->title }}</h3><p class="preserve-lines">{{ $announcement->body }}</p><p>{{ \Illuminate\Support\Carbon::parse($announcement->created_at)->diffForHumans() }}</p></div>
+                            @if(!$announcement->read_at)<form method="post" action="/account/notifications/announcements/{{ $announcement->id }}/read">@csrf<button class="button button-outline">Mark as read</button></form>@endif
+                        </article>
+                    @empty<p>No network announcements yet.</p>@endforelse
+                </div>
+                {{ $announcements->links() }}
+            </section>
+        @endif
         @if($broadcastEnabled)
             <section class="panel form-stack">
                 <h2>Optional network announcements</h2>
-                <p>Choose whether to receive future non-marketing announcements in your CanadaMB notification centre. No broadcasts are being sent yet. This does not enable email, marketing messages or Web Push delivery.</p>
+                <p>Choose whether to receive future non-marketing announcements in your CanadaMB notification centre. This does not enable email, marketing messages or Web Push delivery. Opting out stops new announcements but keeps your existing history.</p>
                 <form method="post" action="/account/notifications/announcement-consent" class="form-stack">@csrf
                     <label>Announcements<select name="opted_in"><option value="0" @selected(!$broadcastOptedIn)>Do not receive announcements</option><option value="1" @selected($broadcastOptedIn)>Receive announcements</option></select></label>
                     <button class="button button-primary">Save announcement preference</button>

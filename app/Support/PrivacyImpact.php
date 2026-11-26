@@ -33,6 +33,8 @@ final class PrivacyImpact
         'Owner submission notifications' => ['owner_notifications', 'user_id'],
         'Push device registrations' => ['push_devices', 'user_id'],
         'Announcement consent' => ['broadcast_consents', 'user_id'],
+        'Announcement receipts' => ['announcement_receipts', 'user_id'],
+        'Announcements authored as operator' => ['announcements', 'author_id'],
         'Blocked members' => ['user_blocks', 'user_id'],
         'Blocked by other members' => ['user_blocks', 'blocked_id'],
         'Commercial trials granted as operator' => ['business_entitlements', 'granted_by'],

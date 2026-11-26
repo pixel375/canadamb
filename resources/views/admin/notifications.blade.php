@@ -28,7 +28,12 @@
     @endif
     <section class="panel form-stack">
         <h2>Availability and preferences</h2>
-        <p>Announcement previews: {{ $broadcastEnabled ? 'Available (no sends)' : 'Staged, not active' }}</p>
+        <p>Announcement previews: {{ $broadcastEnabled ? 'Available' : 'Staged, not active' }}</p>
+        <p>In-site delivery: {{ $announcementDelivery ? 'Available with explicit confirmation' : 'Disabled' }}</p>
+        @if($announcementHistory->isNotEmpty())
+            <h3>Recent in-site announcements (up to 20)</h3>
+            @foreach($announcementHistory as $sent)<div class="item-row"><div><strong>{{ $sent->title }}</strong><p>{{ $sent->recipient_count }} notification centres · {{ $sent->created_at }}</p></div></div>@endforeach
+        @endif
         <p>Member preferences: {{ $preferencesEnabled ? 'Available' : 'Staged, not active' }}</p>
         @if($paused !== null)<p>{{ number_format($paused) }} accounts have paused discussion notifications.</p>@endif
         <p>Owner submission updates: {{ $ownerEnabled ? 'Available' : 'Staged, not active' }}</p>
@@ -42,7 +47,7 @@
         <p>Device registry: {{ $pushEnabled ? 'Available' : 'Staged, not active' }}</p>
         <p>Public application key: {{ $pushKeyConfigured ? 'Configured (format checked)' : 'Not configured' }}</p>
         @if($pushCount !== null)<p>{{ number_format($pushCount) }} registered devices across the network.</p>@endif
-        <p>Delivery and administrator broadcasts: not available. No sends or permission prompts are initiated from this page.</p>
+        <p>External push and email delivery: not available. No automatic sends or permission prompts are initiated from this page.</p>
         <p class="field-note">After review, configure CANADAMB_PUSH_PUBLIC_KEY in the private hosting environment and enable CANADAMB_PUSH_DEVICES only after migration approval. Keep the future sender's private VAPID key out of browser code, GitHub and administrator forms. Device registration does not imply marketing consent.</p>
         <p class="field-note">Discussion preferences do not constitute consent to receive administrator broadcasts or marketing messages.</p>
     </section>

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Support\AccountActivity;
+use App\Support\Announcements;
 use App\Support\Audit;
 use App\Support\BroadcastConsent;
 use App\Support\Community;
@@ -64,6 +65,16 @@ final class AccountNotificationsController extends Controller
         return redirect('/account/notifications');
     }
 
+    public function readAnnouncement(Request $request, int $receipt)
+    {
+        abort_unless(Announcements::enabled(), 404);
+        abort_unless(Announcements::visible($request->user()->id)->where('receipt.id', $receipt)->exists(), 404);
+        DB::table('announcement_receipts')->where('id', $receipt)->where('user_id', $request->user()->id)
+            ->whereNull('read_at')->update(['read_at' => now()]);
+
+        return redirect('/account/notifications');
+    }
+
     public function announcementConsent(Request $request)
     {
         abort_unless(BroadcastConsent::enabled(), 404);
@@ -97,7 +108,11 @@ final class AccountNotificationsController extends Controller
         $ownerQuery = $ownerEnabled ? OwnerNotifications::visible($user, $site) : null;
         $ownerUnread = $ownerQuery ? (clone $ownerQuery)->whereNull('alert.read_at')->count() : 0;
         $ownerAlerts = $ownerQuery ? $ownerQuery->orderByRaw('CASE WHEN alert.read_at IS NULL THEN 0 ELSE 1 END')->orderByDesc('alert.id')->paginate(15, pageName: 'updates') : null;
-        $replyUnread = max(0, $counts['notifications'] - $ownerUnread);
+        $announcementQuery = Announcements::enabled() ? Announcements::visible($user->id) : null;
+        $announcementUnread = $announcementQuery ? (clone $announcementQuery)->whereNull('receipt.read_at')->count() : 0;
+        $announcements = $announcementQuery ? $announcementQuery->orderByRaw('CASE WHEN receipt.read_at IS NULL THEN 0 ELSE 1 END')
+            ->orderByDesc('receipt.id')->paginate(15, ['receipt.id', 'receipt.read_at', 'receipt.created_at', 'announcement.title', 'announcement.body'], 'announcements') : null;
+        $replyUnread = max(0, $counts['notifications'] - $ownerUnread - $announcementUnread);
         $broadcastEnabled = BroadcastConsent::enabled();
         $broadcastOptedIn = BroadcastConsent::optedIn($user->id);
         $pushEnabled = PushDevices::enabled();
@@ -112,7 +127,7 @@ final class AccountNotificationsController extends Controller
         $jobAlertsEnabled = JobSearches::enabled($site) && $preferences['job_summary'];
         $matchingSearches = $jobAlertsEnabled ? JobSearches::alertingSearchCount($user->id, $site) : 0;
 
-        return response()->view('account.notifications', compact('counts', 'discussionsEnabled', 'recent', 'preferencesEnabled', 'preferences', 'jobAlertsEnabled', 'matchingSearches', 'directReplies', 'eventThreads', 'ownerEnabled', 'ownerAlerts', 'ownerUnread', 'replyUnread', 'pushEnabled', 'pushKey', 'pushDevices', 'broadcastEnabled', 'broadcastOptedIn'))
+        return response()->view('account.notifications', compact('counts', 'discussionsEnabled', 'recent', 'preferencesEnabled', 'preferences', 'jobAlertsEnabled', 'matchingSearches', 'directReplies', 'eventThreads', 'ownerEnabled', 'ownerAlerts', 'ownerUnread', 'replyUnread', 'pushEnabled', 'pushKey', 'pushDevices', 'broadcastEnabled', 'broadcastOptedIn', 'announcements', 'announcementUnread'))
             ->header('Cache-Control', 'private, no-store');
     }
 }
