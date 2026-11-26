@@ -14,6 +14,7 @@
         <form method="get" action="/communities" class="panel filter-bar">
             <label>Community name<input type="search" name="q" value="{{ $filters['q'] ?? '' }}" maxlength="100" placeholder="e.g. Brandon"></label>
             <label>Place type<select name="type"><option value="">All types</option>@foreach($types as $type)<option value="{{ $type }}" @selected(($filters['type'] ?? '') === $type)>{{ ucfirst($type) }}</option>@endforeach</select></label>
+            <label>Website availability<select name="portal"><option value="">All communities</option><option value="dedicated" @selected(($filters['portal'] ?? '') === 'dedicated')>Dedicated local website</option><option value="network" @selected(($filters['portal'] ?? '') === 'network')>Browse on CanadaMB</option></select></label>
             <div class="inline-actions"><button class="button button-primary"><x-icon name="search" size="16"/> Find a community</button><a class="text-link" href="/communities">Reset filters</a></div>
         </form>
         <p class="field-note">{{ $locations->total() }} {{ \Illuminate\Support\Str::plural('community', $locations->total()) }} found</p>
@@ -24,7 +25,7 @@
                     @if($preferredCommunity?->id === $place->id)<span class="community-preferred-label"><x-icon name="check" size="16"/> Preferred</span>@endif
                     <div class="community-place-actions">
                         <a class="button button-outline" href="/?location={{ $place->slug }}">Browse on CanadaMB <x-icon name="arrow" size="16"/></a>
-                        @if($place->site?->status === 'active')
+                        @if($place->site?->status === 'active' && $place->site->domain)
                             <a class="text-link" href="{{ \App\Support\NetworkUrl::to($place->site) }}">Visit {{ $place->site->name }} <x-icon name="arrow" size="16"/></a>
                         @endif
                         @if($preferredCommunity?->id !== $place->id)

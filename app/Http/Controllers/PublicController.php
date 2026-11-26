@@ -75,20 +75,28 @@ class PublicController extends Controller
             'latestJobs' => $jobs->enabled($site)
                 ? $jobs->visible($location?->id)->latest('published_at')->latest('id')->limit(4)->get() : collect(),
             'locations' => $site->isNetwork() ? Location::selectable()->orderBy('name')->get() : collect(),
+            'activePortals' => $site->isNetwork() ? Site::with(['domain', 'location'])->where('status', 'active')
+                ->whereNotNull('location_id')->whereHas('domain')->whereHas('location', fn ($query) => $query->selectable())
+                ->when($location, fn ($query) => $query->orderByRaw('CASE WHEN location_id = ? THEN 0 ELSE 1 END', [$location->id]))
+                ->orderBy('name')->orderBy('id')->limit(8)->get() : collect(),
         ];
     }
 
     public function communities(Request $request)
     {
         abort_unless($request->attributes->get('site')->isNetwork(), 404);
-        $filters = $request->validate(['q' => 'nullable|string|max:100', 'type' => 'nullable|string|max:40']);
+        $filters = $request->validate(['q' => 'nullable|string|max:100', 'type' => 'nullable|string|max:40',
+            'portal' => 'nullable|in:dedicated,network']);
         $locations = Location::selectable()->with('site.domain');
         foreach (KeywordSearch::patterns($filters['q'] ?? '') as $pattern) {
             $locations->where(fn ($match) => $match->whereRaw("LOWER(locations.name) LIKE ? ESCAPE '!'", [$pattern])
                 ->orWhereExists(fn ($alias) => $alias->selectRaw('1')->from('location_aliases')->whereColumn('location_id', 'locations.id')
                     ->whereRaw("LOWER(location_aliases.name) LIKE ? ESCAPE '!'", [$pattern])));
         }
+        $activePortal = fn ($query) => $query->where('status', 'active')->whereHas('domain');
         $locations = $locations
+            ->when(($filters['portal'] ?? null) === 'dedicated', fn ($query) => $query->whereHas('site', $activePortal))
+            ->when(($filters['portal'] ?? null) === 'network', fn ($query) => $query->whereDoesntHave('site', $activePortal))
             ->when($filters['type'] ?? null, fn ($query, $type) => $query->where('type', $type))
             ->orderBy('name')->orderBy('id')->paginate(24)->withQueryString();
 

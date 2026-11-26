@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\CommunityEvent;
 use App\Models\CommunityThread;
 use App\Models\Location;
+use App\Models\Site;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -26,6 +27,25 @@ class HomeDiscoveryNavigationTest extends TestCase
             ->assertSee('href="/events"', false)
             ->assertSee('href="/jobs"', false)
             ->assertSee('href="/communities"', false);
+    }
+
+    public function test_active_community_portals_are_discovered_dynamically_and_drafts_remain_hidden(): void
+    {
+        $virden = Location::where('slug', 'virden')->sole();
+        $winnipeg = Location::where('slug', 'winnipeg')->sole();
+        $prototype = Site::where('code', 'brandon')->sole();
+        foreach ([[$virden, 'VirdenMB', 'active', 'virdenmb.ca'], [$winnipeg, 'Winnipeg draft portal', 'draft', 'wpgmb.ca']] as [$place, $name, $status, $host]) {
+            $portal = Site::create(['code' => $place->slug, 'location_id' => $place->id, 'name' => $name, 'description' => 'Community fixture.',
+                'subtitle' => 'Manitoba network', 'tagline' => 'Local community', 'status' => $status, 'accent' => $prototype->accent, 'overrides' => []]);
+            $portal->domain()->create(['host' => $host]);
+        }
+        $this->get('https://canadamb.ca/?location=virden')->assertOk()->assertSee('Dedicated community websites')
+            ->assertSee('https://virdenmb.ca')->assertSee('VirdenMB')->assertDontSee('wpgmb.ca')->assertDontSee('Winnipeg draft portal')
+            ->assertSee('href="/marketplace?view=all&amp;location=virden"', false);
+        $this->get('https://canadamb.ca/communities?portal=dedicated')->assertOk()->assertSee('Visit VirdenMB')->assertSee('Visit BrandonMB')->assertDontSee('wpgmb.ca');
+        $this->get('https://canadamb.ca/communities?portal=network&q=Virden')->assertOk()->assertSee('No matching locations.');
+        $this->getJson('https://canadamb.ca/api/v1/locations?portal=dedicated')->assertOk()->assertJsonFragment(['slug' => 'virden'])->assertJsonMissing(['slug' => 'winnipeg']);
+        $this->get('https://canadamb.ca/marketplace?location=virden')->assertOk()->assertSee('href="/marketplace/new?location=virden"', false);
     }
 
     public function test_brandon_home_links_to_its_current_portal_and_keeps_module_scope(): void

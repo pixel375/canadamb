@@ -17,7 +17,7 @@
             <div><h1>Marketplace</h1><p>Browse listings in {{ $marketPlace ?? request()->attributes->get('site')->location?->name ?? 'Manitoba' }}.</p></div>
             <div class="inline-actions">
                 @auth<a class="button button-outline" href="/account/saved">Saved listings</a>@endauth
-                <a class="button button-primary" href="/marketplace/new"><x-icon name="plus" size="16"/> Post a listing</a>
+                <a class="button button-primary" href="{{ \App\Support\LocationScope::browseUrl(request()->attributes->get('site'), '/marketplace/new', $locations->firstWhere('slug', $filters['location'] ?? null)) }}"><x-icon name="plus" size="16"/> Post a listing</a>
             </div>
         </div>
         @if($marketPlace)
@@ -187,7 +187,7 @@
                                 <a class="button button-outline" href="{{ '/marketplace?'.http_build_query(array_diff_key($filters, ['location' => true]) + ['view' => 'all']) }}">Search all Manitoba</a>
                             @endif
                             <a class="button button-outline" href="{{ $marketLink() }}">Browse categories</a>
-                            <a class="button button-primary" href="/marketplace/new"><x-icon name="plus" size="16"/> Post a listing</a>
+                            <a class="button button-primary" href="{{ \App\Support\LocationScope::browseUrl(request()->attributes->get('site'), '/marketplace/new', $locations->firstWhere('slug', $filters['location'] ?? null)) }}"><x-icon name="plus" size="16"/> Post a listing</a>
                         </div>
                     </div>
                 @else

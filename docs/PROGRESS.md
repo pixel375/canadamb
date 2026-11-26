@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-26 — dynamic community website discovery and scoped posting shortcuts
+
+Replaced hardcoded Brandon-only network strip with an active-portal directory on the provincial homepage. Dedicated portal discovery supports public filters, and inactive/draft portal domains remain hidden. Homepage View all listings opens actual results, and Marketplace create links retain the selected provincial community. Added public web/API regression coverage. No portals were activated by this change.
+
 ## 2026-11-26 — multi-community business profiles and directory discovery
 
 Businesses with open branches in multiple communities now have a province-wide canonical profile and retain local branch-specific views on city domains, instead of redirecting away from the visitor's community. Single-community canonical redirects remain unchanged. Added contact-method filters, deterministic sorting and community-prefilled new business forms. Tests cover local branch privacy/visibility, canonical sitemap placement and filters.

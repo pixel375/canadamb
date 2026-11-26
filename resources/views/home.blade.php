@@ -206,7 +206,7 @@
         <section class="homepage-section" aria-labelledby="market-title">
             <div class="section-heading">
                 <div><p class="section-label"><x-icon name="marketplace" size="15"/> Marketplace</p><h2 id="market-title">Latest in {{ $place }}</h2></div>
-                @unless($preview ?? false)<a class="text-link" href="/marketplace{{ $scope }}">View all listings <x-icon name="arrow" size="16"/></a>@endunless
+                @unless($preview ?? false)<a class="text-link" href="/marketplace?{{ http_build_query(['view' => 'all'] + ($site->isNetwork() && $location ? ['location' => $location->slug] : [])) }}">View all listings <x-icon name="arrow" size="16"/></a>@endunless
             </div>
             @if($latest->isEmpty())
                 <div class="empty-state">
@@ -348,14 +348,24 @@
         <section class="network-strip" aria-label="Manitoba community network">
             <span class="location-icon"><x-icon name="building"/></span>
             @if($site->isNetwork())
-                <div><h2>Visit BrandonMB</h2><p>Explore the dedicated portal for Brandon.</p></div>
-                @php($brandon = \App\Models\Site::with('domain')->where('code', 'brandon')->where('status', 'active')->first())
-                @if($brandon)<a class="text-link" href="{{ \App\Support\NetworkUrl::to($brandon) }}">Open BrandonMB <x-icon name="arrow" size="16"/></a>@endif
+                <div><h2>Explore the Manitoba network</h2><p>Browse any community on CanadaMB or visit its dedicated website when available.</p></div>
+                <a class="text-link" href="/communities">All communities <x-icon name="arrow" size="16"/></a>
             @else
                 <div><h2>Explore Manitoba</h2><p>Find other Manitoba communities on CanadaMB.</p></div>
                 <a class="text-link" href="{{ \App\Support\NetworkUrl::to(\App\Support\NetworkUrl::main(), '/communities') }}">View communities <x-icon name="arrow" size="16"/></a>
             @endif
         </section>
+        @if($site->isNetwork() && $activePortals->isNotEmpty())
+            <section class="home-portal-directory" aria-label="Dedicated community websites">
+                @foreach($activePortals as $portal)
+                    <a class="panel home-portal-link" href="{{ \App\Support\NetworkUrl::to($portal) }}">
+                        <span class="home-portal-accent" style="background:{{ $portal->accentCss() }}"></span>
+                        <span><strong>{{ $portal->name }}</strong><small>{{ $portal->location->name }}, Manitoba</small></span>
+                        <x-icon name="arrow" size="18"/>
+                    </a>
+                @endforeach
+            </section>
+        @endif
         @endunless
     </div>
 </x-layouts.site>

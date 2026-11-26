@@ -1883,3 +1883,11 @@ a.market-category-card:hover, a.market-category-card:focus-visible {
 .admin-portal-facts dt { color:var(--muted); font-size:.8rem; }
 .admin-portal-facts dd { margin:0; font-size:.83rem; }
 @media(max-width:360px) { .admin-portal-facts > div { grid-template-columns:minmax(0,1fr); gap:2px; } }
+
+/* Dedicated portal shortcuts are derived from the active network directory. */
+.home-portal-directory { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr)); gap:10px; margin:10px 0 24px; }
+.home-portal-link { display:flex; align-items:center; gap:12px; min-width:0; padding:12px; text-decoration:none; }
+.home-portal-link > span:nth-child(2) { flex:1; min-width:0; display:grid; gap:3px; overflow-wrap:anywhere; }
+.home-portal-link small { color:var(--muted); font-size:.8rem; }
+.home-portal-accent { width:5px; height:36px; border-radius:4px; flex:0 0 auto; }
+.home-portal-link:hover { border-color:var(--link); }
