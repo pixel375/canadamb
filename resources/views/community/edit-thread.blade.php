@@ -7,7 +7,9 @@
             <label>Discussion title<input name="title" required maxlength="140" value="{{ old('title', $item->title) }}"></label>
             <label>Category<select name="category" required>@foreach(\App\Support\Community::FORUMS as $key => $label)<option value="{{ $key }}" @selected(old('category', $item->category) === $key)>{{ $label }}</option>@endforeach</select></label>
             <label>Your post<textarea name="body" data-character-count required minlength="10" maxlength="5000" rows="8">{{ old('body', $item->body) }}</textarea><small class="field-note" data-character-feedback></small></label>
-            @error('version')<p role="alert">{{ $message }} <a href="/account/discussions/{{ $item->id }}/edit">Reload editor</a></p>@enderror
+            @if(old('version') && old('version') !== $item->contentVersion())
+                <p role="alert">This discussion changed while the form was open. <a href="/account/discussions/{{ $item->id }}/edit">Reload editor</a> before saving.</p>
+            @endif
             <button class="button button-primary">Save for review</button>
         </form>
     </div>

@@ -5,7 +5,9 @@
             <input type="hidden" name="version" value="{{ old('version', $item->contentVersion()) }}">
             <p class="notice">Changed replies are removed from public view until approved again.</p>
             <label>Reply<textarea name="body" minlength="5" maxlength="3000" rows="6" required data-character-count>{{ old('body', $item->body) }}</textarea><small class="field-note" data-character-feedback></small></label>
-            @error('version')<p role="alert">{{ $message }} <a href="/account/replies/{{ $item->id }}/edit">Reload editor</a></p>@enderror
+            @if(old('version') && old('version') !== $item->contentVersion())
+                <p role="alert">This reply changed while the form was open. <a href="/account/replies/{{ $item->id }}/edit">Reload editor</a> before saving.</p>
+            @endif
             <div class="inline-actions"><button class="button button-primary">Save reply</button><a class="button button-outline" href="/account/replies">Cancel</a></div>
         </form>
     </div>

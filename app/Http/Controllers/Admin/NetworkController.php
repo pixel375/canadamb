@@ -16,10 +16,10 @@ use App\Support\CommercialRecords;
 use App\Support\ContentReports;
 use App\Support\KeywordSearch;
 use App\Support\Marketplace;
-use App\Support\QueueInventory;
 use App\Support\NetworkSettings;
 use App\Support\NetworkUrl;
 use App\Support\PrivacyRequests;
+use App\Support\QueueInventory;
 use App\Support\StagedFeatures;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -52,7 +52,7 @@ class NetworkController extends Controller
             [BusinessDisputes::enabled(), 'business_disputes', 'claimant_id', ['pending', 'escalated'], 'Ownership disputes', '/admin/business-disputes', 'person'],
             [BusinessAccess::enabled(), 'business_access_requests', 'requester_id', ['accepted'], 'Ownership transfers', '/admin/business-transfers', 'person'],
         ] as [$enabled, $table, $actor, $statuses, $label, $url, $icon]) {
-            if (! $enabled) {
+            if (empty($enabled)) {
                 continue;
             }
             $query = DB::table($table)->whereIn('status', $statuses)->where($actor, '!=', $reviewer)
