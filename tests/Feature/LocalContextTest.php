@@ -42,14 +42,15 @@ class LocalContextTest extends TestCase
         $this->get('https://brandonmb.ca/')->assertOk()->assertSee($path)->assertDontSee($key);
         $other = Location::where('slug', 'winnipeg')->sole();
         $this->getJson('https://brandonmb.ca/local-weather/'.$other->id)->assertNotFound();
-        Http::fake(['https://api.weatherapi.com/v1/current.json*' => Http::response(['current' => ['temp_c' => -12.3, 'condition' => ['text' => 'Cloudy'], 'last_updated_epoch' => now()->timestamp]])]);
+        Http::fakeSequence('https://api.weatherapi.com/v1/current.json*')
+            ->push(['current' => ['temp_c' => -12.3, 'condition' => ['text' => 'Cloudy'], 'last_updated_epoch' => now()->timestamp]])
+            ->push(['error' => ['message' => 'Provider unavailable']], 503);
         $this->getJson('https://brandonmb.ca'.$path)->assertOk()->assertJsonPath('weather.temperature_c', -12)->assertDontSee($key);
         $this->getJson($base.$path)->assertOk()->assertJsonPath('weather.condition', 'Cloudy');
         Http::assertSentCount(1);
         $this->travel(46)->minutes();
-        Http::fake(['https://api.weatherapi.com/v1/current.json*' => Http::response(['error' => ['message' => 'Provider unavailable']], 503)]);
         $this->getJson($base.$path)->assertStatus(503)->assertJsonPath('weather', null)->assertDontSee($key);
         $this->getJson($base.$path)->assertStatus(503)->assertJsonPath('weather', null);
-        Http::assertSentCount(1);
+        Http::assertSentCount(2);
     }
 }
