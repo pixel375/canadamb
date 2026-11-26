@@ -34,6 +34,25 @@
                 </div>
             </section>
         </div>
+        @if($pushEnabled)
+            <section class="panel form-stack" data-push-devices data-public-key="{{ $pushKey ?? '' }}">
+                <h2>Device notifications</h2>
+                <p>Register this browser for future notification delivery. Delivery is not available yet. Registration is optional and specific to your account and website.</p>
+                <form hidden data-push-token>@csrf</form>
+                <div class="form-grid" hidden data-push-controls>
+                    @if($pushKey)<button type="button" class="button button-primary" data-push-register>Register this device</button>@endif
+                    <button type="button" class="button button-outline" data-push-unsubscribe>Unsubscribe this browser</button>
+                </div>
+                <p role="status" data-push-status>{{ $pushKey ? 'Checking browser support…' : 'Registration unavailable on this portal.' }}</p>
+                <h3>Registered devices across the network</h3>
+                @forelse($pushDevices as $device)
+                    <div class="item-row"><div><strong>{{ $device->site_name }}</strong><p>Device #{{ $device->id }} · Registered {{ \Illuminate\Support\Carbon::parse($device->created_at)->diffForHumans() }}</p></div>
+                        <form method="post" action="/account/notifications/devices/{{ $device->id }}">@csrf @method('DELETE')<button class="button button-outline">Remove registration</button></form>
+                    </div>
+                @empty<p>No registered devices.</p>@endforelse
+                <p class="field-note">Remove registrations on shared or lost devices. Browser notification permission can also be revoked in browser settings.</p>
+            </section>
+        @endif
         @if($ownerEnabled)
             <section class="homepage-section activity-panel">
                 <div class="section-heading"><h2>My submission updates</h2><span>{{ $ownerUnread }} unread</span></div>

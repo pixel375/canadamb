@@ -9,6 +9,7 @@ use App\Support\EventDiscussions;
 use App\Support\JobSearches;
 use App\Support\NotificationPreferences;
 use App\Support\OwnerNotifications;
+use App\Support\PushDevices;
 use App\Support\ReplyLinks;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -78,6 +79,11 @@ final class AccountNotificationsController extends Controller
         $ownerUnread = $ownerQuery ? (clone $ownerQuery)->whereNull('alert.read_at')->count() : 0;
         $ownerAlerts = $ownerQuery ? $ownerQuery->orderByRaw('CASE WHEN alert.read_at IS NULL THEN 0 ELSE 1 END')->orderByDesc('alert.id')->paginate(15, pageName: 'updates') : null;
         $replyUnread = max(0, $counts['notifications'] - $ownerUnread);
+        $pushEnabled = PushDevices::enabled();
+        $pushKey = PushDevices::available($site) ? PushDevices::publicKey() : null;
+        $pushDevices = $pushEnabled ? DB::table('push_devices')->join('sites', 'sites.id', '=', 'push_devices.site_id')
+            ->where('push_devices.user_id', $user->id)->orderByDesc('push_devices.id')
+            ->limit(10)->get(['push_devices.id', 'sites.name as site_name', 'push_devices.created_at']) : collect();
         $directReplies = ReplyLinks::directNotificationIds($user->id, $recent->pluck('reply_id')->all());
         $eventThreads = EventDiscussions::publicThreadIds($site, $recent->pluck('thread_id')->all());
         $preferencesEnabled = NotificationPreferences::enabled();
@@ -85,7 +91,7 @@ final class AccountNotificationsController extends Controller
         $jobAlertsEnabled = JobSearches::enabled($site) && $preferences['job_summary'];
         $matchingSearches = $jobAlertsEnabled ? JobSearches::alertingSearchCount($user->id, $site) : 0;
 
-        return response()->view('account.notifications', compact('counts', 'discussionsEnabled', 'recent', 'preferencesEnabled', 'preferences', 'jobAlertsEnabled', 'matchingSearches', 'directReplies', 'eventThreads', 'ownerEnabled', 'ownerAlerts', 'ownerUnread', 'replyUnread'))
+        return response()->view('account.notifications', compact('counts', 'discussionsEnabled', 'recent', 'preferencesEnabled', 'preferences', 'jobAlertsEnabled', 'matchingSearches', 'directReplies', 'eventThreads', 'ownerEnabled', 'ownerAlerts', 'ownerUnread', 'replyUnread', 'pushEnabled', 'pushKey', 'pushDevices'))
             ->header('Cache-Control', 'private, no-store');
     }
 }

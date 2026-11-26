@@ -846,3 +846,60 @@ const clearCorrectedField = event => {
 };
 document.addEventListener('input', clearCorrectedField);
 document.addEventListener('change', clearCorrectedField);
+
+
+// Explicit opt-in only. Never request permission on page load or login.
+const pushPanel = document.querySelector('[data-push-devices]');
+if (pushPanel) {
+    const status = pushPanel.querySelector('[data-push-status]');
+    const controls = pushPanel.querySelector('[data-push-controls]');
+    const buttons = [...controls.querySelectorAll('button')];
+    const supported = window.isSecureContext && 'Notification' in window && 'PushManager' in window && 'serviceWorker' in navigator;
+    const key = pushPanel.dataset.publicKey;
+    const postDevice = async (path, payload) => {
+        const response = await fetch(path, {
+            method: 'POST', credentials: 'same-origin',
+            headers: {'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': pushPanel.querySelector('input[name="_token"]').value},
+            body: JSON.stringify(payload)
+        });
+        if (!response.ok || response.redirected) throw new Error('Registration request was not accepted.');
+    };
+    const act = async task => {
+        buttons.forEach(button => button.disabled = true);
+        try { await task(); } catch { status.textContent = 'Device registration could not be updated. Check your browser settings or remove an existing registration and retry.'; }
+        finally { buttons.forEach(button => button.disabled = false); }
+    };
+    if (!supported) {
+        status.textContent = 'This browser does not support device registration. On iPhone, use a supported installed Home Screen app.';
+    } else {
+        controls.hidden = false;
+        status.textContent = key ? 'Registration is optional. Permission is requested only when you choose Register.' : 'New registrations are unavailable. You can still unsubscribe.';
+        pushPanel.querySelector('[data-push-register]')?.addEventListener('click', () => act(async () => {
+            if (await Notification.requestPermission() !== 'granted') {
+                status.textContent = 'Notification permission was not granted.';
+                return;
+            }
+            const worker = await navigator.serviceWorker.register('/sw.js', {scope: '/'});
+            await navigator.serviceWorker.ready;
+            const raw = atob(key.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - key.length % 4) % 4));
+            let subscription = await worker.pushManager.getSubscription();
+            let created = false;
+            if (!subscription) {
+                subscription = await worker.pushManager.subscribe({userVisibleOnly: true, applicationServerKey: Uint8Array.from(raw, character => character.charCodeAt(0))});
+                created = true;
+            }
+            try { await postDevice('/account/notifications/devices', subscription.toJSON()); }
+            catch (error) { if (created) await subscription.unsubscribe().catch(() => {}); throw error; }
+            status.textContent = 'Device registered. Delivery is not enabled yet. Reload to see the registered device.';
+        }));
+        pushPanel.querySelector('[data-push-unsubscribe]').addEventListener('click', () => act(async () => {
+            const worker = await navigator.serviceWorker.getRegistration('/');
+            const subscription = await worker?.pushManager.getSubscription();
+            if (subscription) {
+                await postDevice('/account/notifications/devices/unsubscribe', {endpoint: subscription.endpoint});
+                await subscription.unsubscribe();
+            }
+            status.textContent = 'Browser unsubscribed. Remove any old registration from the account list if needed.';
+        }));
+    }
+}

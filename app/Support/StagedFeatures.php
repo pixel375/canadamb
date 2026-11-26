@@ -18,6 +18,7 @@ final class StagedFeatures
         'user_signup_locations' => ['user_id', 'location_id', 'created_at'],
         'community_reply_links' => ['reply_id', 'parent_reply_id'],
         'owner_notifications' => ['id', 'user_id', 'kind', 'target_id', 'decision', 'read_at', 'created_at'],
+        'push_devices' => ['id', 'user_id', 'site_id', 'endpoint_hash', 'subscription', 'created_at', 'updated_at'],
         'business_access_requests' => ['id', 'business_id', 'requester_id', 'recipient_id', 'kind', 'status', 'expires_at', 'reviewer_id', 'review_note', 'created_at', 'updated_at'],
         'business_disputes' => ['id', 'business_id', 'claimant_id', 'site_id', 'contact_email', 'explanation', 'status', 'reviewer_id', 'review_note', 'reviewed_at', 'created_at', 'updated_at'],
         'business_change_requests' => ['id', 'business_id', 'requester_id', 'branch_id', 'location_id', 'kind', 'value', 'previous_value', 'status', 'reviewer_id', 'review_note', 'reviewed_at', 'created_at', 'updated_at'],
@@ -40,6 +41,7 @@ final class StagedFeatures
         'user_signup_locations' => [['user_id']],
         'community_reply_links' => [['reply_id']],
         'owner_notifications' => [['id']],
+        'push_devices' => [['id'], ['endpoint_hash']],
         'business_access_requests' => [['id']],
         'business_disputes' => [['id']],
         'business_change_requests' => [['id']],
@@ -54,6 +56,7 @@ final class StagedFeatures
     ];
 
     public const DEFINITIONS = [
+        ['2026_11_26_000018_create_push_devices', 'Web Push device registration', 'push_devices', ['push_devices'], [], [], 'Opt-in registry only; no sender, external delivery or unsolicited prompts.'],
         ['2026_11_26_000017_create_owner_notifications', 'Owner status notifications', 'owner_notifications', ['owner_notifications'], [], [], 'Private moderation and expiry alerts; review retention before activation.'],
         ['2026_11_26_000016_create_community_reply_links', 'Replies to comments', 'reply_links', ['community_reply_links'], [], [], 'Public-only parent references and moderation-scoped notification delivery.'],
         ['2026_11_26_000015_create_user_signup_locations', 'Registration locations', 'signup_locations', ['user_signup_locations'], [], [], 'Public community only; consent and existing-account handling; central verification remains required.'],

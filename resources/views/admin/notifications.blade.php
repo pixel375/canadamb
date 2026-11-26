@@ -24,7 +24,12 @@
             <p class="field-note">Historical aggregate decisions only; no member details or delivery receipts.</p>
         @endif
         <p>Event discussion linkage: {{ $eventsEnabled ? 'Available' : 'Staged, not active' }}</p>
-        <p>Web Push and administrator broadcasts: not available. No permission prompts, external delivery or broadcast sends are initiated from this page.</p>
+        <h3>Web Push preparation</h3>
+        <p>Device registry: {{ $pushEnabled ? 'Available' : 'Staged, not active' }}</p>
+        <p>Public application key: {{ $pushKeyConfigured ? 'Configured (format checked)' : 'Not configured' }}</p>
+        @if($pushCount !== null)<p>{{ number_format($pushCount) }} registered devices across the network.</p>@endif
+        <p>Delivery and administrator broadcasts: not available. No sends or permission prompts are initiated from this page.</p>
+        <p class="field-note">After review, configure CANADAMB_PUSH_PUBLIC_KEY in the private hosting environment and enable CANADAMB_PUSH_DEVICES only after migration approval. Keep the future sender's private VAPID key out of browser code, GitHub and administrator forms. Device registration does not imply marketing consent.</p>
         <p class="field-note">Discussion preferences do not constitute consent to receive administrator broadcasts or marketing messages.</p>
     </section>
 </x-layouts.admin>

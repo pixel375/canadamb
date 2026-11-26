@@ -39,6 +39,7 @@ class AccountExportController extends Controller
         'received-business-access-requests' => ['business_access_requests', 'recipient_id', ['id', 'business_id', 'kind', 'status', 'expires_at', 'created_at', 'updated_at']],
         'discussion-notifications' => ['community_notifications', 'user_id', ['id', 'reply_id', 'read_at', 'created_at']],
         'owner-notifications' => ['owner_notifications', 'user_id', ['id', 'kind', 'target_id', 'decision', 'read_at', 'created_at']],
+        'push-device-metadata' => ['push_devices', 'user_id', ['id', 'site_id', 'created_at', 'updated_at']],
     ];
 
     private const BOOKMARKS = [

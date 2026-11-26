@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Support\EventDiscussions;
 use App\Support\NotificationPreferences;
 use App\Support\OwnerNotifications;
+use App\Support\PushDevices;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -33,7 +34,11 @@ final class NotificationController extends Controller
         $ownerMetrics = $ownerEnabled ? DB::table('owner_notifications')->where('created_at', '>=', $since)
             ->selectRaw('decision, COUNT(*) as total')->groupBy('decision')->pluck('total', 'decision') : collect();
 
-        return response()->view('admin.notifications', compact('days', 'metrics', 'preferencesEnabled', 'paused', 'eventsEnabled', 'ownerEnabled', 'ownerMetrics'))
+        $pushEnabled = PushDevices::enabled();
+        $pushKeyConfigured = PushDevices::publicKey() !== null;
+        $pushCount = $pushEnabled ? DB::table('push_devices')->count() : null;
+
+        return response()->view('admin.notifications', compact('days', 'metrics', 'preferencesEnabled', 'paused', 'eventsEnabled', 'ownerEnabled', 'ownerMetrics', 'pushEnabled', 'pushKeyConfigured', 'pushCount'))
             ->header('Cache-Control', 'private, no-store');
     }
 }

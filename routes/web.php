@@ -42,6 +42,7 @@ use App\Http\Controllers\MessagesController;
 use App\Http\Controllers\NewsController;
 use App\Http\Controllers\PropertyDraftController;
 use App\Http\Controllers\PublicController;
+use App\Http\Controllers\PushDeviceController;
 use App\Http\Controllers\PwaController;
 use App\Http\Controllers\RealEstateController;
 use App\Http\Controllers\UserProfileController;
@@ -105,6 +106,9 @@ Route::get('/marketplace/{listing}/thumbnail/{photo}', [ListingEngagementControl
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/account/notifications/preferences', [AccountNotificationsController::class, 'preferences'])->middleware('throttle:8,1,notification-preferences');
     Route::get('/account/notifications', [AccountNotificationsController::class, 'index']);
+    Route::post('/account/notifications/devices', [PushDeviceController::class, 'store'])->middleware('throttle:8,1,push-register');
+    Route::post('/account/notifications/devices/unsubscribe', [PushDeviceController::class, 'unsubscribe'])->middleware('throttle:12,1,push-unsubscribe');
+    Route::delete('/account/notifications/devices/{device}', [PushDeviceController::class, 'destroy'])->whereNumber('device')->middleware('throttle:12,1,push-remove');
     Route::post('/account/notifications/updates/{notification}/read', [AccountNotificationsController::class, 'readOwnerAlert'])->whereNumber('notification')->middleware('throttle:30,1,owner-notification-read');
     Route::get('/account/activity-counts', [AccountNotificationsController::class, 'counts'])->middleware('throttle:20,1');
     Route::get('/account/properties', [PropertyDraftController::class, 'index']);
