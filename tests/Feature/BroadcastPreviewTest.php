@@ -44,6 +44,8 @@ class BroadcastPreviewTest extends TestCase
         DB::table('broadcast_consents')->where('user_id', $member->id)->update(['opted_in' => true]);
         $token = $this->post($base.'/admin/notifications/preview', $draft)->assertOk()->viewData('confirmation');
         $this->post($base.'/admin/notifications/send', ['confirmation' => $token, 'confirm_send' => 1])->assertRedirect('/admin/notifications');
+        $this->post($base.'/admin/notifications/send', ['confirmation' => $token, 'confirm_send' => 1])->assertTooManyRequests();
+        $this->travel(61)->seconds();
         $this->post($base.'/admin/notifications/send', ['confirmation' => $token, 'confirm_send' => 1])->assertConflict();
         $this->assertDatabaseCount('announcements', 1);
         $receipt = DB::table('announcement_receipts')->sole();

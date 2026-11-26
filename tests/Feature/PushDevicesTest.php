@@ -54,6 +54,8 @@ class PushDevicesTest extends TestCase
         $this->postJson($url.'/unsubscribe', ['endpoint' => $data['endpoint']])->assertOk();
         $this->assertDatabaseCount('push_devices', 0);
         $this->assertFalse(PushDevices::endpointValid('https://fcm.googleapis.com@evil.test/test'));
+        $this->postJson($url, $data)->assertTooManyRequests();
+        $this->travel(61)->seconds();
         $this->postJson($url, $data)->assertOk();
         $otherData = array_replace($data, ['endpoint' => 'https://fcm.googleapis.com/fcm/send/other-test-fixture']);
         $this->actingAs($other)->postJson($url, $otherData)->assertOk();
