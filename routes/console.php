@@ -10,6 +10,7 @@ use App\Support\JobBoard;
 use App\Support\Marketplace;
 use App\Support\MessageFileInventory;
 use App\Support\PropertyMediaInventory;
+use App\Support\QueueInventory;
 use App\Support\StagedFeatures;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -90,6 +91,10 @@ Artisan::command('media:inventory {--limit=500}', function (PropertyMediaInvento
     }
     $this->line(json_encode($inventory->inspect($limit), JSON_THROW_ON_ERROR));
 })->purpose('Read-only bounded Marketplace and private property photo inventory');
+
+Artisan::command('network:queue-inventory', function (QueueInventory $inventory) {
+    $this->line(json_encode($inventory->inspect(), JSON_THROW_ON_ERROR));
+})->purpose('Read-only aggregate queue backlog observations without payloads');
 
 Schedule::command('passport:purge --hours=24')->daily()->withoutOverlapping(10);
 if (config('network.news_polling') && ! config('network.prelaunch')) {

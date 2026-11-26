@@ -16,6 +16,7 @@ use App\Support\CommercialRecords;
 use App\Support\ContentReports;
 use App\Support\KeywordSearch;
 use App\Support\Marketplace;
+use App\Support\QueueInventory;
 use App\Support\NetworkSettings;
 use App\Support\NetworkUrl;
 use App\Support\PrivacyRequests;
@@ -108,7 +109,9 @@ class NetworkController extends Controller
 
         $staged = StagedFeatures::inspect();
 
-        return view('admin.readiness', compact('checks', 'unverified', 'staged'));
+        $queue = app(QueueInventory::class)->inspect();
+
+        return view('admin.readiness', compact('checks', 'unverified', 'staged', 'queue'));
     }
 
     public function audit(Request $request)

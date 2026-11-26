@@ -14,5 +14,15 @@
             </article>
         @endforeach
     </section>
+    <section class="panel form-stack mt-4"><h2>Queue observations</h2>
+        <p class="field-note">Aggregate database observations only. A quiet queue does not prove the scheduler is running. No payloads or exceptions are exposed.</p>
+        @if($queue['database_queue'])
+            @foreach(['ready' => 'Ready jobs', 'delayed' => 'Delayed jobs', 'reserved' => 'Reserved jobs', 'retryable_reservations' => 'Reservations past retry window', 'oldest_ready_seconds' => 'Oldest ready job (seconds)', 'failed' => 'Recorded failed jobs'] as $key => $label)
+                <article class="item-row readiness-row"><h3>{{ $label }}</h3><strong>{{ $queue[$key] ?? 'Unavailable' }}</strong></article>
+            @endforeach
+        @else
+            <p>Database queue observations unavailable.</p>
+        @endif
+    </section>
     <section class="panel form-stack mt-4"><h2>Separate acceptance required</h2><ul class="help-guidelines"><li>Real-device authentication and Android standalone installation.</li><li>Verified outgoing mail and monitored support mailbox.</li><li>Broader content reporting and account lifecycle controls.</li><li>Privacy policy, terms, retention and moderation procedures.</li><li>Current backup and restore evidence, scheduler health and external access checks.</li><li>Explicit approval before public registration and removal of prelaunch access controls.</li></ul><p class="field-note">None of these items is marked complete automatically.</p></section>
 </x-layouts.admin>
