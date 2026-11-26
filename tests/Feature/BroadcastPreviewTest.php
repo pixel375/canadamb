@@ -72,7 +72,7 @@ class BroadcastPreviewTest extends TestCase
         $this->post($consent, ['opted_in' => 1])->assertRedirect('/account/notifications');
         $this->post($url, $draft)->assertForbidden();
         $this->actingAs($admin)->post($url, $draft)->assertOk()->assertViewHas('count', 1)->assertSee('Nothing was sent')->assertDontSee($member->email);
-        $this->post($url, array_replace($draft, ['audience' => 'selected', 'member_ids' => $other->id]))->assertOk()->assertViewHas('count', 0);
+        $this->post($url, array_replace($draft, ['audience' => 'selected', 'member_ids' => (string) $other->id]))->assertOk()->assertViewHas('count', 0);
         $this->post($url, array_replace($draft, ['audience' => 'selected', 'member_ids' => $member->id.','.$member->id]))->assertOk()->assertViewHas('count', 1);
         $this->assertDatabaseHas('audit_logs', ['action' => 'broadcast.previewed', 'actor_id' => $admin->id]);
         $this->actingAs($member)->post($consent, ['opted_in' => 0])->assertRedirect();
