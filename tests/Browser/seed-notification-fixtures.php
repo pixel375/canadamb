@@ -112,6 +112,14 @@ $ownedListing->media()->createMany(app(ListingPhotos::class)->store([
     UploadedFile::fake()->image('second.jpg', 200, 200),
 ]));
 
+foreach (['One', 'Two'] as $suffix) {
+    Listing::create([
+        'user_id' => $author->id, 'location_id' => $brandon->id,
+        'title' => 'Selected browser moderation '.$suffix, 'description' => 'A disposable private moderation fixture.',
+        'category' => 'furniture', 'condition' => 'good', 'price_cents' => 1200, 'status' => 'pending',
+    ]);
+}
+
 $business = Business::create(['slug' => 'browser-qa-team', 'name' => 'Browser QA Team', 'category' => 'services', 'status' => 'active']);
 $business->members()->attach($member->id, ['role' => 'owner']);
 $branch = $business->locations()->create(['location_id' => $brandon->id, 'address' => '1 QA Street']);

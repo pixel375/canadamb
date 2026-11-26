@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-26 — selected moderation and seller discovery browser regression
+
+Expanded isolated Chromium fixtures and mobile acceptance to submit an actual two-listing independent moderation decision, verify persisted rejected statuses, and exercise seller category/search/sorting with layout bounds before existing photo editor coverage. No live data or production settings touched.
+
 ## 2026-11-26 — seller inventory discovery and expiry planning
 
 Added owner-scoped location, category, listing reference and publication-period filters, stable newest/oldest/price/expiry sorting, status counts matching the filtered inventory, and visible listing references and categories. Dedicated city portals cannot query another community. Owners can locate listings expiring within seven days and unswept ended publications. No listing states changed; no migrations.
