@@ -87,7 +87,9 @@ class DiscussionEditingTest extends TestCase
         $this->get('https://brandonmb.ca/account/discussions?category=help&sort=replies')->assertOk()->assertSee('Edited discussion');
         $this->get('https://brandonmb.ca/account/discussions?category=general')->assertOk()->assertDontSee('Edited discussion');
         $this->get($public)->assertNotFound();
-        $this->put($url, $data)->assertSessionHasErrors('version');
+        $this->from($url.'/edit')->put($url, $data)->assertSessionHasErrors('version');
+        $this->get($url.'/edit')->assertOk()->assertSee('name="version" value="'.$data['version'].'"', false)->assertSee('Reload editor');
+        $this->from($url.'/edit')->put($url, $data)->assertSessionHasErrors('version');
         $this->actingAs($admin)->post('https://canadamb.ca/admin/community/threads/'.$thread->id, ['action' => 'approve', 'version' => $data['version']])->assertSessionHasErrors('version');
         $this->post('https://canadamb.ca/admin/community/threads/'.$thread->id, ['action' => 'approve', 'version' => $thread->fresh()->contentVersion()])->assertRedirect();
         $this->get($public)->assertOk()->assertSee('Edited discussion')->assertSee('A published reply.');

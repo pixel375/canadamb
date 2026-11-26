@@ -5,7 +5,7 @@
         @if($duplicating ?? false)<p class="notice">Copied text and item details only. Review the information and upload new photos. This will create a new listing requiring approval; messages, saves and reports stay with the original.</p>@endif
         <form class="listing-editor-form form-stack" method="post" enctype="multipart/form-data" action="{{ $item->exists ? '/account/listings/'.$item->id : '/marketplace' }}" x-data="{ category: @js(old('category', $item->category ?? '')) }">
             @csrf
-            @if($item->exists)@method('PUT')<input type="hidden" name="version" value="{{ $item->reviewVersion() }}">@endif
+            @if($item->exists)@method('PUT')<input type="hidden" name="version" value="{{ old('version', $item->reviewVersion()) }}">@endif
             <section class="panel form-stack listing-editor-section" aria-labelledby="listing-details-heading">
                 <h2 id="listing-details-heading">1. Item details</h2>
             <label>Title<input name="title" value="{{ old('title', $item->title) }}" required maxlength="120" placeholder="e.g. Solid oak dining table"></label>
@@ -36,7 +36,10 @@
                 <h2 id="listing-photos-heading">3. Photos</h2>
             @if($item->exists)
                 <input type="hidden" name="manage_photos" value="1">
-                <input type="hidden" name="photo_version" value="{{ $photoVersion }}">
+                <input type="hidden" name="photo_version" value="{{ old('photo_version', $photoVersion) }}">
+                @if(old('photo_version') && old('photo_version') !== $photoVersion)
+                    <p class="notice notice-error">The existing photos changed while this form was open. <a href="/account/listings/{{ $item->id }}/edit">Reload the editor</a> before continuing.</p>
+                @endif
                 <div data-existing-photos>
                     <h3>Existing photos</h3>
                     <p class="field-note">Keep, remove or reorder existing photos. The first retained photo is the cover. New uploads are appended after retained photos. Changes only take effect when you submit.</p>
@@ -69,6 +72,9 @@
                 <p class="field-note">Posting for another Manitoba location? <a href="{{ \App\Support\NetworkUrl::to(\App\Support\NetworkUrl::main(), '/marketplace/new') }}">Visit CanadaMB.ca to choose your community.</a></p>
             @endif
             </section>
+            @if($item->exists && old('version') && old('version') !== $item->reviewVersion())
+                <p class="notice notice-error">The listing changed while this form was open. <a href="/account/listings/{{ $item->id }}/edit">Reload the editor</a> before continuing.</p>
+            @endif
             <div class="panel listing-editor-submit"><p>Listings are reviewed before appearing publicly. Check your details before submitting.</p><button class="button button-primary">Submit for review</button></div>
         </form>
     </div>
