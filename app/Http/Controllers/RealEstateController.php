@@ -24,8 +24,14 @@ class RealEstateController extends Controller
             'location' => ['nullable', 'string', 'max:80', Rule::exists('locations', 'slug')
                 ->where('province', 'MB')->where('selectable', true)],
             'min_price' => 'nullable|numeric|decimal:0,2|min:0|max:1000000000',
-            'max_price' => 'nullable|numeric|decimal:0,2|min:0|max:1000000000',
+            'max_price' => ['nullable', 'numeric', 'decimal:0,2', 'min:0', 'max:1000000000', Rule::when($request->filled('min_price'), 'gte:min_price')],
             'bedrooms' => 'nullable|integer|min:0|max:100',
+            'bathrooms' => 'nullable|numeric|decimal:0,1|multiple_of:0.5|min:0|max:100',
+            'min_floor_area' => 'nullable|integer|min:0|max:10000000',
+            'min_acreage' => 'nullable|numeric|decimal:0,4|min:0|max:10000000',
+            'year_min' => 'nullable|integer|min:1600|max:'.(now()->year + 5),
+            'available_by' => 'nullable|date_format:Y-m-d',
+            'pets' => 'nullable|in:allowed',
             'sort' => 'nullable|in:newest,price_asc,price_desc,largest',
         ]);
         $site = $request->attributes->get('site');
@@ -39,12 +45,18 @@ class RealEstateController extends Controller
 
         $query = $this->visible($request)
             ->when($selectedLocation, fn (Builder $query, Location $place) => $query->where('location_id', $place->id))
-            ->when($filters['q'] ?? null, fn (Builder $query, string $term) => KeywordSearch::apply($query, $term, ['title', 'description']))
+            ->when(filled($filters['q'] ?? null), fn (Builder $query) => KeywordSearch::apply($query, $filters['q'], ['title', 'description']))
             ->when($filters['transaction'] ?? null, fn (Builder $query, string $value) => $query->where('transaction', $value))
             ->when($filters['property_type'] ?? null, fn (Builder $query, string $value) => $query->where('property_type', $value))
             ->when(isset($filters['min_price']), fn (Builder $query) => $query->where('price_cents', '>=', (int) round($filters['min_price'] * 100)))
             ->when(isset($filters['max_price']), fn (Builder $query) => $query->where('price_cents', '<=', (int) round($filters['max_price'] * 100)))
-            ->when(isset($filters['bedrooms']), fn (Builder $query) => $query->where('bedrooms', '>=', $filters['bedrooms']));
+            ->when(isset($filters['bedrooms']), fn (Builder $query) => $query->where('bedrooms', '>=', $filters['bedrooms']))
+            ->when(isset($filters['bathrooms']), fn (Builder $query) => $query->where('bathrooms', '>=', $filters['bathrooms']))
+            ->when(isset($filters['min_floor_area']), fn (Builder $query) => $query->where('floor_area', '>=', $filters['min_floor_area']))
+            ->when(isset($filters['min_acreage']), fn (Builder $query) => $query->where('acreage', '>=', $filters['min_acreage']))
+            ->when(isset($filters['year_min']), fn (Builder $query) => $query->where('year_built', '>=', $filters['year_min']))
+            ->when(isset($filters['available_by']), fn (Builder $query) => $query->where('available_on', '<=', $filters['available_by']))
+            ->when(isset($filters['pets']), fn (Builder $query) => $query->where('transaction', 'rent')->where('pets_allowed', true));
 
         match ($filters['sort'] ?? 'newest') {
             'price_asc' => $query->orderBy('price_cents')->orderByDesc('id'),

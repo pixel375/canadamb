@@ -12,7 +12,7 @@
             <label>Title<input name="title" required maxlength="140" value="{{ old('title', $item->title) }}"></label>
             <div class="form-grid">
                 <label>Transaction<select name="transaction" required><option value="">Choose a transaction</option><option value="sale" @selected(old('transaction', $item->transaction ?? $suggestedTransaction) === 'sale')>For sale</option><option value="rent" @selected(old('transaction', $item->transaction ?? $suggestedTransaction) === 'rent')>For rent</option></select></label>
-                <label>Property type<select name="property_type" required><option value="">Choose a property type</option>@foreach(\App\Models\PropertyListing::TYPES as $id => $label)<option value="{{ $id }}" @selected(old('property_type', $item->property_type) === $id)>{{ $label }}</option>@endforeach</select></label>
+                <label>Property type<select name="property_type" required><option value="">Choose a property type</option>@foreach(\App\Models\PropertyListing::TYPES as $id => $label)<option value="{{ $id }}" @selected(old('property_type', $item->property_type ?? $suggestedType) === $id)>{{ $label }}</option>@endforeach</select></label>
                 <label>Seller role<select name="seller_type" required><option value="">Choose a role</option>@foreach(\App\Models\PropertyListing::SELLERS as $id => $label)<option value="{{ $id }}" @selected(old('seller_type', $item->seller_type) === $id)>{{ $label }}</option>@endforeach</select></label>
             </div>
             @if(request()->attributes->get('site')->isNetwork())

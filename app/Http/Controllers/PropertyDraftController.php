@@ -334,6 +334,7 @@ class PropertyDraftController extends Controller
             'places' => $site->isNetwork() ? Location::selectable()->orderBy('name')->get() : collect(),
             'suggestedLocation' => $item->exists ? null : LocationScope::forBrowsing($site, $request->query('location', $request->cookie(LocationScope::PREFERENCE_COOKIE))),
             'suggestedTransaction' => in_array($request->query('transaction'), ['sale', 'rent'], true) ? $request->query('transaction') : null,
+            'suggestedType' => is_string($request->query('property_type')) && isset(PropertyListing::TYPES[$request->query('property_type')]) ? $request->query('property_type') : null,
         ]);
     }
 

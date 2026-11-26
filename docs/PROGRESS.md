@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-26 — expanded staged property discovery
+
+Added validated bathroom, floor-area, acreage, year, availability-date and pet-friendly rental filters with explicit unknown-feature exclusion, corrected reversed price validation and zero-keyword handling, and property-type prefill for private drafts. Tests exercise the separate public rollout switch, private record exclusion and filter behavior. No publishing action or rollout flag changed.
+
 ## 2026-11-26 — dynamic community website discovery and scoped posting shortcuts
 
 Replaced hardcoded Brandon-only network strip with an active-portal directory on the provincial homepage. Dedicated portal discovery supports public filters, and inactive/draft portal domains remain hidden. Homepage View all listings opens actual results, and Marketplace create links retain the selected provincial community. Added public web/API regression coverage. No portals were activated by this change.

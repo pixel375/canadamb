@@ -26,7 +26,7 @@
         $activeFilters = array_filter($filters, fn ($value) => $value !== null && $value !== '');
         $typeParams = array_diff_key($activeFilters, ['property_type' => true]);
         $transactionParams = array_diff_key($activeFilters, ['transaction' => true]);
-        $draftParams = array_intersect_key($activeFilters, ['transaction' => true, 'location' => true]);
+        $draftParams = array_intersect_key($activeFilters, ['transaction' => true, 'location' => true, 'property_type' => true]);
     @endphp
     <div class="container page-shell browse-page">
         <a class="text-link mb-4" href="{{ \App\Support\LocationScope::browseUrl($site, '/marketplace', $selectedLocation) }}">Marketplace categories</a>
@@ -87,6 +87,13 @@
                 <label>Minimum price (CAD)<input type="number" name="min_price" min="0" max="1000000000" step=".01" value="{{ $filters['min_price'] ?? '' }}" placeholder="No minimum"></label>
                 <label>Maximum price (CAD)<input type="number" name="max_price" min="0" max="1000000000" step=".01" value="{{ $filters['max_price'] ?? '' }}" placeholder="No maximum"></label>
                 <label>Minimum bedrooms<input type="number" name="bedrooms" min="0" max="100" value="{{ $filters['bedrooms'] ?? '' }}" placeholder="Any"></label>
+                <label>Minimum bathrooms<input type="number" name="bathrooms" min="0" max="100" step="0.5" value="{{ $filters['bathrooms'] ?? '' }}"></label>
+                <label>Minimum floor area (sq ft)<input type="number" name="min_floor_area" min="0" max="10000000" value="{{ $filters['min_floor_area'] ?? '' }}"></label>
+                <label>Minimum acreage<input type="number" name="min_acreage" min="0" max="10000000" step="0.0001" value="{{ $filters['min_acreage'] ?? '' }}"></label>
+                <label>Built in or after<input type="number" name="year_min" min="1600" max="{{ now()->year + 5 }}" value="{{ $filters['year_min'] ?? '' }}"></label>
+                <label>Available by<input type="date" name="available_by" value="{{ $filters['available_by'] ?? '' }}"></label>
+                <label>Rental pet policy<select name="pets"><option value="">Any / unspecified</option><option value="allowed" @selected(($filters['pets'] ?? '') === 'allowed')>Pet-friendly rentals only</option></select></label>
+                <p class="field-note">Properties with unspecified features are excluded when a corresponding feature filter is selected.</p>
                 <label>Sort by<select name="sort"><option value="newest" @selected(($filters['sort'] ?? 'newest') === 'newest')>Newest</option><option value="price_asc" @selected(($filters['sort'] ?? '') === 'price_asc')>Lowest price</option><option value="price_desc" @selected(($filters['sort'] ?? '') === 'price_desc')>Highest price</option><option value="largest" @selected(($filters['sort'] ?? '') === 'largest')>Largest floor area</option></select></label>
                 <div class="inline-actions">
                     <button type="submit" class="button button-primary"><x-icon name="search" size="17"/> Apply filters</button>

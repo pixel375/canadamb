@@ -88,6 +88,22 @@ class RealEstateBrowsingTest extends TestCase
             ->assertSee('Potential published ranch');
     }
 
+    public function test_advanced_property_filters_respect_publication_gate_and_explicit_features(): void
+    {
+        $rental = $this->property('brandon', 'Pet friendly rental fixture', 'published', 'rent');
+        $rental->forceFill(['bathrooms' => 2.5, 'floor_area' => 1200, 'acreage' => 0.2, 'year_built' => 2015,
+            'available_on' => '2027-01-01', 'pets_allowed' => true])->save();
+        $other = $this->property('brandon', 'Unspecified rental fixture', 'published', 'rent');
+        $this->property('brandon', 'Private rental fixture', 'reviewed', 'rent')->forceFill(['pets_allowed' => true])->save();
+        $url = 'https://brandonmb.ca/real-estate?pets=allowed&bathrooms=2&min_floor_area=1000&year_min=2010&available_by=2027-02-01';
+        $this->get($url)->assertOk()->assertDontSee('Pet friendly rental fixture');
+        config(['network.real_estate_public_listings' => true]);
+        $this->get($url)->assertOk()->assertSee('Pet friendly rental fixture')->assertDontSee('Unspecified rental fixture')->assertDontSee('Private rental fixture');
+        $this->get('https://brandonmb.ca/real-estate?min_acreage=1')->assertOk()->assertDontSee('Pet friendly rental fixture');
+        $this->get('https://brandonmb.ca/real-estate?available_by=2026-12-31')->assertOk()->assertDontSee('Pet friendly rental fixture');
+        $this->getJson('https://brandonmb.ca/real-estate?min_price=100&max_price=50')->assertUnprocessable()->assertJsonValidationErrors('max_price');
+    }
+
     public function test_filters_are_validated_and_only_supported_cities_are_allowed(): void
     {
         $this->get('https://canadamb.ca/real-estate?transaction=illegal')->assertSessionHasErrors('transaction');
