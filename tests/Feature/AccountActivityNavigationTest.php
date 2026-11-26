@@ -65,7 +65,7 @@ class AccountActivityNavigationTest extends TestCase
         $this->actingAs($buyer)->get('https://brandonmb.ca/')->assertOk()->assertDontSee('aria-label="1 unread messages"', false);
     }
 
-    public function test_private_message_search_does_not_acknowledge_unread_messages_and_inbox_role_is_scoped(): void
+    public function test_chat_has_no_history_search_and_only_participants_can_open_it_and_inbox_role_is_scoped(): void
     {
         $member = User::factory()->create();
         $other = User::factory()->create();
@@ -79,24 +79,18 @@ class AccountActivityNavigationTest extends TestCase
         $thread->messages()->create(['sender_id' => $other->id, 'body' => 'Bring a trailer']);
         $base = 'https://canadamb.ca/account/messages';
         $url = $base.'/'.$thread->id;
-        $this->actingAs($stranger)->post($url.'/search', ['q' => 'Saturday'])->assertNotFound();
-        $response = $this->actingAs($member)->post($url.'/search', ['q' => 'SATURDAY', 'sender' => 'other'])->assertRedirect();
-        $resultUrl = $response->headers->get('Location');
-        $this->assertStringContainsString('search=', $resultUrl);
-        $this->assertStringNotContainsString('SATURDAY', $resultUrl);
-        $this->get($resultUrl)->assertOk()->assertSee('Delivery on Saturday')
-            ->assertDontSee('Saturday works for me')->assertDontSee('Bring a trailer')->assertDontSee('data-chat-sync=', false)
-            ->assertSee('1 matching message')->assertHeader('Cache-Control', 'no-store, private')->assertHeader('Referrer-Policy', 'no-referrer');
-        $this->actingAs($other)->get($resultUrl)->assertNotFound();
-        $this->actingAs($member);
-        $this->assertSame(0, $thread->fresh()->buyer_last_read_id);
+        $this->actingAs($stranger)->get($url)->assertNotFound();
+        $this->actingAs($member)->get($url)->assertOk()->assertSee('Delivery on Saturday')->assertSee('Bring a trailer')
+            ->assertDontSee('Search this conversation')->assertDontSee('Jump to latest message')
+            ->assertDontSee('class="site-footer"', false)->assertDontSee('class="chat-context-card"', false)
+            ->assertHeader('Cache-Control', 'no-store, private')->assertHeader('Referrer-Policy', 'no-referrer');
+        $this->post($url.'/search', ['q' => 'Saturday'])->assertNotFound();
         $this->get($base.'?role=sent')->assertOk()->assertSee('Private search fixture');
         $this->get($base.'?role=received')->assertOk()->assertDontSee('Private search fixture');
         $this->actingAs($other)->get($base.'?role=received')->assertOk()->assertSee('Private search fixture');
-        $response = $this->post($url.'/search', ['q' => '%'])->assertRedirect();
-        $this->get($response->headers->get('Location'))->assertOk()->assertSee('No matching messages.');
-        $this->get($url)->assertOk();
-        $this->get($response->headers->get('Location'))->assertNotFound();
+        $listing->forceFill(['status' => 'active', 'published_at' => now(), 'expires_at' => now()->addDays(10)])->save();
+        $this->get($url)->assertOk()->assertSee('class="chat-context-card"', false)
+            ->assertSee('href="/marketplace/'.$listing->id.'"', false);
     }
 
     public function test_bulk_message_read_keeps_later_messages_and_other_members_unread(): void

@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Support\AccountActivity;
 use App\Support\BusinessDirectory;
 use App\Support\BusinessInquirySettings;
+use App\Support\ContentReports;
 use App\Support\JobBoard;
 use App\Support\KeywordSearch;
 use App\Support\ListingPhotos;
@@ -233,56 +234,55 @@ class MessagesController extends Controller
         return redirect('/account/messages'.($archive ? '?view=archived' : ''))->with('status', $archive ? 'Conversation archived and marked read.' : 'Conversation restored.');
     }
 
-    public function searchHistory(Request $request, int $conversation)
-    {
-        $member = $request->user()->id;
-        Conversation::forMember($member)->findOrFail($conversation);
-        $filters = $request->validate(['q' => 'nullable|string|max:100', 'sender' => 'nullable|in:me,other']);
-        if (! filled($filters['q'] ?? null) && ! filled($filters['sender'] ?? null)) {
-            $request->session()->forget('conversation_history_search');
-
-            return redirect('/account/messages/'.$conversation);
-        }
-        $token = bin2hex(random_bytes(16));
-        // Keep only one short-lived search per session. Message text never
-        // becomes a query-string parameter in the normal search flow.
-        $request->session()->put('conversation_history_search', [
-            'member' => $member, 'conversation' => $conversation, 'token' => $token,
-            'expires' => now()->addMinutes(15)->timestamp, 'filters' => $filters,
-        ]);
-
-        return redirect('/account/messages/'.$conversation.'?search='.$token)->header('Cache-Control', 'private, no-store');
-    }
-
     public function show(Request $request, int $conversation)
     {
         $id = $request->user()->id;
         $thread = Conversation::forMember($id)->with(['listing:id,title', 'buyer:id,name', 'seller:id,name'])->findOrFail($conversation);
-        $token = $request->validate(['search' => 'nullable|string|size:32|alpha_num'])['search'] ?? null;
-        $filters = [];
-        $searching = $token !== null;
-        if ($searching) {
-            $saved = $request->session()->get('conversation_history_search');
-            abort_unless(is_array($saved) && $saved['member'] === $id && $saved['conversation'] === $conversation
-                && $saved['expires'] > now()->timestamp && hash_equals($saved['token'], $token), 404, 'Search expired. Open the conversation to search again.');
-            $filters = $saved['filters'];
-        } else {
-            $request->session()->forget('conversation_history_search');
-        }
+        $request->session()->forget('conversation_history_search');
         $messages = $thread->messages()->with('sender:id,name')
             ->when(MessageAttachments::enabled(), fn ($query) => $query->withExists('attachment'))
-            ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['body']))
-            ->when(($filters['sender'] ?? null) === 'me', fn ($query) => $query->where('sender_id', $id))
-            ->when(($filters['sender'] ?? null) === 'other', fn ($query) => $query->where('sender_id', '!=', $id))
-            ->latest('id')->paginate(30)->appends($searching ? ['search' => $token] : []);
-        if (! $searching && $messages->onFirstPage() && $latest = $messages->first()?->id) {
+            ->latest('id')->paginate(30);
+        if ($messages->onFirstPage() && $latest = $messages->first()?->id) {
             $marker = $thread->marker($id);
             Conversation::whereKey($thread->id)->where($marker, '<', $latest)->update([$marker => $latest, 'updated_at' => DB::raw('updated_at')]);
         }
         $mine = DB::table('user_blocks')->where(['user_id' => $id, 'blocked_id' => $thread->other($id)])->exists();
+        $context = $this->publicContext($request, $thread);
+        $reportMessage = $request->user()->hasVerifiedEmail() && ContentReports::enabled()
+            ? $thread->messages()->where('sender_id', '!=', $id)->latest('id')->value('id') : null;
 
         return response()->view('messages.show', ['thread' => $thread, 'messages' => $messages, 'blocked' => $this->isBlocked($id, $thread->other($id)) || ! MessagingExtensions::canReply($thread), 'myBlock' => $mine,
-            'filters' => $filters, 'searching' => $searching])->header('Cache-Control', 'private, no-store')->header('Referrer-Policy', 'no-referrer');
+            'context' => $context, 'reportMessage' => $reportMessage])->header('Cache-Control', 'private, no-store')->header('Referrer-Policy', 'no-referrer');
+    }
+
+    private function publicContext(Request $request, Conversation $thread): ?array
+    {
+        $site = $request->attributes->get('site');
+        if ($thread->listing_id) {
+            $marketplace = app(Marketplace::class);
+            $item = $marketplace->enabled($site) ? $marketplace->visible($site)->find($thread->listing_id) : null;
+            if ($item) {
+                $photo = $item->media->first();
+
+                return ['url' => '/marketplace/'.$item->id, 'title' => $item->title, 'thumbnail' => $photo ? '/marketplace/'.$item->id.'/thumbnail/'.$photo->id : null];
+            }
+
+            return null;
+        }
+        if ($thread->inquiry_job_id) {
+            $jobs = app(JobBoard::class);
+            $item = $jobs->enabled($site) ? $jobs->visible($site->location_id)->find($thread->inquiry_job_id) : null;
+
+            return $item ? ['url' => '/jobs/'.$item->id, 'title' => $item->title, 'thumbnail' => null] : null;
+        }
+        if ($thread->inquiry_business_id) {
+            $directory = app(BusinessDirectory::class);
+            $item = $directory->enabled($site) ? $directory->visible($site)->find($thread->inquiry_business_id) : null;
+
+            return $item ? ['url' => '/businesses/'.$item->slug, 'title' => $item->name, 'thumbnail' => null] : null;
+        }
+
+        return null;
     }
 
     public function sync(Request $request, int $conversation, AccountActivity $activity)

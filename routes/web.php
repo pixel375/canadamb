@@ -204,7 +204,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/account/blocked-members', [MessagesController::class, 'blockedMembers']);
     Route::delete('/account/blocked-members/{member}', [MessagesController::class, 'unblockMember'])->whereNumber('member')->middleware('throttle:20,1');
     Route::get('/account/messages/{conversation}', [MessagesController::class, 'show'])->whereNumber('conversation');
-    Route::post('/account/messages/{conversation}/search', [MessagesController::class, 'searchHistory'])->whereNumber('conversation')->middleware('throttle:20,1,message-history-search');
     Route::post('/account/messages/{conversation}/sync', [MessagesController::class, 'sync'])->whereNumber('conversation')->middleware('throttle:30,1');
     Route::post('/account/messages/{conversation}', [MessagesController::class, 'reply'])->whereNumber('conversation')->middleware('throttle:25,1');
     Route::post('/account/messages/{conversation}/block', [MessagesController::class, 'block'])->whereNumber('conversation');

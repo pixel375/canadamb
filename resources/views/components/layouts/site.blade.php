@@ -1,4 +1,4 @@
-@props(['title' => null, 'description' => null, 'canonical' => null, 'preview' => false, 'location' => null, 'mainClass' => null, 'structuredData' => null])
+@props(['title' => null, 'description' => null, 'canonical' => null, 'preview' => false, 'location' => null, 'mainClass' => null, 'structuredData' => null, 'chat' => false])
 <!doctype html>
 <html lang="en-CA">
 <head>
@@ -48,7 +48,7 @@
         .search-results-navigation .inline-actions { gap: 8px; }
     </style>
 </head>
-<body @if(!$preview && auth()->user()?->hasVerifiedEmail()) data-activity-counts="/account/activity-counts" @endif>
+<body @if($chat) class="chat-page" @endif @if(!$preview && auth()->user()?->hasVerifiedEmail()) data-activity-counts="/account/activity-counts" @endif>
 <a class="skip-link" href="#main">Skip to content</a>
 <?php $isPreview = $preview ?? false; ?>
 <?php $marketEnabled = $networkSettings['modules']['marketplace'] ?? false; ?>
@@ -271,7 +271,7 @@
 </nav>
 @endunless
 <main id="main" tabindex="-1" @if($mainClass ?? null) class="{{ $mainClass }}" @endif>
-    @unless($isPreview)
+    @unless($isPreview || $chat)
         @if(!$site->isNetwork())
             <nav class="container community-breadcrumb" aria-label="Community location"><a class="text-link" href="{{ \App\Support\NetworkUrl::to(\App\Support\NetworkUrl::main(), '/') }}">Manitoba</a><span aria-hidden="true">›</span><span>{{ $site->location->name }}</span></nav>
         @elseif($browsePlace)
@@ -330,6 +330,7 @@
     @endunless
     {{ $slot }}
 </main>
+@unless($chat)
 <footer class="site-footer">
     <div class="container footer-inner">
         <div>
@@ -357,5 +358,6 @@
         </nav>
     </div>
 </footer>
+@endunless
 </body>
 </html>

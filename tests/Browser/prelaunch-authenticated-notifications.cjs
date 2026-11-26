@@ -570,19 +570,16 @@ const fs = require('node:fs');
             check(await page.locator('.message-thread').count() === 1, 'Multiword conversation search failed');
             await page.locator('.message-thread').click();
             check(await page.getByText('The oak bookshelf is still available.', { exact: true }).isVisible(), 'Conversation missing message');
-            if (width === 390) {
-                const conversationUrl = page.url();
-                await page.getByText('Search this conversation', { exact: true }).click();
-                const historySearch = page.locator('form[method="post"][action$="/search"]');
-                await historySearch.locator('input[name="q"]').fill('bookshelf');
-                await historySearch.getByRole('button', { name: 'Search history' }).click();
-                await page.waitForURL(url => url.searchParams.has('search'));
-                check(!page.url().includes('bookshelf'), 'Private history search leaked keywords into URL');
-                check(await page.locator('[data-chat-sync]').count() === 0, 'Private history search should not poll live');
-                check(await page.getByText('The oak bookshelf is still available.', { exact: true }).isVisible(), 'Private history search lost matching message');
-                await page.goto(conversationUrl);
-            }
-            await page.locator('[data-chat-jump]').click();
+            check(await page.getByText('Search this conversation', { exact: true }).count() === 0, 'Chat history search should be removed');
+            check(await page.locator('[data-chat-jump], .site-footer').count() === 0, 'Chat jump or footer remains');
+            check(await page.getByRole('link', { name: 'Back to messages' }).isVisible(), 'Compact chat back link missing');
+            check(await page.evaluate(() => {
+                const history = document.querySelector('[data-chat-history]');
+                const composer = document.querySelector('.chat-composer');
+                return history.clientHeight > 0 && getComputedStyle(history).overflowY === 'auto'
+                    && composer.getBoundingClientRect().bottom <= innerHeight + 2
+                    && document.documentElement.scrollHeight <= innerHeight + 2;
+            }), 'Chat composer or history does not fit at ' + width);
             await page.locator('textarea[name="body"]').fill('Thanks for confirming.');
             check((await page.locator('[data-character-feedback]').innerText()).includes('22 / 2000'), 'Chat character counter did not update');
             check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Conversation overflow at ' + width);

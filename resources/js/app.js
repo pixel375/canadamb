@@ -509,6 +509,16 @@ const updateActivityCounts = counts => {
     }
 };
 
+// Keep the composer above the mobile keyboard without scrolling the document.
+if (document.body.classList.contains('chat-page') && window.visualViewport) {
+    const fitChat = () => {
+        if (window.visualViewport.scale === 1) document.body.style.setProperty('--chat-viewport-height', window.visualViewport.height + 'px');
+        else document.body.style.removeProperty('--chat-viewport-height');
+    };
+    window.visualViewport.addEventListener('resize', fitChat);
+    fitChat();
+}
+
 // Incremental, same-origin conversation refresh. Do not replace the composer
 // or reload the page; only acknowledge messages after they are visible.
 const chatPanel = document.querySelector('[data-chat-sync]');
@@ -516,21 +526,21 @@ if (chatPanel) {
     const history = chatPanel.querySelector('[data-chat-history]');
     const status = chatPanel.querySelector('[data-chat-status]');
     const send = chatPanel.querySelector('[data-chat-send]');
-    const jump = chatPanel.querySelector('[data-chat-jump]');
-    const goLatest = () => history.lastElementChild?.scrollIntoView({ block: 'end' });
-    jump?.addEventListener('click', () => { goLatest(); jump.textContent = 'Jump to latest message'; });
+    const goLatest = () => { history.scrollTop = history.scrollHeight; };
+    goLatest();
     let cursor = Number(chatPanel.dataset.chatCursor);
     let pending = false;
     let stopped = false;
     let delay = 15000;
     let timer;
-    const defaultStatus = 'Messages refresh automatically while this conversation is open.';
+    const defaultStatus = '';
     const latestVisible = () => {
         if (document.hidden || !document.hasFocus()) return 0;
         const last = history.lastElementChild;
         if (!last) return 0;
         const rect = last.getBoundingClientRect();
-        return rect.bottom <= innerHeight && rect.bottom > 0 ? Number(last.dataset.messageId) : 0;
+        const viewport = history.getBoundingClientRect();
+        return rect.bottom <= viewport.bottom + 2 && rect.bottom > viewport.top ? Number(last.dataset.messageId) : 0;
     };
     const append = item => {
         if (item.id <= cursor) return;
@@ -596,12 +606,9 @@ if (chatPanel) {
             }
             if (!response.ok) throw new Error('Refresh failed');
             const data = await response.json();
-            const wasAtLatest = latestVisible() > 0;
+            const wasAtLatest = history.scrollHeight - history.scrollTop - history.clientHeight < 48;
             for (const item of data.messages) append(item);
-            if (data.messages.length && jump) {
-                if (wasAtLatest && !document.activeElement?.matches('textarea, input')) goLatest();
-                else jump.textContent = 'Jump to new messages';
-            }
+            if (data.messages.length && wasAtLatest) goLatest();
             updateActivityCounts(data.counts);
             if (send) send.disabled = Boolean(data.blocked);
             if (data.blocked) status.textContent = 'New messages are blocked for this conversation.';
