@@ -63,6 +63,10 @@ class ExtendedMessagingTest extends TestCase
         $versions = $threads->mapWithKeys(fn ($item) => [$item->id => $item->fresh()->archiveVersion($owner->id, (int) $item->messages()->max('id'))])->all();
         $this->post($batch, array_replace($selection, ['versions' => $versions, 'action' => 'restore']))->assertRedirect()->assertSessionHasNoErrors();
         $this->assertNull($thread->fresh()->seller_archived_at);
+        $versions = $threads->mapWithKeys(fn ($item) => [$item->id => $item->fresh()->archiveVersion($owner->id, (int) $item->messages()->max('id'))])->all();
+        $this->actingAs($member)->post($base.'/account/messages/'.$thread->id, ['body' => 'Arrived after selection'])->assertRedirect();
+        $this->actingAs($owner)->post($batch, array_replace($selection, ['versions' => $versions]))->assertSessionHasErrors('conversations');
+        $this->assertNull($thread->fresh()->seller_archived_at);
         $this->actingAs($member);
         $url = $base.'/account/messages/'.$thread->id;
         $this->get($url)->assertOk()->assertSee('Job question');

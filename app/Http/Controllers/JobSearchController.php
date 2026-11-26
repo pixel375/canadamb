@@ -16,10 +16,9 @@ class JobSearchController extends Controller
     public function index(Request $request)
     {
         $site = $request->attributes->get('site');
+        $cutoff = now()->startOfSecond()->timestamp;
         $items = $this->owned($request)->latest('id')->get();
         $counts = $items->mapWithKeys(fn (JobSearch $item) => [$item->id => $item->alerts ? JobSearches::newMatches($item, $site)->count() : 0]);
-
-        $cutoff = now()->startOfSecond()->timestamp;
 
         return view('jobs.searches', compact('items', 'counts', 'cutoff'));
     }
