@@ -304,12 +304,6 @@ class MarketplaceTest extends TestCase
         $this->get(self::MAIN.'/users/'.$seller->id.'?q=Rural')->assertOk()->assertSee('Rural public listing');
     }
 
-    private function listing(string $title): array
-    {
-        return ['title' => $title, 'description' => 'Includes the table and chairs.', 'category' => 'furniture',
-            'condition' => 'good', 'price' => '200.25'];
-    }
-
     public function test_expired_listing_renewal_after_review_is_seven_days_and_edits_do_not_extend_active_period(): void
     {
         $this->freezeSecond();
@@ -339,4 +333,9 @@ class MarketplaceTest extends TestCase
         $this->assertSame($expires, $item->fresh()->expires_at->timestamp);
     }
 
+    private function listing(string $title): array
+    {
+        return ['title' => $title, 'description' => 'Includes the table and chairs.', 'category' => 'furniture',
+            'condition' => 'good', 'price' => '200.25'];
+    }
 }

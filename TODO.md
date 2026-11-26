@@ -130,3 +130,5 @@ Owner feedback set 1: 2026-11-26. This file supersedes conflicting earlier roadm
 - F01 source foundation: global required markers beside label text, native missing-field error highlighting, unambiguous server field associations and dynamic required/disabled state. No server validation removed. Complex conditional/admin forms and real-device/no-JS fallback require separate manual acceptance before marking complete.
 
 - Staged Chromium regression 45849402835 reached archive menu and timed out on renamed action. Restored descriptive existing label `Archive and mark read` because archive acknowledges unread messages. Keep all staged feature QA intact; rerun exact CI.
+
+- Renewal backend CI 45849726010 stopped at Pint class attribute separation. Moved new regression before private listing fixture helper, removed trailing blank line. Chat backend CI 45849402762 passed. Latest release must pass all checks before promotion.
