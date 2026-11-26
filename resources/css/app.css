@@ -1897,3 +1897,9 @@ a.market-category-card:hover, a.market-category-card:focus-visible {
 .message-search input[type=search] { flex:1 1 220px; }
 .message-kind-filter { flex:1 1 125px; }
 @media(max-width:600px) { .message-search input[type=search] { flex:1 1 100%; } .message-kind-filter { max-width:none; } }
+
+/* Separate provincial browsing from dedicated community websites. */
+.community-selector { max-width: 36rem; margin-bottom: 1.5rem; }
+.community-breadcrumb { display: flex; gap: .5rem; align-items: center; font-size: .85rem; padding-block: .5rem; }
+.community-switch-banner { padding-block: .5rem; }
+.community-switch-banner a { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .65rem .85rem; border: 1px solid var(--border); border-radius: .6rem; font-size: .875rem; text-decoration: none; }

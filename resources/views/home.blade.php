@@ -15,26 +15,6 @@
 @endphp
 <x-layouts.site :preview="$preview ?? false" :location="$location" main-class="home-main">
     <div class="container">
-        @unless($preview ?? false)
-            @if($site->isNetwork())
-            <form class="location-bar" action="/" method="get">
-                <span class="location-icon"><x-icon name="map"/></span>
-                <div><label for="home-location">Explore by location</label><p>Browse listings, businesses, jobs and local activity in your part of Manitoba.</p></div>
-                <select id="home-location" name="location" aria-label="Browsing location">
-                    <option value="">All Manitoba</option>
-                    @foreach($locations as $placeOption)
-                        <option value="{{ $placeOption->slug }}" @selected($location?->id === $placeOption->id)>{{ $placeOption->name }}</option>
-                    @endforeach
-                </select>
-                <button class="button button-outline" type="submit">Browse once</button>
-            </form>
-            <div class="home-preference-actions">
-                <form method="post" action="/communities/preference">@csrf<input type="hidden" name="location" value="{{ $location?->slug }}"><button class="text-link" type="submit"><x-icon name="pin" size="16"/> {{ $location ? "Remember ".$location->name." on this browser" : "Use all Manitoba as my default" }}</button></form>
-                <a class="text-link" href="/communities">Find another community</a>
-            </div>
-            @endif
-        @endunless
-
         @php($businessesEnabled = app(\App\Support\BusinessDirectory::class)->enabled($site))
         @if($enabled || $businessesEnabled || ($homeModules['community'] ?? false) || ($homeModules['jobs'] ?? false) || $newsEnabled || $eventsEnabled)
             <section class="home-unified-search" aria-label="Search your community">

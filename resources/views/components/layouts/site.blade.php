@@ -180,14 +180,10 @@
                     </details>
                 @endif
                 @if(!($networkSettings['modules']['community'] ?? false) && ($networkSettings['modules']['events'] ?? false))<a href="{{ $browseLink('/events') }}"><x-icon name="calendar" size="17"/> Events</a>@endif
-                @if($site->isNetwork())<a href="/communities" @if(request()->is('communities')) aria-current="page" @endif><x-icon name="map" size="17"/> <span>Communities</span></a>@endif
+                <a href="/communities" @if(request()->is('communities')) aria-current="page" @endif><x-icon name="map" size="17"/> <span>Communities</span></a>
             </nav>
             @unless($isPreview)
-                @if($site->isNetwork())
-                    <a class="scope-link" href="/communities"><x-icon name="pin" size="17"/> <span>{{ $browsePlace?->name ?? 'All Manitoba' }}</span></a>
-                @else
-                    <a class="scope-link" href="{{ \App\Support\NetworkUrl::to(\App\Support\NetworkUrl::main()) }}"><x-icon name="pin" size="17"/> <span>CanadaMB network</span></a>
-                @endif
+                <a class="scope-link" href="/communities"><x-icon name="pin" size="17"/> <span>{{ $site->location?->name ?? $browsePlace?->name ?? 'All Manitoba' }}</span></a>
             @endunless
         </div>
     </div>
@@ -213,6 +209,7 @@
         </div>
     @endif
     <nav class="site-drawer-nav" aria-label="All site sections">
+        <a href="/communities"><x-icon name="pin" size="20"/> {{ $site->location?->name ?? $browsePlace?->name ?? 'All Manitoba' }}</a>
         <a href="{{ $browseLink('/') }}" aria-current="{{ request()->is('/') ? 'page' : 'false' }}"><x-icon name="home" size="20"/> Home</a>
         <a href="/account/messages" aria-current="{{ request()->is('account/messages*') ? 'page' : 'false' }}"><x-icon name="messages" size="20"/> Messages <x-nav-count :count="$navCounts['messages']" label="messages"/></a>
         <a href="/account/notifications" aria-current="{{ request()->is('account/notifications*', 'account/community-notifications*') ? 'page' : 'false' }}"><x-icon name="bell" size="20"/> Notifications <x-nav-count :count="$navCounts['notifications']" label="notifications"/></a>
@@ -241,11 +238,7 @@
         @endif
         @if(!($networkSettings['modules']['community'] ?? false) && ($networkSettings['modules']['events'] ?? false))<a href="{{ $browseLink('/events') }}"><x-icon name="calendar" size="20"/> Events</a>@endif
         <hr>
-        @if($site->isNetwork())
-            <a href="/communities"><x-icon name="map" size="20"/> Communities <small>{{ $browsePlace?->name ?? 'All Manitoba' }}</small></a>
-        @else
-            <a href="{{ \App\Support\NetworkUrl::to(\App\Support\NetworkUrl::main(), '/communities') }}"><x-icon name="map" size="20"/> Communities</a>
-        @endif
+        <a href="/communities"><x-icon name="map" size="20"/> Communities</a>
         @auth
             <a href="/account/profile"><x-icon name="person" size="20"/> My Profile</a>
             <a href="/account/settings"><x-icon name="settings" size="20"/> Settings</a>
@@ -278,6 +271,16 @@
 </nav>
 @endunless
 <main id="main" tabindex="-1" @if($mainClass ?? null) class="{{ $mainClass }}" @endif>
+    @unless($isPreview)
+        @if(!$site->isNetwork())
+            <nav class="container community-breadcrumb" aria-label="Community location"><a class="text-link" href="{{ \App\Support\NetworkUrl::to(\App\Support\NetworkUrl::main(), '/') }}">Manitoba</a><span aria-hidden="true">›</span><span>{{ $site->location->name }}</span></nav>
+        @elseif($browsePlace)
+            @php($dedicated = $browsePlace->site)
+            @if($dedicated?->status === 'active' && $dedicated->domain)
+                <div class="container community-switch-banner"><a href="{{ \App\Support\NetworkUrl::to($dedicated) }}">Visit {{ $dedicated->name }} — your CanadaMB account works there too. <x-icon name="arrow" size="16"/></a></div>
+            @endif
+        @endif
+    @endunless
     @if(session('status'))<div class="container"><p role="status" class="notice">{{ __(session('status')) }}</p></div>@endif
     @if($errors->any())
         <div class="container"><div class="notice notice-error" role="alert"><strong>Check the following details.</strong><ul>

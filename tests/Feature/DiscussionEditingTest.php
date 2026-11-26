@@ -39,9 +39,9 @@ class DiscussionEditingTest extends TestCase
         $this->put($base, ['body' => 'Unauthorized change.', 'version' => $version])->assertNotFound();
         $this->actingAs($owner)->get($public)->assertSee('Edit my reply')->assertDontSee('Link to this reply');
         $this->get($base.'/edit?from=discussion&page=2')->assertOk()
-            ->assertSee('href="/community/'.$thread->id.'?page=2#replies"', false);
+            ->assertSee('href="/community/'.$thread->id.'?page=2#discussion-replies"', false);
         $this->put($base, ['body' => 'Original reply text.', 'version' => $version, 'from' => 'discussion', 'page' => 2])
-            ->assertRedirect('/community/'.$thread->id.'?page=2#replies');
+            ->assertRedirect('/community/'.$thread->id.'?page=2#discussion-replies');
         $this->put($base, ['body' => 'Original reply text.', 'version' => $version, 'from' => 'https://example.test'])->assertSessionHasErrors('from');
         $this->get($base.'/edit')->assertOk()->assertSee('Original reply text.');
         $this->put($base, ['body' => 'Original reply text.', 'version' => $version])->assertRedirect()->assertSessionHasNoErrors();

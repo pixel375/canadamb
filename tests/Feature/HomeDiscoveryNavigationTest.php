@@ -41,7 +41,9 @@ class HomeDiscoveryNavigationTest extends TestCase
             ->assertSee('https://virdenmb.ca')->assertSee('VirdenMB')->assertDontSee('wpgmb.ca')->assertDontSee('Winnipeg draft portal')
             ->assertSee('href="/marketplace?view=all&amp;location=virden"', false);
         $this->get('https://canadamb.ca/communities?portal=dedicated')->assertOk()->assertSee('Visit VirdenMB')->assertSee('Visit BrandonMB')->assertDontSee('wpgmb.ca');
-        $this->get('https://canadamb.ca/communities?portal=network&q=Virden')->assertOk()->assertSee('No matching locations.');
+        $this->get('https://canadamb.ca/communities')->assertOk()->assertSee('Set location')->assertDontSee('Find a community');
+        $this->get('https://brandonmb.ca/communities')->assertOk()->assertSee('You are browsing BrandonMB')
+            ->assertSee('Visit VirdenMB')->assertDontSee('Visit BrandonMB')->assertDontSee('Set location')->assertDontSee('wpgmb.ca');
         $this->getJson('https://canadamb.ca/api/v1/locations?portal=dedicated')->assertOk()->assertJsonFragment(['slug' => 'virden'])->assertJsonMissing(['slug' => 'winnipeg']);
         $this->get('https://canadamb.ca/marketplace?location=virden')->assertOk()->assertSee('href="/marketplace/new?location=virden"', false);
     }
@@ -56,7 +58,8 @@ class HomeDiscoveryNavigationTest extends TestCase
             ->assertSee('href="/community"', false)
             ->assertSee('href="/events"', false)
             ->assertSee('href="/jobs"', false)
-            ->assertDontSee('href="/communities"', false);
+            ->assertSee('href="/communities"', false)->assertSee('aria-label="Community location"', false)
+            ->assertDontSee('CanadaMB network</span>', false);
     }
 
     public function test_empty_homepage_still_shows_all_enabled_community_sections_and_real_actions(): void
@@ -145,6 +148,8 @@ class HomeDiscoveryNavigationTest extends TestCase
         $this->get('https://canadamb.ca/?location=brandon')
             ->assertOk()
             ->assertSee('Search Brandon')
+            ->assertSee('Visit BrandonMB — your CanadaMB account works there too.')
+            ->assertDontSee('Explore by location')->assertDontSee('Browse once')
             ->assertSee('aria-label="Search your community"', false)
             ->assertSee('data-home-search-section="marketplace" action="/marketplace" method="get"', false)
             ->assertSee('data-home-search-section="businesses" action="/businesses" method="get"', false)
@@ -172,7 +177,7 @@ class HomeDiscoveryNavigationTest extends TestCase
         $this->get('https://canadamb.ca/?location=')->assertOk()->assertSee('Explore Manitoba');
         $this->get('https://canadamb.ca/?location=winnipeg')->assertOk()->assertSee('Explore Winnipeg');
         $this->get('https://canadamb.ca/communities?q=Brandon')->assertOk()
-            ->assertSee('Your preferred community: Brandon');
+            ->assertSee('value="brandon" selected', false)->assertSee('Set location');
         $this->get('https://canadamb.ca/marketplace')->assertOk();
 
         $this->withCookie('canadamb_community', 'winnipeg')
@@ -206,7 +211,7 @@ class HomeDiscoveryNavigationTest extends TestCase
         $this->getJson('https://canadamb.ca/api/v1/locations?q=%25')->assertOk()->assertJsonCount(0, 'data');
         $this->getJson('https://canadamb.ca/api/v1/locations?q=_')->assertOk()->assertJsonCount(0, 'data');
         $this->getJson('https://canadamb.ca/api/v1/locations?q=brandon%20notarealplace')->assertOk()->assertJsonCount(0, 'data');
-        $this->get('https://canadamb.ca/communities?q=brandon')->assertOk()->assertSee('Reset filters')->assertSee('found');
+        $this->get('https://canadamb.ca/communities?q=brandon')->assertOk()->assertSee('Browse CanadaMB by location')->assertDontSee('Find a community');
     }
 
     public function test_category_discovery_search_is_real_submission_not_a_dummy_button(): void

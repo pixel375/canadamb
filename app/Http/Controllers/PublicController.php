@@ -84,7 +84,17 @@ class PublicController extends Controller
 
     public function communities(Request $request)
     {
-        abort_unless($request->attributes->get('site')->isNetwork(), 404);
+        $site = $request->attributes->get('site');
+        if (! $request->is('api/*')) {
+            $portals = Site::with(['domain', 'location'])->where('status', 'active')->whereNotNull('location_id')
+                ->whereHas('domain')->whereHas('location', fn ($query) => $query->selectable())
+                ->whereKeyNot($site->id)->orderBy('name')->orderBy('id')->get();
+            $choices = $site->isNetwork() ? Location::selectable()->orderBy('name')->orderBy('id')->get() : collect();
+            $preferredCommunity = LocationScope::preferred($site, $request->cookie(LocationScope::PREFERENCE_COOKIE));
+
+            return view('communities', compact('site', 'portals', 'choices', 'preferredCommunity'));
+        }
+        abort_unless($site->isNetwork(), 404);
         $filters = $request->validate(['q' => 'nullable|string|max:100', 'type' => 'nullable|string|max:40',
             'portal' => 'nullable|in:dedicated,network']);
         $locations = Location::selectable()->with('site.domain');
@@ -106,20 +116,15 @@ class PublicController extends Controller
             ]), 'meta' => ['page' => $locations->currentPage(), 'last_page' => $locations->lastPage(), 'total' => $locations->total()]]);
         }
 
-        $types = Location::selectable()->select('type')->distinct()->orderBy('type')->pluck('type');
-
-        $preferredCommunity = LocationScope::preferred($request->attributes->get('site'), $request->cookie(LocationScope::PREFERENCE_COOKIE));
-
-        return view('communities', compact('locations', 'filters', 'types', 'preferredCommunity'));
+        abort(404);
     }
 
     public function sitemap(Request $request, Marketplace $marketplace, BusinessDirectory $businesses, News $news)
     {
         $site = $request->attributes->get('site');
         $urls = [NetworkUrl::to($site)];
-        if ($site->isNetwork()) {
-            $urls[] = NetworkUrl::to($site, '/communities');
-        }
+        $urls[] = NetworkUrl::to($site, '/communities');
+        $urls[] = NetworkUrl::to($site, '/faq');
         if ($marketplace->enabled($site)) {
             $overridable = in_array('marketplace', app(NetworkSettings::class)->published()['permitted_module_overrides'], true);
             $listings = $marketplace->visible($site)->where(function ($query) use ($site, $overridable) {
