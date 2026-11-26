@@ -41,6 +41,9 @@ class BusinessAccessTest extends TestCase
         DB::table('business_access_requests')->where('id', $id)->update(['expires_at' => now()->subMinute()]);
         $response = ['action' => 'accept', 'current_password' => 'password'];
         $this->actingAs($recipient)->get($base)->assertSee('Expired');
+        $this->get($base.'?direction=received&status=expired&reference='.$id)->assertOk()->assertSee('Expiry Test');
+        $this->get($base.'?direction=sent&status=expired')->assertOk()->assertDontSee('Expiry Test');
+        $this->get($base.'?status=open')->assertOk()->assertDontSee('Expiry Test');
         $this->post($base.'/'.$id.'/respond', $response)->assertConflict();
         $this->actingAs($owner)->post($create, $data)->assertRedirect()->assertSessionHasNoErrors();
         $second = DB::table('business_access_requests')->max('id');

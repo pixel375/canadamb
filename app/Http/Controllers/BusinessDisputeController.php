@@ -15,10 +15,13 @@ class BusinessDisputeController extends Controller
     public function index(Request $request)
     {
         abort_unless(BusinessDisputes::enabled(), 404);
+        $filters = $request->validate(['status' => 'nullable|in:pending,escalated,closed,withdrawn', 'reference' => 'nullable|integer|min:1']);
         $items = $this->records()->where('claimant_id', $request->user()->id)
-            ->latest('business_disputes.id')->paginate(20);
+            ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('business_disputes.status', $status))
+            ->when($filters['reference'] ?? null, fn ($query, $reference) => $query->where('business_disputes.id', $reference))
+            ->latest('business_disputes.id')->paginate(20)->withQueryString();
 
-        return view('business.disputes', compact('items'));
+        return view('business.disputes', compact('items', 'filters'));
     }
 
     public function create(Request $request, string $slug)

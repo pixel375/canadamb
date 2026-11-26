@@ -19,10 +19,23 @@ class BusinessAccessController extends Controller
     {
         abort_unless(BusinessAccess::enabled(), 404);
         $id = $request->user()->id;
+        $filters = $request->validate(['direction' => 'nullable|in:sent,received', 'status' => 'nullable|in:open,expired,completed,declined,rejected,cancelled',
+            'kind' => 'nullable|in:editor,manager,transfer', 'reference' => 'nullable|integer|min:1']);
+        $now = now()->toDateTimeString();
         $items = $this->records()->where(fn ($query) => $query->where('requester_id', $id)->orWhere('recipient_id', $id))
-            ->latest('business_access_requests.id')->paginate(20);
+            ->when(($filters['direction'] ?? null) === 'sent', fn ($query) => $query->where('requester_id', $id))
+            ->when(($filters['direction'] ?? null) === 'received', fn ($query) => $query->where('recipient_id', $id))
+            ->when($filters['kind'] ?? null, fn ($query, $kind) => $query->where('kind', $kind))
+            ->when($filters['reference'] ?? null, fn ($query, $reference) => $query->where('business_access_requests.id', $reference));
+        match ($filters['status'] ?? null) {
+            'open' => $items->whereIn('business_access_requests.status', ['pending', 'accepted'])->where('expires_at', '>', $now),
+            'expired' => $items->whereIn('business_access_requests.status', ['pending', 'accepted'])->where('expires_at', '<=', $now),
+            'completed', 'declined', 'rejected', 'cancelled' => $items->where('business_access_requests.status', $filters['status']),
+            default => null,
+        };
+        $items = $items->latest('business_access_requests.id')->paginate(20)->withQueryString();
 
-        return view('business.access', compact('items'));
+        return view('business.access', compact('items', 'filters'));
     }
 
     public function store(Request $request, int $business)

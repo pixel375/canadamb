@@ -1,6 +1,16 @@
 <x-layouts.site title="Business access requests">
     <div class="container page-shell listing-editor">
         <div class="page-intro"><div><a class="text-link" href="/account/businesses">My businesses</a><h1>Invitations and ownership transfers</h1><p>Accept only requests you recognize. No access is granted by an invitation alone.</p></div></div>
+        <form method="get" action="/account/business-access" class="panel form-stack mb-4">
+            <div class="form-grid">
+                <label>Direction<select name="direction"><option value="">Sent and received</option>@foreach(['sent','received'] as $direction)<option value="{{ $direction }}" @selected(($filters['direction'] ?? '') === $direction)>{{ ucfirst($direction) }}</option>@endforeach</select></label>
+                <label>Status<select name="status"><option value="">All statuses</option>@foreach(['open','expired','completed','declined','rejected','cancelled'] as $status)<option value="{{ $status }}" @selected(($filters['status'] ?? '') === $status)>{{ ucfirst($status) }}</option>@endforeach</select></label>
+                <label>Request type<select name="kind"><option value="">All types</option>@foreach(['editor','manager','transfer'] as $kind)<option value="{{ $kind }}" @selected(($filters['kind'] ?? '') === $kind)>{{ ucfirst($kind) }}</option>@endforeach</select></label>
+                <label>Request reference<input name="reference" type="number" min="1" value="{{ $filters['reference'] ?? '' }}"></label>
+            </div>
+            <div class="inline-actions"><button class="button button-primary">Filter requests</button><a class="button button-outline" href="/account/business-access">Reset</a></div>
+        </form>
+        <p class="field-note">{{ $items->total() }} matching access requests</p>
         <section class="panel form-stack">@forelse($items as $item)
             @php($expired = in_array($item->status, ['pending','accepted'], true) && $item->expires_at <= now()->toDateTimeString())
             <article class="admin-review-card form-stack"><h2>{{ $item->business_name }}</h2><p>{{ ucfirst($item->kind) }} · {{ $expired ? 'Expired' : ucfirst($item->status) }} · {{ (int) $item->recipient_id === auth()->id() ? 'Received' : 'Sent' }}</p>
@@ -15,6 +25,6 @@
                 @endif
                 @if(!$expired && in_array($item->status, ['pending','accepted'], true))<form method="post" action="/account/business-access/{{ $item->id }}/cancel">@csrf<button class="button button-outline">Cancel request</button></form>@endif
             </article>
-        @empty<p>No access requests yet.</p>@endforelse{{ $items->links() }}</section>
+        @empty<p>{{ array_filter($filters) ? 'No access requests match these filters.' : 'No access requests yet.' }}</p>@endforelse{{ $items->links() }}</section>
     </div>
 </x-layouts.site>
