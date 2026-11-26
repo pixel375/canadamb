@@ -4,7 +4,7 @@ namespace App\Support;
 
 final class Themes
 {
-    public const LABELS = ['blue' => 'Classic Blue', 'purple' => 'Clean Purple', 'teal' => 'Modern Teal', 'slate' => 'Neutral Slate', 'custom' => 'Custom'];
+    public const LABELS = ['blue' => 'Classic Blue', 'purple' => 'Clean Purple', 'teal' => 'Modern Teal', 'slate' => 'Neutral Slate', 'forest' => 'Prairie Forest', 'amber' => 'Warm Amber', 'rose' => 'Soft Rose', 'custom' => 'Custom'];
 
     public const TOKENS = [
         'primary' => 'Primary', 'secondary' => 'Secondary', 'accent' => 'Accent', 'link' => 'Link',
@@ -18,6 +18,9 @@ final class Themes
             'purple' => ['#7C3AED', '#C4B5FD', '#F3EBFF', '#302543'],
             'teal' => ['#0F766E', '#5EEAD4', '#DCF7F1', '#143630'],
             'slate' => ['#475569', '#CBD5E1', '#EAF0F5', '#293447'],
+            'forest' => ['#166534', '#86EFAC', '#E2F6E9', '#18392A'],
+            'amber' => ['#92400E', '#FCD34D', '#FFF2D6', '#44321A'],
+            'rose' => ['#9F1239', '#FDA4AF', '#FCE7EB', '#472637'],
             default => ['#1169C3', '#75BFFF', '#E8F3FF', '#1B344E'],
         };
         [$light, $dark, $wash, $darkWash] = $colors;

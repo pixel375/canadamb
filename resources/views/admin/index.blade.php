@@ -9,6 +9,15 @@
             <div class="panel"><strong>{{ number_format($value) }}</strong><small>{{ $label }}</small></div>
         @endforeach
     </div>
+    @can('manage-theme')
+        <section class="admin-overview-section"><div class="section-heading"><div><p class="section-label">Configure the network</p><h2>Settings &amp; experience</h2><p class="field-note">Edit configuration drafts and review before publishing.</p></div></div>
+            <div class="admin-settings-grid">
+                @foreach([['/admin/settings','Global settings','Modules, installation and registration','settings'],['/admin/theme','Theme & appearance','Light and dark palettes, previews and rollback','moon'],['/admin/local-context','Local time & weather','Clock format and weather credentials','clock'],['/admin/publication-policy','Moderation policy','Manual review or optional auto approval','shield']] as [$href,$label,$description,$icon])
+                    <a class="panel admin-settings-card" href="{{ $href }}"><x-icon :name="$icon" size="22"/><h3>{{ $label }}</h3><p>{{ $description }}</p></a>
+                @endforeach
+            </div>
+        </section>
+    @endcan
     <section class="admin-overview-section"><div class="section-heading"><div><p class="section-label">Review workload</p><h2>Moderation queues</h2><p class="field-note">Counts reflect your review permissions and exclude conflicting business and Marketplace records.</p></div><span class="discussion-count">{{ number_format(collect($queues)->sum('count')) }} pending actions</span></div>
         <div class="admin-queue-grid">
             @foreach($queues as $queue)

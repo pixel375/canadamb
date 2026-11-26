@@ -12,9 +12,27 @@ class SettingsController extends Controller
     {
         $state = $settings->state();
 
+        $published = $settings->revision($state->published_id);
+        $draft = $settings->revision($state->draft_id ?? $state->published_id);
+        $sections = [
+            'Theme and appearance' => ['preset', 'palette'], 'Module availability' => ['modules', 'permitted_module_overrides'],
+            'App installation and registration' => ['pwa_install_enabled', 'prelaunch_test_registration_enabled'],
+            'Moderation policy' => ['publication_policy'], 'Local clock and weather' => ['local_clock_enabled', 'clock_format', 'weather_enabled', 'weather_key_encrypted'],
+            'Commercial planning' => ['commercial'],
+        ];
+        $changes = [];
+        foreach ($sections as $label => $keys) {
+            foreach ($keys as $key) {
+                if (($published[$key] ?? null) !== ($draft[$key] ?? null)) {
+                    $changes[] = $label;
+                    break;
+                }
+            }
+        }
+
         return view('admin.settings', [
             'state' => $state,
-            'settings' => $settings->revision($state->draft_id ?? $state->published_id),
+            'settings' => $draft, 'changes' => $changes,
             'modules' => NetworkSettings::OPERATIONAL_MODULES,
         ]);
     }
