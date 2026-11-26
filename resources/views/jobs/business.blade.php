@@ -37,6 +37,16 @@
                 </form>
             </details>
         @endif
+        @if($items->contains(fn ($item) => $item->branch->isOpen() && in_array($item->status, ['pending', 'approved', 'expired'], true)))
+            <details class="panel form-stack mb-4"><summary>Extend selected closing dates</summary>
+                <form id="job-batch-extend" method="post" action="/account/businesses/{{ $employer->id }}/jobs/extend-selected" class="form-stack mt-3">@csrf
+                    <p class="field-note">Select up to ten eligible postings. The new closing date must be later than every selected deadline. Changed postings require review before publication.</p>
+                    <label>New closing date<input type="date" name="new_closing_on" required min="{{ today('America/Winnipeg')->toDateString() }}" max="{{ today('America/Winnipeg')->addYear()->toDateString() }}"></label>
+                    <label class="checkbox-line"><input type="checkbox" name="confirm_extend" value="1" required> Confirm deadline changes</label>
+                    <button class="button button-outline">Extend selected deadlines</button>
+                </form>
+            </details>
+        @endif
         <section class="seller-listing-grid" aria-label="Your job postings">
             @forelse($items as $item)
                 <article class="panel seller-listing-card">
@@ -60,6 +70,10 @@
                         @if($item->branch->isOpen() && in_array($item->status, ['pending', 'approved', 'rejected', 'expired'], true))<a class="button button-outline" href="/account/businesses/{{ $employer->id }}/jobs/{{ $item->id }}/edit">Edit</a>@endif
                         @if($openBranches->isNotEmpty())<a class="button button-outline" href="/account/businesses/{{ $employer->id }}/jobs/{{ $item->id }}/duplicate">Reuse posting</a>@endif
                     </div>
+                    @if($item->branch->isOpen() && in_array($item->status, ['pending', 'approved', 'expired'], true))
+                        <label class="checkbox-line"><input form="job-batch-extend" type="checkbox" name="jobs[]" value="{{ $item->id }}"> Select to extend deadline</label>
+                        <input form="job-batch-extend" type="hidden" name="versions[{{ $item->id }}]" value="{{ $item->reviewVersion() }}">
+                    @endif
                     @if(in_array($item->status, ['pending', 'approved'], true))
                         <label class="checkbox-line"><input form="job-batch-withdraw" type="checkbox" name="jobs[]" value="{{ $item->id }}"> Select for withdrawal</label>
                         <input form="job-batch-withdraw" type="hidden" name="versions[{{ $item->id }}]" value="{{ $item->reviewVersion() }}">

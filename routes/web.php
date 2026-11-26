@@ -114,6 +114,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/account/properties/{property}/submit', [PropertyDraftController::class, 'submit'])->whereNumber('property')->middleware('throttle:6,1');
     Route::get('/account/properties/{property}/media/{photo}', [PropertyDraftController::class, 'media'])->whereNumber(['property', 'photo']);
     Route::get('/account/businesses/{business}/jobs', [JobController::class, 'business'])->whereNumber('business');
+    Route::post('/account/businesses/{business}/jobs/extend-selected', [JobController::class, 'extendSelected'])->whereNumber('business')->middleware('throttle:5,1,job-batch-extend');
     Route::post('/account/businesses/{business}/jobs/withdraw-selected', [JobController::class, 'withdrawSelected'])->whereNumber('business')->middleware('throttle:5,1,job-batch');
     Route::post('/account/businesses/{business}/jobs', [JobController::class, 'store'])->whereNumber('business')->middleware('throttle:6,1,job-submit');
     Route::get('/account/businesses/{business}/jobs/{job}/duplicate', [JobController::class, 'duplicate'])->whereNumber(['business', 'job']);

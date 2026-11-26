@@ -74,6 +74,40 @@ class JobPostingTest extends TestCase
         $this->get('https://canadamb.ca/admin/jobs?status=withdrawn&location='.$items[2]->branch->location_id)->assertOk()->assertDontSee('Batch job 0');
     }
 
+    public function test_selected_deadlines_extend_atomically_and_return_to_independent_review(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $business = Business::create(['name' => 'Deadline employer', 'slug' => 'deadline-employer', 'category' => 'retail', 'status' => 'active']);
+        $business->members()->attach($owner->id, ['role' => 'owner']);
+        $branch = $business->locations()->create(['location_id' => Location::where('slug', 'brandon')->sole()->id, 'address' => '1 Deadline Road']);
+        $items = collect();
+        foreach (['approved', 'expired'] as $status) {
+            $job = JobPosting::create(['business_location_id' => $branch->id, 'title' => 'Deadline '.$status,
+                'description' => 'A local employment opportunity.', 'employment_type' => 'full-time', 'workplace' => 'on-site',
+                'apply_url' => 'https://example.test/apply', 'closing_on' => today('America/Winnipeg')->addWeek()->toDateString()]);
+            $job->forceFill(['status' => $status, 'published_at' => now()->subDay()])->save();
+            $items->push($job->fresh());
+        }
+        $base = 'https://brandonmb.ca/account/businesses/'.$business->id.'/jobs';
+        $url = $base.'/extend-selected';
+        $versions = $items->mapWithKeys(fn ($job) => [$job->id => $job->reviewVersion()])->all();
+        $input = ['jobs' => $items->pluck('id')->all(), 'versions' => $versions, 'confirm_extend' => '1', 'new_closing_on' => today('America/Winnipeg')->addMonth()->toDateString()];
+        $this->actingAs($other)->post($url, $input)->assertNotFound();
+        $this->actingAs($owner)->get($base)->assertOk()->assertSee('Extend selected closing dates');
+        $this->post($url, array_replace($input, ['new_closing_on' => today('America/Winnipeg')->toDateString()]))->assertSessionHasErrors('new_closing_on');
+        $this->post($url, array_replace($input, ['versions' => array_replace($versions, [$items[1]->id => str_repeat('0', 64)])]))->assertSessionHasErrors('jobs');
+        $this->assertSame('approved', $items[0]->fresh()->status);
+        $this->post($url, $input)->assertRedirect()->assertSessionHasNoErrors();
+        foreach ($items as $job) {
+            $this->assertSame('pending', $job->fresh()->status);
+            $this->assertSame($input['new_closing_on'], $job->fresh()->closing_on->toDateString());
+        }
+        $this->assertNotNull($items[0]->fresh()->published_at);
+        $this->assertNull($items[1]->fresh()->published_at);
+        $this->get('https://brandonmb.ca/jobs/'.$items[0]->id)->assertNotFound();
+    }
+
     public function test_business_jobs_are_authorized_moderated_scoped_and_expired(): void
     {
         $owner = User::factory()->create();

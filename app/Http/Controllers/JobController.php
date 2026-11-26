@@ -171,6 +171,51 @@ class JobController extends Controller
         return redirect('/account/businesses/'.$business.'/jobs')->with('status', 'Job withdrawn.');
     }
 
+    public function extendSelected(Request $request, int $business)
+    {
+        $site = $request->attributes->get('site');
+        abort_unless($this->jobs->enabled($site), 404);
+        $this->managedBusiness($request, $business);
+        $today = $this->jobs->closingToday();
+        $data = $request->validate([
+            'jobs' => 'required|array|list|min:1|max:10', 'jobs.*' => 'required|integer|distinct|min:1',
+            'versions' => 'required|array|max:12', 'versions.*' => 'required|string|size:64',
+            'new_closing_on' => 'required|date_format:Y-m-d|after_or_equal:'.$today.'|before_or_equal:'.today('America/Winnipeg')->addYear()->toDateString(),
+            'confirm_extend' => 'accepted',
+        ]);
+        DB::transaction(function () use ($request, $business, $site, $data, $today) {
+            Business::lockForUpdate()->findOrFail($business);
+            $this->managedBusiness($request, $business);
+            $items = $this->jobs->scope($site->location_id)->whereHas('branch', fn ($branch) => $branch->where('business_id', $business))
+                ->whereIn('id', $data['jobs'])->orderBy('id')->lockForUpdate()->get();
+            abort_unless($items->count() === count($data['jobs']), 404);
+            foreach ($items as $item) {
+                if (! $item->branch->isOpen() || ! in_array($item->status, ['pending', 'approved', 'expired'], true)
+                    || ! isset($data['versions'][$item->id]) || ! hash_equals($item->reviewVersion(), $data['versions'][$item->id])) {
+                    throw ValidationException::withMessages(['jobs' => 'A selected job changed or cannot be extended. No postings changed.']);
+                }
+                if ($data['new_closing_on'] <= $item->closing_on->toDateString()) {
+                    throw ValidationException::withMessages(['new_closing_on' => 'Choose a date later than every selected posting’s current closing date.']);
+                }
+            }
+            foreach ($items as $item) {
+                if (JobPosting::where('business_location_id', $item->business_location_id)->whereKeyNot($item->id)
+                    ->where('title', $item->title)->where('employment_type', $item->employment_type)
+                    ->where('workplace', $item->workplace)->where('apply_url', $item->apply_url)
+                    ->whereIn('status', ['pending', 'approved'])->where('closing_on', '>=', $today)->exists()) {
+                    throw ValidationException::withMessages(['jobs' => 'A matching open or pending posting already exists. No postings changed.']);
+                }
+                if ($item->status === 'expired' || $item->closing_on->toDateString() < $today) {
+                    $item->published_at = null;
+                }
+                $item->forceFill(['closing_on' => $data['new_closing_on'], 'status' => 'pending'])->save();
+                Audit::record('jobs.revised', $request->user()->id, context: ['job' => $item->id]);
+            }
+        }, attempts: 3);
+
+        return redirect('/account/businesses/'.$business.'/jobs')->with('status', count($data['jobs']).' job posting deadlines extended for review.');
+    }
+
     public function withdrawSelected(Request $request, int $business)
     {
         $site = $request->attributes->get('site');
