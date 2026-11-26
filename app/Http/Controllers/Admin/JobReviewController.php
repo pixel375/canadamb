@@ -11,6 +11,7 @@ use App\Support\JobBoard;
 use App\Support\KeywordSearch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class JobReviewController extends Controller
 {
@@ -28,6 +29,53 @@ class JobReviewController extends Controller
         $places = Location::selectable()->orderBy('name')->get(['id', 'name']);
 
         return view('admin.jobs', compact('items', 'filters', 'counts', 'places'));
+    }
+
+    public function updateSelected(Request $request, JobBoard $board)
+    {
+        $data = $request->validate([
+            'action' => 'required|in:approve,reject',
+            'reason' => 'required_if:action,reject|nullable|string|max:300',
+            'jobs' => 'required|array|list|min:1|max:10',
+            'jobs.*' => 'required|integer|distinct|min:1',
+            'versions' => 'required|array|max:20',
+            'versions.*' => 'required|string|size:64|alpha_num',
+            'confirm_review' => 'accepted',
+        ]);
+        $reviewer = $request->user()->id;
+        DB::transaction(function () use ($data, $board, $reviewer) {
+            $initial = JobPosting::with('branch')->whereIn('id', $data['jobs'])->get();
+            abort_unless($initial->count() === count($data['jobs']), 404);
+            $businessIds = $initial->map(fn ($job) => $job->branch->business_id)->unique()->sort()->values();
+            $businesses = Business::whereIn('id', $businessIds)->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+            abort_unless($businesses->count() === $businessIds->count(), 409);
+            $items = JobPosting::with('branch')->whereIn('id', $data['jobs'])->orderBy('id')->lockForUpdate()->get();
+            abort_unless($items->count() === count($data['jobs']), 404);
+            foreach ($items as $item) {
+                $business = $businesses->get($item->branch->business_id);
+                if (! $business || ! isset($data['versions'][$item->id]) || ! hash_equals($item->reviewVersion(), $data['versions'][$item->id])) {
+                    throw ValidationException::withMessages(['jobs' => 'A selected posting changed. No review actions were saved.']);
+                }
+                abort_if($item->author_id === $reviewer || $business->members()->whereKey($reviewer)->exists(), 403);
+                $eligible = $data['action'] === 'approve'
+                    ? $item->status === 'pending' && $item->branch->isOpen() && $business->status === 'active'
+                        && $item->closing_on->toDateString() >= $board->closingToday()
+                    : in_array($item->status, ['pending', 'approved'], true);
+                if (! $eligible) {
+                    throw ValidationException::withMessages(['jobs' => 'A selected posting is ineligible for this action. No review actions were saved.']);
+                }
+            }
+            foreach ($items as $item) {
+                if ($data['action'] === 'approve') {
+                    $item->forceFill(['status' => 'approved', 'published_at' => $item->published_at ?? now()])->save();
+                } else {
+                    $item->forceFill(['status' => 'rejected'])->save();
+                }
+                Audit::record('jobs.'.$data['action'], $reviewer, context: ['job' => $item->id, 'reason' => $data['reason'] ?? null, 'batch' => true]);
+            }
+        }, attempts: 3);
+
+        return redirect('/admin/jobs')->with('status', count($data['jobs']).' selected job postings moderated.');
     }
 
     public function update(Request $request, int $job, JobBoard $board)

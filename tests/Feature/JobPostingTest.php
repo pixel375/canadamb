@@ -108,6 +108,44 @@ class JobPostingTest extends TestCase
         $this->get('https://brandonmb.ca/jobs/'.$items[0]->id)->assertNotFound();
     }
 
+    public function test_selected_job_review_rejects_conflicts_stale_versions_and_ineligible_postings(): void
+    {
+        $owner = User::factory()->create();
+        $reviewer = User::factory()->create(['role' => 'network_admin']);
+        $business = Business::create(['name' => 'Review employer', 'slug' => 'review-employer', 'category' => 'retail', 'status' => 'active']);
+        $business->members()->attach($owner->id, ['role' => 'owner']);
+        $branch = $business->locations()->create(['location_id' => Location::where('slug', 'brandon')->sole()->id, 'address' => '1 Review Road']);
+        $items = collect();
+        foreach ([$owner, $owner, $reviewer] as $index => $author) {
+            $items->push(JobPosting::create(['business_location_id' => $branch->id, 'author_id' => $author->id,
+                'title' => 'Job review fixture '.$index, 'description' => 'A local job posting.',
+                'employment_type' => 'full-time', 'workplace' => 'on-site', 'apply_url' => 'https://example.test/careers',
+                'closing_on' => today('America/Winnipeg')->addWeek()->toDateString()])->fresh());
+        }
+        $versions = $items->mapWithKeys(fn ($job) => [$job->id => $job->reviewVersion()])->all();
+        $url = 'https://canadamb.ca/admin/jobs/selected';
+        $input = ['action' => 'approve', 'jobs' => [$items[0]->id, $items[1]->id], 'versions' => $versions, 'confirm_review' => '1'];
+        $this->actingAs($owner)->post($url, $input)->assertForbidden();
+        $this->actingAs($reviewer)->get('https://canadamb.ca/admin/jobs')->assertOk()->assertSee('Review selected job postings');
+        $this->post($url, array_replace($input, ['jobs' => [$items[0]->id, $items[2]->id]]))->assertForbidden();
+        $this->post($url, array_replace($input, ['versions' => array_replace($versions, [$items[1]->id => str_repeat('0', 64)])]))->assertSessionHasErrors('jobs');
+        $business->members()->attach($reviewer->id, ['role' => 'editor']);
+        $this->post($url, $input)->assertForbidden();
+        $business->members()->detach($reviewer->id);
+        $items[1]->update(['closing_on' => today('America/Winnipeg')->subDay()->toDateString()]);
+        $versions[$items[1]->id] = $items[1]->fresh()->reviewVersion();
+        $this->post($url, array_replace($input, ['versions' => $versions]))->assertSessionHasErrors('jobs');
+        $this->assertSame('pending', $items[0]->fresh()->status);
+        $items[1]->update(['closing_on' => today('America/Winnipeg')->addWeek()->toDateString()]);
+        $versions[$items[1]->id] = $items[1]->fresh()->reviewVersion();
+        $this->post($url, array_replace($input, ['versions' => $versions]))->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame('approved', $items[0]->fresh()->status);
+        $this->assertSame('approved', $items[1]->fresh()->status);
+        $this->assertSame('pending', $items[2]->fresh()->status);
+        $this->assertNotNull($items[0]->fresh()->published_at);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'jobs.approve', 'actor_id' => $reviewer->id]);
+    }
+
     public function test_business_jobs_are_authorized_moderated_scoped_and_expired(): void
     {
         $owner = User::factory()->create();

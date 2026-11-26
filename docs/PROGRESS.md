@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-26 — selected independent job moderation
+
+Added bounded selected approval/rejection for up to ten job postings with explicit review confirmation, per-posting version checks, deterministic business and posting locks, current employer/branch/closing-date eligibility, conflict-of-interest exclusion and individual audit records. All selected actions succeed together or none do. Rejection requires a shared reason. No production job status or settings were changed.
+
 ## 2026-11-26 — selected moderation and seller discovery browser regression
 
 Expanded isolated Chromium fixtures and mobile acceptance to submit an actual two-listing independent moderation decision, verify persisted rejected statuses, and exercise seller category/search/sorting with layout bounds before existing photo editor coverage. No live data or production settings touched.
