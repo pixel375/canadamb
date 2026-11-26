@@ -347,6 +347,29 @@ if (adminMenu) {
     const syncAdmin = () => { adminMenu.open = !mobileAdmin.matches; };
     syncAdmin();
     mobileAdmin.addEventListener('change', syncAdmin);
+    const adminSearch = adminMenu.querySelector('[data-admin-search]');
+    const adminInput = adminSearch?.querySelector('input');
+    if (adminSearch && adminInput) {
+        adminSearch.hidden = false;
+        const filterAdmin = () => {
+            const words = adminInput.value.toLowerCase().trim().split(/\s+/).filter(Boolean);
+            let visible = 0;
+            for (const group of adminMenu.querySelectorAll('.admin-nav-group')) {
+                const heading = group.querySelector('h2').textContent.toLowerCase();
+                let groupVisible = 0;
+                for (const link of group.querySelectorAll('a')) {
+                    const haystack = heading + ' ' + link.textContent.toLowerCase();
+                    link.hidden = !words.every(word => haystack.includes(word));
+                    if (!link.hidden) groupVisible++;
+                }
+                group.hidden = groupVisible === 0;
+                visible += groupVisible;
+            }
+            adminSearch.querySelector('[data-admin-search-empty]').hidden = visible !== 0;
+        };
+        adminInput.addEventListener('input', filterAdmin);
+        adminInput.addEventListener('search', filterAdmin);
+    }
 }
 
 Alpine.start();

@@ -48,5 +48,11 @@ class PublicationPolicyTest extends TestCase
         $this->assertDatabaseHas('audit_logs', ['action' => 'community.reply.auto-approved', 'actor_id' => null]);
         $this->actingAs($member)->put('https://brandonmb.ca/account/listings/'.$active->id, array_replace($listing, ['title' => 'Edited established desk', 'version' => $active->reviewVersion()]))->assertRedirect();
         $this->assertSame('pending', $active->fresh()->status);
+        $this->actingAs($admin)->post($url, ['configuration_version' => NetworkSettings::stateVersion($settings->state()), 'confirm_policy' => '1',
+            'policy' => ['listings' => 'manual', 'discussions' => 'manual', 'replies' => 'manual']])->assertRedirect();
+        $this->post('https://canadamb.ca/admin/settings/publish', ['configuration_version' => NetworkSettings::stateVersion($settings->state())])->assertRedirect();
+        $this->actingAs($fresh)->post('https://brandonmb.ca/community/'.$thread->id.'/replies', ['body' => 'This later reply requires review.'])->assertRedirect();
+        $this->assertDatabaseHas('community_replies', ['body' => 'This later reply requires review.', 'status' => 'pending']);
+        $this->assertDatabaseHas('community_replies', ['body' => 'I can help with planting.', 'status' => 'approved']);
     }
 }
