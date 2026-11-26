@@ -9,7 +9,7 @@ use App\Models\CommunityThread;
 use App\Models\Location;
 use App\Support\Audit;
 use App\Support\KeywordSearch;
-use App\Support\NotificationPreferences;
+use App\Support\ReplyPublication;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -95,18 +95,11 @@ class CommunityModerationController extends Controller
             abort_unless($approval ? $item->status === 'pending' : in_array($item->status, ['pending', 'approved'], true), 409);
             if ($approval) {
                 abort_unless($thread->status === 'approved', 409);
-                $thread->forceFill(['last_activity_at' => now()])->save();
-                DB::table('community_notifications')->insertUsing(['user_id', 'reply_id', 'created_at'],
-                    DB::table('community_thread_follows')->where('thread_id', $thread->id)
-                        ->when($item->author_id, fn ($query, $author) => $query->where('user_id', '!=', $author))
-                        ->when(NotificationPreferences::enabled(), fn ($query) => $query->whereNotExists(fn ($preferences) => $preferences->selectRaw('1')->from('notification_preferences')
-                            ->whereColumn('notification_preferences.user_id', 'community_thread_follows.user_id')->where('discussion_replies', false)))
-                        ->whereNotExists(fn ($query) => $query->selectRaw('1')->from('community_notifications')
-                            ->whereColumn('community_notifications.user_id', 'community_thread_follows.user_id')->where('reply_id', $item->id))
-                        ->select('user_id')->selectRaw('?, ?', [$item->id, now()]),
-                );
+                ReplyPublication::approve($thread, $item);
             }
-            $item->forceFill(['status' => $approval ? 'approved' : 'rejected'])->save();
+            if (! $approval) {
+                $item->forceFill(['status' => 'rejected'])->save();
+            }
             Audit::record('community.reply.'.$data['action'], $request->user()->id, context: ['reply' => $reply, 'reason' => $data['reason'] ?? null]);
         });
 

@@ -8,9 +8,11 @@ use App\Models\Listing;
 use App\Models\ListingCategory;
 use App\Models\Location;
 use App\Support\KeywordSearch;
+use App\Support\Audit;
 use App\Support\ListingPhotos;
 use App\Support\LocationScope;
 use App\Support\Marketplace;
+use App\Support\PublicationPolicy;
 use App\Support\MarketplaceCategories;
 use App\Support\MarketplaceSearch;
 use App\Support\NetworkUrl;
@@ -101,6 +103,10 @@ class MarketplaceController extends Controller
                 $item = Listing::create($data + ['user_id' => $request->user()->id, 'status' => 'pending']);
                 $item->media()->createMany($media);
                 $this->marketplace->history($item, null, $request->user()->id);
+                if (PublicationPolicy::allows('listings', $request->user())) {
+                    $this->marketplace->changeStatus($item, 'active', null, 'Published by configured automatic approval policy.');
+                    Audit::record('marketplace.listing.auto-approved', null, context: ['listing' => $item->id]);
+                }
 
                 return $item;
             });
@@ -112,7 +118,7 @@ class MarketplaceController extends Controller
             return response()->json(['data' => $this->publicData($item) + ['status' => $item->status]], 201);
         }
 
-        return redirect('/account/listings')->with('status', 'Your listing was submitted for review.');
+        return redirect('/account/listings')->with('status', $item->status === 'active' ? 'Your listing was published.' : 'Your listing was submitted for review.');
     }
 
     public function mine(Request $request)

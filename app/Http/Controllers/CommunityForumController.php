@@ -11,6 +11,8 @@ use App\Support\Community;
 use App\Support\EventDiscussions;
 use App\Support\KeywordSearch;
 use App\Support\LocationScope;
+use App\Support\PublicationPolicy;
+use App\Support\ReplyPublication;
 use App\Support\NetworkUrl;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
@@ -314,21 +316,35 @@ class CommunityForumController extends Controller
         ]);
         $requested = isset($data['location_id']) ? (int) $data['location_id'] : null;
         $data['location_id'] = $site->isNetwork() && $requested === null ? null : LocationScope::forPublication($site, $requested);
-        CommunityThread::create($data + ['author_id' => $request->user()->id]);
+        $item = DB::transaction(function () use ($request, $data) {
+            $item = CommunityThread::create($data + ['author_id' => $request->user()->id]);
+            if (PublicationPolicy::allows('discussions', $request->user())) {
+                $item->forceFill(['status' => 'approved', 'last_activity_at' => now()])->save();
+                Audit::record('community.thread.auto-approved', null, context: ['thread' => $item->id]);
+            }
 
-        return redirect('/community')->with('status', 'Discussion submitted for review.');
+            return $item;
+        }, attempts: 3);
+
+        return redirect('/community')->with('status', $item->status === 'approved' ? 'Discussion published.' : 'Discussion submitted for review.');
     }
 
     public function reply(Request $request, int $thread)
     {
         $data = $request->validate(['body' => 'required|string|min:5|max:3000']);
-        DB::transaction(function () use ($request, $thread, $data) {
+        $reply = DB::transaction(function () use ($request, $thread, $data) {
             $item = $this->visible($request)->lockForUpdate()->findOrFail($thread);
             abort_if($item->locked, 409, 'This discussion is locked.');
-            $item->replies()->create($data + ['author_id' => $request->user()->id]);
-        });
+            $reply = $item->replies()->create($data + ['author_id' => $request->user()->id]);
+            if (PublicationPolicy::allows('replies', $request->user())) {
+                ReplyPublication::approve($item, $reply);
+                Audit::record('community.reply.auto-approved', null, context: ['reply' => $reply->id]);
+            }
 
-        return redirect('/community/'.$thread)->with('status', 'Reply submitted for review.');
+            return $reply;
+        }, attempts: 3);
+
+        return redirect('/community/'.$thread)->with('status', $reply->status === 'approved' ? 'Reply published.' : 'Reply submitted for review.');
     }
 
     public function follow(Request $request, int $thread)

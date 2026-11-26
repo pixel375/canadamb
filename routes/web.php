@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\EditorialController;
 use App\Http\Controllers\Admin\JobReviewController;
 use App\Http\Controllers\Admin\NetworkController;
 use App\Http\Controllers\Admin\PropertyReviewController;
+use App\Http\Controllers\Admin\PublicationPolicyController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\TestAccountController;
 use App\Http\Controllers\Admin\ThemeController;
@@ -291,6 +292,8 @@ Route::prefix('admin')->middleware(['auth', 'verified', 'can:manage-network'])->
         Route::get('/commercial', [CommercialController::class, 'index']);
         Route::get('/commercial/test-ledger', [CommercialController::class, 'ledger'])->middleware('throttle:20,1,test-ledger');
         Route::post('/commercial', [CommercialController::class, 'save'])->middleware('throttle:8,1,commercial-rate-card');
+        Route::get('/publication-policy', [PublicationPolicyController::class, 'edit']);
+        Route::post('/publication-policy', [PublicationPolicyController::class, 'save'])->middleware('throttle:8,1,publication-policy');
         Route::get('/settings', [SettingsController::class, 'edit']);
         Route::post('/settings', [SettingsController::class, 'save']);
         Route::post('/settings/publish', [SettingsController::class, 'publish']);
