@@ -1942,3 +1942,7 @@ body.chat-page { display:flex; flex-direction:column; height:var(--chat-viewport
 
 .notification-open-link { color:var(--link); font:inherit; font-weight:inherit; border:0; background:none; padding:0; text-align:left; overflow-wrap:anywhere; }
 .notification-open-link:hover { text-decoration:underline; text-underline-offset:3px; }
+
+.discussion-parent-reference { display:grid; gap:3px; border-inline-start:3px solid var(--accent); padding:8px 12px; margin-block:6px; background:var(--soft); border-radius:5px; overflow-wrap:anywhere; color:inherit; }
+.discussion-parent-reference small { color:var(--muted); font-weight:600; }
+.discussion-parent-reference span { font-size:.85rem; }

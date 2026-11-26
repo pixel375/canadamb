@@ -13,6 +13,7 @@ use App\Support\KeywordSearch;
 use App\Support\LocationScope;
 use App\Support\NetworkUrl;
 use App\Support\PublicationPolicy;
+use App\Support\ReplyLinks;
 use App\Support\ReplyPublication;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
@@ -90,6 +91,13 @@ class CommunityForumController extends Controller
         $canonical = NetworkUrl::to($this->community->canonicalSite($item, 'community'), '/community/'.$item->id);
 
         $replies = $item->replies()->where('status', 'approved')->with('author')->oldest('id')->paginate(25);
+        $replyLinksEnabled = ReplyLinks::enabled();
+        $parents = ReplyLinks::publicParents($item, $replies->pluck('id')->all());
+        $replyTo = null;
+        if ($replyLinksEnabled && $request->filled('reply_to')) {
+            $selection = $request->validate(['reply_to' => 'required|integer|min:1']);
+            $replyTo = $item->replies()->where('status', 'approved')->with('author')->findOrFail($selection['reply_to']);
+        }
         $following = $request->user() && DB::table('community_thread_follows')
             ->where(['thread_id' => $thread, 'user_id' => $request->user()->id])->exists();
 
@@ -101,7 +109,7 @@ class CommunityForumController extends Controller
         $event = EventDiscussions::publicEvent($site, $item);
         $eventReviewPending = ! $event && EventDiscussions::pendingReview($site, $item);
 
-        return view('community.thread', compact('item', 'canonical', 'replies', 'following', 'related', 'event', 'eventReviewPending'));
+        return view('community.thread', compact('item', 'canonical', 'replies', 'following', 'related', 'event', 'eventReviewPending', 'replyLinksEnabled', 'parents', 'replyTo'));
     }
 
     public function owned(Request $request)
@@ -359,11 +367,19 @@ class CommunityForumController extends Controller
 
     public function reply(Request $request, int $thread)
     {
-        $data = $request->validate(['body' => 'required|string|min:5|max:3000']);
+        $data = $request->validate(['body' => 'required|string|min:5|max:3000', 'parent_reply_id' => 'nullable|integer|min:1']);
         $reply = DB::transaction(function () use ($request, $thread, $data) {
             $item = $this->visible($request)->lockForUpdate()->findOrFail($thread);
             abort_if($item->locked, 409, 'This discussion is locked.');
-            $reply = $item->replies()->create($data + ['author_id' => $request->user()->id]);
+            $parent = null;
+            if (isset($data['parent_reply_id'])) {
+                abort_unless(ReplyLinks::enabled(), 404);
+                $parent = $item->replies()->where('status', 'approved')->lockForUpdate()->findOrFail($data['parent_reply_id']);
+            }
+            $reply = $item->replies()->create(['body' => $data['body'], 'author_id' => $request->user()->id]);
+            if ($parent) {
+                ReplyLinks::attach($reply, $parent);
+            }
             if (PublicationPolicy::allows('replies', $request->user(), $item->location_id)) {
                 ReplyPublication::approve($item, $reply);
                 Audit::record('community.reply.auto-approved', null, context: ['reply' => $reply->id]);
@@ -372,7 +388,10 @@ class CommunityForumController extends Controller
             return $reply;
         }, attempts: 3);
 
-        return redirect('/community/'.$thread)->with('status', $reply->status === 'approved' ? 'Reply published.' : 'Reply submitted for review.');
+        $destination = isset($data['parent_reply_id']) && $reply->status === 'approved'
+            ? '/community/'.$thread.'/replies/'.$reply->id : '/community/'.$thread;
+
+        return redirect($destination)->with('status', $reply->status === 'approved' ? 'Reply published.' : 'Reply submitted for review.');
     }
 
     public function follow(Request $request, int $thread)
@@ -433,8 +452,9 @@ class CommunityForumController extends Controller
             ->orderByDesc('notifications.id')
             ->paginate(20, ['notifications.id', 'notifications.reply_id', 'notifications.read_at', 'notifications.created_at', 'threads.id as thread_id', 'threads.title', 'actors.name as actor_name'])
             ->withQueryString();
+        $directReplies = ReplyLinks::directNotificationIds($request->user()->id, $notifications->pluck('reply_id')->all());
 
-        return response()->view('community.notifications', compact('notifications', 'view', 'unreadCount', 'readCutoff', 'filters'))
+        return response()->view('community.notifications', compact('notifications', 'view', 'unreadCount', 'readCutoff', 'filters', 'directReplies'))
             ->header('Cache-Control', 'private, no-store');
     }
 

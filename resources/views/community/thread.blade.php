@@ -118,7 +118,16 @@
                                 </strong>
                                 <time datetime="{{ $reply->created_at->toIso8601String() }}">{{ $reply->created_at->timezone('America/Winnipeg')->format('M j, Y · g:i a T') }}</time>
                             </div>
+                            @if($parent = $parents[$reply->id] ?? null)
+                                <a class="discussion-parent-reference" href="/community/{{ $item->id }}/replies/{{ $parent->id }}">
+                                    <small>Replying to {{ $parent->author_name ?? 'Former member' }}</small>
+                                    <span>{{ \Illuminate\Support\Str::limit(\Illuminate\Support\Str::squish($parent->body), 140) }}</span>
+                                </a>
+                            @endif
                             <p class="prose-text">{{ $reply->body }}</p>
+                            @if($replyLinksEnabled && $canParticipate && !$item->locked)
+                                <a class="text-link" href="/community/{{ $item->id }}?page={{ $replies->currentPage() }}&amp;reply_to={{ $reply->id }}#reply-composer">Reply to comment</a>
+                            @endif
                             <x-content-report-link type="reply" :target="$reply->id"/>
                             @if($canParticipate && !$item->locked && (int) $reply->author_id === auth()->id())<a class="text-link" href="/account/replies/{{ $reply->id }}/edit?from=discussion&amp;page={{ $replies->currentPage() }}">Edit my reply</a>@endif
                         </div>
@@ -143,8 +152,14 @@
                     @csrf
                     <div>
                         <p class="section-label">Your voice matters</p>
-                        <h2>Write a reply</h2>
+                        <h2>{{ $replyTo ? 'Reply to comment' : 'Write a reply' }}</h2>
                         <p>Keep your reply helpful and respectful. Replies appear after moderation.</p>
+                        @if($replyTo)
+                            <input type="hidden" name="parent_reply_id" value="{{ $replyTo->id }}">
+                            <div class="discussion-parent-reference"><small>Replying to {{ $replyTo->author?->name ?? 'Former member' }}</small><span>{{ \Illuminate\Support\Str::limit(\Illuminate\Support\Str::squish($replyTo->body), 140) }}</span>
+                                <a class="text-link" href="/community/{{ $item->id }}?page={{ $replies->currentPage() }}#reply-composer">Cancel comment reply</a>
+                            </div>
+                        @endif
                     </div>
                     <label for="discussion-reply-body">Your reply
                         <textarea id="discussion-reply-body" data-character-count name="body" required minlength="5" maxlength="3000" rows="5" placeholder="Share your thoughts with the community...">{{ old('body') }}</textarea><small class="field-note" data-character-feedback></small>

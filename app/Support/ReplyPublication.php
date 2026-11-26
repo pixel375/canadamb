@@ -22,6 +22,10 @@ final class ReplyPublication
                     ->whereColumn('community_notifications.user_id', 'community_thread_follows.user_id')->where('reply_id', $item->id))
                 ->select('user_id')->selectRaw('?, ?', [$item->id, now()]),
         );
+        $parent = ReplyLinks::approvedParentAuthor($thread, $item);
+        if ($parent && $parent !== $item->author_id && NotificationPreferences::forMember($parent)['discussion_replies']) {
+            DB::table('community_notifications')->insertOrIgnore(['user_id' => $parent, 'reply_id' => $item->id, 'created_at' => now()]);
+        }
         $item->forceFill(['status' => 'approved'])->save();
     }
 }

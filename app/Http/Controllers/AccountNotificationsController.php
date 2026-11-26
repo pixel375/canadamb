@@ -7,6 +7,7 @@ use App\Support\AccountActivity;
 use App\Support\Community;
 use App\Support\JobSearches;
 use App\Support\NotificationPreferences;
+use App\Support\ReplyLinks;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -55,12 +56,13 @@ final class AccountNotificationsController extends Controller
                 ->orderByRaw('CASE WHEN notification.read_at IS NULL THEN 0 ELSE 1 END')->orderByDesc('notification.id')->limit(8)->get()
             : collect();
 
+        $directReplies = ReplyLinks::directNotificationIds($user->id, $recent->pluck('reply_id')->all());
         $preferencesEnabled = NotificationPreferences::enabled();
         $preferences = NotificationPreferences::forMember($user->id);
         $jobAlertsEnabled = JobSearches::enabled($site) && $preferences['job_summary'];
         $matchingSearches = $jobAlertsEnabled ? JobSearches::alertingSearchCount($user->id, $site) : 0;
 
-        return response()->view('account.notifications', compact('counts', 'discussionsEnabled', 'recent', 'preferencesEnabled', 'preferences', 'jobAlertsEnabled', 'matchingSearches'))
+        return response()->view('account.notifications', compact('counts', 'discussionsEnabled', 'recent', 'preferencesEnabled', 'preferences', 'jobAlertsEnabled', 'matchingSearches', 'directReplies'))
             ->header('Cache-Control', 'private, no-store');
     }
 }

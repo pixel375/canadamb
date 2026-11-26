@@ -67,7 +67,7 @@
                                 <form method="post" action="/account/community-notifications/{{ $notification->id }}/open">@csrf
                                     <h3><button class="notification-open-link" type="submit">{{ $notification->title }}</button></h3>
                                 </form>
-                                <p><strong>{{ $notification->actor_name }}</strong> replied to a discussion you follow.</p>
+                                <p><strong>{{ $notification->actor_name }}</strong> {{ in_array($notification->reply_id, $directReplies, true) ? 'replied to your comment.' : 'posted a reply in this discussion.' }}</p>
                                 <p>{{ \Illuminate\Support\Carbon::parse($notification->created_at)->diffForHumans() }}{{ $notification->read_at ? '' : ' · Unread' }}</p>
                             </div>
                             @if(! $notification->read_at)

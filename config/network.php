@@ -13,6 +13,7 @@ return [
     'notification_preferences' => env('CANADAMB_NOTIFICATION_PREFERENCES', false),
     'recurring_events' => env('CANADAMB_RECURRING_EVENTS', false),
     'event_discussions' => env('CANADAMB_EVENT_DISCUSSIONS', false),
+    'reply_links' => env('CANADAMB_REPLY_LINKS', false),
     'privacy_requests' => env('CANADAMB_PRIVACY_REQUESTS', false),
     'message_attachments' => env('CANADAMB_MESSAGE_ATTACHMENTS', false),
     'business_inquiry_controls' => env('CANADAMB_BUSINESS_INQUIRY_CONTROLS', false),
