@@ -9,11 +9,12 @@
         $brand = $site->name.' '.$seoPlace.' Community';
         $seoTitle = $title ? $title.' | '.$brand : ($site->seo_title ?? $brand);
         $seoDescription = \Illuminate\Support\Str::limit(\Illuminate\Support\Str::squish(strip_tags($description ?? $site->overrides['seo_description'] ?? $site->description ?? '')), 160);
-        $seoCanonical = $canonical ?? (request()->is('/') ? \App\Support\NetworkUrl::to($site) : null);
+        $seoLanding = request()->is('/', 'marketplace', 'businesses', 'business-updates', 'community', 'jobs', 'events', 'news', 'real-estate', 'communities', 'faq');
+        $seoCanonical = $canonical ?? (request()->is('/') ? \App\Support\NetworkUrl::to($site) : ($seoLanding && !request()->query->count() ? \App\Support\NetworkUrl::to($site, '/'.request()->path()) : null));
     @endphp
     <title>{{ $seoTitle }}</title>
     <meta name="description" content="{{ $seoDescription }}">
-    @if($preview || config('network.prelaunch') || request()->is('account*', 'admin*', 'auth*', 'login', 'register', 'forgot-password', 'reset-password*', 'email/*'))
+    @if($preview || config('network.prelaunch') || request()->filled('q') || request()->is('account*', 'admin*', 'auth*', 'login', 'register', 'forgot-password', 'reset-password*', 'email/*'))
         <meta name="robots" content="noindex, nofollow">
     @endif
     @if(!$preview && $seoCanonical)

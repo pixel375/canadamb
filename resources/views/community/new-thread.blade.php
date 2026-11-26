@@ -7,7 +7,7 @@
         <div class="page-intro">
             <div>
                 <h1>{{ $postType === 'event' ? 'Submit an event' : 'Start a discussion' }}</h1>
-                <p>{{ $postType === 'event' ? 'Share an upcoming local event. Events appear after moderation.' : 'Create a conversation for your community. Posts appear after moderation.' }}</p>
+                <p>{{ $postType === 'event' ? 'Share an upcoming local event. Event and discussion publication follows the current moderation policies.' : 'Create a conversation for your community. Posts appear after moderation.' }}</p>
             </div>
         </div>
         <nav class="discussion-composer-switch" aria-label="Choose post type">
@@ -32,7 +32,7 @@
                 <x-event-repeat-fields/>
                 <label>Event or tickets link (optional)<input type="url" name="event_url" maxlength="1024" value="{{ old('event_url') }}"></label>
                 <label>Event details<textarea data-character-count name="body" required minlength="10" maxlength="5000" rows="7">{{ old('body') }}</textarea><small class="field-note" data-character-feedback></small></label>
-                <div class="discussion-form-footer"><p>Events are reviewed before appearing in the calendar. @if(\App\Support\EventDiscussions::enabled()) A companion discussion will also be submitted for review.@endif</p><button class="button button-primary" type="submit">Submit event for review</button></div>
+                <div class="discussion-form-footer"><p>Calendar approval follows the event policy. @if(\App\Support\EventDiscussions::enabled()) A companion discussion follows the separate discussion policy.@endif</p><button class="button button-primary" type="submit">Submit event for review</button></div>
             </form>
         @else
             <form method="post" action="/community" class="panel form-stack">

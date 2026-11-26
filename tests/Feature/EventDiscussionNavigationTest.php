@@ -5,8 +5,10 @@ namespace Tests\Feature;
 use App\Models\CommunityEvent;
 use App\Models\CommunityThread;
 use App\Models\Location;
+use App\Models\Site;
 use App\Models\User;
 use App\Support\EventDiscussions;
+use App\Support\NetworkSettings;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Foundation\Testing\RefreshDatabaseState;
@@ -25,6 +27,39 @@ class EventDiscussionNavigationTest extends TestCase
             RefreshDatabaseState::$migrated = false;
             RefreshDatabaseState::$inMemoryConnections = [];
         });
+    }
+
+    public function test_event_and_discussion_approval_policies_are_independent_and_locally_restricted(): void
+    {
+        $this->travelTo('2026-11-26 12:00:00');
+        config(['network.event_discussions' => true]);
+        $admin = User::factory()->create(['role' => 'super_admin']);
+        $member = User::factory()->create();
+        $settings = app(NetworkSettings::class);
+        $site = Site::where('code', 'brandon')->sole();
+        $policy = function (string $events, string $discussions) use ($settings, $admin): void {
+            $settings->saveDraft($admin->id, fn (array $current) => array_replace($current, [
+                'publication_policy' => ['events' => $events, 'discussions' => $discussions],
+            ]));
+            $settings->publish($admin->id);
+        };
+        $policy('manual', 'verified');
+        $input = ['title' => 'Discussion first event', 'body' => 'An upcoming community event with independent review.',
+            'category' => 'community', 'organizer' => 'Local club', 'venue' => 'Community hall',
+            'starts_at' => '2026-12-02T10:00', 'location_id' => $site->location_id];
+        $this->actingAs($member)->post('https://canadamb.ca/events', $input)->assertRedirect()->assertSessionHasNoErrors();
+        $event = CommunityEvent::sole();
+        $this->assertSame('pending', $event->status);
+        $this->assertSame('approved', EventDiscussions::linkedThread($event)->status);
+        $policy('verified', 'manual');
+        $this->post('https://brandonmb.ca/events', array_replace($input, ['title' => 'Calendar first event']))->assertRedirect()->assertSessionHasNoErrors();
+        $event = CommunityEvent::where('title', 'Calendar first event')->sole();
+        $this->assertSame('approved', $event->status);
+        $this->assertSame('pending', EventDiscussions::linkedThread($event)->status);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'community.event.auto-approved']);
+        $site->update(['overrides' => array_replace($site->overrides ?? [], ['manual_publication' => ['events' => true]])]);
+        $this->post('https://canadamb.ca/events', array_replace($input, ['title' => 'Restricted local event']))->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame('pending', CommunityEvent::where('title', 'Restricted local event')->sole()->status);
     }
 
     public function test_linked_event_review_status_and_calendar_navigation_preserve_both_hosts_and_public_scope(): void

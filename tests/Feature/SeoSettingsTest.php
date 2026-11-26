@@ -15,7 +15,8 @@ class SeoSettingsTest extends TestCase
 
     public function test_metadata_is_audited_and_does_not_change_indexing_or_other_portals(): void
     {
-        config(['network.prelaunch' => true]);
+        config(['network.prelaunch' => true, 'network.prelaunch_ips' => ['127.0.0.1']]);
+        $this->withServerVariables(['REMOTE_ADDR' => '127.0.0.1']);
         $site = Site::where('code', 'network')->sole();
         $url = 'https://canadamb.ca/admin/seo/'.$site->id;
         $data = ['version' => $site->configurationVersion(), 'seo_title' => 'Manitoba community test title', 'seo_description' => 'Manitoba community test description.'];

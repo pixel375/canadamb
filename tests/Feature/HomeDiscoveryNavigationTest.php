@@ -168,6 +168,17 @@ class HomeDiscoveryNavigationTest extends TestCase
         $this->get('https://brandonmb.ca/community/'.$thread->id)->assertOk()
             ->assertSee('BrandonMB Brandon Community')
             ->assertSee('href="/community"', false);
+        $event = CommunityEvent::create([
+            'author_id' => $author->id, 'location_id' => $brandon->id,
+            'title' => 'Brandon event scope fixture', 'body' => 'Opening an event should preserve the browsing location.',
+            'category' => 'community', 'venue' => 'Community hall',
+            'organizer' => 'Local club', 'starts_at' => now()->addDays(5)->utc()->format('Y-m-d H:i:s'),
+        ]);
+        $event->forceFill(['status' => 'approved'])->save();
+        $this->get('https://canadamb.ca/events/'.$event->id)->assertOk()
+            ->assertSee('href="/events?location=winnipeg"', false)
+            ->assertDontSee('href="/events?location=brandon"', false)
+            ->assertSee('Brandon event scope fixture | Events in Brandon | CanadaMB Manitoba Community');
     }
 
     public function test_home_search_uses_real_site_scoped_get_routes_without_javascript(): void
