@@ -2,10 +2,24 @@
     <div class="container page-shell">
         <div class="page-intro"><div><a class="text-link" href="/account/saved-jobs">Saved jobs</a><h1>Job searches and alerts</h1><p>Manage saved searches for this portal. Alerts show newly published, still-open matches in your account; no emails are sent.</p></div><a class="button button-primary" href="/jobs">Browse jobs</a></div>
         <x-saved-navigation current="job-searches" :total="$items->count()"/>
+        @if($items->contains(fn ($item) => $item->alerts && $counts[$item->id] > 0))
+            <details class="panel form-stack mb-4"><summary>Mark selected searches checked</summary>
+                <form id="job-search-batch" method="post" action="/account/job-searches/read-selected" class="form-stack mt-2">@csrf
+                    <input type="hidden" name="cutoff" value="{{ $cutoff }}">
+                    <p class="field-note">Choose searches with new matches below. Later matches remain new, and paused searches are not changed.</p>
+                    <label class="checkbox-line"><input type="checkbox" name="confirm_read" value="1" required> Confirm marking selected searches checked</label>
+                    <button class="button button-outline">Mark selected checked</button>
+                </form>
+            </details>
+        @endif
         <section class="seller-listing-grid">
             @forelse($items as $item)
                 <article class="panel seller-listing-card form-stack">
                     <div><h2>{{ $item->name }}</h2><p>{{ $item->alerts ? $counts[$item->id].' new '.\Illuminate\Support\Str::plural('match', $counts[$item->id]) : 'Alerts paused' }}</p></div>
+                    @if($item->alerts && $counts[$item->id] > 0)
+                        <label class="checkbox-line"><input form="job-search-batch" type="checkbox" name="searches[]" value="{{ $item->id }}"> Select to mark checked</label>
+                        <input form="job-search-batch" type="hidden" name="versions[{{ $item->id }}]" value="{{ $item->editVersion() }}">
+                    @endif
                     <x-saved-filter-summary :filters="$item->filters" kind="jobs"/>
                     <div class="inline-actions"><a class="button button-primary" href="/account/job-searches/{{ $item->id }}">View matches</a><a class="text-link" href="/jobs?{{ http_build_query($item->filters) }}">Open original search</a><a class="button button-outline" href="/account/job-searches/{{ $item->id }}/edit">Edit filters</a></div>
                     <details><summary>Search and alert preferences</summary><form class="form-stack mt-2" method="post" action="/account/job-searches/{{ $item->id }}/preferences">@csrf<input type="hidden" name="version" value="{{ $item->editVersion() }}">

@@ -120,6 +120,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/account/businesses/{business}/jobs/{job}/withdraw', [JobController::class, 'withdraw'])->whereNumber(['business', 'job']);
     Route::get('/account/job-searches', [JobSearchController::class, 'index']);
     Route::post('/account/job-searches', [JobSearchController::class, 'store'])->middleware('throttle:10,1,job-search-store');
+    Route::post('/account/job-searches/read-selected', [JobSearchController::class, 'readSelected'])->middleware('throttle:5,1,job-search-batch-read');
     Route::get('/account/job-searches/{search}', [JobSearchController::class, 'show'])->whereNumber('search');
     Route::get('/account/job-searches/{search}/edit', [JobSearchController::class, 'edit'])->whereNumber('search');
     Route::put('/account/job-searches/{search}', [JobSearchController::class, 'revise'])->whereNumber('search')->middleware('throttle:12,1,job-search-revise');

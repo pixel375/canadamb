@@ -19,7 +19,9 @@ class JobSearchController extends Controller
         $items = $this->owned($request)->latest('id')->get();
         $counts = $items->mapWithKeys(fn (JobSearch $item) => [$item->id => $item->alerts ? JobSearches::newMatches($item, $site)->count() : 0]);
 
-        return view('jobs.searches', compact('items', 'counts'));
+        $cutoff = now()->startOfSecond()->timestamp;
+
+        return view('jobs.searches', compact('items', 'counts', 'cutoff'));
     }
 
     public function store(Request $request)
@@ -125,6 +127,32 @@ class JobSearchController extends Controller
         }, attempts: 3);
 
         return $this->done();
+    }
+
+    public function readSelected(Request $request)
+    {
+        $data = $request->validate([
+            'searches' => 'required|array|list|min:1|max:10', 'searches.*' => 'required|integer|distinct|min:1',
+            'versions' => 'required|array|max:10', 'versions.*' => 'required|string|size:64',
+            'cutoff' => 'required|integer|min:0|max:'.now()->timestamp, 'confirm_read' => 'accepted',
+        ]);
+        $cutoff = Carbon::createFromTimestamp((int) $data['cutoff'], config('app.timezone'));
+        DB::transaction(function () use ($request, $data, $cutoff) {
+            $items = $this->owned($request)->whereIn('id', $data['searches'])->orderBy('id')->lockForUpdate()->get();
+            abort_unless($items->count() === count($data['searches']), 404);
+            foreach ($items as $item) {
+                if (! $item->alerts || ! isset($data['versions'][$item->id]) || ! hash_equals($item->editVersion(), $data['versions'][$item->id])) {
+                    throw ValidationException::withMessages(['searches' => 'A selected search changed or alerts are paused. Reload before continuing.']);
+                }
+            }
+            foreach ($items as $item) {
+                if ($cutoff->greaterThan($item->checked_at)) {
+                    $item->forceFill(['checked_at' => $cutoff])->save();
+                }
+            }
+        }, attempts: 3);
+
+        return redirect('/account/job-searches')->with('status', 'Selected job searches marked checked through the displayed cutoff. Later matches remain new.');
     }
 
     public function destroy(Request $request, int $search)
