@@ -12,6 +12,7 @@ use App\Support\EventDiscussions;
 use App\Support\KeywordSearch;
 use App\Support\LocationScope;
 use App\Support\NetworkUrl;
+use App\Support\OwnerNotifications;
 use App\Support\PublicationPolicy;
 use App\Support\ReplyLinks;
 use App\Support\ReplyPublication;
@@ -361,6 +362,7 @@ class CommunityForumController extends Controller
             $item = CommunityThread::create($data + ['author_id' => $request->user()->id]);
             if (PublicationPolicy::allows('discussions', $request->user(), $item->location_id)) {
                 $item->forceFill(['status' => 'approved', 'last_activity_at' => now()])->save();
+                OwnerNotifications::record($item->author_id, 'discussion', $item->id, 'approved');
                 Audit::record('community.thread.auto-approved', null, context: ['thread' => $item->id]);
             }
 
@@ -387,6 +389,7 @@ class CommunityForumController extends Controller
             }
             if (PublicationPolicy::allows('replies', $request->user(), $item->location_id)) {
                 ReplyPublication::approve($item, $reply);
+                OwnerNotifications::record($reply->author_id, 'reply', $reply->id, 'approved');
                 Audit::record('community.reply.auto-approved', null, context: ['reply' => $reply->id]);
             }
 

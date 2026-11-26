@@ -71,6 +71,7 @@ final class EventDiscussions
         $author = User::findOrFail($event->author_id);
         if (PublicationPolicy::allows('discussions', $author, $event->location_id)) {
             $thread->forceFill(['status' => 'approved', 'last_activity_at' => now()])->save();
+            OwnerNotifications::record($thread->author_id, 'discussion', $thread->id, 'approved');
             Audit::record('community.thread.auto-approved', null, context: ['thread' => $thread->id, 'event' => $event->id]);
         }
     }

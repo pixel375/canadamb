@@ -30,6 +30,7 @@ final class PrivacyImpact
         'Followed discussions' => ['community_thread_follows', 'user_id'],
         'Discussion notifications' => ['community_notifications', 'user_id'],
         'Notification preferences' => ['notification_preferences', 'user_id'],
+        'Owner submission notifications' => ['owner_notifications', 'user_id'],
         'Blocked members' => ['user_blocks', 'user_id'],
         'Blocked by other members' => ['user_blocks', 'blocked_id'],
         'Commercial trials granted as operator' => ['business_entitlements', 'granted_by'],

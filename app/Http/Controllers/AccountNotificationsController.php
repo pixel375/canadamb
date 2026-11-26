@@ -8,6 +8,7 @@ use App\Support\Community;
 use App\Support\EventDiscussions;
 use App\Support\JobSearches;
 use App\Support\NotificationPreferences;
+use App\Support\OwnerNotifications;
 use App\Support\ReplyLinks;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -45,6 +46,21 @@ final class AccountNotificationsController extends Controller
             ->header('Cache-Control', 'private, no-store');
     }
 
+    public function readOwnerAlert(Request $request, int $notification)
+    {
+        abort_unless(OwnerNotifications::enabled(), 404);
+        DB::transaction(function () use ($request, $notification) {
+            $query = OwnerNotifications::visible($request->user(), $request->attributes->get('site'))->where('alert.id', $notification);
+            $alert = (clone $query)->lockForUpdate()->first();
+            abort_unless($alert, 404);
+            if (! $alert->read_at) {
+                DB::table('owner_notifications')->where('id', $notification)->where('user_id', $request->user()->id)->whereNull('read_at')->update(['read_at' => now()]);
+            }
+        });
+
+        return redirect('/account/notifications');
+    }
+
     public function index(Request $request, AccountActivity $activity)
     {
         $site = $request->attributes->get('site');
@@ -57,6 +73,11 @@ final class AccountNotificationsController extends Controller
                 ->orderByRaw('CASE WHEN notification.read_at IS NULL THEN 0 ELSE 1 END')->orderByDesc('notification.id')->limit(8)->get()
             : collect();
 
+        $ownerEnabled = OwnerNotifications::enabled();
+        $ownerQuery = $ownerEnabled ? OwnerNotifications::visible($user, $site) : null;
+        $ownerUnread = $ownerQuery ? (clone $ownerQuery)->whereNull('alert.read_at')->count() : 0;
+        $ownerAlerts = $ownerQuery ? $ownerQuery->orderByRaw('CASE WHEN alert.read_at IS NULL THEN 0 ELSE 1 END')->orderByDesc('alert.id')->paginate(15, pageName: 'updates') : null;
+        $replyUnread = max(0, $counts['notifications'] - $ownerUnread);
         $directReplies = ReplyLinks::directNotificationIds($user->id, $recent->pluck('reply_id')->all());
         $eventThreads = EventDiscussions::publicThreadIds($site, $recent->pluck('thread_id')->all());
         $preferencesEnabled = NotificationPreferences::enabled();
@@ -64,7 +85,7 @@ final class AccountNotificationsController extends Controller
         $jobAlertsEnabled = JobSearches::enabled($site) && $preferences['job_summary'];
         $matchingSearches = $jobAlertsEnabled ? JobSearches::alertingSearchCount($user->id, $site) : 0;
 
-        return response()->view('account.notifications', compact('counts', 'discussionsEnabled', 'recent', 'preferencesEnabled', 'preferences', 'jobAlertsEnabled', 'matchingSearches', 'directReplies', 'eventThreads'))
+        return response()->view('account.notifications', compact('counts', 'discussionsEnabled', 'recent', 'preferencesEnabled', 'preferences', 'jobAlertsEnabled', 'matchingSearches', 'directReplies', 'eventThreads', 'ownerEnabled', 'ownerAlerts', 'ownerUnread', 'replyUnread'))
             ->header('Cache-Control', 'private, no-store');
     }
 }

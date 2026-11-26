@@ -105,6 +105,7 @@ Route::get('/marketplace/{listing}/thumbnail/{photo}', [ListingEngagementControl
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/account/notifications/preferences', [AccountNotificationsController::class, 'preferences'])->middleware('throttle:8,1,notification-preferences');
     Route::get('/account/notifications', [AccountNotificationsController::class, 'index']);
+    Route::post('/account/notifications/updates/{notification}/read', [AccountNotificationsController::class, 'readOwnerAlert'])->whereNumber('notification')->middleware('throttle:30,1,owner-notification-read');
     Route::get('/account/activity-counts', [AccountNotificationsController::class, 'counts'])->middleware('throttle:20,1');
     Route::get('/account/properties', [PropertyDraftController::class, 'index']);
     Route::post('/account/properties/submit-selected', [PropertyDraftController::class, 'submitSelected'])->middleware('throttle:5,1,property-batch-submit');

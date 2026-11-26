@@ -19,7 +19,7 @@
                     <h2 id="account-discussions-title">Discussion replies</h2>
                     <p>
                         @if($discussionsEnabled)
-                            {{ $counts['notifications'] ? $counts['notifications'].' unread '.\Illuminate\Support\Str::plural('reply notification', $counts['notifications']) : 'No unread discussion replies.' }}
+                            {{ $replyUnread ? $replyUnread.' unread '.\Illuminate\Support\Str::plural('reply notification', $replyUnread) : 'No unread discussion replies.' }}
                         @else
                             Discussion notifications are not available on this portal.
                         @endif
@@ -27,13 +27,34 @@
                     @if($discussionsEnabled)
                         <div class="activity-card-links">
                             <a class="text-link" href="/account/community-notifications">All discussion notifications <x-icon name="arrow" size="16"/></a>
-                            @if($counts['notifications'])<a class="text-link" href="/account/community-notifications?view=unread">Open unread replies <x-icon name="arrow" size="16"/></a>@endif
+                            @if($replyUnread)<a class="text-link" href="/account/community-notifications?view=unread">Open unread replies <x-icon name="arrow" size="16"/></a>@endif
                             <a class="text-link" href="/account/followed-discussions">Following discussions <x-icon name="arrow" size="16"/></a>
                         </div>
                     @endif
                 </div>
             </section>
         </div>
+        @if($ownerEnabled)
+            <section class="homepage-section activity-panel">
+                <div class="section-heading"><h2>My submission updates</h2><span>{{ $ownerUnread }} unread</span></div>
+                <div class="panel">
+                    @forelse($ownerAlerts as $alert)
+                        <article class="item-row">
+                            <div>
+                                <h3>{{ \App\Support\OwnerNotifications::description($alert->kind, $alert->decision) }}</h3>
+                                <p>Reference #{{ $alert->target_id }} · {{ \Illuminate\Support\Carbon::parse($alert->created_at)->diffForHumans() }}{{ $alert->read_at ? '' : ' · Unread' }}</p>
+                                <a class="text-link" href="{{ \App\Support\OwnerNotifications::destination($alert->kind) }}">Manage my submissions</a>
+                                @if(in_array($alert->decision, ['rejected', 'removed'], true))<a class="text-link" href="/contact">Contact support about this decision</a>@endif
+                            </div>
+                            @if(!$alert->read_at)<form method="post" action="/account/notifications/updates/{{ $alert->id }}/read">@csrf<button class="button button-outline">Mark as read</button></form>@endif
+                        </article>
+                    @empty
+                        <p>No submission updates on this portal yet.</p>
+                    @endforelse
+                </div>
+                {{ $ownerAlerts->links() }}
+            </section>
+        @endif
         @if(\App\Support\JobSearches::enabled(request()->attributes->get('site')))
             <section class="panel form-stack"><h2>Job alerts</h2>
                 <p>{{ $jobAlertsEnabled ? ($matchingSearches ? $matchingSearches.' saved searches have new matches.' : 'No saved searches have new matches on this portal.') : 'Job alert summaries are hidden by your preferences.' }}</p>

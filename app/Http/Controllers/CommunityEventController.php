@@ -14,6 +14,7 @@ use App\Support\EventSeries;
 use App\Support\KeywordSearch;
 use App\Support\LocationScope;
 use App\Support\NetworkUrl;
+use App\Support\OwnerNotifications;
 use App\Support\PublicationPolicy;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
@@ -211,6 +212,7 @@ class CommunityEventController extends Controller
                 Audit::record('community.event.submitted', $author, context: ['event' => $event->id]);
                 if ($autoApprove) {
                     $event->forceFill(['status' => 'approved'])->save();
+                    OwnerNotifications::record($event->author_id, 'event', $event->id, 'approved');
                     Audit::record('community.event.auto-approved', null, context: ['event' => $event->id]);
                 }
                 if (EventDiscussions::enabled() && $this->community->enabled($site, 'community')) {

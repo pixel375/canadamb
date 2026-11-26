@@ -9,6 +9,7 @@ use App\Models\CommunityThread;
 use App\Models\Location;
 use App\Support\Audit;
 use App\Support\KeywordSearch;
+use App\Support\OwnerNotifications;
 use App\Support\ReplyPublication;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -75,6 +76,9 @@ class CommunityModerationController extends Controller
                 default => $item->status === 'approved',
             }, 409);
             $item->forceFill($changes)->save();
+            if (in_array($action, ['approve', 'reject'], true)) {
+                OwnerNotifications::record($item->author_id, 'discussion', $item->id, $action === 'approve' ? 'approved' : 'rejected');
+            }
             Audit::record('community.thread.'.$action, $request->user()->id, context: ['thread' => $thread, 'reason' => $data['reason'] ?? null]);
         });
 
@@ -100,6 +104,7 @@ class CommunityModerationController extends Controller
             if (! $approval) {
                 $item->forceFill(['status' => 'rejected'])->save();
             }
+            OwnerNotifications::record($item->author_id, 'reply', $item->id, $approval ? 'approved' : 'rejected');
             Audit::record('community.reply.'.$data['action'], $request->user()->id, context: ['reply' => $reply, 'reason' => $data['reason'] ?? null]);
         });
 
@@ -121,6 +126,7 @@ class CommunityModerationController extends Controller
                 abort_unless(in_array($item->status, ['pending', 'approved', 'cancelled'], true), 409);
             }
             $item->forceFill(['status' => $data['action'] === 'approve' ? 'approved' : 'rejected'])->save();
+            OwnerNotifications::record($item->author_id, 'event', $item->id, $data['action'] === 'approve' ? 'approved' : 'rejected');
             Audit::record('community.event.'.$data['action'], $request->user()->id, context: ['event' => $event, 'reason' => $data['reason'] ?? null]);
         });
 

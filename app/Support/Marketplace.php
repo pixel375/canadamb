@@ -103,5 +103,8 @@ final class Marketplace
         }
         $listing->save();
         $this->history($listing, $from, $actor, $reason);
+        if ($from !== $status && in_array($status, ['active', 'rejected', 'removed', 'expired'], true) && $actor !== $listing->user_id) {
+            OwnerNotifications::record($listing->user_id, 'listing', $listing->id, $status === 'active' ? 'approved' : $status);
+        }
     }
 }

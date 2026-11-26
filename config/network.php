@@ -11,6 +11,7 @@ return [
     'news_candidate_review' => env('CANADAMB_NEWS_CANDIDATE_REVIEW', false),
     'news_polling' => env('CANADAMB_NEWS_POLLING', false),
     'notification_preferences' => env('CANADAMB_NOTIFICATION_PREFERENCES', false),
+    'owner_notifications' => env('CANADAMB_OWNER_NOTIFICATIONS', false),
     'recurring_events' => env('CANADAMB_RECURRING_EVENTS', false),
     'event_discussions' => env('CANADAMB_EVENT_DISCUSSIONS', false),
     'reply_links' => env('CANADAMB_REPLY_LINKS', false),
