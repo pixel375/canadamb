@@ -104,6 +104,65 @@ class AdvertisingController extends Controller
         return redirect('/account/businesses/'.$business.'/advertising')->with('status', 'Private campaign request submitted. No advertising or payment has been activated.');
     }
 
+    public function edit(Request $request, int $business, int $campaign)
+    {
+        $item = $this->owned($request, $business);
+        $campaign = AdvertisingCampaign::where('business_id', $business)->where('status', 'pending')->findOrFail($campaign);
+        $locations = $item->openLocations()->pluck('location_id');
+        $portals = Site::where('status', 'active')->where(fn ($query) => $query->whereNull('location_id')->orWhereIn('location_id', $locations))->orderBy('name')->get();
+        $catalog = CommercialCatalog::fromSettings(app(NetworkSettings::class)->published());
+
+        return view('business.edit-campaign', compact('item', 'campaign', 'portals', 'catalog'));
+    }
+
+    public function revise(Request $request, int $business, int $campaign, NetworkSettings $settings)
+    {
+        $this->owned($request, $business);
+        $data = $request->validate([
+            'version' => 'required|string|size:64', 'site_id' => 'required|integer|min:1',
+            'placement' => ['required', Rule::in(array_keys(CommercialCatalog::PLACEMENTS))],
+            'title' => 'required|string|max:120', 'body' => 'required|string|max:500',
+            'starts_on' => 'required|date_format:Y-m-d|after_or_equal:'.today('America/Winnipeg')->toDateString().'|before_or_equal:'.today('America/Winnipeg')->addYear()->toDateString(),
+            'weeks' => 'required|integer|min:1|max:12',
+        ]);
+        DB::transaction(function () use ($request, $business, $campaign, $settings, $data) {
+            Business::lockForUpdate()->findOrFail($business);
+            $item = $this->owned($request, $business);
+            $record = AdvertisingCampaign::where('business_id', $business)->lockForUpdate()->findOrFail($campaign);
+            abort_unless($record->status === 'pending', 409);
+            if (! hash_equals($record->reviewVersion(), $data['version'])) {
+                throw ValidationException::withMessages(['version' => 'Campaign changed. Reload before saving.']);
+            }
+            $site = Site::findOrFail($data['site_id']);
+            if (! CommercialRecords::eligible($item, $site, $data['placement'])) {
+                throw ValidationException::withMessages(['site_id' => 'The selected placement is not eligible on this portal.']);
+            }
+            $record->fill(collect($data)->except('version')->all());
+            if (! $record->isDirty()) {
+                return;
+            }
+            if (AdvertisingCampaign::where('business_id', $business)->whereKeyNot($campaign)->where('site_id', $site->id)
+                ->where('placement', $record->placement)->whereDate('starts_on', $data['starts_on'])->where('weeks', $record->weeks)
+                ->where('title', $record->title)->whereIn('status', ['pending', 'approved'])->exists()) {
+                throw ValidationException::withMessages(['title' => 'An equivalent open campaign request already exists.']);
+            }
+            if ($record->getOriginal('starts_on')->toDateString() < today('America/Winnipeg')->toDateString()) {
+                $open = AdvertisingCampaign::where('business_id', $business)->whereKeyNot($campaign)->whereIn('status', ['pending', 'approved'])
+                    ->whereDate('starts_on', '>=', today('America/Winnipeg')->subWeeks(12)->toDateString())->get()
+                    ->filter(fn ($other) => in_array($other->planningPhase(), ['pending', 'scheduled', 'in-window'], true))->count();
+                if ($open >= 10) {
+                    throw ValidationException::withMessages(['title' => 'At most ten open campaign requests are allowed.']);
+                }
+            }
+            $revision = $settings->state()->published_id;
+            $catalog = CommercialCatalog::fromSettings($settings->revision($revision));
+            $record->fill(['rate_revision_id' => $revision, 'estimated_cents' => CommercialCatalog::estimate($catalog, $record->placement, $record->weeks)])->save();
+            Audit::record('advertising.revised', $request->user()->id, context: ['campaign' => $campaign, 'business' => $business]);
+        }, attempts: 3);
+
+        return redirect('/account/businesses/'.$business.'/advertising')->with('status', 'Pending campaign saved. No advertising or payment has been activated.');
+    }
+
     public function withdraw(Request $request, int $business, int $campaign)
     {
         $this->owned($request, $business);

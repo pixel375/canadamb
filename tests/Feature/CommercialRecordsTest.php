@@ -38,6 +38,35 @@ class CommercialRecordsTest extends TestCase
         });
     }
 
+    public function test_pending_campaign_edit_is_private_versioned_and_owner_scoped(): void
+    {
+        config(['network.commercial_planning_records' => true]);
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $admin = User::factory()->create(['role' => 'super_admin']);
+        $business = Business::create(['slug' => 'campaign-revision', 'name' => 'Campaign Revision', 'category' => 'services', 'status' => 'active']);
+        $business->members()->attach($owner->id, ['role' => 'owner']);
+        $business->locations()->create(['location_id' => Location::where('slug', 'brandon')->sole()->id, 'address' => '1 Revision Road']);
+        $site = Site::where('code', 'brandon')->sole();
+        $base = 'https://canadamb.ca/account/businesses/'.$business->id.'/advertising';
+        $data = ['site_id' => $site->id, 'placement' => 'home-banner', 'title' => 'Pending original', 'body' => 'Private planning text', 'starts_on' => today('America/Winnipeg')->addWeek()->toDateString(), 'weeks' => 2];
+        $this->actingAs($owner)->post($base, $data)->assertRedirect()->assertSessionHasNoErrors();
+        $campaign = AdvertisingCampaign::sole();
+        $path = $base.'/'.$campaign->id;
+        $version = $campaign->reviewVersion();
+        $updated = array_replace($data, ['title' => 'Pending revised', 'weeks' => 3, 'version' => $version]);
+        $this->actingAs($other)->put($path, $updated)->assertNotFound();
+        $this->actingAs($owner)->get($path.'/edit')->assertOk()->assertSee('Save pending request');
+        $this->put($path, $updated)->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('advertising_campaigns', ['id' => $campaign->id, 'title' => 'Pending revised', 'weeks' => 3, 'status' => 'pending']);
+        $this->put($path, $updated)->assertSessionHasErrors('version');
+        $this->get('https://brandonmb.ca/')->assertDontSee('Pending revised');
+        $this->actingAs($admin)->post('https://canadamb.ca/admin/advertising/'.$campaign->id, ['decision' => 'approved', 'note' => 'Independently reviewed.'])->assertRedirect();
+        $this->actingAs($owner)->get($path.'/edit')->assertNotFound();
+        $this->put($path, array_replace($updated, ['version' => $campaign->fresh()->reviewVersion()]))->assertConflict();
+        $this->assertDatabaseCount('commercial_payment_attempts', 0);
+    }
+
     public function test_private_campaign_and_trial_workflows_do_not_publish_ads(): void
     {
         $owner = User::factory()->create();

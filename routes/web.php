@@ -214,6 +214,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/account/businesses/{business}/advertising', [AdvertisingController::class, 'index'])->whereNumber('business');
     Route::get('/account/businesses/{business}/advertising/export', [AdvertisingController::class, 'export'])->whereNumber('business')->middleware('throttle:6,1,campaign-export');
     Route::post('/account/businesses/{business}/advertising', [AdvertisingController::class, 'store'])->whereNumber('business')->middleware('throttle:6,1,campaign-submit');
+    Route::get('/account/businesses/{business}/advertising/{campaign}/edit', [AdvertisingController::class, 'edit'])->whereNumber(['business', 'campaign']);
+    Route::put('/account/businesses/{business}/advertising/{campaign}', [AdvertisingController::class, 'revise'])->whereNumber(['business', 'campaign'])->middleware('throttle:8,1,campaign-revise');
     Route::post('/account/businesses/{business}/advertising/{campaign}/withdraw', [AdvertisingController::class, 'withdraw'])->whereNumber(['business', 'campaign'])->middleware('throttle:8,1,campaign-withdraw');
     Route::get('/account/business-access', [BusinessAccessController::class, 'index']);
     Route::post('/account/businesses/{business}/access-requests', [BusinessAccessController::class, 'store'])->whereNumber('business')->middleware('throttle:6,1,business-access');
