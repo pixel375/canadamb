@@ -189,6 +189,32 @@ class PropertyDraftController extends Controller
         return redirect('/account/properties/'.$property)->with('status', 'Authority declaration recorded. Submitted for private review only.');
     }
 
+    public function submitSelected(Request $request)
+    {
+        $data = $request->validate([
+            'properties' => 'required|array|list|min:1|max:10', 'properties.*' => 'required|integer|distinct|min:1',
+            'versions' => 'required|array|max:20', 'versions.*' => 'required|string|size:64',
+            'authorization_capacity' => 'required|in:owner,authorized-agent', 'advertising_consent' => 'required|accepted',
+        ]);
+        DB::transaction(function () use ($request, $data) {
+            $items = $this->owned($request)->whereIn('id', $data['properties'])->orderBy('id')->lockForUpdate()->get();
+            abort_unless($items->count() === count($data['properties']), 404);
+            foreach ($items as $item) {
+                if (! in_array($item->status, ['draft', 'changes_requested'], true)
+                    || ! isset($data['versions'][$item->id]) || ! hash_equals($item->contentVersion(), $data['versions'][$item->id])) {
+                    throw ValidationException::withMessages(['properties' => 'A selected draft changed or is already in review. No drafts were submitted.']);
+                }
+            }
+            foreach ($items as $item) {
+                $item->forceFill(['status' => 'submitted', 'review_note' => null])->save();
+                Audit::record('property-draft.authority-declared', $request->user()->id,
+                    context: ['property' => $item->id, 'capacity' => $data['authorization_capacity'], 'version' => 1, 'content_sha256' => $item->contentVersion()]);
+            }
+        }, attempts: 3);
+
+        return redirect('/account/properties')->with('status', count($data['properties']).' properties submitted for private review only.');
+    }
+
     public function withdraw(Request $request, int $property)
     {
         $data = $request->validate(['version' => 'required|string|size:64']);

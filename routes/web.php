@@ -100,6 +100,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/account/notifications', [AccountNotificationsController::class, 'index']);
     Route::get('/account/activity-counts', [AccountNotificationsController::class, 'counts'])->middleware('throttle:20,1');
     Route::get('/account/properties', [PropertyDraftController::class, 'index']);
+    Route::post('/account/properties/submit-selected', [PropertyDraftController::class, 'submitSelected'])->middleware('throttle:5,1,property-batch-submit');
     Route::post('/account/properties/withdraw-selected', [PropertyDraftController::class, 'withdrawSelected'])->middleware('throttle:5,1,property-batch');
     Route::get('/account/properties/new', [PropertyDraftController::class, 'create']);
     Route::post('/account/properties', [PropertyDraftController::class, 'store'])->middleware('throttle:6,1');

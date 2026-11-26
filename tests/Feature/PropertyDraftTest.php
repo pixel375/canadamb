@@ -99,6 +99,36 @@ class PropertyDraftTest extends TestCase
         $this->get("https://brandonmb.ca/real-estate/$draft->id")->assertNotFound();
     }
 
+    public function test_batch_submission_requires_authority_and_current_versions_for_all_selected_properties(): void
+    {
+        config(['network.property_drafts' => true]);
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $items = collect();
+        foreach (['brandon', 'brandon', 'winnipeg'] as $index => $slug) {
+            $items->push(PropertyListing::create([
+                'owner_id' => $owner->id, 'location_id' => Location::where('slug', $slug)->sole()->id,
+                'title' => 'Batch draft '.$index, 'description' => 'A private property submitted for independent review.',
+                'transaction' => 'sale', 'property_type' => 'house', 'seller_type' => 'owner', 'price_cents' => 20000000,
+            ]));
+        }
+        $base = 'https://brandonmb.ca/account/properties';
+        $versions = $items->mapWithKeys(fn ($item) => [$item->id => $item->contentVersion()])->all();
+        $data = ['properties' => [$items[0]->id, $items[1]->id], 'versions' => $versions, 'authorization_capacity' => 'owner', 'advertising_consent' => '1'];
+        $this->actingAs($other)->post($base.'/submit-selected', $data)->assertNotFound();
+        $this->actingAs($owner)->get($base)->assertOk()->assertSee('Submit selected properties for review');
+        $this->post($base.'/submit-selected', array_replace($data, ['advertising_consent' => '0']))->assertSessionHasErrors('advertising_consent');
+        $this->post($base.'/submit-selected', array_replace($data, ['properties' => [$items[0]->id, $items[2]->id]]))->assertNotFound();
+        $this->post($base.'/submit-selected', array_replace($data, ['versions' => array_replace($versions, [$items[1]->id => str_repeat('0', 64)])]))->assertSessionHasErrors('properties');
+        $this->assertSame('draft', $items[0]->fresh()->status);
+        $this->post($base.'/submit-selected', $data)->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame('submitted', $items[0]->fresh()->status);
+        $this->assertSame('submitted', $items[1]->fresh()->status);
+        $this->assertSame('draft', $items[2]->fresh()->status);
+        $this->assertDatabaseCount('audit_logs', 2);
+        $this->get('https://brandonmb.ca/real-estate')->assertOk()->assertDontSee('Batch draft');
+    }
+
     public function test_private_review_can_be_reopened_and_withdrawal_is_audited(): void
     {
         config(['network.property_drafts' => true]);

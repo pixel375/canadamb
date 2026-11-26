@@ -26,6 +26,16 @@
                 </form>
             </details>
         @endif
+        @if($items->contains(fn ($item) => in_array($item->status, ['draft', 'changes_requested'], true)))
+            <details class="panel form-stack mb-4"><summary>Submit selected properties for review</summary>
+                <form id="property-batch-submit" method="post" action="/account/properties/submit-selected" class="form-stack mt-3">@csrf
+                    <p class="field-note">Choose up to ten prepared drafts below. Only select properties for which you have the same advertising authority. Review remains private and does not authorize publication.</p>
+                    <label>Your capacity for every selected property<select name="authorization_capacity" required><option value="">Select your authority</option><option value="owner">I own every selected property</option><option value="authorized-agent">I have each owner's authorization</option></select></label>
+                    <label class="checkbox-line"><input type="checkbox" name="advertising_consent" value="1" required> I confirm I have authority to submit every selected property for private review, and understand that public advertising requires separate consent verification and approval.</label>
+                    <button class="button button-primary">Submit selected for private review</button>
+                </form>
+            </details>
+        @endif
         <section class="seller-listing-grid">
             @forelse($items as $item)
                 <article class="panel seller-listing-card">
@@ -34,6 +44,10 @@
                     @if(in_array($item->status, ['submitted', 'reviewed'], true))
                         <label class="checkbox-line"><input form="property-batch-withdraw" type="checkbox" name="properties[]" value="{{ $item->id }}"> Select to return to draft</label>
                         <input form="property-batch-withdraw" type="hidden" name="versions[{{ $item->id }}]" value="{{ $item->contentVersion() }}">
+                    @endif
+                    @if(in_array($item->status, ['draft', 'changes_requested'], true))
+                        <label class="checkbox-line"><input form="property-batch-submit" type="checkbox" name="properties[]" value="{{ $item->id }}"> Select for private review</label>
+                        <input form="property-batch-submit" type="hidden" name="versions[{{ $item->id }}]" value="{{ $item->contentVersion() }}">
                     @endif
                     <div class="inline-actions seller-listing-actions"><a class="button button-primary" href="/account/properties/{{ $item->id }}">Open draft</a><a class="text-link" href="/account/properties/{{ $item->id }}/duplicate">Create similar draft</a>@if(in_array($item->status, ['draft','changes_requested'], true))<a class="button button-outline" href="/account/properties/{{ $item->id }}/edit">Edit draft</a>@endif</div>
                 </article>
