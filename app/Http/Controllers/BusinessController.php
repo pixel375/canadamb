@@ -36,7 +36,11 @@ class BusinessController extends Controller
             ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['name', 'description']))
             ->when($site->isNetwork() && filled($filters['location'] ?? null), fn ($query) => $query->whereHas('openLocations.location', fn ($location) => $location->where('slug', $filters['location'])));
         if (isset($filters['contact'])) {
-            $column = match ($filters['contact']) { 'email' => 'public_email', 'phone' => 'phone', default => 'website' };
+            $column = match ($filters['contact']) {
+                'email' => 'public_email',
+                'phone' => 'phone',
+                default => 'website',
+            };
             $matching->whereNotNull($column)->where($column, '!=', '');
         }
         $categoryCounts = (clone $matching)->selectRaw('category, COUNT(*) as total')->groupBy('category')->pluck('total', 'category');
