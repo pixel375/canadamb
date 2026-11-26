@@ -5,8 +5,10 @@ namespace Tests\Feature;
 use App\Models\Location;
 use App\Models\Site;
 use App\Models\User;
+use App\Support\Audit;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class NetworkTest extends TestCase
@@ -68,8 +70,8 @@ class NetworkTest extends TestCase
         $this->get('https://canadamb.ca/admin/community?status=pending&q=meeting')->assertOk()->assertSee('Community review sections');
         $this->get('https://canadamb.ca/admin/jobs?status=pending&q=mechanic')->assertOk()->assertSee('Review status');
         $this->get('https://canadamb.ca/admin/audit?period=7&q=theme')->assertOk()->assertSee('audit entries');
-        \App\Support\Audit::record('fixture.system-event', null, context: ['note' => 'PRIVATE_AUDIT_FIXTURE']);
-        $reference = \Illuminate\Support\Facades\DB::table('audit_logs')->where('action', 'fixture.system-event')->value('id');
+        Audit::record('fixture.system-event', null, context: ['note' => 'PRIVATE_AUDIT_FIXTURE']);
+        $reference = DB::table('audit_logs')->where('action', 'fixture.system-event')->value('id');
         $this->get('https://canadamb.ca/admin/audit?actor=system&site=network&reference='.$reference)->assertOk()
             ->assertSee('fixture.system-event')->assertDontSee('PRIVATE_AUDIT_FIXTURE');
         $this->get('https://canadamb.ca/admin/audit?actor=member&reference='.$reference)->assertOk()->assertDontSee('fixture.system-event');
