@@ -1,7 +1,7 @@
 <x-layouts.site :title="$thread->title().' | Messages'" main-class="chat-main" :chat="true">
     @php($messageReports = auth()->user()->hasVerifiedEmail() && \App\Support\ContentReports::enabled())
     <div class="container message-workspace chat-workspace">
-        <div class="panel chat-panel" @if($messages->onFirstPage()) data-chat-sync="/account/messages/{{ $thread->id }}/sync" data-chat-cursor="{{ $messages->first()?->id ?? 0 }}" data-chat-token="{{ csrf_token() }}" data-chat-reportable="{{ $messageReports ? '1' : '0' }}" data-chat-conversation="{{ $thread->id }}" @endif>
+        <div class="panel chat-panel" @if($latestPage) data-chat-sync="/account/messages/{{ $thread->id }}/sync" data-chat-cursor="{{ $messages->first()?->id ?? 0 }}" data-chat-token="{{ csrf_token() }}" data-chat-reportable="{{ $messageReports ? '1' : '0' }}" data-chat-conversation="{{ $thread->id }}" @endif>
             <header class="chat-heading">
                 <a class="chat-back" href="/account/messages" aria-label="Back to messages"><x-icon name="arrow-left" size="23"/></a>
                 <a class="chat-member" href="/users/{{ $thread->other(auth()->id()) }}">
@@ -21,15 +21,15 @@
                         @csrf @if($myBlock)@method('DELETE')@endif
                         <button class="button button-outline">{{ $myBlock ? 'Unblock member' : 'Block member' }}</button>
                     </form>
-                    @if($reportMessage)<a class="text-link" href="/account/report/message/{{ $reportMessage }}">Report chat (latest received message)</a>
+                    @if($reportMessage)<a class="text-link" href="/account/report/message/{{ $reportMessage }}">Report chat</a>
                     @else<a class="text-link" href="/safety">Safety and reporting</a>@endif
                     </div>
                 </details>
             </header>
             <div class="chat-history" aria-label="Messages in chronological order" data-chat-history tabindex="0">
                 <nav class="chat-history-nav" aria-label="Conversation history">
-                    @if($messages->hasMorePages())<a class="text-link" href="{{ $messages->nextPageUrl() }}">Older messages</a>@endif
-                    @if(!$messages->onFirstPage())<a class="text-link" href="{{ $messages->previousPageUrl() }}">Newer messages</a><a class="text-link" href="/account/messages/{{ $thread->id }}">Latest messages</a>@endif
+                    @if($messages->nextPageUrl())<a class="text-link" data-chat-older href="{{ $messages->nextPageUrl() }}">Older messages</a>@endif
+                    @if(!$latestPage)@if($messages->previousPageUrl())<a class="text-link" href="{{ $messages->previousPageUrl() }}">Newer messages</a>@endif<a class="text-link" href="/account/messages/{{ $thread->id }}">Latest messages</a>@endif
                 </nav>
                 @if($context)<a class="chat-context-card" href="{{ $context['url'] }}">
                     @if($context['thumbnail'])<img src="{{ $context['thumbnail'] }}" alt="">@endif
@@ -48,12 +48,12 @@
                     </article>
                 @empty<p class="field-note">No messages yet.</p>@endforelse
             </div>
-            @if($messages->onFirstPage())<p class="chat-sync-status field-note" data-chat-status role="status" aria-live="polite"></p>@endif
+            @if($latestPage)<div class="chat-update-bar"><p class="chat-sync-status field-note" data-chat-status role="status" aria-live="polite"></p><button class="button button-outline chat-latest-button" type="button" data-chat-latest hidden>Jump to latest</button></div>@endif
             @if(!$blocked)
                 <form method="post" action="/account/messages/{{ $thread->id }}" class="chat-composer form-stack" enctype="multipart/form-data">@csrf
                     <label><span class="sr-only">Reply</span><textarea data-character-count name="body" maxlength="2000" rows="2" required placeholder="Write a message…">{{ old('body') }}</textarea><small class="field-note" data-character-feedback></small></label>
                     @if(\App\Support\MessageAttachments::enabled())
-                        <label>Photo attachment<input type="file" name="photo" accept="image/jpeg,image/png,image/webp"><small class="field-note">One photo, up to 4 MB. Do not send sensitive documents.</small></label>
+                        <details class="chat-attachment-picker" @if($errors->has('photo')) open @endif><summary>Attach a photo</summary><label><span class="sr-only">Photo attachment</span><input type="file" name="photo" accept="image/jpeg,image/png,image/webp"><small class="field-note">One photo, up to 4 MB. Do not send sensitive documents.</small></label></details>
                     @endif
                     <div class="chat-composer-footer"><small class="field-note"><a class="text-link" href="/safety">Safety guidance</a> · Keep payment details private.</small><button class="button button-primary" data-chat-send>Send reply <x-icon name="arrow" size="17"/></button></div>
                 </form>

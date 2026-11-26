@@ -526,8 +526,59 @@ if (chatPanel) {
     const history = chatPanel.querySelector('[data-chat-history]');
     const status = chatPanel.querySelector('[data-chat-status]');
     const send = chatPanel.querySelector('[data-chat-send]');
-    const goLatest = () => { history.scrollTop = history.scrollHeight; };
+    const latestButton = chatPanel.querySelector('[data-chat-latest]');
+    const atLatest = () => history.scrollHeight - history.scrollTop - history.clientHeight < 48;
+    const goLatest = () => {
+        history.scrollTop = history.scrollHeight;
+        latestButton.hidden = true;
+    };
     goLatest();
+    latestButton.addEventListener('click', goLatest);
+    history.addEventListener('scroll', () => { if (atLatest()) latestButton.hidden = true; }, {passive: true});
+    // Progressively enhance the server's stable cursor links. No private
+    // history is cached, and the original link remains usable without JS.
+    const older = history.querySelector('[data-chat-older]');
+    let loadingOlder = false;
+    older?.addEventListener('click', async event => {
+        if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || history.querySelectorAll('[data-message-id]').length >= 300) return;
+        event.preventDefault();
+        if (loadingOlder) return;
+        loadingOlder = true;
+        older.setAttribute('aria-busy', 'true');
+        const url = new URL(older.href);
+        try {
+            if (url.origin !== location.origin || url.pathname !== location.pathname) throw new Error('Invalid history link');
+            const response = await fetch(url, {credentials: 'same-origin', cache: 'no-store', redirect: 'error'});
+            if (!response.ok) throw new Error('History unavailable');
+            const parsed = new DOMParser().parseFromString(await response.text(), 'text/html');
+            const previous = parsed.querySelector('[data-chat-history]');
+            if (!previous) throw new Error('History unavailable');
+            const first = history.querySelector('[data-message-id]');
+            const oldTop = first?.getBoundingClientRect().top;
+            const existing = new Set([...history.querySelectorAll('[data-message-id]')].map(node => node.dataset.messageId));
+            const fragment = document.createDocumentFragment();
+            for (const article of previous.querySelectorAll('article[data-message-id]')) {
+                if (!existing.has(article.dataset.messageId)) fragment.append(document.importNode(article, true));
+            }
+            if (first) first.before(fragment);
+            else history.append(fragment);
+            if (first) history.scrollTop += first.getBoundingClientRect().top - oldTop;
+            const next = previous.querySelector('[data-chat-older]');
+            if (next) {
+                const nextUrl = new URL(next.getAttribute('href'), url);
+                if (nextUrl.origin !== location.origin || nextUrl.pathname !== location.pathname) throw new Error('Invalid history link');
+                older.href = nextUrl.href;
+            } else {
+                older.hidden = true;
+            }
+        } catch {
+            // Preserve the draft and visible history instead of forcing navigation.
+            status.textContent = 'Could not load older messages. Select Older messages to retry.';
+        } finally {
+            loadingOlder = false;
+            older.removeAttribute('aria-busy');
+        }
+    });
     let cursor = Number(chatPanel.dataset.chatCursor);
     let pending = false;
     let stopped = false;
@@ -606,9 +657,10 @@ if (chatPanel) {
             }
             if (!response.ok) throw new Error('Refresh failed');
             const data = await response.json();
-            const wasAtLatest = history.scrollHeight - history.scrollTop - history.clientHeight < 48;
+            const wasAtLatest = atLatest();
             for (const item of data.messages) append(item);
             if (data.messages.length && wasAtLatest) goLatest();
+            else if (data.messages.length) latestButton.hidden = false;
             updateActivityCounts(data.counts);
             if (send) send.disabled = Boolean(data.blocked);
             if (data.blocked) status.textContent = 'New messages are blocked for this conversation.';
@@ -902,4 +954,17 @@ if (pushPanel) {
             status.textContent = 'Browser unsubscribed. Remove any old registration from the account list if needed.';
         }));
     }
+}
+
+
+// Native disclosure remains keyboard-accessible; dismiss it without
+// navigating away or clearing an unsent message.
+for (const actions of document.querySelectorAll('.chat-actions')) {
+    document.addEventListener('click', event => { if (actions.open && !actions.contains(event.target)) actions.open = false; });
+    actions.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && actions.open) {
+            actions.open = false;
+            actions.querySelector('summary').focus();
+        }
+    });
 }

@@ -239,10 +239,12 @@ class MessagesController extends Controller
         $id = $request->user()->id;
         $thread = Conversation::forMember($id)->with(['listing:id,title', 'buyer:id,name', 'seller:id,name'])->findOrFail($conversation);
         $request->session()->forget('conversation_history_search');
+        $request->validate(['history' => 'nullable|string|max:512']);
         $messages = $thread->messages()->with('sender:id,name')
             ->when(MessageAttachments::enabled(), fn ($query) => $query->withExists('attachment'))
-            ->latest('id')->paginate(30);
-        if ($messages->onFirstPage() && $latest = $messages->first()?->id) {
+            ->latest('id')->cursorPaginate(30, ['*'], 'history');
+        $latestPage = ! $request->filled('history');
+        if ($latestPage && $latest = $messages->first()?->id) {
             $marker = $thread->marker($id);
             Conversation::whereKey($thread->id)->where($marker, '<', $latest)->update([$marker => $latest, 'updated_at' => DB::raw('updated_at')]);
         }
@@ -252,7 +254,7 @@ class MessagesController extends Controller
             ? $thread->messages()->where('sender_id', '!=', $id)->latest('id')->value('id') : null;
 
         return response()->view('messages.show', ['thread' => $thread, 'messages' => $messages, 'blocked' => $this->isBlocked($id, $thread->other($id)) || ! MessagingExtensions::canReply($thread), 'myBlock' => $mine,
-            'context' => $context, 'reportMessage' => $reportMessage])->header('Cache-Control', 'private, no-store')->header('Referrer-Policy', 'no-referrer');
+            'context' => $context, 'reportMessage' => $reportMessage, 'latestPage' => $latestPage])->header('Cache-Control', 'private, no-store')->header('Referrer-Policy', 'no-referrer');
     }
 
     private function publicContext(Request $request, Conversation $thread): ?array

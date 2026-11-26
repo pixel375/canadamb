@@ -1946,3 +1946,17 @@ body.chat-page { display:flex; flex-direction:column; height:var(--chat-viewport
 .discussion-parent-reference { display:grid; gap:3px; border-inline-start:3px solid var(--accent); padding:8px 12px; margin-block:6px; background:var(--soft); border-radius:5px; overflow-wrap:anywhere; color:inherit; }
 .discussion-parent-reference small { color:var(--muted); font-weight:600; }
 .discussion-parent-reference span { font-size:.85rem; }
+
+
+/* Chat history can grow independently of the compact composer. */
+.chat-update-bar { display:flex; align-items:center; justify-content:space-between; gap:8px; flex-shrink:0; padding-inline:14px; }
+.chat-update-bar:has(.chat-sync-status:empty):has(.chat-latest-button[hidden]) { display:none; }
+.chat-update-bar .chat-sync-status { padding:3px 0; min-width:0; }
+.chat-latest-button { font-size:.75rem; padding:4px 10px; white-space:nowrap; min-height:32px; }
+.chat-latest-button[hidden], .chat-history-nav a[hidden] { display:none; }
+.chat-attachment-picker { font-size:.8rem; }
+.chat-attachment-picker summary { cursor:pointer; color:var(--primary); padding-block:3px; }
+.chat-attachment-picker[open] label { margin-top:4px; }
+.chat-page .chat-history { overflow-anchor:none; }
+.chat-page .chat-composer { max-height:60%; overflow-y:auto; overscroll-behavior:contain; }
+@media(max-height:430px) { .chat-page .chat-heading { padding-block:5px; } .chat-page .chat-composer { max-height:68%; } }
