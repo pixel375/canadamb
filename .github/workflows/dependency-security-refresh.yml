@@ -1,0 +1,54 @@
+name: Resolve targeted Symfony security updates
+
+on:
+  push:
+    branches: [implementation/network-foundation]
+    paths: ['.github/workflows/dependency-security-refresh.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: curl, dom, fileinfo, gd, mbstring, openssl, pdo_mysql, pdo_sqlite, sodium, zip
+          tools: composer:v2
+          coverage: none
+      - name: Resolve compatible security patches without scripts or installation
+        run: |
+          cp composer.lock /tmp/original.lock
+          composer update symfony/http-kernel symfony/mailer symfony/routing symfony/serializer --with-all-dependencies --minimal-changes --no-install --no-scripts --no-plugins --no-interaction --prefer-dist
+          composer validate --strict
+          composer audit --locked
+      - name: Emit only resolved package metadata and lock checksum
+        run: |
+          python3 - <<'PY'
+          import json, hashlib
+          from pathlib import Path
+          original = json.loads(Path('/tmp/original.lock').read_text())
+          resolved = json.loads(Path('composer.lock').read_text())
+          for group in ('packages','packages-dev'):
+              old = {p['name']: p for p in original[group]}
+              new = {p['name']: p for p in resolved[group]}
+              for name in sorted(old.keys() - new.keys()):
+                  print('LOCK_DELTA ' + json.dumps({'group': group, 'remove': name}, ensure_ascii=False))
+              for name in sorted(new):
+                  if old.get(name) != new[name]:
+                      print('LOCK_DELTA ' + json.dumps({'group': group, 'package': new[name]}, ensure_ascii=False))
+          print('LOCK_ROOT ' + json.dumps({k:v for k,v in resolved.items() if k not in ('packages','packages-dev')}, ensure_ascii=False))
+          print('LOCK_SHA256 ' + hashlib.sha256(Path('composer.lock').read_bytes()).hexdigest())
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: resolved-composer-lock
+          path: composer.lock
+          if-no-files-found: error
+          retention-days: 3
