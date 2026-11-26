@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-26 — urgent Symfony security lock refresh
+
+Composer audit detected seven November 25 advisories in four locked Symfony packages. A read-only PHP 8.3 resolver workflow (45820975032) selected Symfony HTTP foundation, HTTP kernel, mailer, routing and serializer v7.4.24, with no installs/removals and no ignored advisories. Reconstructed the resolved lockfile from its emitted metadata and verified the exact SHA-256 against the resolver artifact (047b04ec145dc8451fbc68731c7a5ed56d0ec436033c192a074934f177e40f5c). The resolver audit passed. Full standard CI and guarded production deployment remain required.
+
 ## 2026-11-26 — member workflow regression coverage
 
 Extended mobile Chromium checks for selected notification unread changes and private message history search, including polling suppression. Saved job-search tests now cover employer-name persistence and exclusion of unrelated employers. No production records changed.
