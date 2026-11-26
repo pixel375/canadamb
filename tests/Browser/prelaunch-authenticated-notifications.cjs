@@ -11,6 +11,10 @@ const fs = require('node:fs');
         // Normal central sign-in against a disposable local SQLite account.
         // No test authentication endpoints are shipped to production.
         await page.goto(host + '/login');
+        await page.locator('label .required-marker').first().waitFor({ state: 'visible' });
+        check(await page.locator('label .required-marker').count() >= 2, 'Required login fields not marked');
+        await page.getByRole('button', { name: 'Sign in' }).click();
+        check(await page.locator('input[name="email"]').getAttribute('aria-invalid') === 'true', 'Missing email not visibly marked invalid');
         await page.getByLabel('Email').fill('browser-notifications@example.test');
         await page.getByLabel('Password').fill('browser-qa-password-only');
         await page.getByRole('button', { name: 'Sign in' }).click();

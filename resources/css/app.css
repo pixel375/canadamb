@@ -1934,3 +1934,8 @@ body.chat-page { display:flex; flex-direction:column; height:var(--chat-viewport
 .chat-page .chat-sync-status:empty { display:none; }
 @media(max-width:767px) { .chat-page > .site-header { display:none; } .chat-workspace { width:100%; padding:0; } .chat-page .chat-panel { border:0; border-radius:0; } .chat-page .chat-composer-footer .button { font-size:.82rem; padding-inline:10px; } .chat-page .chat-composer-footer small { font-size:.72rem; } }
 @media(max-height:430px) { .chat-page > .site-header { display:none; } .chat-workspace { padding-block:0; } .chat-page .chat-composer textarea { max-height:58px; } }
+
+/* Native required state and visible field-level validation. */
+.required-marker { color: #c44e52; font-weight: 800; }
+[aria-invalid="true"] { border-color: #c44e52 !important; outline: 1px solid #c44e52; }
+.invalid-field-label { text-decoration: underline dotted #c44e52; text-underline-offset: 3px; }

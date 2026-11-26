@@ -770,3 +770,79 @@ if (weatherWidgets.length) {
         }
     }
 }
+
+
+// Native form validation remains authoritative. Label indicators follow
+// disabled/required state, including conditional category fields.
+const fieldsOnPage = () => [...document.querySelectorAll('form input:not([type=hidden]), form select, form textarea')];
+const syncRequiredMarkers = () => {
+    const labels = new Map();
+    for (const control of fieldsOnPage()) {
+        for (const label of control.labels || []) {
+            labels.set(label, labels.get(label) || (control.required && !control.matches(':disabled')));
+        }
+    }
+    for (const [label, required] of labels) {
+        let marker = label.querySelector('.required-marker');
+        if (required && !marker) {
+            marker = document.createElement('span');
+            marker.className = 'required-marker';
+            marker.setAttribute('aria-hidden', 'true');
+            marker.textContent = ' *';
+            // Keep the marker beside the label text, not on a separate grid row.
+            const labelText = [...label.childNodes].find(node => node.nodeType === Node.TEXT_NODE && node.textContent.trim());
+            const textSpan = label.querySelector(':scope > span:not(.required-marker)');
+            if (labelText) {
+                const caption = document.createElement('span');
+                labelText.replaceWith(caption);
+                caption.append(labelText, marker);
+            } else if (textSpan) textSpan.append(marker);
+            else label.prepend(marker);
+        } else if (!required) marker?.remove();
+    }
+};
+const showInvalidField = (control, errorId) => {
+    control.setAttribute('aria-invalid', 'true');
+    for (const label of control.labels || []) label.classList.add('invalid-field-label');
+    if (errorId) {
+        const ids = new Set((control.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean));
+        ids.add(errorId);
+        control.setAttribute('aria-describedby', [...ids].join(' '));
+    }
+};
+syncRequiredMarkers();
+document.addEventListener('change', syncRequiredMarkers);
+let markerFrame;
+const formStateObserver = new MutationObserver(() => {
+    cancelAnimationFrame(markerFrame);
+    markerFrame = requestAnimationFrame(syncRequiredMarkers);
+});
+formStateObserver.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['required', 'disabled'] });
+document.addEventListener('invalid', event => {
+    if (event.target.matches('form input, form select, form textarea')) showInvalidField(event.target);
+}, true);
+const validationFields = fieldsOnPage();
+for (const error of document.querySelectorAll('[data-validation-field]')) {
+    const name = error.dataset.validationField;
+    const root = name.split('.')[0];
+    const matches = validationFields.filter(control => control.name === name || (root !== name && control.name === root + '[]'));
+    // Shared field names across different forms are ambiguous. Keep those
+    // errors in the visible summary instead of marking an unrelated form.
+    if (new Set(matches.map(control => control.form)).size === 1) {
+        for (const control of matches) showInvalidField(control, error.id);
+    }
+}
+const clearCorrectedField = event => {
+    const control = event.target;
+    if (!control.matches('form input, form select, form textarea') || !control.validity.valid || control.getAttribute('aria-invalid') !== 'true') return;
+    control.removeAttribute('aria-invalid');
+    const invalid = fieldsOnPage().filter(field => field.getAttribute('aria-invalid') === 'true');
+    for (const label of control.labels || []) {
+        if (!invalid.some(field => [...(field.labels || [])].includes(label))) label.classList.remove('invalid-field-label');
+    }
+    const ids = (control.getAttribute('aria-describedby') || '').split(/\s+/).filter(id => id && !id.startsWith('validation-error-'));
+    if (ids.length) control.setAttribute('aria-describedby', ids.join(' '));
+    else control.removeAttribute('aria-describedby');
+};
+document.addEventListener('input', clearCorrectedField);
+document.addEventListener('change', clearCorrectedField);

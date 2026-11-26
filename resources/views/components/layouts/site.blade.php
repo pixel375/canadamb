@@ -284,7 +284,9 @@
     @if(session('status'))<div class="container"><p role="status" class="notice">{{ __(session('status')) }}</p></div>@endif
     @if($errors->any())
         <div class="container"><div class="notice notice-error" role="alert"><strong>Check the following details.</strong><ul>
-            @foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach
+            @foreach($errors->getMessages() as $field => $messages)
+                <li id="validation-error-{{ $loop->index }}" data-validation-field="{{ $field }}">{{ implode(' ', $messages) }}</li>
+            @endforeach
         </ul></div></div>
     @endif
     @unless($isPreview)
