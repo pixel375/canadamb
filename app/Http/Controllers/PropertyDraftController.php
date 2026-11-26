@@ -25,9 +25,17 @@ class PropertyDraftController extends Controller
             'q' => 'nullable|string|max:100',
             'status' => 'nullable|in:draft,submitted,changes_requested,reviewed',
             'sort' => 'nullable|in:recent,price-low,price-high',
+            'location' => 'nullable|integer|exists:locations,id',
+            'min_price' => 'nullable|numeric|decimal:0,2|min:0|max:1000000000',
+            'max_price' => 'nullable|numeric|decimal:0,2|min:0|max:1000000000|gte:min_price',
         ]);
         $statuses = ['draft', 'submitted', 'changes_requested', 'reviewed'];
-        $matching = $this->owned($request)->whereIn('status', $statuses)
+        $owned = $this->owned($request);
+        $places = Location::whereIn('id', (clone $owned)->select('location_id'))->orderBy('name')->get(['id', 'name']);
+        $matching = $owned->whereIn('status', $statuses)
+            ->when($filters['location'] ?? null, fn ($query, $id) => $query->where('location_id', $id))
+            ->when(isset($filters['min_price']), fn ($query) => $query->where('price_cents', '>=', (int) round($filters['min_price'] * 100)))
+            ->when(isset($filters['max_price']), fn ($query) => $query->where('price_cents', '<=', (int) round($filters['max_price'] * 100)))
             ->when($filters['transaction'] ?? null, fn (Builder $query, string $value) => $query->where('transaction', $value))
             ->when($filters['property_type'] ?? null, fn (Builder $query, string $value) => $query->where('property_type', $value))
             ->when(filled($filters['q'] ?? null), fn (Builder $query) => KeywordSearch::apply($query, $filters['q'], ['title', 'description']));
@@ -41,7 +49,22 @@ class PropertyDraftController extends Controller
         };
         $items = $items->latest('id')->paginate(20)->withQueryString();
 
-        return view('properties.index', compact('items', 'filters', 'statuses', 'counts'));
+        return view('properties.index', compact('items', 'filters', 'statuses', 'counts', 'places'));
+    }
+
+    public function history(Request $request)
+    {
+        abort_unless(config('network.property_drafts'), 404);
+        $site = $request->attributes->get('site');
+        $filters = $request->validate(['q' => 'nullable|string|max:100', 'reference' => 'nullable|integer|min:1']);
+        $items = PropertyListing::where('owner_id', $request->user()->id)->where('status', 'archived')
+            ->when($site->location_id, fn ($query, $id) => $query->where('location_id', $id))
+            ->when($filters['reference'] ?? null, fn ($query, $id) => $query->whereKey($id))
+            ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title']))
+            ->with('location:id,name')->latest('updated_at')->latest('id')
+            ->paginate(20, ['id', 'title', 'location_id', 'transaction', 'property_type', 'updated_at'])->withQueryString();
+
+        return view('properties.history', compact('items', 'filters'));
     }
 
     public function show(Request $request, int $property)

@@ -1,6 +1,6 @@
 <x-layouts.site title="Private property drafts">
     <div class="container page-shell">
-        <div class="page-intro"><div><a class="text-link" href="/account/profile">My account</a><h1>Private property drafts</h1><p>Prepare and manage your property information for internal review.</p></div><a class="button button-primary" href="/account/properties/new"><x-icon name="plus" size="17"/> New property draft</a></div>
+        <div class="page-intro"><div><a class="text-link" href="/account/profile">My account</a><h1>Private property drafts</h1><p>Prepare and manage your property information for internal review.</p></div><div class="inline-actions"><a class="button button-outline" href="/account/properties/history">Archived history</a><a class="button button-primary" href="/account/properties/new"><x-icon name="plus" size="17"/> New property draft</a></div></div>
         <div class="property-private-notice"><strong>Private workspace</strong><p>Drafts, submitted properties and reviewed properties are not public advertisements. Review does not authorize publication.</p></div>
         <nav class="seller-status-grid property-owner-status" aria-label="Filter property drafts">
             @foreach(array_merge(['all'], $statuses) as $status)
@@ -13,6 +13,11 @@
             <label>Search drafts<input type="search" name="q" maxlength="100" value="{{ $filters['q'] ?? '' }}" placeholder="Title or description"></label>
             <label>Transaction<select name="transaction"><option value="">All transactions</option><option value="sale" @selected(($filters['transaction'] ?? '') === 'sale')>For sale</option><option value="rent" @selected(($filters['transaction'] ?? '') === 'rent')>For rent</option></select></label>
             <label>Property type<select name="property_type"><option value="">All property types</option>@foreach(\App\Models\PropertyListing::TYPES as $id => $label)<option value="{{ $id }}" @selected(($filters['property_type'] ?? null) === $id)>{{ $label }}</option>@endforeach</select></label>
+            @if(request()->attributes->get('site')->isNetwork())
+                <label>Community<select name="location"><option value="">All communities</option>@foreach($places as $place)<option value="{{ $place->id }}" @selected((int) ($filters['location'] ?? 0) === $place->id)>{{ $place->name }}</option>@endforeach</select></label>
+            @endif
+            <label>Minimum price (CAD)<input name="min_price" type="number" min="0" max="1000000000" step="0.01" value="{{ $filters['min_price'] ?? '' }}"></label>
+            <label>Maximum price (CAD)<input name="max_price" type="number" min="0" max="1000000000" step="0.01" value="{{ $filters['max_price'] ?? '' }}"></label>
             <label>Sort<select name="sort"><option value="recent" @selected(($filters['sort'] ?? 'recent') === 'recent')>Recently updated</option><option value="price-low" @selected(($filters['sort'] ?? '') === 'price-low')>Price low to high</option><option value="price-high" @selected(($filters['sort'] ?? '') === 'price-high')>Price high to low</option></select></label>
             <div class="inline-actions"><button class="button button-primary">Filter drafts</button><a class="text-link" href="/account/properties">Reset</a></div>
         </form>

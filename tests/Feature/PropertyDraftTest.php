@@ -50,6 +50,9 @@ class PropertyDraftTest extends TestCase
         $this->get($path)->assertOk()->assertSee('Private address sample');
         $this->get('https://canadamb.ca/account/properties?status=draft&q=outbuilding')->assertOk()->assertSee($draft->title)->assertSee('1 draft found');
         $this->get('https://canadamb.ca/account/properties?status=reviewed')->assertOk()->assertDontSee($draft->title);
+        $this->get('https://canadamb.ca/account/properties?location='.$draft->location_id.'&min_price=300000&max_price=320000')->assertOk()->assertSee($draft->title);
+        $this->get('https://canadamb.ca/account/properties?location='.$outside)->assertOk()->assertDontSee($draft->title);
+        $this->get('https://canadamb.ca/account/properties?min_price=400000')->assertOk()->assertDontSee($draft->title);
         $this->get('https://canadamb.ca/account/properties/new?location=brandon&transaction=rent')->assertOk()
             ->assertSee('value="rent" selected', false)->assertSee('value="'.$draft->location_id.'" selected', false);
         $this->actingAs($other)->get('https://canadamb.ca/account/properties')->assertOk()->assertDontSee($draft->title);
@@ -171,6 +174,10 @@ class PropertyDraftTest extends TestCase
 
         $this->actingAs($owner)->delete($path)->assertRedirect();
         $this->assertSame('archived', $draft->fresh()->status);
+        $history = 'https://brandonmb.ca/account/properties/history';
+        $this->get($history.'?reference='.$draft->id)->assertOk()->assertSee($draft->title)->assertDontSee($draft->description)->assertDontSee('Create similar draft');
+        $this->actingAs($moderator)->get($history)->assertOk()->assertDontSee($draft->title);
+        $this->actingAs($owner)->get('https://canadamb.ca/account/properties/history?q=family')->assertOk()->assertSee($draft->title);
         $this->assertDatabaseHas('audit_logs', ['actor_id' => $owner->id, 'action' => 'property-draft.withdrawn']);
         $this->get($path)->assertNotFound();
         $this->get('https://brandonmb.ca/real-estate/'.$draft->id)->assertNotFound();
