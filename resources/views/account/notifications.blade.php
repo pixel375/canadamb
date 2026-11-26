@@ -10,6 +10,7 @@
                     <h2 id="account-message-title">Messages</h2>
                     <p>{{ $counts['messages'] ? $counts['messages'].' unread '.\Illuminate\Support\Str::plural('message', $counts['messages']) : 'No unread private messages.' }}</p>
                     <a class="text-link" href="/account/messages">Open conversations <x-icon name="arrow" size="16"/></a>
+                    @if($counts['messages'])<a class="text-link" href="/account/messages?view=unread">Open unread messages <x-icon name="arrow" size="16"/></a>@endif
                 </div>
             </section>
             <section class="activity-card" aria-labelledby="account-discussions-title">
@@ -26,6 +27,7 @@
                     @if($discussionsEnabled)
                         <div class="activity-card-links">
                             <a class="text-link" href="/account/community-notifications">All discussion notifications <x-icon name="arrow" size="16"/></a>
+                            @if($counts['notifications'])<a class="text-link" href="/account/community-notifications?view=unread">Open unread replies <x-icon name="arrow" size="16"/></a>@endif
                             <a class="text-link" href="/account/followed-discussions">Following discussions <x-icon name="arrow" size="16"/></a>
                         </div>
                     @endif

@@ -157,6 +157,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('/account/discussions/{thread}', [CommunityForumController::class, 'update'])->whereNumber('thread')->middleware('throttle:8,1,discussion-edit');
     Route::post('/account/discussions/{thread}/withdraw', [CommunityForumController::class, 'withdraw'])->whereNumber('thread')->middleware('throttle:8,1,discussion-withdraw');
     Route::get('/account/community-notifications', [CommunityForumController::class, 'notifications']);
+    Route::post('/account/community-notifications/selected', [CommunityForumController::class, 'updateSelectedNotifications'])->middleware('throttle:12,1,notification-selected');
     Route::post('/account/community-notifications/read-all', [CommunityForumController::class, 'readAllNotifications'])->middleware('throttle:12,1');
     Route::post('/account/community-notifications/{notification}/read', [CommunityForumController::class, 'readNotification'])->whereNumber('notification');
     Route::get('/events/new', [CommunityEventController::class, 'create']);

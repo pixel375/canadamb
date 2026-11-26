@@ -167,6 +167,31 @@ class AccountActivityNavigationTest extends TestCase
         $this->getJson('https://brandonmb.ca/account/activity-counts')->assertJsonPath('notifications', 1);
     }
 
+    public function test_selected_notification_changes_are_atomic_owned_and_portal_scoped(): void
+    {
+        $member = User::factory()->create();
+        $author = User::factory()->create();
+        $brandon = Location::where('slug', 'brandon')->sole()->id;
+        $winnipeg = Location::where('slug', 'winnipeg')->sole()->id;
+        $first = $this->notification($member, $author, $brandon, 'Local first fixture');
+        $second = $this->notification($member, $author, $brandon, 'Local second fixture');
+        $remote = $this->notification($member, $author, $winnipeg, 'Remote fixture');
+        $foreign = $this->notification($author, $member, $brandon, 'Foreign fixture');
+        $hidden = $this->notification($member, $author, $brandon, 'Hidden fixture', false);
+        $url = 'https://brandonmb.ca/account/community-notifications';
+        $this->actingAs($member)->get($url)->assertOk()->assertSee('Manage selected notifications');
+        foreach ([$remote, $foreign, $hidden] as $id) {
+            $this->post($url.'/selected', ['notifications' => [$first, $id], 'action' => 'read'])->assertNotFound();
+            $this->assertNull(DB::table('community_notifications')->where('id', $first)->value('read_at'));
+        }
+        $this->post($url.'/selected', ['notifications' => [$first, $second], 'action' => 'read'])->assertRedirect();
+        $this->get($url.'?view=read')->assertOk()->assertSee('Local first fixture')->assertSee('Local second fixture')->assertDontSee('Remote fixture');
+        $this->post($url.'/selected', ['notifications' => [$first], 'action' => 'unread'])->assertRedirect();
+        $this->get($url.'?view=unread')->assertOk()->assertSee('Local first fixture')->assertDontSee('Local second fixture');
+        $this->getJson('https://brandonmb.ca/account/activity-counts')->assertJsonPath('notifications', 1);
+        $this->assertNull(DB::table('community_notifications')->where('id', $remote)->value('read_at'));
+    }
+
     private function notification(User $member, User $author, int $location, string $title, bool $approved = true): int
     {
         $thread = CommunityThread::create([

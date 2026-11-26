@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-26 — notification selection and unread history
+
+Added read-history filtering, selected read/unread actions bounded to twenty currently visible owned notifications, atomic rejection of foreign/hidden/remote IDs, direct unread shortcuts and unread-first dashboard ordering. Private no-store responses and responsive inbox filter wrapping. Added regression tests; existing messages and notification history are preserved.
+
 ## 2026-11-26 — private conversation history and inbox discovery
 
 Previous release `7dc3a2d` independently verified live via deployment 45766240461, retaining two releases (21,912 entries). Added private participant-scoped message-body search with sender filter, no read-marker side effects or live polling in search results, explicit no-store headers, inbox role and sort filters, and authorization/read-state regression tests. No production content or settings changed.

@@ -1891,3 +1891,9 @@ a.market-category-card:hover, a.market-category-card:focus-visible {
 .home-portal-link small { color:var(--muted); font-size:.8rem; }
 .home-portal-accent { width:5px; height:36px; border-radius:4px; flex:0 0 auto; }
 .home-portal-link:hover { border-color:var(--link); }
+
+/* Additional inbox filters wrap cleanly instead of squeezing the search input. */
+.message-search { flex-wrap:wrap; }
+.message-search input[type=search] { flex:1 1 220px; }
+.message-kind-filter { flex:1 1 125px; }
+@media(max-width:600px) { .message-search input[type=search] { flex:1 1 100%; } .message-kind-filter { max-width:none; } }

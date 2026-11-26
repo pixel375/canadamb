@@ -17,6 +17,7 @@
             <nav class="discussion-notification-filters" aria-label="Filter discussion notifications">
                 <a href="/account/community-notifications?{{ http_build_query(array_replace($filters, ['view' => 'all'])) }}" @if($view === 'all') aria-current="page" @endif>All activity</a>
                 <a href="/account/community-notifications?{{ http_build_query(array_replace($filters, ['view' => 'unread'])) }}" @if($view === 'unread') aria-current="page" @endif>Unread <span>{{ $unreadCount }}</span></a>
+                <a href="/account/community-notifications?{{ http_build_query(array_replace($filters, ['view' => 'read'])) }}" @if($view === 'read') aria-current="page" @endif>Read history</a>
             </nav>
             @if($unreadCount > 0)
                 <form action="/account/community-notifications/read-all" method="post">
@@ -34,11 +35,22 @@
             <button class="button button-primary">Filter activity</button><a class="text-link" href="/account/community-notifications?view={{ $view }}">Reset</a>
         </form>
         <p class="field-note">{{ $notifications->total() }} matching notifications</p>
+        @if($notifications->isNotEmpty())
+            <details class="panel form-stack mb-4"><summary>Manage selected notifications</summary>
+                <form id="notification-selection" method="post" action="/account/community-notifications/selected" class="form-stack mt-2">@csrf
+                    <input type="hidden" name="view" value="{{ $view }}">
+                    <p class="field-note">Select up to twenty notifications on this page. This affects your account only.</p>
+                    <label>Action<select name="action"><option value="read">Mark selected as read</option><option value="unread">Mark selected as unread</option></select></label>
+                    <div><button class="button button-outline">Apply selected action</button></div>
+                </form>
+            </details>
+        @endif
         <section class="panel discussion-notification-list" aria-label="Discussion notification list">
             @forelse($notifications as $notification)
                 <article class="discussion-notification-row{{ $notification->read_at ? '' : ' is-unread' }}">
                     <span class="discussion-notification-indicator" aria-hidden="true"></span>
                     <div class="discussion-notification-body">
+                        <label class="checkbox-line"><input form="notification-selection" type="checkbox" name="notifications[]" value="{{ $notification->id }}"> Select notification</label>
                         <p class="section-label">{{ $notification->read_at ? 'Read reply' : 'New reply' }}</p>
                         <h2><a href="/community/{{ $notification->thread_id }}/replies/{{ $notification->reply_id }}">{{ $notification->title }}</a></h2>
                         <p><x-icon name="clock" size="15"/> <time datetime="{{ \Illuminate\Support\Carbon::parse($notification->created_at)->toIso8601String() }}">{{ \Illuminate\Support\Carbon::parse($notification->created_at)->diffForHumans() }}</time></p>
@@ -51,6 +63,11 @@
                                 <input type="hidden" name="return_to" value="{{ $view }}">
                                 <button type="submit" class="button button-outline">Mark as read</button>
                             </form>
+                        @else
+                            <form method="post" action="/account/community-notifications/selected">@csrf
+                                <input type="hidden" name="view" value="{{ $view }}"><input type="hidden" name="notifications[]" value="{{ $notification->id }}"><input type="hidden" name="action" value="unread">
+                                <button class="button button-outline">Mark unread</button>
+                            </form>
                         @endif
                     </div>
                 </article>
@@ -60,7 +77,7 @@
                     @if(filled($filters['q'] ?? null) || filled($filters['period'] ?? null))
                         <h2>No notifications match these filters</h2><a class="button button-outline" href="/account/community-notifications?view={{ $view }}">Clear filters</a>
                     @else
-                    <h2>{{ $view === 'unread' ? 'All caught up' : 'No discussion notifications yet' }}</h2>
+                    <h2>{{ match($view) { 'unread' => 'All caught up', 'read' => 'No read notifications yet', default => 'No discussion notifications yet' } }}</h2>
                     <p>{{ $view === 'unread' ? 'You have no unread replies on this community.' : 'Follow discussions to receive updates when new replies are approved.' }}</p>
                     <a class="button button-primary" href="{{ $view === 'unread' ? '/account/community-notifications' : '/community' }}">{{ $view === 'unread' ? 'View all activity' : 'Browse discussions' }}</a>
                     @endif

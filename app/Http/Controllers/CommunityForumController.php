@@ -405,13 +405,14 @@ class CommunityForumController extends Controller
 
     public function notifications(Request $request)
     {
-        $filters = $request->validate(['view' => 'sometimes|in:all,unread', 'q' => 'nullable|string|max:100', 'period' => 'nullable|in:7,30,90']);
+        $filters = $request->validate(['view' => 'sometimes|in:all,unread,read', 'q' => 'nullable|string|max:100', 'period' => 'nullable|in:7,30,90']);
         $view = $filters['view'] ?? 'all';
         $unread = $this->visibleNotifications($request)->whereNull('notifications.read_at');
         $unreadCount = (clone $unread)->count();
         $readCutoff = $unread->max('notifications.id');
         $matching = $this->visibleNotifications($request)
             ->when($view === 'unread', fn (Builder $query) => $query->whereNull('notifications.read_at'))
+            ->when($view === 'read', fn (Builder $query) => $query->whereNotNull('notifications.read_at'))
             ->when($filters['period'] ?? null, fn ($query, $days) => $query->where('notifications.created_at', '>=', now()->subDays((int) $days)));
         foreach (KeywordSearch::patterns($filters['q'] ?? '') as $pattern) {
             $matching->whereRaw("LOWER(threads.title) LIKE ? ESCAPE '!'", [$pattern]);
@@ -421,7 +422,8 @@ class CommunityForumController extends Controller
             ->paginate(20, ['notifications.id', 'notifications.reply_id', 'notifications.read_at', 'notifications.created_at', 'threads.id as thread_id', 'threads.title'])
             ->withQueryString();
 
-        return view('community.notifications', compact('notifications', 'view', 'unreadCount', 'readCutoff', 'filters'));
+        return response()->view('community.notifications', compact('notifications', 'view', 'unreadCount', 'readCutoff', 'filters'))
+            ->header('Cache-Control', 'private, no-store');
     }
 
     public function readNotification(Request $request, int $notification)
@@ -432,10 +434,34 @@ class CommunityForumController extends Controller
 
         $returnTo = $request->input('return_to');
 
-        return in_array($returnTo, ['all', 'unread'], true)
-            ? redirect('/account/community-notifications'.($returnTo === 'unread' ? '?view=unread' : ''))
+        return in_array($returnTo, ['all', 'unread', 'read'], true)
+            ? redirect('/account/community-notifications'.($returnTo !== 'all' ? '?view='.$returnTo : ''))
                 ->with('status', 'Notification marked as read.')
             : redirect('/account/notifications');
+    }
+
+    public function updateSelectedNotifications(Request $request)
+    {
+        $data = $request->validate([
+            'notifications' => 'required|array|list|min:1|max:20',
+            'notifications.*' => 'required|integer|distinct|min:1',
+            'action' => 'required|in:read,unread',
+            'view' => 'nullable|in:all,unread,read',
+        ]);
+        DB::transaction(function () use ($request, $data) {
+            $ids = $this->visibleNotifications($request)->whereIn('notifications.id', $data['notifications'])
+                ->orderBy('notifications.id')->lockForUpdate()->pluck('notifications.id');
+            abort_unless($ids->count() === count($data['notifications']), 404);
+            $query = DB::table('community_notifications')->where('user_id', $request->user()->id)->whereIn('id', $ids);
+            if ($data['action'] === 'read') {
+                $query->whereNull('read_at')->update(['read_at' => now()]);
+            } else {
+                $query->whereNotNull('read_at')->update(['read_at' => null]);
+            }
+        }, attempts: 3);
+
+        return redirect('/account/community-notifications?view='.($data['view'] ?? 'all'))
+            ->with('status', 'Selected notifications marked '.$data['action'].'.');
     }
 
     public function readAllNotifications(Request $request)

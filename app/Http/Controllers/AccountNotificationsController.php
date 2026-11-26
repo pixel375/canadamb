@@ -52,7 +52,7 @@ final class AccountNotificationsController extends Controller
         $recent = $discussionsEnabled
             ? $activity->discussionNotifications($user, $site)
                 ->select('notification.id', 'notification.reply_id', 'notification.read_at', 'notification.created_at', 'thread.id as thread_id', 'thread.title')
-                ->orderByDesc('notification.id')->limit(8)->get()
+                ->orderByRaw('CASE WHEN notification.read_at IS NULL THEN 0 ELSE 1 END')->orderByDesc('notification.id')->limit(8)->get()
             : collect();
 
         $preferencesEnabled = NotificationPreferences::enabled();
@@ -60,6 +60,7 @@ final class AccountNotificationsController extends Controller
         $jobAlertsEnabled = JobSearches::enabled($site) && $preferences['job_summary'];
         $matchingSearches = $jobAlertsEnabled ? JobSearches::alertingSearchCount($user->id, $site) : 0;
 
-        return view('account.notifications', compact('counts', 'discussionsEnabled', 'recent', 'preferencesEnabled', 'preferences', 'jobAlertsEnabled', 'matchingSearches'));
+        return response()->view('account.notifications', compact('counts', 'discussionsEnabled', 'recent', 'preferencesEnabled', 'preferences', 'jobAlertsEnabled', 'matchingSearches'))
+            ->header('Cache-Control', 'private, no-store');
     }
 }
