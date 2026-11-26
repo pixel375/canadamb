@@ -28,7 +28,8 @@ class CommunityForumController extends Controller
     {
         $site = $request->attributes->get('site');
         abort_unless($this->community->enabled($site, 'community'), 404);
-        $rules = ['q' => 'nullable|string|max:100', 'category' => ['nullable', Rule::in(array_keys(Community::FORUMS))], 'sort' => 'nullable|in:recent,newest,replies'];
+        $rules = ['q' => 'nullable|string|max:100', 'category' => ['nullable', Rule::in(array_keys(Community::FORUMS))], 'sort' => 'nullable|in:recent,newest,replies',
+            'topics' => 'nullable|in:open,unanswered,following', 'activity' => 'nullable|in:7,30'];
         if ($site->isNetwork()) {
             $rules['location'] = ['nullable', 'string', 'max:100', Rule::exists('locations', 'slug')->where('province', 'MB')->where('selectable', true)];
         }
@@ -36,6 +37,20 @@ class CommunityForumController extends Controller
         $matching = $this->community->threads($site->location_id)
             ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'body']))
             ->when($filters['location'] ?? null, fn ($query, $slug) => $query->whereHas('location', fn ($place) => $place->where('slug', $slug)));
+        if (($filters['topics'] ?? null) === 'open') {
+            $matching->where('locked', false);
+        } elseif (($filters['topics'] ?? null) === 'unanswered') {
+            $matching->where('locked', false)->whereDoesntHave('replies', fn ($query) => $query->where('status', 'approved'));
+        } elseif (($filters['topics'] ?? null) === 'following') {
+            abort_unless($request->user()?->hasVerifiedEmail(), 403);
+            $matching->whereExists(fn (Builder $query) => $query->selectRaw('1')->from('community_thread_follows')
+                ->whereColumn('thread_id', 'community_threads.id')->where('user_id', $request->user()->id));
+        }
+        if (isset($filters['activity'])) {
+            $since = now()->subDays((int) $filters['activity']);
+            $matching->where(fn ($query) => $query->where('last_activity_at', '>=', $since)
+                ->orWhere(fn ($query) => $query->whereNull('last_activity_at')->where('created_at', '>=', $since)));
+        }
         $categoryCounts = (clone $matching)->toBase()->select('category')->selectRaw('COUNT(*) as total')->groupBy('category')->pluck('total', 'category');
         $threads = $matching->when($filters['category'] ?? null, fn ($query, $category) => $query->where('category', $category))
             ->orderByDesc('pinned');
@@ -64,7 +79,8 @@ class CommunityForumController extends Controller
 
         $places = $site->isNetwork() ? Location::selectable()->orderBy('name')->get() : collect();
 
-        return view('community.forum', compact('threads', 'filters', 'eventDays', 'eventsEnabled', 'places', 'categoryCounts'));
+        return response()->view('community.forum', compact('threads', 'filters', 'eventDays', 'eventsEnabled', 'places', 'categoryCounts'))
+            ->header('Cache-Control', 'private, no-store');
     }
 
     public function thread(Request $request, int $thread)

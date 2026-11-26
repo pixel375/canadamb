@@ -7,6 +7,7 @@ use App\Models\CommunityThread;
 use App\Models\Location;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class DiscussionHubTest extends TestCase
@@ -97,6 +98,35 @@ class DiscussionHubTest extends TestCase
         $this->get('https://brandonmb.ca/community?location=winnipeg')
             ->assertOk()->assertSee('Community search cleanup in Brandon')
             ->assertDontSee('Community search cleanup in Winnipeg');
+    }
+
+    public function test_topic_status_and_following_filters_preserve_public_scope_and_approved_reply_counts(): void
+    {
+        $member = User::factory()->create();
+        $other = User::factory()->create();
+        $brandon = Location::where('slug', 'brandon')->sole();
+        $winnipeg = Location::where('slug', 'winnipeg')->sole();
+        $threads = collect();
+        foreach ([[$brandon, 'Open unanswered fixture', 'approved', false], [$brandon, 'Answered fixture', 'approved', false],
+            [$brandon, 'Locked fixture', 'approved', true], [$brandon, 'Private followed fixture', 'pending', false],
+            [$winnipeg, 'Remote followed fixture', 'approved', false]] as [$place, $title, $status, $locked]) {
+            $thread = CommunityThread::create(['author_id' => $other->id, 'location_id' => $place->id, 'title' => $title,
+                'body' => 'A discussion fixture.', 'category' => 'help']);
+            $thread->forceFill(['status' => $status, 'locked' => $locked, 'last_activity_at' => now()->subDays(2)])->save();
+            $threads->push($thread);
+        }
+        $threads[0]->replies()->create(['author_id' => $other->id, 'body' => 'Unapproved response']);
+        $threads[1]->replies()->create(['author_id' => $other->id, 'body' => 'Approved response'])->forceFill(['status' => 'approved'])->save();
+        $threads[1]->forceFill(['last_activity_at' => now()->subDays(10)])->save();
+        foreach ([0, 3, 4] as $index) {
+            DB::table('community_thread_follows')->insert(['user_id' => $member->id, 'thread_id' => $threads[$index]->id, 'created_at' => now()]);
+        }
+        $base = 'https://brandonmb.ca/community';
+        $this->get($base.'?topics=unanswered')->assertOk()->assertSee('Open unanswered fixture')->assertDontSee('Answered fixture')->assertDontSee('Locked fixture');
+        $this->get($base.'?topics=open&activity=7')->assertOk()->assertSee('Open unanswered fixture')->assertDontSee('Answered fixture');
+        $this->get($base.'?topics=following')->assertForbidden();
+        $this->actingAs($member)->get($base.'?topics=following')->assertOk()->assertSee('Open unanswered fixture')->assertDontSee('Private followed fixture')->assertDontSee('Remote followed fixture');
+        $this->actingAs($other)->get($base.'?topics=following')->assertOk()->assertDontSee('Open unanswered fixture');
     }
 
     public function test_shared_post_composer_uses_existing_moderated_discussion_and_event_endpoints(): void

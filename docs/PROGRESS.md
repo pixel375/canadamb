@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-26 — discussion discovery and saved-search regression
+
+Added open, unanswered, followed and recent-activity discussion filters with approved-reply semantics, verified-member-only follows and private no-store responses. Category links preserve validated filters. Added regression coverage for nonpublic/remote followed threads and persisted structured Marketplace filters. Corrected the earlier BusinessController style gate finding; exact cumulative verification remains required.
+
 ## 2026-11-26 — expanded staged property discovery
 
 Added validated bathroom, floor-area, acreage, year, availability-date and pet-friendly rental filters with explicit unknown-feature exclusion, corrected reversed price validation and zero-keyword handling, and property-type prefill for private drafts. Tests exercise the separate public rollout switch, private record exclusion and filter behavior. No publishing action or rollout flag changed.

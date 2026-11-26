@@ -3,6 +3,7 @@
     $forumPlace = \App\Support\LocationScope::forBrowsing($forumSite, $filters['location'] ?? null);
     $postParams = array_filter(['location' => $forumSite->isNetwork() ? $forumPlace?->slug : null, 'category' => $filters['category'] ?? null]);
     $postUrl = '/community/new'.($postParams ? '?'.http_build_query($postParams) : '');
+    $categoryParams = array_filter(array_diff_key($filters, ['category' => true]), fn ($value) => $value !== null && $value !== '');
     $eventUrl = '/community/new?'.http_build_query(['type' => 'event'] + array_intersect_key($postParams, ['location' => true]));
 ?>
 <x-layouts.site title="Discussions" :location="$forumPlace">
@@ -35,9 +36,9 @@
                     <span class="discussion-count">{{ $threads->total() }} {{ \Illuminate\Support\Str::plural('topic', $threads->total()) }}</span>
                 </div>
                 <nav class="discussion-category-nav" aria-label="Discussion categories">
-                    <a class="discussion-filter-chip" href="/community{{ array_filter(['q' => $filters['q'] ?? null, 'location' => $filters['location'] ?? null, 'sort' => $filters['sort'] ?? null]) ? '?'.http_build_query(array_filter(['q' => $filters['q'] ?? null, 'location' => $filters['location'] ?? null, 'sort' => $filters['sort'] ?? null])) : '' }}" aria-current="{{ isset($filters['category']) ? 'false' : 'page' }}">All topics <small>{{ $categoryCounts->sum() }}</small></a>
+                    <a class="discussion-filter-chip" href="/community{{ $categoryParams ? '?'.http_build_query($categoryParams) : '' }}" aria-current="{{ isset($filters['category']) ? 'false' : 'page' }}">All topics <small>{{ $categoryCounts->sum() }}</small></a>
                     @foreach(\App\Support\Community::FORUMS as $key => $label)
-                        <a class="discussion-filter-chip" href="/community?{{ http_build_query(array_filter(['category' => $key, 'q' => $filters['q'] ?? null, 'location' => $filters['location'] ?? null, 'sort' => $filters['sort'] ?? null])) }}" aria-current="{{ ($filters['category'] ?? null) === $key ? 'page' : 'false' }}">{{ $label }} <small>{{ $categoryCounts[$key] ?? 0 }}</small></a>
+                        <a class="discussion-filter-chip" href="/community?{{ http_build_query(['category' => $key] + $categoryParams) }}" aria-current="{{ ($filters['category'] ?? null) === $key ? 'page' : 'false' }}">{{ $label }} <small>{{ $categoryCounts[$key] ?? 0 }}</small></a>
                     @endforeach
                 </nav>
                 <details class="search-disclosure" {{ !empty($filters) ? 'open' : '' }}>
@@ -48,6 +49,8 @@
                         @if(request()->attributes->get('site')->isNetwork())
                             <label>Location<select name="location"><option value="">All Manitoba</option>@foreach($places as $place)<option value="{{ $place->slug }}" @selected(($filters['location'] ?? null) === $place->slug)>{{ $place->name }}</option>@endforeach</select></label>
                         @endif
+                        <label>Topic status<select name="topics"><option value="">All public topics</option><option value="open" @selected(($filters['topics'] ?? '') === 'open')>Open for replies</option><option value="unanswered" @selected(($filters['topics'] ?? '') === 'unanswered')>Unanswered and open</option>@if(auth()->user()?->hasVerifiedEmail())<option value="following" @selected(($filters['topics'] ?? '') === 'following')>Topics I follow</option>@endif</select></label>
+                        <label>Recent activity<select name="activity"><option value="">Any time</option><option value="7" @selected(($filters['activity'] ?? '') === '7')>Past 7 days</option><option value="30" @selected(($filters['activity'] ?? '') === '30')>Past 30 days</option></select></label>
                         <label>Sort by<select name="sort">@foreach(['recent' => 'Recent activity', 'newest' => 'Newest topics', 'replies' => 'Most replies'] as $key => $label)<option value="{{ $key }}" @selected(($filters['sort'] ?? 'recent') === $key)>{{ $label }}</option>@endforeach</select></label>
                         <button class="button button-primary" type="submit">Search</button>
                     </form>

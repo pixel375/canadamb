@@ -76,5 +76,16 @@ class MarketplaceSearchesTest extends TestCase
         $this->get($base)->assertSee('2 matching listings')->assertSee('Expanded furniture');
         $this->delete($path)->assertRedirect();
         $this->assertDatabaseCount('marketplace_searches', 0);
+        $car = Listing::create(['user_id' => $seller->id, 'location_id' => Location::where('slug', 'brandon')->sole()->id,
+            'category' => 'cars', 'title' => 'Search detail car', 'description' => 'Vehicle fixture',
+            'status' => 'active', 'condition' => 'good', 'price_cents' => 500000,
+            'attributes' => ['make' => 'Honda', 'year' => '2020', 'mileage' => '45000']]);
+        $car->forceFill(['published_at' => now(), 'expires_at' => now()->addWeek()])->save();
+        $this->post($base, ['name' => 'Vehicle filters', 'category' => 'cars', 'make' => 'Honda', 'year_min' => '2018', 'mileage_max' => '50000'])
+            ->assertRedirect()->assertSessionHasNoErrors();
+        $vehicleSearch = MarketplaceSearch::sole();
+        $this->get($base)->assertOk()->assertSee('1 matching listing')->assertSee('Earliest model year: 2018');
+        $this->get($base.'/'.$vehicleSearch->id.'/edit')->assertOk()->assertSee('name="mileage_max" value="50000"', false);
+        $this->get('https://brandonmb.ca/marketplace?'.http_build_query($vehicleSearch->filters))->assertOk()->assertSee('Search detail car');
     }
 }
