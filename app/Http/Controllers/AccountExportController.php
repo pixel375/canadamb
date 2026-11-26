@@ -38,6 +38,7 @@ class AccountExportController extends Controller
         'sent-business-access-requests' => ['business_access_requests', 'requester_id', ['id', 'business_id', 'kind', 'status', 'expires_at', 'created_at', 'updated_at']],
         'received-business-access-requests' => ['business_access_requests', 'recipient_id', ['id', 'business_id', 'kind', 'status', 'expires_at', 'created_at', 'updated_at']],
         'discussion-notifications' => ['community_notifications', 'user_id', ['id', 'reply_id', 'read_at', 'created_at']],
+        'owner-notifications' => ['owner_notifications', 'user_id', ['id', 'kind', 'target_id', 'decision', 'read_at', 'created_at']],
     ];
 
     private const BOOKMARKS = [

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\CommunityThread;
+use App\Models\Listing;
 use App\Models\Location;
 use App\Models\User;
 use App\Support\OwnerNotifications;
@@ -25,6 +26,25 @@ class OwnerNotificationsTest extends TestCase
             RefreshDatabaseState::$migrated = false;
             RefreshDatabaseState::$inMemoryConnections = [];
         });
+    }
+
+    public function test_listing_expiry_is_recorded_once_and_available_to_the_owner_across_mirrored_portals(): void
+    {
+        config(['network.owner_notifications' => true]);
+        $member = User::factory()->create();
+        $listing = Listing::create(['user_id' => $member->id, 'location_id' => Location::where('slug', 'brandon')->sole()->id,
+            'title' => 'Expired table fixture', 'description' => 'An expired listing for notification tests.', 'category' => 'furniture',
+            'condition' => 'good', 'price_cents' => 1000, 'status' => 'active']);
+        $listing->forceFill(['published_at' => now()->subMonth(), 'expires_at' => now()->subMinute()])->save();
+        $this->artisan('marketplace:expire')->assertSuccessful();
+        $this->artisan('marketplace:expire')->assertSuccessful();
+        $this->assertDatabaseCount('owner_notifications', 1);
+        $this->assertDatabaseHas('owner_notifications', ['user_id' => $member->id, 'target_id' => $listing->id, 'kind' => 'listing', 'decision' => 'expired']);
+        foreach (['https://canadamb.ca', 'https://brandonmb.ca'] as $host) {
+            $this->actingAs($member)->get($host.'/account/notifications')->assertOk()->assertSee('Your Marketplace listing expired.');
+        }
+        $admin = User::factory()->create(['role' => 'super_admin']);
+        $this->actingAs($admin)->get('https://canadamb.ca/admin/notifications')->assertOk()->assertSee('Expired: 1')->assertDontSee($listing->title);
     }
 
     public function test_owner_updates_are_private_scoped_and_created_only_on_review(): void

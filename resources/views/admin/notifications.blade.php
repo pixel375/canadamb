@@ -17,6 +17,12 @@
         <h2>Availability and preferences</h2>
         <p>Member preferences: {{ $preferencesEnabled ? 'Available' : 'Staged, not active' }}</p>
         @if($paused !== null)<p>{{ number_format($paused) }} accounts have paused discussion notifications.</p>@endif
+        <p>Owner submission updates: {{ $ownerEnabled ? 'Available' : 'Staged, not active' }}</p>
+        @if($ownerEnabled)
+            <h3>Recorded status transitions in this period</h3>
+            @foreach(['approved', 'rejected', 'removed', 'expired'] as $decision)<p>{{ ucfirst($decision) }}: {{ number_format($ownerMetrics->get($decision, 0)) }}</p>@endforeach
+            <p class="field-note">Historical aggregate decisions only; no member details or delivery receipts.</p>
+        @endif
         <p>Event discussion linkage: {{ $eventsEnabled ? 'Available' : 'Staged, not active' }}</p>
         <p>Web Push and administrator broadcasts: not available. No permission prompts, external delivery or broadcast sends are initiated from this page.</p>
         <p class="field-note">Discussion preferences do not constitute consent to receive administrator broadcasts or marketing messages.</p>

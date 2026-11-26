@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Support\EventDiscussions;
 use App\Support\NotificationPreferences;
+use App\Support\OwnerNotifications;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -28,8 +29,11 @@ final class NotificationController extends Controller
         $preferencesEnabled = NotificationPreferences::enabled();
         $paused = $preferencesEnabled ? DB::table('notification_preferences')->where('discussion_replies', false)->count() : null;
         $eventsEnabled = EventDiscussions::enabled();
+        $ownerEnabled = OwnerNotifications::enabled();
+        $ownerMetrics = $ownerEnabled ? DB::table('owner_notifications')->where('created_at', '>=', $since)
+            ->selectRaw('decision, COUNT(*) as total')->groupBy('decision')->pluck('total', 'decision') : collect();
 
-        return response()->view('admin.notifications', compact('days', 'metrics', 'preferencesEnabled', 'paused', 'eventsEnabled'))
+        return response()->view('admin.notifications', compact('days', 'metrics', 'preferencesEnabled', 'paused', 'eventsEnabled', 'ownerEnabled', 'ownerMetrics'))
             ->header('Cache-Control', 'private, no-store');
     }
 }
