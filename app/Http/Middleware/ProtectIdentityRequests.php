@@ -25,6 +25,10 @@ class ProtectIdentityRequests
             }
             // Fortify normalizes the email before the registration action validates it.
             $request->validate(['email' => 'sometimes|required|string|max:254']);
+            if ($request->is('login')) {
+                $request->mergeIfMissing(['remember' => true]);
+                $request->validate(['remember' => 'boolean']);
+            }
             if ($request->is('reset-password')) {
                 $request->validate(['token' => 'required|string|max:255']);
             }

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\ApplyPreferredCommunity;
 use App\Http\Middleware\EnforceSessionVersion;
 use App\Http\Middleware\ProtectIdentityRequests;
 use App\Http\Middleware\RequireVerifiedEmail;
@@ -18,7 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(web: __DIR__.'/../routes/web.php', api: __DIR__.'/../routes/api.php', commands: __DIR__.'/../routes/console.php', health: '/up')
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append([RestrictPrelaunch::class, ResolveSite::class, SecurityHeaders::class]);
-        $middleware->web(append: [EnforceSessionVersion::class, ProtectIdentityRequests::class]);
+        $middleware->web(append: [EnforceSessionVersion::class, ProtectIdentityRequests::class, ApplyPreferredCommunity::class]);
         $middleware->prependToPriorityList(AuthenticatesRequests::class, EnforceSessionVersion::class);
         $middleware->alias(['verified' => RequireVerifiedEmail::class]);
         $middleware->redirectGuestsTo(fn (Request $request) => $request->attributes->get('site')?->isNetwork() ? '/login' : '/auth/start');

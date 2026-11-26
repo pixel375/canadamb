@@ -6,7 +6,7 @@ Owner feedback set 1: 2026-11-26. This file supersedes conflicting earlier roadm
 - [ ] A01 Separate signup UX on provincial and each local host; retain one network-wide identity/account and safe SSO. No separate user databases.
 - [ ] A02 Require selectable Manitoba signup location on CanadaMB; local signup permits only that site's fixed location, enforced server-side. Note other residents should register at CanadaMB.ca.
 - [ ] A03 Display signup location on profile; distinguish from editable browsing preference; review privacy and existing-account backfill.
-- [ ] A04 Reduce minimum password length from 12 to 8 consistently (registration, reset, account change); retain rate limits, sensible maximum and strong password guidance.
+- [x] A04 Reduce minimum password length from 12 to 8 consistently (registration, reset, account change); retain rate limits, sensible maximum and strong password guidance.
 - [ ] A05 Persistent login by default on each host and seamless cross-host SSO without repeated password prompts; review remember-token/session revocation, expiry, logout-all and recovery. Avoid shared cross-domain cookies, caching credentials, or leaking tokens. Document any required host setup and user testing.
 - [ ] A06 Configure production SMTP and test verification, reset, recovery and branded mail on both domains; monitored support mailbox.
 - [ ] A07 Anti-spam/bot protection, account suspension/ban, account settings/profile polish.
@@ -14,21 +14,21 @@ Owner feedback set 1: 2026-11-26. This file supersedes conflicting earlier roadm
 - [ ] A09 Physical-device registration/sign-in/reset/logout testing; public signup remains off until authorized.
 
 ## B — Locations and navigation (P1)
-- [ ] B01 Remove homepage Explore by location block; location selection belongs on Communities page.
-- [ ] B02 Provincial Communities: separate dedicated active local website cards from simple alphabetical Manitoba location filter dropdown (optional typeahead, not separate Find a community search).
+- [x] B01 Remove homepage Explore by location block; location selection belongs on Communities page.
+- [x] B02 Provincial Communities: separate dedicated active local website cards from simple alphabetical Manitoba location filter dropdown (optional typeahead, not separate Find a community search).
 - [ ] B03 Location selection persists by default; remove browse-once/remember choices; clear to all Manitoba. Apply scope consistently to browsing/navigation, never override a fixed local host or publication authorization.
-- [ ] B04 On CanadaMB filtered to a location with an active local domain, show a compact clickable below-header invitation to that site and explain shared account.
-- [ ] B05 On local hosts, Manitoba > local city breadcrumb with Manitoba linking to provincial site.
-- [ ] B06 Local location pin shows actual city, not CanadaMB network, and opens its own Communities page; mobile pin near top of drawer.
-- [ ] B07 Communities tab on every host; local Communities page identifies current site, links to provincial site for all Manitoba using same account, shows only other active dedicated website cards, notes all other communities are on CanadaMB.
+- [x] B04 On CanadaMB filtered to a location with an active local domain, show a compact clickable below-header invitation to that site and explain shared account.
+- [x] B05 On local hosts, Manitoba > local city breadcrumb with Manitoba linking to provincial site.
+- [x] B06 Local location pin shows actual city, not CanadaMB network, and opens its own Communities page; mobile pin near top of drawer.
+- [x] B07 Communities tab on every host; local Communities page identifies current site, links to provincial site for all Manitoba using same account, shows only other active dedicated website cards, notes all other communities are on CanadaMB.
 - [ ] B08 Concise shared-publication explanation on FAQ and applicable Marketplace, discussion/event, business and job creation forms: approved local content also appears provincially, and approved provincial content for a location appears on its dedicated site where available and enabled.
-- [ ] B09 Clear FAQ on both hosts covering network, shared account, location filtering and posting.
+- [x] B09 Clear FAQ on both hosts covering network, shared account, location filtering and posting.
 - [ ] B10 Authoritative Manitoba locations import/validation, municipality relationships, Indigenous/northern locations, boundary and address review; verify portal scope.
 - [ ] B11 Simplify new portal onboarding, DNS/TLS/SSO, branding and location picker; Steinbach/Winnipeg can follow later.
 
 ## C — Discussions and events (P1)
-- [ ] C01 Reply edit cancel/back/save returns to originating discussion page (including pagination); preserve My replies entry behavior and reject unsafe redirect targets.
-- [ ] C02 Remove visible Link to this reply control; retain safe internal deep links for notifications.
+- [x] C01 Reply edit cancel/back/save returns to originating discussion page (including pagination); preserve My replies entry behavior and reject unsafe redirect targets.
+- [x] C02 Remove visible Link to this reply control; retain safe internal deep links for notifications.
 - [ ] C03 Clean reply-to-comment flow (including own comment), with appropriate parent linkage, visibility, moderation and mobile layout; review schema.
 - [ ] C04 Events created only through discussion composer as final separated Event category, not independent posting; existing event history retained; date required, time optional, city fixed locally, descriptive address/venue required. Review all-day/timezone handling.
 - [ ] C05 Separate discussion vs calendar event automatic/manual approval settings with independent status, audit, safe default and review.
@@ -55,7 +55,7 @@ Owner feedback set 1: 2026-11-26. This file supersedes conflicting earlier roadm
 - [ ] E07 Keep composer/character count/safety/attachment/send controls visible at bottom; handle virtual keyboard, safe-area, history paging and scroll preservation.
 - [ ] E08 Remove Jump to latest button and automatic refresh explanatory text; keep accessible new-message/failure feedback and correct scrolling without forced jump.
 - [ ] E09 Icon-only chat options with accessible label, concise block/unblock, report chat; no long block description or manage-blocked link in dropdown.
-- [ ] E10 Inbox: remove My account button, move subdued Blocked members link below card; paginate newest ten by default.
+- [x] E10 Inbox: remove My account button, move subdued Blocked members link below card; paginate newest ten by default.
 - [ ] E11 Activate extended inquiries/archives, photo/inquiry settings and report review; verify delivery/read state, blocked participants, private media retention. Shared business inbox later.
 
 ## F — Site-wide UX and Marketplace (P1)
@@ -118,3 +118,7 @@ Owner feedback set 1: 2026-11-26. This file supersedes conflicting earlier roadm
 - Location UX source pass: B01/B02/B04/B05/B06/B07 simplified homepage, separate community cards and persistent provincial picker, local Communities page, mobile pin, breadcrumb and active-portal invitation. Old public location-search UI removed; location API behavior retained. B03 remaining: consistent direct module browsing and explicit query selection persistence; do not mark fully complete yet. CI pending.
 
 - A04 source implementation: shared registration/reset/change password minimum now eight characters, matching UI; retain letter/number, confirmation, byte limit, rate limits and revocation. Tests exercise eight-character passwords and seven-character rejection. CI pending.
+
+- 2026-11-26 verified: e65c47a exact backend 45845266174 and browser 45845265991 passed; independent live deployment audit 45845814596 confirmed exact SHA and two releases/21,921 entries. Marked A04, B01/B02/B04/B05/B06/B07/B09, C01/C02, E10 complete in code/CI; physical-device checks remain under A09/L01/M05.
+
+- Current source: A05 default 30-day persistent login on central and local SSO, central opt-out, token revocation on password change, browser restoration/revocation test. B03 applies chosen provincial preference to direct module browsing (preserves filters; explicit GET scope overrides for that visit without mutating preference). Location selector POST remains the only persistent preference write; fixed local scope and APIs unchanged. Exact CI pending.

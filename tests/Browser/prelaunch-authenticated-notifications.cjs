@@ -15,6 +15,15 @@ const fs = require('node:fs');
         await page.getByLabel('Password').fill('browser-qa-password-only');
         await page.getByRole('button', { name: 'Sign in' }).click();
         await page.waitForURL(url => !url.pathname.startsWith('/login'));
+        const rememberCookie = (await page.context().cookies(host)).find(cookie => cookie.name.startsWith('remember_web_'));
+        check(rememberCookie && rememberCookie.httpOnly && rememberCookie.sameSite === 'Lax'
+            && rememberCookie.expires > Date.now() / 1000 + 29 * 86400
+            && rememberCookie.expires < Date.now() / 1000 + 31 * 86400, 'Default persistent login cookie missing or incorrectly scoped');
+        await page.context().clearCookies();
+        await page.context().addCookies([rememberCookie]);
+        await page.goto(host + '/account/profile');
+        check(new URL(page.url()).pathname === '/account/profile', 'Remembered login failed after session cookie loss');
+        console.log('PASS: persistent login restores a fresh session with a host-only 30-day remember cookie');
 
         for (const width of [320, 390, 768, 1024, 1440]) {
             await page.setViewportSize({ width, height: 900 });
@@ -541,7 +550,13 @@ const fs = require('node:fs');
         await page.getByRole('button', { name: 'Sign in' }).click();
         await page.waitForURL(url => url.pathname !== '/login');
         check((await page.goto(host + '/account/settings')).ok(), 'New password did not restore access');
-        console.log('PASS: password visibility and authenticated password change with fresh sign-in');
+        const revokedContext = await browser.newContext();
+        await revokedContext.addCookies([rememberCookie]);
+        const revokedPage = await revokedContext.newPage();
+        await revokedPage.goto(host + '/account/profile');
+        check(new URL(revokedPage.url()).pathname === '/login', 'Password change failed to revoke the earlier remember cookie');
+        await revokedContext.close();
+        console.log('PASS: password visibility, password change, remembered-token revocation and fresh sign-in');
 
         for (const width of [320, 390, 1024, 1440]) {
             await page.setViewportSize({ width, height: 900 });

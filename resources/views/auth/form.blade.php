@@ -38,6 +38,7 @@
                 <x-password-field name="password" label="Password" :autocomplete="$mode === 'login' ? 'current-password' : 'new-password'" :minimum="$mode === 'login' ? null : 8"/>
                 @if($mode !== 'login')<small id="password-rules" class="field-note">Use at least 8 characters, including a letter and a number. A longer unique password is recommended (maximum 72 bytes).</small>@endif
             @endif
+            @if($mode === 'login')<label class="checkbox-line"><input type="hidden" name="remember" value="0"><input type="checkbox" name="remember" value="1" @checked(old('remember', '1'))> Keep me signed in</label>@endif
             @if(in_array($mode, ['register', 'reset'], true))<x-password-field name="password_confirmation" label="Confirm password" autocomplete="new-password" :minimum="8"/>@endif
             @if($mode === 'verify')<p>Open the verification link in your email. You can request a new link here.</p>@endif
             <div><button class="button button-primary">{{ match($mode) { 'forgot' => 'Send reset link', 'verify' => 'Resend verification link', default => $title } }}</button></div>

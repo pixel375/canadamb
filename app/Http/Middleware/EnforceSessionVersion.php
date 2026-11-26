@@ -11,6 +11,7 @@ class EnforceSessionVersion
 {
     public function handle(Request $request, Closure $next): Response
     {
+        Auth::guard('web')->setRememberDuration(30 * 24 * 60);
         $host = $request->session()->get('session_host');
         $user = $request->user();
         if ($user && (($host && $host !== $request->getHost())

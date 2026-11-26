@@ -178,7 +178,12 @@ class HomeDiscoveryNavigationTest extends TestCase
         $this->get('https://canadamb.ca/?location=winnipeg')->assertOk()->assertSee('Explore Winnipeg');
         $this->get('https://canadamb.ca/communities?q=Brandon')->assertOk()
             ->assertSee('value="brandon" selected', false)->assertSee('Set location');
-        $this->get('https://canadamb.ca/marketplace')->assertOk();
+        foreach (['marketplace', 'real-estate', 'businesses', 'business-updates', 'community', 'events', 'news'] as $module) {
+            $this->get('https://canadamb.ca/'.$module.'?q=local')->assertRedirect('/'.$module.'?q=local&location=brandon');
+            $this->get('https://canadamb.ca/'.$module.'?location=')->assertOk();
+        }
+        $this->get('https://canadamb.ca/jobs?q=local')->assertRedirect('/jobs?q=local&location=Brandon');
+        $this->get('https://canadamb.ca/jobs?location=Winnipeg')->assertOk();
 
         $this->withCookie('canadamb_community', 'winnipeg')
             ->get('https://brandonmb.ca/')->assertOk()->assertSee('Explore Brandon');
