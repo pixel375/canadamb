@@ -3,15 +3,21 @@
         <div class="page-intro"><div><a class="text-link" href="/account/profile">My account</a><h1>My events</h1><p>Review your event submissions and publication status.</p></div><a class="button button-primary" href="/events/new"><x-icon name="plus" size="17"/> Submit an event</a></div>
         <nav class="seller-status-grid" aria-label="Event status">
             @foreach(array_merge(['all'], $statuses) as $status)
-                <?php $params = array_filter(['status' => $status === 'all' ? null : $status, 'q' => $filters['q'] ?? null, 'sort' => $filters['sort'] ?? null], fn ($value) => $value !== null && $value !== ''); ?>
+                <?php $params = array_filter(array_replace($filters, ['status' => $status === 'all' ? null : $status]), fn ($value) => $value !== null && $value !== ''); ?>
                 <a class="seller-status-tile" href="/account/events{{ $params ? '?'.http_build_query($params) : '' }}" @if(($filters['status'] ?? 'all') === $status) aria-current="page" @endif><strong>{{ $status === 'all' ? $counts->sum() : ($counts[$status] ?? 0) }}</strong><span>{{ ucfirst($status) }}</span></a>
             @endforeach
         </nav>
-        <form class="panel seller-listing-search" method="get" action="/account/events">
+        <form class="panel saved-search" method="get" action="/account/events">
             @if($filters['status'] ?? null)<input type="hidden" name="status" value="{{ $filters['status'] }}">@endif
-            <label for="owned-event-search" class="sr-only">Search your events</label><input type="search" id="owned-event-search" name="q" maxlength="100" value="{{ $filters['q'] ?? '' }}" placeholder="Search your events"><label>Dates<select name="sort"><option value="recent" @selected(($filters['sort'] ?? 'recent') === 'recent')>All dates, latest first</option><option value="upcoming" @selected(($filters['sort'] ?? '') === 'upcoming')>Upcoming and ongoing</option></select></label><button class="button button-primary">Search</button>
+            <label for="owned-event-search">Search your events<input type="search" id="owned-event-search" name="q" maxlength="100" value="{{ $filters['q'] ?? '' }}" placeholder="Search your events"></label>
+            @if(request()->attributes->get('site')->isNetwork())
+                <label>Community<select name="location"><option value="">All communities</option>@foreach($places as $place)<option value="{{ $place->id }}" @selected((int) ($filters['location'] ?? 0) === $place->id)>{{ $place->name }}</option>@endforeach</select></label>
+            @endif
+            <label>Category<select name="category"><option value="">All categories</option>@foreach(\App\Support\Community::EVENTS as $key => $label)<option value="{{ $key }}" @selected(($filters['category'] ?? '') === $key)>{{ $label }}</option>@endforeach</select></label>
+            <label>Reference<input type="number" name="reference" min="1" value="{{ $filters['reference'] ?? '' }}"></label>
+            <label>Dates<select name="sort"><option value="recent" @selected(($filters['sort'] ?? 'recent') === 'recent')>All dates, latest first</option><option value="upcoming" @selected(($filters['sort'] ?? '') === 'upcoming')>Upcoming and ongoing</option><option value="past" @selected(($filters['sort'] ?? '') === 'past')>Past events</option></select></label><button class="button button-primary">Search</button>
         </form>
-        @if(filled($filters['sort'] ?? null) || filled($filters['q'] ?? null) || filled($filters['status'] ?? null))
+        @if(array_filter($filters, fn ($value) => $value !== null && $value !== ''))
             <a class="text-link" href="/account/events">Reset event filters</a>
         @endif
         <p class="field-note seller-results-count">{{ $items->total() }} {{ \Illuminate\Support\Str::plural('event', $items->total()) }} found</p>
@@ -44,7 +50,7 @@
         <section class="seller-listing-grid">
             @forelse($items as $item)
                 <article class="panel seller-listing-card">
-                    <div class="event-discovery-card"><div class="event-date-tile"><strong>{{ $item->localStart()->format('j') }}</strong><span>{{ $item->localStart()->format('M') }}</span></div><div><span class="member-listing-status" data-status="{{ $item->status }}">{{ ucfirst($item->status) }}</span><h2>{{ $item->title }}</h2><p>{{ $item->localStart()->format('M j, Y · g:i a') }} · {{ $item->location->name }}</p><p>{{ $item->venue }}</p></div></div>
+                    <div class="event-discovery-card"><div class="event-date-tile"><strong>{{ $item->localStart()->format('j') }}</strong><span>{{ $item->localStart()->format('M') }}</span></div><div><span class="member-listing-status" data-status="{{ $item->status }}">{{ ucfirst($item->status) }}</span><h2>{{ $item->title }}</h2><p>{{ $item->localStart()->format('M j, Y · g:i a') }} · {{ $item->location->name }}</p><p>{{ $item->venue }} · {{ \App\Support\Community::EVENTS[$item->category] }}</p><p class="field-note">Reference #{{ $item->id }}</p></div></div>
                     <p class="seller-lifecycle-note">{{ match($item->status) { 'pending' => 'Waiting for moderator approval.', 'approved' => 'Approved for the community calendar.', 'rejected' => 'Not approved for publication.', 'cancelled' => 'Public event marked cancelled.', 'withdrawn' => 'Submission withdrawn before publication.', default => ucfirst($item->status) } }}</p>
                     @if($item->cancellation_note)<p class="field-note">Private cancellation note · {{ $item->cancellation_note }}</p>@endif
                     @if(in_array($item->status, ['approved','cancelled'], true))<a class="button button-outline" href="/events/{{ $item->id }}">View event</a>@endif
@@ -71,7 +77,7 @@
                         </details>
                     @endif
                 </article>
-            @empty<div class="panel market-results-empty"><h2>{{ filled($filters['q'] ?? null) || filled($filters['status'] ?? null) || ($filters['sort'] ?? null) === 'upcoming' ? 'No events match these filters.' : 'No events submitted yet.' }}</h2><a class="button button-outline" href="/account/events">View all my events</a></div>@endforelse
+            @empty<div class="panel market-results-empty"><h2>{{ array_filter($filters, fn ($value) => $value !== null && $value !== '') ? 'No events match these filters.' : 'No events submitted yet.' }}</h2><a class="button button-outline" href="/account/events">View all my events</a></div>@endforelse
         </section>
         {{ $items->links() }}
     </div>

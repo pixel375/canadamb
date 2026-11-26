@@ -31,6 +31,11 @@ class EventSeriesTest extends TestCase
         $this->assertSame('2026-03-14 11:00', $events[1]->fresh()->localEnd()->format('Y-m-d H:i'));
         $this->assertSame('2026-03-15', $events[2]->fresh()->localStart()->toDateString());
         $this->post($url, array_replace($data, ['days' => 1]))->assertSessionHasErrors('version');
+        $this->get('https://canadamb.ca/account/events?category=community&reference='.$events[0]->id.'&q=Club')->assertOk()->assertSee('1 event found');
+        $this->get('https://canadamb.ca/account/events?category=arts')->assertOk()->assertDontSee('Club shift');
+        $this->travelTo('2026-03-10 12:00:00');
+        $this->get('https://brandonmb.ca/account/events?sort=past')->assertOk()->assertSee('1 event found');
+        $this->get('https://brandonmb.ca/account/events?sort=upcoming')->assertOk()->assertSee('2 events found');
     }
 
     public function test_bounded_repeat_preserves_local_time_and_exports_only_approved_occurrences(): void

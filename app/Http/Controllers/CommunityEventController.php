@@ -206,19 +206,29 @@ class CommunityEventController extends Controller
         $site = $request->attributes->get('site');
         abort_unless($this->community->enabled($site, 'events'), 404);
         $statuses = ['pending', 'approved', 'rejected', 'cancelled', 'withdrawn'];
-        $filters = $request->validate(['status' => ['nullable', Rule::in($statuses)], 'q' => 'nullable|string|max:100', 'sort' => 'nullable|in:upcoming,recent']);
+        $filters = $request->validate(['status' => ['nullable', Rule::in($statuses)], 'q' => 'nullable|string|max:100',
+            'sort' => 'nullable|in:upcoming,recent,past', 'category' => ['nullable', Rule::in(array_keys(Community::EVENTS))],
+            'location' => 'nullable|integer|exists:locations,id', 'reference' => 'nullable|integer|min:1']);
         $owned = $this->community->events($site->location_id)->where('author_id', $request->user()->id);
-        $counts = (clone $owned)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
-        $items = $owned->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
-            ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'body', 'venue']))
+        $places = Location::whereIn('id', (clone $owned)->select('location_id'))->orderBy('name')->get(['id', 'name']);
+        $now = now('UTC');
+        $matching = $owned->when($filters['category'] ?? null, fn ($query, $category) => $query->where('category', $category))
+            ->when($filters['location'] ?? null, fn ($query, $id) => $query->where('location_id', $id))
+            ->when($filters['reference'] ?? null, fn ($query, $id) => $query->whereKey($id))
+            ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'body', 'venue', 'organizer']))
             ->when(($filters['sort'] ?? null) === 'upcoming', fn ($query) => $query->where(fn ($dates) => $dates
-                ->where('starts_at', '>=', now('UTC'))->orWhere('ends_at', '>=', now('UTC')))
-                ->orderBy('starts_at')->orderBy('id'), fn ($query) => $query->orderByDesc('starts_at')->orderByDesc('id'))
+                ->where('starts_at', '>=', $now)->orWhere('ends_at', '>=', $now)))
+            ->when(($filters['sort'] ?? null) === 'past', fn ($query) => $query->where(fn ($dates) => $dates
+                ->where('ends_at', '<', $now)->orWhere(fn ($instant) => $instant->whereNull('ends_at')->where('starts_at', '<', $now))));
+        $counts = (clone $matching)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
+        $items = $matching->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
+            ->when(($filters['sort'] ?? null) === 'upcoming', fn ($query) => $query->orderBy('starts_at')->orderBy('id'),
+                fn ($query) => $query->orderByDesc('starts_at')->orderByDesc('id'))
             ->paginate(20)->withQueryString();
 
         $linked = EventDiscussions::linkedThreads($items->pluck('id')->all());
 
-        return view('community.own-events', compact('items', 'statuses', 'filters', 'counts', 'linked'));
+        return view('community.own-events', compact('items', 'statuses', 'filters', 'counts', 'linked', 'places'));
     }
 
     public function edit(Request $request, int $event)
