@@ -50,8 +50,8 @@ class DiscussionThreadExperienceTest extends TestCase
             ->assertDontSee('id="reply-composer"', false)
             ->assertDontSee('action="/community/'.$thread->id.'/follow"', false);
 
-        // Discussions keep existing community canonical rules.
-        $this->get('https://canadamb.ca/community/'.$thread->id)->assertRedirect($url);
+        // Canonical SEO identity does not move visitors between portals.
+        $this->get('https://canadamb.ca/community/'.$thread->id)->assertOk()->assertSee($thread->title);
     }
 
     public function test_verified_member_can_reply_follow_unfollow_and_locked_thread_hides_composer(): void

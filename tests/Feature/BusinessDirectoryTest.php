@@ -181,7 +181,7 @@ class BusinessDirectoryTest extends TestCase
             ->assertSee('2 businesses')->assertSee('No matching businesses.');
         $business = Business::where('name', 'Brandon Bicycle Repair')->sole();
         $this->get('https://brandonmb.ca/businesses/'.$business->slug)->assertSee('Own this business?');
-        $this->get('https://canadamb.ca/businesses/'.$business->slug)->assertStatus(301)->assertRedirect('https://brandonmb.ca/businesses/'.$business->slug);
+        $this->get('https://canadamb.ca/businesses/'.$business->slug)->assertOk()->assertSee($business->name)->assertSee('Own this business?');
         $this->get('https://brandonmb.ca/sitemap.xml')->assertSee('https://brandonmb.ca/businesses/'.$business->slug);
         $this->get('https://canadamb.ca/sitemap.xml')->assertDontSee('businesses/'.$business->slug);
     }

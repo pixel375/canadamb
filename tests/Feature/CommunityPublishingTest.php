@@ -34,7 +34,7 @@ class CommunityPublishingTest extends TestCase
         $this->get($city)->assertNotFound();
         $this->post("https://canadamb.ca/admin/community/threads/$thread->id", ['action' => 'approve'])->assertForbidden();
         $this->actingAs($moderator)->post("https://canadamb.ca/admin/community/threads/$thread->id", ['action' => 'approve'])->assertRedirect();
-        $this->get($main)->assertRedirect($city);
+        $this->get($main)->assertOk()->assertSee($input['title'])->assertSee('<link rel="canonical" href="'.$city.'">', false);
         $this->get('https://canadamb.ca/community')->assertSee($input['title']);
         $this->get('https://canadamb.ca/')->assertSee($input['title']);
 
@@ -44,6 +44,7 @@ class CommunityPublishingTest extends TestCase
         $reply = CommunityReply::sole();
         $this->actingAs($moderator)->post("https://canadamb.ca/admin/community/replies/$reply->id", ['action' => 'approve', 'version' => $reply->contentVersion()])->assertRedirect();
         $this->get($city)->assertSee('I can donate some vegetable seeds.');
+        $this->get($main)->assertOk()->assertSee('I can donate some vegetable seeds.');
         $this->actingAs($author)->get('https://canadamb.ca/account/community-notifications')->assertSee('Neighbourhood garden planning');
         $this->actingAs($moderator)->post("https://canadamb.ca/admin/community/replies/$reply->id", [
             'action' => 'reject', 'reason' => 'Reply removed during second review.', 'version' => $reply->fresh()->contentVersion(),
@@ -79,7 +80,7 @@ class CommunityPublishingTest extends TestCase
         $this->get('https://brandonmb.ca/events?month=2026-03')->assertOk()->assertSee($input['title']);
         $this->get('https://canadamb.ca/events')->assertSee($input['title']);
         $this->get('https://canadamb.ca/')->assertSee($input['title']);
-        $this->get("https://canadamb.ca/events/$event->id")->assertRedirect("https://brandonmb.ca/events/$event->id");
+        $this->get("https://canadamb.ca/events/$event->id")->assertOk()->assertSee($input['title'])->assertSee('3:30 am');
         $this->get("https://brandonmb.ca/events/$event->id")->assertSee('3:30 am');
 
         $this->actingAs(User::factory()->create())->post("https://brandonmb.ca/account/events/$event->id/cancel")->assertNotFound();

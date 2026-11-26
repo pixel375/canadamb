@@ -74,6 +74,8 @@ class RealEstateBrowsingTest extends TestCase
             ->assertDontSee('Never published private rental')
             ->assertDontSee('100 Private Lane')
             ->assertDontSee('NW secret quarter');
+        $this->get('https://canadamb.ca/real-estate/'.$listed->id)->assertOk()->assertSee('Potential published ranch')->assertDontSee('NW secret quarter');
+        $this->get('https://canadamb.ca/real-estate/'.$reviewed->id)->assertNotFound();
         $this->get('https://brandonmb.ca/real-estate/'.$listed->id)->assertOk()
             ->assertSee('Potential published ranch')
             ->assertDontSee('100 Private Lane')

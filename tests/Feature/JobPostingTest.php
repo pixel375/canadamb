@@ -210,7 +210,7 @@ class JobPostingTest extends TestCase
         $this->get('https://canadamb.ca/jobs?location=Brandon')->assertOk()->assertSee($input['title']);
         $this->get('https://canadamb.ca/jobs?location=%25')->assertOk()->assertDontSee($input['title']);
         $this->get('https://canadamb.ca/jobs?q=0')->assertOk()->assertDontSee($input['title']);
-        $this->get("https://canadamb.ca/jobs/$job->id")->assertRedirect("https://brandonmb.ca/jobs/$job->id");
+        $this->get("https://canadamb.ca/jobs/$job->id")->assertOk()->assertSee($input['title'])->assertSee('About the employer');
         $this->get("https://brandonmb.ca/jobs/$job->id")->assertSee('https://example.test/careers')->assertSee('JobPosting')->assertSee('Job overview')->assertSee('About the employer');
         $this->get('https://brandonmb.ca/businesses/manitoba-co-op')->assertOk()->assertSee('Current job opportunities')->assertSee($input['title']);
         $this->get('https://brandonmb.ca/sitemap.xml')->assertOk()->assertSee("https://brandonmb.ca/jobs/$job->id");

@@ -70,7 +70,7 @@ class NewsTest extends TestCase
         $this->getJson('https://brandonmb.ca/news?period=2')->assertUnprocessable();
         $this->get('https://canadamb.ca/news')->assertSee($payload['title']);
         $this->get("https://brandonmb.ca/news/$id")->assertOk()->assertSee($payload['source_url'])->assertSee($source->name)->assertSee('Sources and dates')->assertSee('Read original source');
-        $this->get("https://canadamb.ca/news/$id")->assertStatus(301)->assertRedirect("https://brandonmb.ca/news/$id");
+        $this->get("https://canadamb.ca/news/$id")->assertOk()->assertSee($payload['title'])->assertSee($source->name);
         $this->get('https://brandonmb.ca/sitemap.xml')->assertSee("https://brandonmb.ca/news/$id");
         $this->get('https://canadamb.ca/sitemap.xml')->assertDontSee("/news/$id");
     }

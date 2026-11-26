@@ -149,3 +149,5 @@ Keep this queue updated; do not interrupt independent implementation for these a
 - M05: public access, registration and indexing approval only after the full launch checklist and outstanding manual gates are satisfied.
 
 - Current B12 source pass removes six public-detail forced redirects (Marketplace already stays local); reply deep links use current host. Canonical metadata preserved. Full cross-module regression test and link audit pending. Previous backend SHA 7a67fcad passed 45850016351; browser 45850016419 failed because required marker changed Playwright exact password label text. Staged browser login now uses stable password input selector, preserving the actual required marker and native validation. Latest CI pending.
+
+- B12 regression update: existing publication tests now assert provincial 200 detail responses for discussions, events, single-city businesses, jobs, news and staged properties, same shared approved reply on both hosts, and current-host paginated reply permalink. Preserve prior private/hidden scope checks and canonical sitemap assertions. Exact CI pending.

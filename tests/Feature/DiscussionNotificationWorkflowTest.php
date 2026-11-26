@@ -178,7 +178,8 @@ class DiscussionNotificationWorkflowTest extends TestCase
         $this->get('https://brandonmb.ca/community/'.$thread->id.'/replies/'.$last->id)
             ->assertRedirect($expected);
         $this->get('https://canadamb.ca/community/'.$thread->id.'/replies/'.$last->id)
-            ->assertRedirect($expected);
+            ->assertRedirect('https://canadamb.ca/community/'.$thread->id.'?page=2#reply-'.$last->id);
+        $this->get('https://canadamb.ca/community/'.$thread->id.'?page=2')->assertOk()->assertSee('id="reply-'.$last->id.'"', false);
         $this->get('https://brandonmb.ca/community/'.$thread->id.'/replies/'.$pending->id)
             ->assertNotFound();
         $this->get('https://brandonmb.ca/community/'.$thread->id.'?page=2')
