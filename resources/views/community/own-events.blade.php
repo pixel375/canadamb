@@ -1,6 +1,6 @@
 <x-layouts.site title="My events">
     <div class="container page-shell">
-        <div class="page-intro"><div><a class="text-link" href="/account/profile">My account</a><h1>My events</h1><p>Review your event submissions and publication status.</p></div><a class="button button-primary" href="/events/new"><x-icon name="plus" size="17"/> Submit an event</a></div>
+        <div class="page-intro"><div><a class="text-link" href="/account/profile">My account</a><h1>My events</h1><p>Review your event submissions and publication status.</p></div><a class="button button-primary" href="{{ app(\App\Support\Community::class)->enabled(request()->attributes->get('site'), 'community') ? '/community/new?type=event' : '/events/new' }}"><x-icon name="plus" size="17"/> Submit an event</a></div>
         <nav class="seller-status-grid" aria-label="Event status">
             @foreach(array_merge(['all'], $statuses) as $status)
                 <?php $params = array_filter(array_replace($filters, ['status' => $status === 'all' ? null : $status]), fn ($value) => $value !== null && $value !== ''); ?>
@@ -67,7 +67,7 @@
                         <label class="checkbox-line"><input form="event-batch-shift" type="checkbox" name="events[]" value="{{ $item->id }}"> Select for rescheduling</label>
                         <input form="event-batch-shift" type="hidden" name="versions[{{ $item->id }}]" value="{{ $item->contentVersion() }}">
                     @endif
-                    <a class="text-link" href="/events/new?reuse={{ $item->id }}">Reuse event details</a>
+                    <a class="text-link" href="{{ app(\App\Support\Community::class)->enabled(request()->attributes->get('site'), 'community') ? '/community/new?type=event&reuse='.$item->id : '/events/new?reuse='.$item->id }}">Reuse event details</a>
                     @if(in_array($item->status, ['pending', 'approved'], true))
                         @if(!($item->localEnd() ?? $item->localStart())->isPast())<label class="checkbox-line"><input form="event-batch-cancel" type="checkbox" name="events[]" value="{{ $item->id }}"> Select for batch cancellation</label><input form="event-batch-cancel" type="hidden" name="versions[{{ $item->id }}]" value="{{ $item->contentVersion() }}">@endif
                         <details class="seller-remove-listing"><summary>{{ $item->status === 'pending' ? 'Withdraw submission' : 'Cancel event' }}</summary>

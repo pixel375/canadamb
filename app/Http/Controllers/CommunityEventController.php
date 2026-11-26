@@ -191,7 +191,8 @@ class CommunityEventController extends Controller
             throw ValidationException::withMessages(['ends_at' => 'The end time must come after the start time.']);
         }
         $dates = EventSeries::dates($this->community, $data['starts_at'], $data['ends_at'] ?? null, $frequency, $count);
-        DB::transaction(function () use ($request, $site, $data, $dates, $count) {
+        $autoApprove = PublicationPolicy::allows('events', $request->user(), $data['location_id']);
+        DB::transaction(function () use ($request, $site, $data, $dates, $count, $autoApprove) {
             $author = $request->user()->id;
             User::lockForUpdate()->findOrFail($author);
             if (config('network.recurring_events')) {
@@ -208,7 +209,7 @@ class CommunityEventController extends Controller
                 }
                 $event = CommunityEvent::create($eventData + ['author_id' => $author]);
                 Audit::record('community.event.submitted', $author, context: ['event' => $event->id]);
-                if (PublicationPolicy::allows('events', $request->user(), $event->location_id)) {
+                if ($autoApprove) {
                     $event->forceFill(['status' => 'approved'])->save();
                     Audit::record('community.event.auto-approved', null, context: ['event' => $event->id]);
                 }
@@ -218,7 +219,11 @@ class CommunityEventController extends Controller
             }
         }, attempts: 3);
 
-        return redirect('/account/events')->with('status', $count > 1 ? $count.' event occurrences submitted for individual review.' : 'Event submitted for review.');
+        $status = $autoApprove
+            ? ($count > 1 ? $count.' event occurrences published.' : 'Event published.')
+            : ($count > 1 ? $count.' event occurrences submitted for individual review.' : 'Event submitted for review.');
+
+        return redirect('/account/events')->with('status', $status);
     }
 
     public function owned(Request $request)

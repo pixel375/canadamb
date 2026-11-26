@@ -46,6 +46,7 @@ final class AdminNavigation
                 ['/admin/theme', 'Theme & appearance', 'moon'],
                 ['/admin/seo', 'SEO & search visibility', 'search'],
                 ['/admin/local-context', 'Local time & weather', 'clock'],
+                ['/admin/notifications', 'Notifications', 'bell'],
             ];
             $groups['Commercial planning'] = array_values(array_filter([
                 ['/admin/commercial', 'Advertising & subscriptions', 'tag'],

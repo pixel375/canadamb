@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\EditorialController;
 use App\Http\Controllers\Admin\JobReviewController;
 use App\Http\Controllers\Admin\LocalContextController;
 use App\Http\Controllers\Admin\NetworkController;
+use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\PropertyReviewController;
 use App\Http\Controllers\Admin\PublicationPolicyController;
 use App\Http\Controllers\Admin\SeoController;
@@ -304,6 +305,7 @@ Route::prefix('admin')->middleware(['auth', 'verified', 'can:manage-network'])->
         Route::get('/local-context', [LocalContextController::class, 'edit']);
         Route::post('/local-context', [LocalContextController::class, 'save'])->middleware('throttle:6,1,local-context');
         Route::post('/local-context/diagnostic', [LocalContextController::class, 'diagnostic'])->middleware('throttle:4,1,weather-diagnostic');
+        Route::get('/notifications', [NotificationController::class, 'index'])->middleware('throttle:12,1,notification-admin');
         Route::get('/seo', [SeoController::class, 'index']);
         Route::post('/seo/{site}', [SeoController::class, 'update'])->whereNumber('site')->middleware('throttle:8,1,seo-settings');
         Route::get('/publication-policy', [PublicationPolicyController::class, 'edit']);
