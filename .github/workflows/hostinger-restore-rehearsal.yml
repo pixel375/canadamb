@@ -1,9 +1,6 @@
 name: CanadaMB one-time production backup restore rehearsal
 
 on:
-  push:
-    branches: [main]
-    paths: ['.github/workflows/hostinger-restore-rehearsal.yml']
   workflow_dispatch:
 
 permissions:

@@ -1,8 +1,5 @@
 name: Install safe hPanel cron wrapper (private only)
 on:
-  push:
-    branches: [main]
-    paths: ['.github/workflows/hostinger-cron-install.yml']
   workflow_dispatch:
 permissions:
   contents: read

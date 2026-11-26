@@ -1,6 +1,6 @@
 name: Deploy CanadaMB Prelaunch
 
-# Deliberately MANUAL. This workflow is trusted from the default branch.
+# Trusted SHA-pinned workflow dispatched by exact green main CI or explicitly by an operator.
 # It does not run for pull requests, tags, or ordinary pushes.
 on:
   workflow_dispatch:
@@ -46,7 +46,7 @@ jobs:
           ref: ${{ inputs.commit_sha }}
           fetch-depth: 0
           persist-credentials: false
-      - name: Ensure target is an main branch ancestor
+      - name: Ensure target is a main branch ancestor
         shell: bash
         run: |
           set -Eeuo pipefail

@@ -1,9 +1,6 @@
 name: Resolve targeted Symfony security updates
 
 on:
-  push:
-    branches: [main]
-    paths: ['.github/workflows/dependency-security-refresh.yml']
   workflow_dispatch:
 
 permissions:
