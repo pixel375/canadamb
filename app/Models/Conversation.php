@@ -27,6 +27,11 @@ class Conversation extends Model
         return $this->listing_id ? 'Marketplace' : ($this->inquiry_job_id ? 'Job inquiry' : 'Business inquiry');
     }
 
+    public function archiveVersion(int $member, int $latestMessage): string
+    {
+        return hash('sha256', json_encode([$this->id, $member, $this->{$this->archiveMarker($member)}, $latestMessage], JSON_THROW_ON_ERROR));
+    }
+
     public function archiveMarker(int $member): string
     {
         return $this->buyer_id === $member ? 'buyer_archived_at' : 'seller_archived_at';

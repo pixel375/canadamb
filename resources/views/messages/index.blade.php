@@ -36,9 +36,23 @@
                     </form>
                 </details>
             @endif
+            @if(\App\Support\MessagingExtensions::enabled() && $threads->isNotEmpty())
+                <details class="form-stack mb-4"><summary>{{ $archived ? 'Restore selected conversations' : 'Archive selected conversations' }}</summary>
+                    <form id="conversation-batch" method="post" action="/account/messages/archive-selected" class="form-stack mt-2">@csrf
+                        <input type="hidden" name="action" value="{{ $archived ? 'restore' : 'archive' }}">
+                        <p class="field-note">Choose up to ten conversations below. Archiving marks them read for you only; newer messages return a conversation to the inbox.</p>
+                        <label class="checkbox-line"><input type="checkbox" name="confirm_selection" value="1" required> Confirm selected conversations</label>
+                        <button class="button button-outline">{{ $archived ? 'Restore selected' : 'Archive selected' }}</button>
+                    </form>
+                </details>
+            @endif
             <div class="message-thread-list">
                 @forelse($threads as $thread)
                     <?php $other = $thread->buyer_id === $member ? $thread->seller : $thread->buyer; ?>
+                    @if(\App\Support\MessagingExtensions::enabled())
+                        <label class="checkbox-line"><input form="conversation-batch" type="checkbox" name="conversations[]" value="{{ $thread->id }}"> Select conversation #{{ $thread->id }}</label>
+                        <input form="conversation-batch" type="hidden" name="versions[{{ $thread->id }}]" value="{{ $thread->archiveVersion($member, (int) $thread->latestMessage?->id) }}">
+                    @endif
                     <a class="message-thread @if($thread->unread) is-unread @endif" href="/account/messages/{{ $thread->id }}">
                         <span class="message-avatar" aria-hidden="true"><x-icon name="person" size="23"/></span>
                         <span class="message-thread-copy">

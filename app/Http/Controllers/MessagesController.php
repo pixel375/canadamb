@@ -166,6 +166,40 @@ class MessagesController extends Controller
         return $thread;
     }
 
+    public function archiveSelected(Request $request)
+    {
+        abort_unless(MessagingExtensions::enabled(), 404);
+        $data = $request->validate([
+            'conversations' => 'required|array|list|min:1|max:10', 'conversations.*' => 'required|integer|distinct|min:1',
+            'versions' => 'required|array|max:20', 'versions.*' => 'required|string|size:64',
+            'action' => 'required|in:archive,restore', 'confirm_selection' => 'accepted',
+        ]);
+        $id = $request->user()->id;
+        $archive = $data['action'] === 'archive';
+        DB::transaction(function () use ($id, $data, $archive) {
+            $threads = Conversation::forMember($id)->whereIn('id', $data['conversations'])->orderBy('id')->lockForUpdate()->get();
+            abort_unless($threads->count() === count($data['conversations']), 404);
+            $latest = [];
+            foreach ($threads as $thread) {
+                $latest[$thread->id] = (int) $thread->messages()->max('id');
+                if (! isset($data['versions'][$thread->id]) || ! hash_equals($thread->archiveVersion($id, $latest[$thread->id]), $data['versions'][$thread->id])
+                    || ($thread->{$thread->archiveMarker($id)} === null) !== $archive) {
+                    throw ValidationException::withMessages(['conversations' => 'A selected conversation changed. Reload the inbox before continuing. No conversations changed.']);
+                }
+            }
+            foreach ($threads as $thread) {
+                $changes = [$thread->archiveMarker($id) => $archive ? now() : null];
+                if ($archive) {
+                    $marker = $thread->marker($id);
+                    $changes[$marker] = max($thread->{$marker}, $latest[$thread->id]);
+                }
+                DB::table('conversations')->where('id', $thread->id)->update($changes);
+            }
+        }, attempts: 3);
+
+        return redirect('/account/messages'.($archive ? '?view=archived' : ''))->with('status', count($data['conversations']).($archive ? ' conversations archived and marked read.' : ' conversations restored.'));
+    }
+
     public function archive(Request $request, int $conversation)
     {
         return $this->toggleArchive($request, $conversation, true);
