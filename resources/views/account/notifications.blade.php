@@ -64,7 +64,10 @@
                         @foreach($recent as $notification)
                         <div class="item-row">
                             <div>
-                                <h3><a class="text-link" href="/community/{{ $notification->thread_id }}/replies/{{ $notification->reply_id }}">{{ $notification->title }}</a></h3>
+                                <form method="post" action="/account/community-notifications/{{ $notification->id }}/open">@csrf
+                                    <h3><button class="notification-open-link" type="submit">{{ $notification->title }}</button></h3>
+                                </form>
+                                <p><strong>{{ $notification->actor_name }}</strong> replied to a discussion you follow.</p>
                                 <p>{{ \Illuminate\Support\Carbon::parse($notification->created_at)->diffForHumans() }}{{ $notification->read_at ? '' : ' · Unread' }}</p>
                             </div>
                             @if(! $notification->read_at)

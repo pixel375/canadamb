@@ -37,6 +37,7 @@ final class AccountActivity
         return DB::table('community_notifications as notification')
             ->join('community_replies as reply', 'reply.id', '=', 'notification.reply_id')
             ->join('community_threads as thread', 'thread.id', '=', 'reply.thread_id')
+            ->join('users as actor', 'actor.id', '=', 'reply.author_id')
             ->where('notification.user_id', $user->id)
             ->where('reply.status', 'approved')
             ->where('thread.status', 'approved')

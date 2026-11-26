@@ -161,6 +161,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/account/community-notifications/selected', [CommunityForumController::class, 'updateSelectedNotifications'])->middleware('throttle:12,1,notification-selected');
     Route::post('/account/community-notifications/read-all', [CommunityForumController::class, 'readAllNotifications'])->middleware('throttle:12,1');
     Route::post('/account/community-notifications/{notification}/read', [CommunityForumController::class, 'readNotification'])->whereNumber('notification');
+    Route::post('/account/community-notifications/{notification}/open', [CommunityForumController::class, 'openNotification'])->whereNumber('notification')->middleware('throttle:30,1,notification-open');
     Route::get('/events/new', [CommunityEventController::class, 'create']);
     Route::post('/events', [CommunityEventController::class, 'store'])->middleware('throttle:6,1,event-submission');
     Route::get('/account/events', [CommunityEventController::class, 'owned']);

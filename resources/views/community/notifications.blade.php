@@ -52,11 +52,16 @@
                     <div class="discussion-notification-body">
                         <label class="checkbox-line"><input form="notification-selection" type="checkbox" name="notifications[]" value="{{ $notification->id }}"> Select notification</label>
                         <p class="section-label">{{ $notification->read_at ? 'Read reply' : 'New reply' }}</p>
-                        <h2><a href="/community/{{ $notification->thread_id }}/replies/{{ $notification->reply_id }}">{{ $notification->title }}</a></h2>
+                        <form method="post" action="/account/community-notifications/{{ $notification->id }}/open">@csrf
+                            <h2><button class="notification-open-link" type="submit">{{ $notification->title }}</button></h2>
+                        </form>
+                        <p><strong>{{ $notification->actor_name }}</strong> replied to a discussion you follow.</p>
                         <p><x-icon name="clock" size="15"/> <time datetime="{{ \Illuminate\Support\Carbon::parse($notification->created_at)->toIso8601String() }}">{{ \Illuminate\Support\Carbon::parse($notification->created_at)->diffForHumans() }}</time></p>
                     </div>
                     <div class="discussion-notification-actions">
-                        <a class="button button-outline" href="/community/{{ $notification->thread_id }}/replies/{{ $notification->reply_id }}">View reply</a>
+                        <form method="post" action="/account/community-notifications/{{ $notification->id }}/open">@csrf
+                            <button class="button button-outline" type="submit">View reply</button>
+                        </form>
                         @if(! $notification->read_at)
                             <form method="post" action="/account/community-notifications/{{ $notification->id }}/read">
                                 @csrf

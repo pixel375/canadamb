@@ -428,7 +428,7 @@ class CommunityForumController extends Controller
         }
         $notifications = $matching->orderByRaw('CASE WHEN notifications.read_at IS NULL THEN 0 ELSE 1 END')
             ->orderByDesc('notifications.id')
-            ->paginate(20, ['notifications.id', 'notifications.reply_id', 'notifications.read_at', 'notifications.created_at', 'threads.id as thread_id', 'threads.title'])
+            ->paginate(20, ['notifications.id', 'notifications.reply_id', 'notifications.read_at', 'notifications.created_at', 'threads.id as thread_id', 'threads.title', 'actors.name as actor_name'])
             ->withQueryString();
 
         return response()->view('community.notifications', compact('notifications', 'view', 'unreadCount', 'readCutoff', 'filters'))
@@ -447,6 +447,21 @@ class CommunityForumController extends Controller
             ? redirect('/account/community-notifications'.($returnTo !== 'all' ? '?view='.$returnTo : ''))
                 ->with('status', 'Notification marked as read.')
             : redirect('/account/notifications');
+    }
+
+    public function openNotification(Request $request, int $notification)
+    {
+        $target = DB::transaction(function () use ($request, $notification) {
+            $item = $this->visibleNotifications($request)->where('notifications.id', $notification)
+                ->select('notifications.id', 'notifications.reply_id', 'threads.id as thread_id')->lockForUpdate()->first();
+            abort_unless($item, 404);
+            DB::table('community_notifications')->where(['id' => $item->id, 'user_id' => $request->user()->id])
+                ->whereNull('read_at')->update(['read_at' => now()]);
+
+            return $item;
+        }, attempts: 3);
+
+        return redirect('/community/'.$target->thread_id.'/replies/'.$target->reply_id, 303, ['Cache-Control' => 'no-store']);
     }
 
     public function updateSelectedNotifications(Request $request)
@@ -501,6 +516,7 @@ class CommunityForumController extends Controller
         return DB::table('community_notifications as notifications')
             ->join('community_replies as replies', 'replies.id', '=', 'notifications.reply_id')
             ->join('community_threads as threads', 'threads.id', '=', 'replies.thread_id')
+            ->join('users as actors', 'actors.id', '=', 'replies.author_id')
             ->where('threads.status', 'approved')->where('replies.status', 'approved')
             ->where('notifications.user_id', $request->user()->id)
             ->when($site->location_id, fn ($query, $id) => $query->where('threads.location_id', $id));

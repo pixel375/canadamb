@@ -51,7 +51,7 @@ final class AccountNotificationsController extends Controller
         $discussionsEnabled = app(Community::class)->enabled($site, 'community');
         $recent = $discussionsEnabled
             ? $activity->discussionNotifications($user, $site)
-                ->select('notification.id', 'notification.reply_id', 'notification.read_at', 'notification.created_at', 'thread.id as thread_id', 'thread.title')
+                ->select('notification.id', 'notification.reply_id', 'notification.read_at', 'notification.created_at', 'thread.id as thread_id', 'thread.title', 'actor.name as actor_name')
                 ->orderByRaw('CASE WHEN notification.read_at IS NULL THEN 0 ELSE 1 END')->orderByDesc('notification.id')->limit(8)->get()
             : collect();
 

@@ -99,7 +99,8 @@ class DiscussionNotificationWorkflowTest extends TestCase
             ->assertSee('Visible Brandon reply')
             ->assertSee('1', false)
             ->assertSee('Mark all as read')
-            ->assertSee('href="/community/', false)
+            ->assertSee('action="/account/community-notifications/'.$brandon.'/open"', false)
+            ->assertSee($author->name)
             ->assertDontSee('Visible Winnipeg reply')
             ->assertDontSee('Pending reply should not show')
             ->assertDontSee('Other member reply');
@@ -163,18 +164,37 @@ class DiscussionNotificationWorkflowTest extends TestCase
         $pending = $thread->replies()->create([
             'author_id' => $author->id, 'body' => 'A pending hidden reply',
         ]);
-        DB::table('community_notifications')->insert([
+        $notification = DB::table('community_notifications')->insertGetId([
             'user_id' => $member->id, 'reply_id' => $last->id, 'created_at' => now(),
         ]);
 
         $this->actingAs($member)->get('https://brandonmb.ca/account/community-notifications')
             ->assertOk()
-            ->assertSee('href="/community/'.$thread->id.'/replies/'.$last->id.'"', false);
+            ->assertSee('action="/account/community-notifications/'.$notification.'/open"', false);
         $this->get('https://canadamb.ca/account/notifications')
             ->assertOk()
-            ->assertSee('href="/community/'.$thread->id.'/replies/'.$last->id.'"', false);
+            ->assertSee('action="/account/community-notifications/'.$notification.'/open"', false);
 
         $expected = 'https://brandonmb.ca/community/'.$thread->id.'?page=2#reply-'.$last->id;
+        $other = User::factory()->create();
+        $elsewhere = $this->notify($member, $author, 'Outside Brandon', 'winnipeg');
+        $hidden = $this->notify($member, $author, 'Pending notification', 'brandon', false);
+        $otherNotification = $this->notify($other, $author, 'Other recipient', 'brandon');
+        $this->post('https://brandonmb.ca/account/community-notifications/'.$elsewhere.'/open')->assertNotFound();
+        $this->post('https://brandonmb.ca/account/community-notifications/'.$hidden.'/open')->assertNotFound();
+        $this->post('https://canadamb.ca/account/community-notifications/'.$otherNotification.'/open')->assertNotFound();
+        $this->get('https://canadamb.ca/account/community-notifications/'.$notification.'/open')->assertStatus(405);
+        $this->assertNull(DB::table('community_notifications')->where('id', $notification)->value('read_at'));
+        $this->post('https://canadamb.ca/account/community-notifications/'.$notification.'/open', ['return_to' => 'https://evil.example'])
+            ->assertStatus(303)->assertRedirect('/community/'.$thread->id.'/replies/'.$last->id);
+        $readAt = DB::table('community_notifications')->where('id', $notification)->value('read_at');
+        $this->assertNotNull($readAt);
+        foreach ([$elsewhere, $hidden, $otherNotification] as $unread) {
+            $this->assertNull(DB::table('community_notifications')->where('id', $unread)->value('read_at'));
+        }
+        $this->travel(1)->minutes();
+        $this->post('https://brandonmb.ca/account/community-notifications/'.$notification.'/open')->assertStatus(303);
+        $this->assertSame($readAt, DB::table('community_notifications')->where('id', $notification)->value('read_at'));
         $this->get('https://brandonmb.ca/community/'.$thread->id.'/replies/'.$last->id)
             ->assertRedirect($expected);
         $this->get('https://canadamb.ca/community/'.$thread->id.'/replies/'.$last->id)
