@@ -23,7 +23,10 @@
             @foreach($fields as $category => $attributes)
                 <fieldset class="form-grid" x-show="category === @js($category)" x-bind:disabled="category !== @js($category)" style="{{ old('category', $item->category) !== $category ? 'display:none' : '' }}">
                     <legend class="mb-2 font-bold">{{ $categories[$category] }} details</legend>
-                    @foreach($attributes as $key => $label)<label>{{ $label }}<input name="details[{{ $key }}]" maxlength="240" value="{{ old('details.'.$key, $item->getAttribute('attributes')[$key] ?? '') }}"></label>@endforeach
+                    @foreach($attributes as $key => $label)
+                        @php($limits = match($key) { 'year' => [1880, now()->year + 2, '1'], 'mileage', 'hours' => [0, 9999999, '1'], 'slides' => [0, 30, '1'], 'length' => [1, 200, 'any'], default => null })
+                        <label>{{ $label }}<input name="details[{{ $key }}]" value="{{ old('details.'.$key, $item->getAttribute('attributes')[$key] ?? '') }}" @if($limits) type="number" min="{{ $limits[0] }}" max="{{ $limits[1] }}" step="{{ $limits[2] }}" @else type="text" maxlength="240" @endif></label>
+                    @endforeach
                 </fieldset>
             @endforeach
             </section>

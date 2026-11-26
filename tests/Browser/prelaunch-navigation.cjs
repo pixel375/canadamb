@@ -218,6 +218,21 @@ const fs = require('node:fs');
                 await page.locator('a[href="/marketplace?category=cars"]').click();
                 check(new URL(page.url()).searchParams.get('category') === 'cars',
                     'Subcategory did not preserve legacy listing URL');
+                if (width === 390) {
+                    const categoryForm = page.locator('form.filter-bar[action="/marketplace"]');
+                    const mileage = categoryForm.locator('input[name="mileage_max"]');
+                    await mileage.waitFor({ state: 'visible' });
+                    await mileage.fill('80000');
+                    await categoryForm.locator('input[name="year_min"]').fill('2015');
+                    await categoryForm.getByRole('button', { name: 'Search', exact: true }).click();
+                    await page.waitForURL(url => url.searchParams.get('mileage_max') === '80000');
+                    check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Vehicle detail filters overflow mobile');
+                    await categoryForm.locator('select[name="category"]').selectOption('furniture');
+                    check(await mileage.isDisabled(), 'Unrelated category must disable mileage filter');
+                    await categoryForm.getByRole('button', { name: 'Search', exact: true }).click();
+                    await page.waitForURL(url => url.searchParams.get('category') === 'furniture');
+                    check(!new URL(page.url()).searchParams.has('mileage_max'), 'Unrelated vehicle filter was submitted');
+                }
                 // Discussion hub and its vertical, expandable events calendar
                 // must remain usable at the same six responsive widths.
                 await page.goto(host + '/community');

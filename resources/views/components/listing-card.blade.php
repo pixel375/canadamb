@@ -16,6 +16,8 @@
     <div class="listing-content">
         <p class="listing-price">{{ $item->priceLabel() }}</p>
         <h3>@if($preview){{ $item->title }}@else<a href="/marketplace/{{ $item->id }}">{{ $item->title }}</a>@endif</h3>
-        <p class="listing-meta"><x-icon name="pin" size="14"/> {{ $item->location->name }} <span aria-hidden="true">·</span> {{ $item->published_at->diffForHumans() }}</p>
+        @php($details = \App\Support\Marketplace::cardDetails($item))
+        @if($details)<p class="listing-meta listing-card-details">{{ implode(' · ', $details) }}</p>@endif
+        <p class="listing-meta"><x-icon name="pin" size="14"/> {{ $item->location->name }} @if($item->published_at)<span aria-hidden="true">·</span> {{ $item->published_at->diffForHumans() }}@endif</p>
     </div>
 </article>

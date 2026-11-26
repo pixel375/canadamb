@@ -127,7 +127,10 @@ class MarketplaceTest extends TestCase
         $this->getJson(self::CITY.'/api/v1/marketplace?category=cars&make=HONDA&year_min=2018&mileage_max=50000')
             ->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.title', 'Matching car');
         $this->get(self::MAIN.'/marketplace?category=cars&make=Honda&year_min=2018&mileage_max=50000')
-            ->assertOk()->assertSee('Matching car')->assertSee('Rural car')->assertDontSee('Private car')->assertDontSee('High mileage car');
+            ->assertOk()->assertSee('Matching car')->assertSee('Rural car')->assertDontSee('Private car')->assertDontSee('High mileage car')
+            ->assertSee('2020 · Honda · Civic · 45,000 km')->assertSee('href="/marketplace/new?category=cars"', false);
+        $this->actingAs($seller)->get(self::MAIN.'/marketplace/new?category=cars&location=brandon')->assertOk()
+            ->assertSee('value="cars" selected', false)->assertSee('name="details[mileage]"', false);
         $this->getJson(self::CITY.'/api/v1/marketplace?category=furniture&year_min=2018')->assertUnprocessable()->assertJsonValidationErrors('year_min');
         $this->getJson(self::CITY.'/api/v1/marketplace?category=cars&year_min=2020&year_max=2010')->assertUnprocessable()->assertJsonValidationErrors('year_max');
         $this->getJson(self::CITY.'/api/v1/marketplace?category=cars&mileage_max=-1')->assertUnprocessable();

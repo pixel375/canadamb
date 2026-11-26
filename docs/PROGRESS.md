@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-26 — category-aware listing creation and cards
+
+Category and location are carried into new-listing forms from browsing. Added numeric category-detail input constraints, compact vehicle/equipment/electronics facts on listing cards, allowlisted detail presentation, and a version-bound owner mark-sold form. Mobile Chromium coverage exercises detail filter submission and switching to an unrelated category, while feature tests exercise card summaries and prefill. Existing saved numeric data remains compatible without rewriting listings.
+
 ## 2026-11-26 — discussion discovery and saved-search regression
 
 Added open, unanswered, followed and recent-activity discussion filters with approved-reply semantics, verified-member-only follows and private no-store responses. Category links preserve validated filters. Added regression coverage for nonpublic/remote followed threads and persisted structured Marketplace filters. Corrected the earlier BusinessController style gate finding; exact cumulative verification remains required.

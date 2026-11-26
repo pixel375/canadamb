@@ -27,6 +27,33 @@ final class Marketplace
         'farm' => ['make' => 'Make', 'model' => 'Model', 'year' => 'Year', 'hours' => 'Operating hours', 'attachments' => 'Attachments'],
     ];
 
+    public static function cardDetails(Listing $item): array
+    {
+        $attributes = $item->getAttribute('attributes') ?? [];
+        $fields = match ($item->category) {
+            'cars' => ['year', 'make', 'model', 'mileage'],
+            'rvs' => ['year', 'make', 'model', 'length'],
+            'farm' => ['year', 'make', 'model', 'hours'],
+            'electronics' => ['brand', 'model'],
+            default => [],
+        };
+        $details = [];
+        foreach ($fields as $field) {
+            $value = $attributes[$field] ?? null;
+            if (! is_scalar($value) || trim((string) $value) === '') {
+                continue;
+            }
+            $details[] = match ($field) {
+                'mileage' => is_numeric($value) ? number_format((float) $value).' km' : (string) $value,
+                'hours' => is_numeric($value) ? number_format((float) $value).' hrs' : (string) $value,
+                'length' => is_numeric($value) ? (string) (float) $value.' ft' : (string) $value,
+                default => (string) $value,
+            };
+        }
+
+        return $details;
+    }
+
     public function enabled(Site $site): bool
     {
         return app(NetworkSettings::class)->forSite($site)['modules']['marketplace'] ?? false;

@@ -46,8 +46,9 @@
                 <p class="prose-text">{{ $item->description }}</p>
                 <dl class="attributes-list">
                     <div><dt>Condition</dt><dd>{{ \App\Support\Marketplace::CONDITIONS[$item->condition] }}</dd></div>
-                    @foreach($item->getAttribute('attributes') ?? [] as $field => $value)
-                        <div><dt>{{ \App\Support\Marketplace::FIELDS[$item->category][$field] ?? $field }}</dt><dd>{{ $value }}</dd></div>
+                    @foreach(\App\Support\Marketplace::FIELDS[$item->category] ?? [] as $field => $label)
+                        @php($value = ($item->getAttribute('attributes') ?? [])[$field] ?? null)
+                        @if(is_scalar($value) && trim((string) $value) !== '')<div><dt>{{ $label }}</dt><dd>{{ $value }}</dd></div>@endif
                     @endforeach
                 </dl>
             </article>
@@ -65,6 +66,7 @@
                             <form method="post" action="/account/listings/{{ $item->id }}/status">
                                 @csrf
                                 <input type="hidden" name="status" value="sold">
+                                <input type="hidden" name="version" value="{{ $item->reviewVersion() }}">
                                 <button class="button button-outline seller-action" type="submit">Mark as sold</button>
                             </form>
                         @else

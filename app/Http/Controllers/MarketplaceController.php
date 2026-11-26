@@ -90,7 +90,13 @@ class MarketplaceController extends Controller
 
     public function create(Request $request)
     {
-        return $this->form($request, new Listing);
+        $category = $request->query('category');
+        $item = new Listing;
+        if (is_string($category) && strlen($category) <= 64 && ListingCategory::whereKey($category)->exists()) {
+            $item->category = $category;
+        }
+
+        return $this->form($request, $item);
     }
 
     public function store(SaveListing $request, ListingPhotos $photos)
