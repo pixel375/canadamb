@@ -68,6 +68,11 @@ class NetworkTest extends TestCase
         $this->get('https://canadamb.ca/admin/community?status=pending&q=meeting')->assertOk()->assertSee('Community review sections');
         $this->get('https://canadamb.ca/admin/jobs?status=pending&q=mechanic')->assertOk()->assertSee('Review status');
         $this->get('https://canadamb.ca/admin/audit?period=7&q=theme')->assertOk()->assertSee('audit entries');
+        \App\Support\Audit::record('fixture.system-event', null, context: ['note' => 'PRIVATE_AUDIT_FIXTURE']);
+        $reference = \Illuminate\Support\Facades\DB::table('audit_logs')->where('action', 'fixture.system-event')->value('id');
+        $this->get('https://canadamb.ca/admin/audit?actor=system&site=network&reference='.$reference)->assertOk()
+            ->assertSee('fixture.system-event')->assertDontSee('PRIVATE_AUDIT_FIXTURE');
+        $this->get('https://canadamb.ca/admin/audit?actor=member&reference='.$reference)->assertOk()->assertDontSee('fixture.system-event');
         $this->getJson('https://canadamb.ca/admin/moderation?status=invalid')->assertUnprocessable();
     }
 

@@ -116,19 +116,28 @@ class NetworkController extends Controller
 
     public function audit(Request $request)
     {
-        $filters = $request->validate(['q' => 'nullable|string|max:100', 'period' => 'nullable|in:7,30,90']);
-        $entries = DB::table('audit_logs')->select('audit_logs.*', 'users.name')
+        $filters = $request->validate(['q' => 'nullable|string|max:100', 'period' => 'nullable|in:7,30,90',
+            'site' => ['nullable', Rule::in(array_merge(['network'], Site::pluck('id')->map(fn ($id) => (string) $id)->all()))],
+            'actor' => 'nullable|in:system,member', 'reference' => 'nullable|integer|min:1']);
+        $sites = Site::orderBy('name')->get(['id', 'name']);
+        $entries = DB::table('audit_logs')->select('audit_logs.id', 'audit_logs.action', 'audit_logs.site_id', 'audit_logs.actor_id', 'audit_logs.created_at', 'users.name', 'sites.name as site_name')
+            ->leftJoin('sites', 'sites.id', '=', 'audit_logs.site_id')
             ->leftJoin('users', 'users.id', '=', 'audit_logs.actor_id')
-            ->when($filters['q'] ?? null, function ($query, $term) {
-                foreach (KeywordSearch::patterns($term) as $pattern) {
+            ->when(filled($filters['q'] ?? null), function ($query) use ($filters) {
+                foreach (KeywordSearch::patterns($filters['q']) as $pattern) {
                     $query->where(fn ($match) => $match->whereRaw("LOWER(audit_logs.action) LIKE ? ESCAPE '!'", [$pattern])
                         ->orWhereRaw("LOWER(users.name) LIKE ? ESCAPE '!'", [$pattern]));
                 }
             })
+            ->when(($filters['site'] ?? null) === 'network', fn ($query) => $query->whereNull('audit_logs.site_id'))
+            ->when(isset($filters['site']) && $filters['site'] !== 'network', fn ($query) => $query->where('audit_logs.site_id', (int) $filters['site']))
+            ->when(($filters['actor'] ?? null) === 'system', fn ($query) => $query->whereNull('audit_logs.actor_id'))
+            ->when(($filters['actor'] ?? null) === 'member', fn ($query) => $query->whereNotNull('audit_logs.actor_id'))
+            ->when($filters['reference'] ?? null, fn ($query, $id) => $query->where('audit_logs.id', $id))
             ->when($filters['period'] ?? null, fn ($query, $days) => $query->where('audit_logs.created_at', '>=', now()->subDays((int) $days)))
             ->latest('audit_logs.id')->paginate(25)->withQueryString();
 
-        return view('admin.audit', compact('entries', 'filters'));
+        return view('admin.audit', compact('entries', 'filters', 'sites'));
     }
 
     public function moderation(Request $request)
