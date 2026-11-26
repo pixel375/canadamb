@@ -7,9 +7,9 @@
                 <a class="seller-status-tile" href="/account/discussions{{ $params ? '?'.http_build_query($params) : '' }}" @if(($filters['status'] ?? 'all') === $status) aria-current="page" @endif><strong>{{ $status === 'all' ? $counts->sum() : ($counts[$status] ?? 0) }}</strong><span>{{ ucfirst($status) }}</span></a>
             @endforeach
         </nav>
-        <form method="get" action="/account/discussions" class="panel seller-listing-search">
+        <form method="get" action="/account/discussions" class="panel saved-search">
             @if($filters['status'] ?? null)<input type="hidden" name="status" value="{{ $filters['status'] }}">@endif
-            <label for="own-discussion-q" class="sr-only">Search my discussions</label><input id="own-discussion-q" type="search" name="q" maxlength="100" value="{{ $filters['q'] ?? '' }}" placeholder="Search your discussions">
+            <label for="own-discussion-q" >Search my discussions<input id="own-discussion-q" type="search" name="q" maxlength="100" value="{{ $filters['q'] ?? '' }}" placeholder="Search your discussions"></label>
             <label>Category<select name="category"><option value="">All categories</option>@foreach(\App\Support\Community::FORUMS as $key => $label)<option value="{{ $key }}" @selected(($filters['category'] ?? '') === $key)>{{ $label }}</option>@endforeach</select></label>
             <label>Sort<select name="sort"><option value="newest" @selected(($filters['sort'] ?? 'newest') === 'newest')>Newest</option><option value="oldest" @selected(($filters['sort'] ?? '') === 'oldest')>Oldest</option><option value="replies" @selected(($filters['sort'] ?? '') === 'replies')>Most replies</option></select></label><button class="button button-primary">Search</button><a class="text-link" href="/account/discussions">Reset</a>
         </form>

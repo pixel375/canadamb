@@ -7,9 +7,9 @@
                 <a class="seller-status-tile" href="/account/replies{{ $params ? '?'.http_build_query($params) : '' }}" @if(($filters['status'] ?? 'all') === $status) aria-current="page" @endif><strong>{{ $status === 'all' ? $counts->sum() : ($counts[$status] ?? 0) }}</strong><span>{{ ucfirst($status) }}</span></a>
             @endforeach
         </nav>
-        <form method="get" action="/account/replies" class="panel seller-listing-search">
+        <form method="get" action="/account/replies" class="panel saved-search">
             @if($filters['status'] ?? null)<input type="hidden" name="status" value="{{ $filters['status'] }}">@endif
-            <label for="own-reply-q" class="sr-only">Search my replies</label><input id="own-reply-q" type="search" name="q" maxlength="100" value="{{ $filters['q'] ?? '' }}" placeholder="Search your replies">
+            <label for="own-reply-q" >Search my replies<input id="own-reply-q" type="search" name="q" maxlength="100" value="{{ $filters['q'] ?? '' }}" placeholder="Search your replies"></label>
             <label>Discussion reference<input name="thread" type="number" min="1" value="{{ $filters['thread'] ?? '' }}" placeholder="Any discussion"></label>
             <label>Sort<select name="sort"><option value="newest" @selected(($filters['sort'] ?? 'newest') === 'newest')>Newest</option><option value="oldest" @selected(($filters['sort'] ?? '') === 'oldest')>Oldest</option></select></label><button class="button button-primary">Search</button><a class="text-link" href="/account/replies">Reset</a>
         </form>

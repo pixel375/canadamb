@@ -1738,7 +1738,7 @@ a.market-category-card:hover, a.market-category-card:focus-visible {
 .admin-review-card { min-width:0; overflow-wrap:anywhere; padding-block:16px; border-bottom:1px solid var(--border); }
 .admin-review-card:last-of-type { border-bottom:0; }
 .admin-review-card .text-link { white-space:normal; }
-.admin-audit-filter { display:grid; grid-template-columns:minmax(0,2fr) minmax(0,1fr) auto auto; gap:10px; align-items:end; }
+.admin-audit-filter { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr)); gap:10px; align-items:end; }
 @media(max-width:1100px) { .admin-queue-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media(max-width:580px) { .admin-queue-grid { grid-template-columns:minmax(0,1fr); } .admin-audit-filter { grid-template-columns:minmax(0,1fr); } .admin-queue-card { padding:10px; } .admin-jump-links .button { font-size:.78rem; } }
 
@@ -1768,7 +1768,11 @@ a.market-category-card:hover, a.market-category-card:focus-visible {
 
 .saved-navigation { margin-bottom:14px; }
 .saved-navigation [aria-current=page] { border-color:var(--link); background:var(--soft); color:var(--link); }
-.saved-search { display:grid; grid-template-columns:minmax(0,2fr) minmax(0,1fr) auto auto; gap:10px; align-items:end; }
+.saved-search { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr)); gap:10px; align-items:end; }
+.saved-search label, .admin-audit-filter label { display:grid; gap:4px; min-width:0; font-size:.88rem; font-weight:700; }
+.saved-search input:not([type=hidden]), .saved-search select, .admin-audit-filter input, .admin-audit-filter select { width:100%; min-width:0; max-width:100%; box-sizing:border-box; }
+.saved-search > .text-link, .admin-audit-filter > .text-link { align-self:center; justify-self:start; }
+.saved-search > .button, .admin-audit-filter > .button { min-width:0; white-space:normal; }
 .saved-listing-card { min-width:0; display:flex; flex-direction:column; }
 .saved-listing-card .listing-card { flex:1; }
 .saved-listing-card form .button { width:100%; }
