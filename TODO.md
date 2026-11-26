@@ -157,3 +157,5 @@ Keep this queue updated; do not interrupt independent implementation for these a
 - B12 CI first attempts stopped at Pint on reply permalink formatting. Restored established explicit trusted host URL construction using the request's resolved site, not the content canonical site; still same-domain and no untrusted destination.
 
 - B12/D02 browser regression: open approved unread discussion notification on Manitoba with current-host reply fragment, verify same public discussion on Brandon without redirect, verify exactly one notification read and restore the fixture. Updated legacy two-host smoke assumptions to expect mirrored Marketplace and local Communities; legacy full smoke remains separate from automatic browser suite.
+
+- Updated README, architecture, community work plan, news and testing guidance to explicitly distinguish canonical SEO metadata from same-host human navigation. All future development sessions must follow B12 and the manual-actions-last policy.

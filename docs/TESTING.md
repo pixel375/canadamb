@@ -13,7 +13,7 @@ The factory password is password. Use a test-only local server and a fresh brows
     npx --yes --package @playwright/cli playwright-cli -s=canadamb open http://canadamb.localhost:8000/ --browser=chrome
     npx --yes --package @playwright/cli playwright-cli -s=canadamb run-code --filename tests/Browser/two-host-smoke.js
 
-The browser check covers both brand identities, separate sessions, appearance persistence, sign-in across the simulated origins, the locked Brandon location, approval and distinct geographic visibility for test listings, canonical routing, the theme preview and network-wide sign-out. Run deploy/smoke.sh separately over site URLs with real HTTPS after setting up and restricting the production origin. Use CANADAMB_SMOKE_MAIN and CANADAMB_SMOKE_LOCAL to point it at local or staging URLs.
+The browser check covers both brand identities, separate sessions, appearance persistence, sign-in across the simulated origins, the locked Brandon location, approval and distinct geographic visibility for test listings, same-host mirrored content with independent SEO canonical metadata, the theme preview and network-wide sign-out. Run deploy/smoke.sh separately over site URLs with real HTTPS after setting up and restricting the production origin. Use CANADAMB_SMOKE_MAIN and CANADAMB_SMOKE_LOCAL to point it at local or staging URLs.
 
 The browser fixture needs the new community, events, and jobs modules enabled. A fresh seeded database enables them. When launching Artisan with a temporary DB_DATABASE override, use `php artisan serve --no-reload --host=127.0.0.1 --port=8000` to preserve it in Laravel’s development-server child process.
 
