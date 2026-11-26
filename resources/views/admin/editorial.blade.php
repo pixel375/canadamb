@@ -112,6 +112,7 @@
             <article class="admin-review-card form-stack">
                 <div><h3>{{ $article->title }}</h3><p>{{ ucfirst($article->status) }} · {{ $article->location?->name ?? 'Manitoba' }} · {{ $article->source_date->format('M j, Y') }}{{ $article->sensitive ? ' · Sensitive coverage' : '' }}</p></div>
                 <a class="text-link" href="{{ $article->source_url }}" rel="noreferrer">{{ $article->source->name }} <x-icon name="arrow" size="16"/></a>
+                <div class="inline-actions"><a class="button button-outline" href="/admin/news/{{ $article->id }}/history">Revision history</a>@if($article->status === 'draft')<a class="button button-outline" href="/admin/news/{{ $article->id }}/edit">Edit without publishing</a>@endif</div>
                 @if($article->status !== 'withdrawn')
                 <form class="form-stack" method="post" action="/admin/news/{{ $article->id }}/publish">@csrf
                     <input type="hidden" name="version" value="{{ $article->reviewVersion() }}">

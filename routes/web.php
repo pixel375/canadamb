@@ -316,6 +316,9 @@ Route::prefix('admin/news')->middleware(['auth', 'verified', 'can:manage-news'])
     Route::post('/candidate/{candidate}/review', [EditorialController::class, 'candidateReview'])->whereNumber('candidate')->middleware('throttle:12,1,news-candidate-review');
     Route::post('/source/{source}/feed', [EditorialController::class, 'sourceFeed'])->whereNumber('source')->middleware('can:manage-network');
     Route::post('/draft', [EditorialController::class, 'draft']);
+    Route::get('/{article}/edit', [EditorialController::class, 'editDraft'])->whereNumber('article');
+    Route::put('/{article}/draft', [EditorialController::class, 'reviseDraft'])->whereNumber('article')->middleware('throttle:12,1,news-draft-revise');
+    Route::get('/{article}/history', [EditorialController::class, 'history'])->whereNumber('article');
     Route::post('/{article}/publish', [EditorialController::class, 'publish'])->whereNumber('article');
     Route::post('/{article}/withdraw', [EditorialController::class, 'withdraw'])->whereNumber('article');
 });

@@ -195,6 +195,57 @@ class EditorialController extends Controller
                 ->selectRaw('1')->from('news_articles')->whereColumn('news_articles.source_hash', 'news_feed_candidates.source_hash')));
     }
 
+    public function editDraft(int $article)
+    {
+        $item = NewsArticle::with(['source', 'location'])->where('status', 'draft')->findOrFail($article);
+
+        return view('admin.news-draft', compact('item'));
+    }
+
+    public function reviseDraft(Request $request, int $article)
+    {
+        $data = $request->validate([
+            'version' => 'required|string|size:64', 'title' => 'required|string|max:140',
+            'body' => 'required|string|min:20|max:2500', 'category' => ['required', Rule::in(array_keys(News::CATEGORIES))],
+            'sensitive' => 'required|boolean',
+        ]);
+        DB::transaction(function () use ($request, $article, $data) {
+            $initial = NewsArticle::findOrFail($article);
+            NewsSource::lockForUpdate()->findOrFail($initial->source_id);
+            $item = NewsArticle::lockForUpdate()->findOrFail($article);
+            abort_unless($item->status === 'draft', 409);
+            if (! hash_equals($item->reviewVersion(), $data['version'])) {
+                throw ValidationException::withMessages(['version' => 'Article changed. Reload the draft before saving.']);
+            }
+            $changes = ['title' => $data['title'], 'body' => $data['body'], 'category' => $data['category'],
+                'sensitive' => $item->sensitive || (bool) $data['sensitive'] || in_array($data['category'], ['safety', 'weather'], true)];
+            $item->fill($changes);
+            if ($item->isDirty()) {
+                $this->revision($item, $request->user()->id);
+                $item->save();
+                Audit::record('news.draft-revised', $request->user()->id, context: ['article' => $article]);
+            }
+        }, attempts: 3);
+
+        return redirect('/admin/news?status=draft')->with('status', 'Editorial draft saved without publication.');
+    }
+
+    public function history(int $article)
+    {
+        $item = NewsArticle::with('source')->findOrFail($article);
+        $revisions = DB::table('news_revisions')->where('article_id', $article)->latest('id')
+            ->paginate(15, ['id', 'snapshot', 'created_at']);
+        $revisions->through(function ($revision) {
+            $snapshot = json_decode($revision->snapshot, true);
+            $revision->summary = array_intersect_key(is_array($snapshot) ? $snapshot : [], array_flip(['title', 'body', 'category', 'status', 'sensitive', 'verification']));
+            unset($revision->snapshot);
+
+            return $revision;
+        });
+
+        return response()->view('admin.news-history', compact('item', 'revisions'))->header('Cache-Control', 'private, no-store');
+    }
+
     public function publish(Request $request, int $article)
     {
         $data = $request->validate([
@@ -244,7 +295,7 @@ class EditorialController extends Controller
     {
         DB::table('news_revisions')->insert([
             'article_id' => $article->id, 'editor_id' => $editor,
-            'snapshot' => json_encode($article->getAttributes(), JSON_THROW_ON_ERROR), 'created_at' => now(),
+            'snapshot' => json_encode($article->getRawOriginal(), JSON_THROW_ON_ERROR), 'created_at' => now(),
         ]);
     }
 }

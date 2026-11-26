@@ -44,9 +44,24 @@ class NewsTest extends TestCase
         $this->actingAs(User::factory()->create(['role' => 'news_editor']))
             ->get('https://canadamb.ca/admin/news')->assertOk()->assertSee($payload['title']);
         $version = NewsArticle::findOrFail($id)->reviewVersion();
+        $edit = "https://canadamb.ca/admin/news/$id/edit";
+        $save = "https://canadamb.ca/admin/news/$id/draft";
+        $history = "https://canadamb.ca/admin/news/$id/history";
+        $draft = ['version' => $version, 'title' => $payload['title'], 'body' => 'An updated summary prepared for independent editorial review.', 'category' => 'municipal', 'sensitive' => '0'];
+        $this->get($edit)->assertOk()->assertSee('Save without publication');
+        $this->put($save, $draft)->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('news_articles', ['id' => $id, 'status' => 'draft', 'body' => $draft['body']]);
+        $this->get('https://brandonmb.ca/news')->assertDontSee($payload['title']);
+        $this->put($save, $draft)->assertSessionHasErrors('version');
+        $this->get($history)->assertOk()->assertSee($payload['body'])->assertDontSee($draft['body']);
+        $this->actingAs(User::factory()->create())->get($history)->assertForbidden();
+        $this->actingAs(User::factory()->create(['role' => 'news_editor']));
+        $version = NewsArticle::findOrFail($id)->reviewVersion();
         $review = ['version' => $version, 'verification' => 'Checked the stated date and details against the original public notice.'];
         $this->post("https://canadamb.ca/admin/news/$id/publish", $review)->assertRedirect();
         $this->post("https://canadamb.ca/admin/news/$id/publish", $review)->assertConflict();
+        $this->get($edit)->assertNotFound();
+        $this->get($history)->assertOk()->assertSee($draft['body']);
         $this->get('https://brandonmb.ca/news')->assertSee($payload['title'])->assertSee('Browse news topics');
         $this->get('https://canadamb.ca/news?location=brandon&category=municipal&period=7&source='.$source->id)
             ->assertOk()->assertSee($payload['title'])->assertSee($source->name);
