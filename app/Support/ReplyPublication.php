@@ -26,6 +26,10 @@ final class ReplyPublication
         if ($parent && $parent !== $item->author_id && NotificationPreferences::forMember($parent)['discussion_replies']) {
             DB::table('community_notifications')->insertOrIgnore(['user_id' => $parent, 'reply_id' => $item->id, 'created_at' => now()]);
         }
+        $organizer = EventDiscussions::approvedEventAuthor($thread);
+        if ($organizer && $organizer !== $item->author_id && NotificationPreferences::forMember($organizer)['discussion_replies']) {
+            DB::table('community_notifications')->insertOrIgnore(['user_id' => $organizer, 'reply_id' => $item->id, 'created_at' => now()]);
+        }
         $item->forceFill(['status' => 'approved'])->save();
     }
 }

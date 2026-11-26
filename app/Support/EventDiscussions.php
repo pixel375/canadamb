@@ -100,6 +100,39 @@ final class EventDiscussions
             ->whereIn('id', DB::table('community_event_discussions')->where('thread_id', $thread->id)->select('event_id'))->first();
     }
 
+    /** Batch classification for already-authorized notification rows. */
+    public static function publicThreadIds(Site $site, array $ids): array
+    {
+        $community = app(Community::class);
+        if ($ids === [] || ! self::enabled() || ! $community->enabled($site, 'events') || ! $community->enabled($site, 'community')) {
+            return [];
+        }
+
+        return DB::table('community_event_discussions as links')
+            ->join('community_events as events', 'events.id', '=', 'links.event_id')
+            ->join('community_threads as threads', 'threads.id', '=', 'links.thread_id')
+            ->whereIn('links.thread_id', $ids)->where('threads.status', 'approved')
+            ->whereIn('events.status', ['approved', 'cancelled'])
+            ->whereColumn('events.location_id', 'threads.location_id')
+            ->when($site->location_id, fn ($query, $id) => $query->where('threads.location_id', $id))
+            ->pluck('links.thread_id')->map(fn ($id) => (int) $id)->all();
+    }
+
+    public static function approvedEventAuthor(CommunityThread $thread): ?int
+    {
+        if (! self::enabled() || $thread->status !== 'approved') {
+            return null;
+        }
+
+        $author = DB::table('community_event_discussions as links')
+            ->join('community_events as events', 'events.id', '=', 'links.event_id')
+            ->where('links.thread_id', $thread->id)->where('events.status', 'approved')
+            ->where('events.location_id', $thread->location_id)->where('events.author_id', $thread->author_id)
+            ->value('events.author_id');
+
+        return $author === null ? null : (int) $author;
+    }
+
     public static function pendingReview(Site $site, CommunityThread $thread): bool
     {
         $community = app(Community::class);

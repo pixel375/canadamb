@@ -1,7 +1,7 @@
 <x-layouts.site title="Notifications">
     <div class="container page-shell">
         <div class="page-intro">
-            <div><h1>Notifications</h1><p>Keep up with your messages and approved replies to discussions you follow.</p></div>
+            <div><h1>Notifications</h1><p>Keep up with your messages, discussion replies and event comments.</p></div>
         </div>
         <div class="activity-overview">
             <section class="activity-card" aria-labelledby="account-message-title">
@@ -44,7 +44,7 @@
             <section class="panel form-stack"><h2>Notification preferences</h2><p>These settings apply across CanadaMB communities. Existing notification history and private messages are preserved.</p>
                 <form class="form-stack" method="post" action="/account/notifications/preferences">@csrf
                     <input type="hidden" name="version" value="{{ \App\Support\NotificationPreferences::version($preferences) }}">
-                    <label>New replies to followed discussions<select name="discussion_replies"><option value="1" @selected($preferences['discussion_replies'])>Notify me</option><option value="0" @selected(!$preferences['discussion_replies'])>Pause new notifications</option></select></label>
+                    <label>Discussion replies and event comments<select name="discussion_replies"><option value="1" @selected($preferences['discussion_replies'])>Notify me</option><option value="0" @selected(!$preferences['discussion_replies'])>Pause new notifications</option></select></label>
                     <label>Job alerts in this dashboard<select name="job_summary"><option value="1" @selected($preferences['job_summary'])>Show summary</option><option value="0" @selected(!$preferences['job_summary'])>Hide summary</option></select></label>
                     <p class="field-note">Pausing discussion notifications does not unfollow discussions. Missed alerts are not backfilled. Job summary settings do not change individual saved searches.</p>
                     <button class="button button-primary">Save notification preferences</button>
@@ -67,7 +67,7 @@
                                 <form method="post" action="/account/community-notifications/{{ $notification->id }}/open">@csrf
                                     <h3><button class="notification-open-link" type="submit">{{ $notification->title }}</button></h3>
                                 </form>
-                                <p><strong>{{ $notification->actor_name }}</strong> {{ in_array($notification->reply_id, $directReplies, true) ? 'replied to your comment.' : 'posted a reply in this discussion.' }}</p>
+                                <p><strong>{{ $notification->actor_name }}</strong> {{ in_array($notification->reply_id, $directReplies, true) ? 'replied to your comment.' : (in_array((int) $notification->thread_id, $eventThreads, true) ? 'commented on this event.' : 'posted a reply in this discussion.') }}</p>
                                 <p>{{ \Illuminate\Support\Carbon::parse($notification->created_at)->diffForHumans() }}{{ $notification->read_at ? '' : ' · Unread' }}</p>
                             </div>
                             @if(! $notification->read_at)

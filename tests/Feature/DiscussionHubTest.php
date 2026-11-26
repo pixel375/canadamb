@@ -171,7 +171,7 @@ class DiscussionHubTest extends TestCase
             ->assertSee('name="event_url"', false);
         $this->get('https://brandonmb.ca/community/new?type=event')
             ->assertOk()->assertSee('Event request');
-        $this->get('https://canadamb.ca/events/new')->assertOk()->assertSee('Submit an event');
+        $this->get('https://canadamb.ca/events/new')->assertRedirect('/community/new?type=event');
         $this->get('https://canadamb.ca/events')->assertOk()
             ->assertSee('href="/community"', false)
             ->assertSee('href="/community/new?type=event"', false);
@@ -205,7 +205,8 @@ class DiscussionHubTest extends TestCase
         $this->event($place->id, 'Other private event', now()->addWeek()->format('Y-m-d H:i:s'), 'pending');
         $this->actingAs($member)->get('https://canadamb.ca/account/events?status=pending&q=private')
             ->assertOk()->assertSee('My private event')->assertDontSee('Other private event');
-        $this->get('https://canadamb.ca/events/new?location=brandon')->assertOk()
+        $this->get('https://canadamb.ca/events/new?location=brandon')->assertRedirect('/community/new?type=event&location=brandon');
+        $this->get('https://canadamb.ca/community/new?type=event&location=brandon')->assertOk()
             ->assertSee('value="'.$place->id.'" selected', false);
         $this->get('https://canadamb.ca/events?location=brandon')->assertOk()->assertDontSee('My private event')
             ->assertSee('href="/community/new?type=event&amp;location=brandon"', false);

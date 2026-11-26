@@ -147,7 +147,10 @@ class CommunityEventController extends Controller
         $site = $request->attributes->get('site');
         abort_unless($this->community->enabled($site, 'events'), 404);
 
-        $filters = $request->validate(['reuse' => 'nullable|integer|min:1']);
+        $filters = $request->validate(['reuse' => 'nullable|integer|min:1', 'location' => 'nullable|string|max:150']);
+        if ($this->community->enabled($site, 'community')) {
+            return redirect('/community/new?'.http_build_query(['type' => 'event'] + $filters));
+        }
         $source = isset($filters['reuse']) ? $this->community->events($site->location_id)
             ->where('author_id', $request->user()->id)->findOrFail($filters['reuse']) : null;
 

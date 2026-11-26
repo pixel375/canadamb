@@ -9,7 +9,7 @@
             <div>
                 <p class="section-label">Your conversations</p>
                 <h1>Discussion notifications</h1>
-                <p>New approved replies in discussions you follow, visible on this community.</p>
+                <p>Approved replies to followed discussions, your comments and your events, visible on this community.</p>
             </div>
             <a class="button button-outline" href="/account/followed-discussions"><x-icon name="bell" size="17"/> Following</a>
         </div>
@@ -55,7 +55,7 @@
                         <form method="post" action="/account/community-notifications/{{ $notification->id }}/open">@csrf
                             <h2><button class="notification-open-link" type="submit">{{ $notification->title }}</button></h2>
                         </form>
-                        <p><strong>{{ $notification->actor_name }}</strong> {{ in_array($notification->reply_id, $directReplies, true) ? 'replied to your comment.' : 'posted a reply in this discussion.' }}</p>
+                        <p><strong>{{ $notification->actor_name }}</strong> {{ in_array($notification->reply_id, $directReplies, true) ? 'replied to your comment.' : (in_array((int) $notification->thread_id, $eventThreads, true) ? 'commented on this event.' : 'posted a reply in this discussion.') }}</p>
                         <p><x-icon name="clock" size="15"/> <time datetime="{{ \Illuminate\Support\Carbon::parse($notification->created_at)->toIso8601String() }}">{{ \Illuminate\Support\Carbon::parse($notification->created_at)->diffForHumans() }}</time></p>
                     </div>
                     <div class="discussion-notification-actions">

@@ -69,11 +69,12 @@ class EventSeriesTest extends TestCase
         $this->actingAs($member)->post('https://brandonmb.ca/account/events/'.$events[0]->id.'/cancel')->assertRedirect();
         $this->get($file)->assertNotFound();
         $this->get($url.'/calendar?month=2026-03')->assertOk()->assertDontSee('BEGIN:VEVENT');
-        $this->get('https://brandonmb.ca/events/new?reuse='.$events[1]->id)->assertOk()->assertSee('Weekly club, meeting')->assertSee('choose new dates');
+        $this->get('https://brandonmb.ca/events/new?reuse='.$events[1]->id)->assertRedirect('/community/new?type=event&reuse='.$events[1]->id);
+        $this->get('https://brandonmb.ca/community/new?type=event&reuse='.$events[1]->id)->assertOk()->assertSee('Weekly club, meeting')->assertSee('choose new dates');
         $this->post($url, array_replace($input, ['title' => 'Invalid DST series', 'starts_at' => '2026-03-01T02:30', 'ends_at' => '2026-03-01T04:00']))->assertSessionHasErrors('starts_at');
         $this->assertDatabaseCount('community_events', 3);
         $other = User::factory()->create();
-        $this->actingAs($other)->get('https://brandonmb.ca/events/new?reuse='.$events[1]->id)->assertNotFound();
+        $this->actingAs($other)->get('https://brandonmb.ca/community/new?type=event&reuse='.$events[1]->id)->assertNotFound();
         $edit = 'https://brandonmb.ca/account/events/revise-selected';
         $editVersions = [$events[1]->id => $events[1]->fresh()->contentVersion(), $events[2]->id => $events[2]->fresh()->contentVersion()];
         $input = ['events' => [$events[1]->id, $events[2]->id], 'versions' => $editVersions, 'field' => 'venue', 'value' => 'New club hall', 'confirm_update' => '1'];

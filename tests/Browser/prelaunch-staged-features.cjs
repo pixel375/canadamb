@@ -151,6 +151,7 @@ const password = 'New-browser-qa-42';
         console.log('PASS: individual and selected conversation archive/restoration and optional photo control');
 
         await visit(page, '/events/new');
+        check(new URL(page.url()).pathname === '/community/new', 'Legacy event link did not use the discussion composer');
         await page.locator('input[name="title"]').fill('Recurring browser QA event');
         await page.locator('select[name="category"]').selectOption({ index: 1 });
         await page.locator('select[name="location_id"]').selectOption({ label: 'Brandon' });

@@ -332,12 +332,17 @@ class CommunityForumController extends Controller
         abort_if($postType === 'event' && ! $eventsEnabled, 404);
 
         $category = $request->query('category');
+        $reuse = $request->validate(['reuse' => 'nullable|integer|min:1'])['reuse'] ?? null;
+        abort_if($reuse && $postType !== 'event', 404);
+        $source = $reuse ? $this->community->events($site->location_id)
+            ->where('author_id', $request->user()->id)->findOrFail($reuse) : null;
 
         return view('community.new-thread', [
+            'source' => $source,
             'places' => $site->isNetwork() ? Location::selectable()->orderBy('name')->get() : collect(),
             'eventsEnabled' => $eventsEnabled,
             'postType' => $postType,
-            'suggestedLocation' => LocationScope::forBrowsing($site, $request->query('location', $request->cookie(LocationScope::PREFERENCE_COOKIE))),
+            'suggestedLocation' => $source?->location ?? LocationScope::forBrowsing($site, $request->query('location', $request->cookie(LocationScope::PREFERENCE_COOKIE))),
             'suggestedCategory' => is_string($category) && array_key_exists($category, Community::FORUMS) ? $category : null,
         ]);
     }
@@ -454,7 +459,9 @@ class CommunityForumController extends Controller
             ->withQueryString();
         $directReplies = ReplyLinks::directNotificationIds($request->user()->id, $notifications->pluck('reply_id')->all());
 
-        return response()->view('community.notifications', compact('notifications', 'view', 'unreadCount', 'readCutoff', 'filters', 'directReplies'))
+        $eventThreads = EventDiscussions::publicThreadIds($request->attributes->get('site'), $notifications->pluck('thread_id')->all());
+
+        return response()->view('community.notifications', compact('notifications', 'view', 'unreadCount', 'readCutoff', 'filters', 'directReplies', 'eventThreads'))
             ->header('Cache-Control', 'private, no-store');
     }
 

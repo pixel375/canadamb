@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Support\AccountActivity;
 use App\Support\Community;
+use App\Support\EventDiscussions;
 use App\Support\JobSearches;
 use App\Support\NotificationPreferences;
 use App\Support\ReplyLinks;
@@ -57,12 +58,13 @@ final class AccountNotificationsController extends Controller
             : collect();
 
         $directReplies = ReplyLinks::directNotificationIds($user->id, $recent->pluck('reply_id')->all());
+        $eventThreads = EventDiscussions::publicThreadIds($site, $recent->pluck('thread_id')->all());
         $preferencesEnabled = NotificationPreferences::enabled();
         $preferences = NotificationPreferences::forMember($user->id);
         $jobAlertsEnabled = JobSearches::enabled($site) && $preferences['job_summary'];
         $matchingSearches = $jobAlertsEnabled ? JobSearches::alertingSearchCount($user->id, $site) : 0;
 
-        return response()->view('account.notifications', compact('counts', 'discussionsEnabled', 'recent', 'preferencesEnabled', 'preferences', 'jobAlertsEnabled', 'matchingSearches', 'directReplies'))
+        return response()->view('account.notifications', compact('counts', 'discussionsEnabled', 'recent', 'preferencesEnabled', 'preferences', 'jobAlertsEnabled', 'matchingSearches', 'directReplies', 'eventThreads'))
             ->header('Cache-Control', 'private, no-store');
     }
 }
