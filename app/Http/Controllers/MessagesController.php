@@ -27,12 +27,15 @@ class MessagesController extends Controller
     public function index(Request $request)
     {
         $id = $request->user()->id;
-        $filters = $request->validate(['view' => 'nullable|in:unread,archived', 'q' => 'nullable|string|max:100', 'kind' => 'nullable|in:marketplace,business,job']);
+        $filters = $request->validate(['view' => 'nullable|in:unread,archived', 'q' => 'nullable|string|max:100', 'kind' => 'nullable|in:marketplace,business,job',
+            'role' => 'nullable|in:sent,received', 'sort' => 'nullable|in:recent,oldest']);
         $unread = fn ($messages) => $messages->where('sender_id', '!=', $id)
             ->whereRaw('messages.id > CASE WHEN conversations.buyer_id = ? THEN conversations.buyer_last_read_id ELSE conversations.seller_last_read_id END', [$id]);
         $extended = MessagingExtensions::enabled();
         abort_if(! $extended && (($filters['view'] ?? null) === 'archived' || in_array($filters['kind'] ?? null, ['business', 'job'], true)), 404);
         $threads = Conversation::forMember($id)
+            ->when(($filters['role'] ?? null) === 'sent', fn ($query) => $query->where('buyer_id', $id))
+            ->when(($filters['role'] ?? null) === 'received', fn ($query) => $query->where('seller_id', $id))
             ->when(($filters['kind'] ?? null) === 'marketplace', fn ($query) => $query->whereNotNull('listing_id'))
             ->when(($filters['kind'] ?? null) === 'business', fn ($query) => $query->whereNull('listing_id')->whereNotNull('inquiry_business_id')->whereNull('inquiry_job_id'))
             ->when(($filters['kind'] ?? null) === 'job', fn ($query) => $query->whereNull('listing_id')->whereNotNull('inquiry_job_id'))
@@ -56,12 +59,14 @@ class MessagesController extends Controller
                             ->whereHas('seller', fn ($user) => $user->whereRaw("LOWER(name) LIKE ? ESCAPE '!'", [$pattern]))));
                 }
             })
-            ->latest('updated_at')->latest('id')->paginate(20)->withQueryString();
+            ->orderBy('updated_at', ($filters['sort'] ?? '') === 'oldest' ? 'asc' : 'desc')
+            ->orderBy('id', ($filters['sort'] ?? '') === 'oldest' ? 'asc' : 'desc')->paginate(20)->withQueryString();
 
         $unreadThreads = $this->activeInbox($id)->whereHas('messages', $unread);
         $readCutoff = Message::whereIn('conversation_id', $unreadThreads->select('id'))->where('sender_id', '!=', $id)->max('id');
 
-        return view('messages.index', ['threads' => $threads, 'member' => $id, 'filters' => $filters, 'readCutoff' => $readCutoff]);
+        return response()->view('messages.index', ['threads' => $threads, 'member' => $id, 'filters' => $filters, 'readCutoff' => $readCutoff])
+            ->header('Cache-Control', 'private, no-store');
     }
 
     private function activeInbox(int $member)
@@ -232,16 +237,22 @@ class MessagesController extends Controller
     {
         $id = $request->user()->id;
         $thread = Conversation::forMember($id)->with(['listing:id,title', 'buyer:id,name', 'seller:id,name'])->findOrFail($conversation);
+        $filters = $request->validate(['q' => 'nullable|string|max:100', 'sender' => 'nullable|in:me,other']);
+        $searching = filled($filters['q'] ?? null) || filled($filters['sender'] ?? null);
         $messages = $thread->messages()->with('sender:id,name')
             ->when(MessageAttachments::enabled(), fn ($query) => $query->withExists('attachment'))
-            ->latest('id')->paginate(30);
-        if ($messages->onFirstPage() && $latest = $messages->first()?->id) {
+            ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['body']))
+            ->when(($filters['sender'] ?? null) === 'me', fn ($query) => $query->where('sender_id', $id))
+            ->when(($filters['sender'] ?? null) === 'other', fn ($query) => $query->where('sender_id', '!=', $id))
+            ->latest('id')->paginate(30)->withQueryString();
+        if (! $searching && $messages->onFirstPage() && $latest = $messages->first()?->id) {
             $marker = $thread->marker($id);
             Conversation::whereKey($thread->id)->where($marker, '<', $latest)->update([$marker => $latest, 'updated_at' => DB::raw('updated_at')]);
         }
         $mine = DB::table('user_blocks')->where(['user_id' => $id, 'blocked_id' => $thread->other($id)])->exists();
 
-        return view('messages.show', ['thread' => $thread, 'messages' => $messages, 'blocked' => $this->isBlocked($id, $thread->other($id)) || ! MessagingExtensions::canReply($thread), 'myBlock' => $mine]);
+        return response()->view('messages.show', ['thread' => $thread, 'messages' => $messages, 'blocked' => $this->isBlocked($id, $thread->other($id)) || ! MessagingExtensions::canReply($thread), 'myBlock' => $mine,
+            'filters' => $filters, 'searching' => $searching])->header('Cache-Control', 'private, no-store');
     }
 
     public function sync(Request $request, int $conversation, AccountActivity $activity)

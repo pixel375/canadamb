@@ -6,7 +6,7 @@
             $archived = ($filters['view'] ?? null) === 'archived';
             $keyword = $filters['q'] ?? '';
             $kind = $filters['kind'] ?? '';
-            $params = array_filter(['q' => $keyword, 'kind' => $kind], fn ($value) => $value !== '');
+            $params = array_filter(array_diff_key($filters, ['view' => true]), fn ($value) => $value !== null && $value !== '');
             $urlFor = fn (array $changes = []) => '/account/messages'.(($query = http_build_query(array_filter(array_replace($params, $changes), fn ($value) => $value !== null && $value !== ''))) !== '' ? '?'.$query : '');
             $allUrl = $urlFor();
             $unreadUrl = $urlFor(['view' => 'unread']);
@@ -17,13 +17,15 @@
                 @if($unreadOnly || $archived)<input type="hidden" name="view" value="{{ $archived ? 'archived' : 'unread' }}">@endif
                 <input type="search" name="q" maxlength="100" value="{{ $keyword }}" placeholder="Search conversations or names" aria-label="Search conversations">
                 @if(\App\Support\MessagingExtensions::enabled())<label class="message-kind-filter"><span>Conversation type</span><select name="kind"><option value="">All types</option>@foreach(['marketplace' => 'Marketplace', 'business' => 'Business inquiries', 'job' => 'Job inquiries'] as $key => $label)<option value="{{ $key }}" @selected($kind === $key)>{{ $label }}</option>@endforeach</select></label>@endif
+                <label class="message-kind-filter"><span>My role</span><select name="role"><option value="">Any conversation</option><option value="sent" @selected(($filters['role'] ?? '') === 'sent')>I contacted someone</option><option value="received" @selected(($filters['role'] ?? '') === 'received')>Received inquiries</option></select></label>
+                <label class="message-kind-filter"><span>Sort</span><select name="sort"><option value="recent" @selected(($filters['sort'] ?? 'recent') === 'recent')>Recent activity</option><option value="oldest" @selected(($filters['sort'] ?? '') === 'oldest')>Oldest activity</option></select></label>
                 <button class="button button-primary" type="submit"><x-icon name="search" size="18"/> Search</button>
             </form>
             <nav class="message-filter-tabs" aria-label="Message filters">
                 <a href="{{ $allUrl }}" @if(!$unreadOnly && !$archived) aria-current="page" @endif>All messages</a>
                 <a href="{{ $unreadUrl }}" @if($unreadOnly) aria-current="page" @endif>Unread</a>
                 @if(\App\Support\MessagingExtensions::enabled())<a href="{{ $urlFor(['view' => 'archived']) }}" @if($archived) aria-current="page" @endif>Archived</a>@endif
-                @if($keyword !== '' || $kind !== '')<a href="{{ $urlFor(['q' => '', 'kind' => '', 'view' => $currentView]) }}">Clear search</a>@endif
+                @if($params)<a href="{{ '/account/messages'.($currentView ? '?view='.$currentView : '') }}">Clear search</a>@endif
             </nav>
             @if($readCutoff && !$archived)
                 <details class="form-stack mb-4">
@@ -71,9 +73,9 @@
                 @empty
                     <div class="market-results-empty">
                         <span class="empty-icon"><x-icon name="messages" size="24"/></span>
-                        <h3>{{ ($keyword !== '' || $kind !== '') ? 'No conversations match your search.' : ($archived ? 'You have no archived conversations.' : ($unreadOnly ? 'You have no unread messages.' : 'You have no conversations yet.')) }}</h3>
-                        <p>{{ $keyword !== '' || $kind !== '' || $unreadOnly || $archived ? 'Browse all conversations to see your message history.' : 'When you contact a seller or receive an inquiry, your conversation will appear here.' }}</p>
-                        @if($keyword !== '' || $kind !== '' || $unreadOnly || $archived)<a class="button button-outline" href="/account/messages">All conversations</a>@else<a class="button button-primary" href="/marketplace">Browse Marketplace</a>@endif
+                        <h3>{{ ($params) ? 'No conversations match your search.' : ($archived ? 'You have no archived conversations.' : ($unreadOnly ? 'You have no unread messages.' : 'You have no conversations yet.')) }}</h3>
+                        <p>{{ $params || $unreadOnly || $archived ? 'Browse all conversations to see your message history.' : 'When you contact a seller or receive an inquiry, your conversation will appear here.' }}</p>
+                        @if($params || $unreadOnly || $archived)<a class="button button-outline" href="/account/messages">All conversations</a>@else<a class="button button-primary" href="/marketplace">Browse Marketplace</a>@endif
                     </div>
                 @endforelse
             </div>

@@ -2,7 +2,7 @@
     @php($messageReports = auth()->user()->hasVerifiedEmail() && \App\Support\ContentReports::enabled())
     <div class="container page-shell message-workspace">
         <a class="text-link mb-4" href="/account/messages"><x-icon name="messages" size="18"/> All messages</a>
-        <div class="panel chat-panel" @if($messages->onFirstPage()) data-chat-sync="/account/messages/{{ $thread->id }}/sync" data-chat-cursor="{{ $messages->first()?->id ?? 0 }}" data-chat-token="{{ csrf_token() }}" data-chat-reportable="{{ $messageReports ? '1' : '0' }}" data-chat-conversation="{{ $thread->id }}" @endif>
+        <div class="panel chat-panel" @if(!$searching && $messages->onFirstPage()) data-chat-sync="/account/messages/{{ $thread->id }}/sync" data-chat-cursor="{{ $messages->first()?->id ?? 0 }}" data-chat-token="{{ csrf_token() }}" data-chat-reportable="{{ $messageReports ? '1' : '0' }}" data-chat-conversation="{{ $thread->id }}" @endif>
             <header class="chat-heading">
                 <span class="message-avatar" aria-hidden="true"><x-icon name="person" size="26"/></span>
                 <div class="chat-heading-copy">
@@ -27,12 +27,21 @@
                     </div>
                 </details>
             </header>
+            <details class="panel form-stack" @if($searching) open @endif>
+                <summary>Search this conversation</summary>
+                <form method="get" action="/account/messages/{{ $thread->id }}" class="form-stack mt-2">
+                    <div class="form-grid"><label>Message text<input name="q" type="search" maxlength="100" value="{{ $filters['q'] ?? '' }}"></label>
+                    <label>Sent by<select name="sender"><option value="">Either participant</option><option value="me" @selected(($filters['sender'] ?? '') === 'me')>Me</option><option value="other" @selected(($filters['sender'] ?? '') === 'other')>Other participant</option></select></label></div>
+                    <div class="inline-actions"><button class="button button-primary">Search history</button><a class="text-link" href="/account/messages/{{ $thread->id }}">Return to latest messages</a></div>
+                </form>
+            </details>
+            @if($searching)<p class="field-note">{{ $messages->total() }} matching messages. Searching does not mark messages read. Live refresh is paused in search results.</p>@endif
             <nav class="chat-history-nav" aria-label="Conversation history">
                 @if($messages->hasMorePages())<a class="text-link" href="{{ $messages->nextPageUrl() }}">Older messages</a>@endif
                 @if(!$messages->onFirstPage())<a class="text-link" href="{{ $messages->previousPageUrl() }}">Newer messages</a><a class="text-link" href="/account/messages/{{ $thread->id }}">Latest messages</a>@endif
             </nav>
             <div class="chat-history" aria-label="Messages in chronological order" data-chat-history>
-                @foreach($messages->reverse() as $message)
+                @forelse($messages->reverse() as $message)
                     <article data-message-id="{{ $message->id }}" class="chat-message {{ $message->sender_id === auth()->id() ? 'is-own' : 'is-other' }}">
                         <div class="chat-message-meta">
                             <strong>{{ $message->sender_id === auth()->id() ? 'You' : $message->sender->name }}</strong>
@@ -43,10 +52,12 @@
                         @if($messageReports && $message->sender_id !== auth()->id())<a class="text-link field-note" href="/account/report/message/{{ $message->id }}">Report message</a>@if($message->attachment_exists)<a class="text-link field-note" href="/account/report/message-photo/{{ $message->id }}">Report photo</a>@endif
                         @endif
                     </article>
-                @endforeach
+                @empty<p class="field-note">No matching messages.</p>@endforelse
             </div>
-            @if($messages->onFirstPage())<button type="button" class="button button-outline chat-jump" data-chat-jump>Jump to latest message</button><p class="chat-sync-status field-note" data-chat-status role="status" aria-live="polite">Messages refresh automatically while this conversation is open.</p>@endif
-            @if(!$blocked)
+            @if(!$searching && $messages->onFirstPage())<button type="button" class="button button-outline chat-jump" data-chat-jump>Jump to latest message</button><p class="chat-sync-status field-note" data-chat-status role="status" aria-live="polite">Messages refresh automatically while this conversation is open.</p>@endif
+            @if($searching)
+                <a class="button button-outline" href="/account/messages/{{ $thread->id }}">Return to conversation to reply</a>
+            @elseif(!$blocked)
                 <form method="post" action="/account/messages/{{ $thread->id }}" class="chat-composer form-stack" enctype="multipart/form-data">@csrf
                     <label>Reply<textarea data-character-count name="body" maxlength="2000" rows="3" required placeholder="Write a message…">{{ old('body') }}</textarea><small class="field-note" data-character-feedback></small></label>
                     @if(\App\Support\MessageAttachments::enabled())

@@ -65,6 +65,31 @@ class AccountActivityNavigationTest extends TestCase
         $this->actingAs($buyer)->get('https://brandonmb.ca/')->assertOk()->assertDontSee('aria-label="1 unread messages"', false);
     }
 
+    public function test_private_message_search_does_not_acknowledge_unread_messages_and_inbox_role_is_scoped(): void
+    {
+        $member = User::factory()->create();
+        $other = User::factory()->create();
+        $stranger = User::factory()->create();
+        $location = Location::where('slug', 'brandon')->sole()->id;
+        $listing = Listing::create(['user_id' => $other->id, 'location_id' => $location, 'category' => 'furniture',
+            'title' => 'Private search fixture', 'description' => 'A local listing.', 'condition' => 'good', 'price_cents' => 100]);
+        $thread = Conversation::create(['listing_id' => $listing->id, 'buyer_id' => $member->id, 'seller_id' => $other->id]);
+        $thread->messages()->create(['sender_id' => $other->id, 'body' => 'Delivery on Saturday']);
+        $thread->messages()->create(['sender_id' => $member->id, 'body' => 'Saturday works for me']);
+        $thread->messages()->create(['sender_id' => $other->id, 'body' => 'Bring a trailer']);
+        $base = 'https://canadamb.ca/account/messages';
+        $url = $base.'/'.$thread->id;
+        $this->actingAs($stranger)->get($url.'?q=Saturday')->assertNotFound();
+        $this->actingAs($member)->get($url.'?q=SATURDAY&sender=other')->assertOk()->assertSee('Delivery on Saturday')
+            ->assertDontSee('Saturday works for me')->assertDontSee('Bring a trailer')->assertDontSee('data-chat-sync=', false)
+            ->assertSee('1 matching messages')->assertHeader('Cache-Control', 'no-store, private');
+        $this->assertSame(0, $thread->fresh()->buyer_last_read_id);
+        $this->get($base.'?role=sent')->assertOk()->assertSee('Private search fixture');
+        $this->get($base.'?role=received')->assertOk()->assertDontSee('Private search fixture');
+        $this->actingAs($other)->get($base.'?role=received')->assertOk()->assertSee('Private search fixture');
+        $this->get($url.'?q=%25')->assertOk()->assertSee('No matching messages.');
+    }
+
     public function test_bulk_message_read_keeps_later_messages_and_other_members_unread(): void
     {
         $member = User::factory()->create();

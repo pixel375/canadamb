@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-26 — private conversation history and inbox discovery
+
+Previous release `7dc3a2d` independently verified live via deployment 45766240461, retaining two releases (21,912 entries). Added private participant-scoped message-body search with sender filter, no read-marker side effects or live polling in search results, explicit no-store headers, inbox role and sort filters, and authorization/read-state regression tests. No production content or settings changed.
+
 ## 2026-11-26 — cumulative test fixture corrections
 
 The first Marketplace detail-filter commit passed both CI suites. Intermediate cumulative builds identified formatting and two test issues: Winnipeg already has a seeded draft portal, and the new public directory intentionally shows local accent swatches without changing the provincial header accent. Corrected the fixtures/assertions to test the actual header CSS variable and reuse the existing Winnipeg draft. No production data changed; exact cumulative CI remains necessary.
