@@ -49,6 +49,29 @@ class DiscussionHubTest extends TestCase
             ->assertSee('href="/community/new?type=event"', false);
     }
 
+    public function test_event_date_shortcuts_and_calendar_exports_share_local_time_and_public_scope(): void
+    {
+        $this->travelTo('2026-11-26 12:00:00');
+        $brandon = Location::where('slug', 'brandon')->sole()->id;
+        $winnipeg = Location::where('slug', 'winnipeg')->sole()->id;
+        $today = $this->event($brandon, 'Thursday date fixture', '2026-11-26 20:00:00');
+        $weekend = $this->event($brandon, 'Weekend date fixture', '2026-11-28 20:00:00');
+        $this->event($brandon, 'Next week fixture', '2026-12-03 20:00:00');
+        $this->event($brandon, 'Hidden weekend fixture', '2026-11-28 20:00:00', 'pending');
+        $this->event($winnipeg, 'Remote weekend fixture', '2026-11-28 20:00:00');
+        $base = 'https://brandonmb.ca/events';
+        $this->get($base.'?period=today')->assertOk()->assertSee('Thursday date fixture')->assertDontSee('Weekend date fixture');
+        $this->get($base.'?period=weekend')->assertOk()->assertSee('Weekend date fixture')->assertDontSee('Thursday date fixture')
+            ->assertDontSee('Remote weekend fixture')->assertDontSee('Hidden weekend fixture');
+        $this->get($base.'/calendar?period=weekend')->assertOk()->assertSee('Weekend date fixture')->assertDontSee('Thursday date fixture');
+        $this->get($base.'?period=week')->assertOk()->assertSee('Thursday date fixture')->assertSee('Weekend date fixture')->assertDontSee('Next week fixture');
+        $this->get($base.'/'.$today->id)->assertOk()->assertSee('More upcoming events in Brandon')->assertSee('Weekend date fixture')->assertDontSee('Hidden weekend fixture');
+        $this->travelTo('2026-11-29 16:00:00');
+        $this->event($brandon, 'Sunday date fixture', '2026-11-29 20:00:00');
+        $this->get($base.'?period=weekend')->assertOk()->assertSee('Sunday date fixture')->assertDontSee('Next week fixture');
+        $this->getJson($base.'?period=invalid')->assertUnprocessable();
+    }
+
     public function test_discussion_filter_links_and_empty_calendar_remain_usable(): void
     {
         $this->get('https://canadamb.ca/community?category=help')

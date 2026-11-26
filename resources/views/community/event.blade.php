@@ -23,7 +23,13 @@
         </header>
         @if($item->status === 'cancelled')<p class="notice notice-error"><strong>Cancelled</strong> · This event is no longer scheduled.</p>@endif
         <div class="public-profile-layout">
-            <div class="public-profile-main"><section class="panel"><h2>About this event</h2><p class="prose-text">{{ $item->body }}</p></section></div>
+            <div class="public-profile-main"><section class="panel"><h2>About this event</h2><p class="prose-text">{{ $item->body }}</p></section>
+                @if($related->isNotEmpty())
+                    <section class="panel"><h2>More upcoming events in {{ $item->location->name }}</h2>
+                        @foreach($related as $event)<article class="item-row"><div><h3><a class="text-link" href="/events/{{ $event->id }}">{{ $event->title }}</a></h3><p>{{ $event->localStart()->format('M j · g:i a T') }} · {{ $event->venue }}</p></div></article>@endforeach
+                    </section>
+                @endif
+            </div>
             <aside class="public-profile-aside"><section class="panel form-stack">
                 <h2>Event details</h2>@if($discussion)<a class="button button-outline" href="/community/{{ $discussion->id }}">Join event discussion</a>@endif<x-content-report-link type="event" :target="$item->id"/>
                 <div class="business-contact-row"><x-icon name="calendar" size="20"/><div><h3>When</h3><p><time datetime="{{ $item->localStart()->toAtomString() }}">{{ $item->localStart()->format('l, F j, Y · g:i a T') }}</time>@if($item->localEnd()) to <time datetime="{{ $item->localEnd()->toAtomString() }}">{{ $item->localEnd()->format('M j · g:i a T') }}</time>@endif</p></div></div>

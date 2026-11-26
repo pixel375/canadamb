@@ -68,12 +68,24 @@ class CommunityEventController extends Controller
             'month' => 'nullable|date_format:Y-m',
             'location' => ['nullable', 'string', 'max:100', Rule::exists('locations', 'slug')->where('province', 'MB')->where('selectable', true)],
             'day' => 'nullable|date_format:Y-m-d',
+            'period' => 'nullable|in:today,week,weekend,month',
             'q' => 'nullable|string|max:100', 'category' => ['nullable', Rule::in(array_keys(Community::EVENTS))],
         ]);
         $place = LocationScope::forBrowsing($site, $filters['location'] ?? null);
         $query = $this->community->upcoming($this->community->events($place?->id))
             ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'body', 'venue', 'organizer']))
             ->when($filters['category'] ?? null, fn ($query, $category) => $query->where('category', $category));
+
+        if (isset($filters['period'])) {
+            $today = CarbonImmutable::now('America/Winnipeg')->startOfDay();
+            [$from, $until] = match ($filters['period']) {
+                'today' => [$today, $today->addDay()],
+                'week' => [$today, $today->addDays(7)],
+                'month' => [$today, $today->addDays(30)],
+                'weekend' => [$today->isSunday() ? $today->subDay() : $today->addDays(6 - $today->dayOfWeekIso), $today->isSunday() ? $today->addDay() : $today->addDays(8 - $today->dayOfWeekIso)],
+            };
+            $this->community->overlapping($query, $from, $until);
+        }
 
         return [$filters, $place, $query];
     }
@@ -112,7 +124,10 @@ class CommunityEventController extends Controller
 
         $discussion = EventDiscussions::publicThread($site, $item);
 
-        return view('community.event', compact('item', 'canonical', 'discussion'));
+        $related = $this->community->upcoming($this->community->events($item->location_id))
+            ->whereKeyNot($item->id)->where('category', $item->category)->orderBy('starts_at')->orderBy('id')->limit(4)->get();
+
+        return view('community.event', compact('item', 'canonical', 'discussion', 'related'));
     }
 
     public function calendarFile(Request $request, int $event)

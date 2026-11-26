@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-26 — local event date discovery and related events
+
+Added today, seven-day, weekend and thirty-day shortcuts using Manitoba-local date boundaries, shared by calendar snapshot exports. Explicit date selection and period preservation in monthly navigation, matching counts, ongoing/end-time labels, and related approved same-community events on detail pages. Tests cover hidden/remote events, Sunday weekend behavior and export consistency. No publishing switches changed.
+
 ## 2026-11-26 — notification selection and unread history
 
 Added read-history filtering, selected read/unread actions bounded to twenty currently visible owned notifications, atomic rejection of foreign/hidden/remote IDs, direct unread shortcuts and unread-first dashboard ordering. Private no-store responses and responsive inbox filter wrapping. Added regression tests; existing messages and notification history are preserved.
