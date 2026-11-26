@@ -14,25 +14,30 @@ final class MessageFileInventory
         $limit = max(1, min(5000, $limit));
         $result = ['schema_available' => Schema::hasTable('message_attachments'), 'rows_examined' => 0,
             'missing_files' => 0, 'invalid_references' => 0, 'files_examined' => 0, 'old_unreferenced_files' => 0,
-            'unexpected_entries' => 0, 'rows_truncated' => false, 'files_truncated' => false];
+            'unexpected_entries' => 0, 'rows_truncated' => false, 'files_truncated' => false, 'directory_symlink' => false];
         if (! $result['schema_available']) {
             return $result;
         }
         $disk = Storage::disk(MessageAttachments::DISK);
+        $directory = $disk->path('attachments');
+        if (is_link($directory)) {
+            $result['directory_symlink'] = true;
+
+            return $result;
+        }
         $rows = DB::table('message_attachments')->orderBy('id')->limit($limit + 1)->get(['image_path', 'thumbnail_path']);
         $result['rows_truncated'] = $rows->count() > $limit;
         foreach ($rows->take($limit) as $row) {
             $result['rows_examined']++;
             foreach ([$row->image_path, $row->thumbnail_path] as $path) {
-                if (! $this->valid($path)) {
+                if (! $this->valid($path) || is_link($disk->path($path))) {
                     $result['invalid_references']++;
                 } elseif (! $disk->exists($path)) {
                     $result['missing_files']++;
                 }
             }
         }
-        $directory = $disk->path('attachments');
-        if (! is_dir($directory) || is_link($directory)) {
+        if (! is_dir($directory)) {
             return $result;
         }
         foreach (new FilesystemIterator($directory, FilesystemIterator::SKIP_DOTS) as $file) {

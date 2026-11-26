@@ -27,7 +27,7 @@ class PropertyDraftController extends Controller
             'sort' => 'nullable|in:recent,price-low,price-high',
             'location' => 'nullable|integer|exists:locations,id',
             'min_price' => 'nullable|numeric|decimal:0,2|min:0|max:1000000000',
-            'max_price' => 'nullable|numeric|decimal:0,2|min:0|max:1000000000|gte:min_price',
+            'max_price' => ['nullable', 'numeric', 'decimal:0,2', 'min:0', 'max:1000000000', Rule::when($request->filled('min_price'), 'gte:min_price')],
         ]);
         $statuses = ['draft', 'submitted', 'changes_requested', 'reviewed'];
         $owned = $this->owned($request);

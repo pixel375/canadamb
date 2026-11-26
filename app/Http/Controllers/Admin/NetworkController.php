@@ -19,9 +19,11 @@ use App\Support\CommercialRecords;
 use App\Support\ContentReports;
 use App\Support\KeywordSearch;
 use App\Support\Marketplace;
+use App\Support\MessageFileInventory;
 use App\Support\NetworkSettings;
 use App\Support\NetworkUrl;
 use App\Support\PrivacyRequests;
+use App\Support\PropertyMediaInventory;
 use App\Support\QueueInventory;
 use App\Support\StagedFeatures;
 use Illuminate\Http\Request;
@@ -92,6 +94,15 @@ class NetworkController extends Controller
             'locations' => Location::selectable()->count(), 'accounts' => User::count(),
             'pending' => $listingCount, 'version' => $settings->state()->version,
         ]);
+    }
+
+    public function mediaInventory(Request $request, PropertyMediaInventory $media, MessageFileInventory $messages)
+    {
+        $filters = $request->validate(['limit' => 'nullable|integer|in:50,100,250']);
+        $limit = (int) ($filters['limit'] ?? 50);
+        $results = $media->inspect($limit) + ['private_messages' => $messages->inspect($limit)];
+
+        return response()->view('admin.media-inventory', compact('results', 'limit'))->header('Cache-Control', 'private, no-store');
     }
 
     public function readiness(NetworkSettings $settings)

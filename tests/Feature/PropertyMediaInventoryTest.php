@@ -42,6 +42,11 @@ class PropertyMediaInventoryTest extends TestCase
         $this->assertSame(1, $result['private_properties']['old_unreferenced_files']);
         $this->assertTrue($inventory->inspect(1)['marketplace']['files_truncated']);
         $this->assertStringNotContainsString($old, json_encode($result, JSON_THROW_ON_ERROR));
+        $this->actingAs(User::factory()->create())->get('https://canadamb.ca/admin/media-inventory')->assertForbidden();
+        $this->actingAs(User::factory()->create(['role' => 'network_admin']))->get('https://canadamb.ca/admin/media-inventory')->assertForbidden();
+        $this->actingAs(User::factory()->create(['role' => 'super_admin']))->get('https://canadamb.ca/admin/media-inventory?limit=50')
+            ->assertOk()->assertSee('Media storage inventory')->assertSee('Missing file references')->assertDontSee($old)->assertDontSee($property);
+        $this->getJson('https://canadamb.ca/admin/media-inventory?limit=5000')->assertUnprocessable();
         $disk->assertExists([$old, $recent, $referenced, $property]);
         $this->artisan('media:inventory', ['--limit' => 0])->assertFailed();
     }

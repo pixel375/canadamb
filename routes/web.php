@@ -261,6 +261,7 @@ Route::prefix('admin')->middleware(['auth', 'verified', 'can:manage-network'])->
     Route::get('/', [NetworkController::class, 'index']);
     Route::get('/audit', [NetworkController::class, 'audit']);
     Route::get('/readiness', [NetworkController::class, 'readiness']);
+    Route::get('/media-inventory', [NetworkController::class, 'mediaInventory'])->middleware(['can:manage-theme', 'throttle:6,1,media-inventory']);
     Route::get('/moderation', [NetworkController::class, 'moderation']);
     Route::get('/business-review', [BusinessReviewController::class, 'index']);
     Route::get('/business-ownership', [BusinessReviewController::class, 'ownership']);

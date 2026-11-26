@@ -24,5 +24,8 @@
             <p>Database queue observations unavailable.</p>
         @endif
     </section>
+    @can('manage-theme')
+        <section class="panel form-stack mt-4"><h2>Media storage observations</h2><p class="field-note">Inspect bounded aggregate media counts, missing files and potential orphan candidates. The report does not reveal file paths or change stored data.</p><a class="button button-outline" href="/admin/media-inventory">Inspect media storage</a></section>
+    @endcan
     <section class="panel form-stack mt-4"><h2>Separate acceptance required</h2><ul class="help-guidelines"><li>Real-device authentication and Android standalone installation.</li><li>Verified outgoing mail and monitored support mailbox.</li><li>Broader content reporting and account lifecycle controls.</li><li>Privacy policy, terms, retention and moderation procedures.</li><li>Current backup and restore evidence, scheduler health and external access checks.</li><li>Explicit approval before public registration and removal of prelaunch access controls.</li></ul><p class="field-note">None of these items is marked complete automatically.</p></section>
 </x-layouts.admin>
