@@ -3,7 +3,7 @@
     <div class="admin-settings-grid mb-4"><a class="panel admin-settings-card" href="/admin/theme"><x-icon name="moon" size="22"/><h3>Theme &amp; appearance</h3><p>Light and dark theme editor</p></a><a class="panel admin-settings-card" href="/admin/local-context"><x-icon name="clock" size="22"/><h3>Local time &amp; weather</h3><p>Clock and weather configuration</p></a><a class="panel admin-settings-card" href="/admin/publication-policy"><x-icon name="shield" size="22"/><h3>Moderation policy</h3><p>Publication and review rules</p></a></div>
     @if($state->draft_id)
         <section class="panel form-stack"><h2>Pending global configuration changes</h2>
-            @if($changes)<ul>@foreach($changes as $change)<li>{{ $change }}</li>@endforeach</ul>@else<p>No differences detected in the listed settings groups.</p>@endif
+            <x-configuration-changes :changes="$changes" target="Pending draft"/>
             <p class="field-note">Publishing applies the entire pending draft across the network, including changes made on other settings pages. Credentials are never shown in this summary.</p>
             <form method="post" action="/admin/settings/publish" class="inline-actions">@csrf<input type="hidden" name="configuration_version" value="{{ \App\Support\NetworkSettings::stateVersion($state) }}"><button class="button button-primary">Publish network settings</button></form>
             <details><summary>Discard all pending changes</summary>
@@ -12,6 +12,20 @@
                     <p class="field-note">This clears the shared unpublished draft, including changes made on other settings pages. The published configuration, previous published version and historical records remain unchanged.</p>
                     <label class="checkbox"><input type="checkbox" name="confirm_discard" value="1" required> Discard the entire pending draft</label>
                     <div><button class="button button-outline">Discard unpublished settings</button></div>
+                </form>
+            </details>
+        </section>
+    @endif
+    @if($state->previous_id)
+        <section class="panel form-stack">
+            <h2>Restore previous published configuration</h2>
+            <details><summary>Review what restoration would change</summary>
+                <x-configuration-changes :changes="$restoreChanges" target="Previous published"/>
+                <p class="field-note">Restores the entire previous network configuration, not just appearance. Local overrides are unaffected. Any unpublished draft is retained; review it again before publishing because it may contain earlier settings. Revoke old weather credentials with the provider if needed.</p>
+                <form method="post" action="/admin/settings/rollback" class="form-stack">@csrf
+                    <input type="hidden" name="configuration_version" value="{{ \App\Support\NetworkSettings::stateVersion($state) }}">
+                    <label class="checkbox"><input type="checkbox" name="confirm_restore" value="1" required> Restore the previous published network configuration</label>
+                    <div><button class="button button-outline">Restore previous configuration</button></div>
                 </form>
             </details>
         </section>

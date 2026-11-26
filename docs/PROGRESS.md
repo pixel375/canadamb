@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-26 — detailed publication and restoration review
+
+Added allowlisted current-versus-draft and previous-published comparisons for modules, local-hide permissions, theme/palette, PWA, test registration, clock, weather, moderation and commercial rates. Credential changes are described without values. Restoration through Global settings is explicitly confirmed and version-bound, with a warning about retained drafts; theme UI links to this central review instead of direct mutation forms. Legacy authorized theme endpoints remain for compatibility. No production settings changed.
+
 ## 2026-11-26 — searchable responsive community control centre
 
 Replaced the wide portal table with responsive portal cards and search by name, domain or community, status and saved DNS/TLS readiness filters, scoped status counts, pagination and explicit effective appearance, utilities, modules and manual-review settings. Added read-only access and filter tests plus mobile Chromium portal management and clock override save/reset. No actual portal settings were modified by the source change.

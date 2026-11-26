@@ -7,7 +7,7 @@
         <label>Theme preset<select name="preset" x-model="selected" x-on:change="preset()">
             @foreach($presets as $key => $label)<option value="{{ $key }}" @selected($theme['preset'] === $key)>{{ $label }}</option>@endforeach
         </select></label>
-        <p class="field-note">Choose a network palette or customize the light and dark colors separately. Local community accents remain independent.</p>
+        <p class="field-note">Choose a network palette or customize the light and dark colors separately. Local community accents and separately selected local theme presets remain independent.</p>
         <div class="theme-samples">
             @foreach(['light', 'dark'] as $mode)
                 <div class="theme-sample" x-bind:style="preview('{{ $mode }}')" style="@foreach($theme['palette'][$mode] as $token => $value)--sample-{{ str_replace('_', '-', $token) }}:{{ $value }};@endforeach">
@@ -32,8 +32,6 @@
     </form>
     <p class="notice">Publishing or restoring a configuration applies every included setting, not just colors. <a class="text-link" href="/admin/settings">Review pending configuration changes</a> before publishing.</p>
     <div class="panel inline-actions">
-        @if($state->draft_id)<form action="/admin/theme/publish" method="post">@csrf<input type="hidden" name="configuration_version" value="{{ \App\Support\NetworkSettings::stateVersion($state) }}"><button class="button button-primary">Publish across the network</button></form>@endif
-        @if($state->previous_id)<form action="/admin/theme/rollback" method="post">@csrf<input type="hidden" name="configuration_version" value="{{ \App\Support\NetworkSettings::stateVersion($state) }}"><button class="button button-outline">Restore previous published configuration</button></form>@endif
-        @if(!$state->draft_id && !$state->previous_id)<p>Save a draft to publish a new theme.</p>@endif
+        @if($state->draft_id || $state->previous_id)<a class="button button-primary" href="/admin/settings">Review publication or restoration</a>@else<p>Save a draft to publish a new theme.</p>@endif
     </div>
 </x-layouts.admin>

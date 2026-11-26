@@ -76,6 +76,32 @@ class NetworkTest extends TestCase
         $this->get($base)->assertOk()->assertSee('Historical')->assertDontSee('PRIVATE_REVISION_FIXTURE');
     }
 
+    public function test_configuration_review_redacts_credentials_and_restores_only_with_confirmation(): void
+    {
+        $base = 'https://canadamb.ca/admin/settings';
+        $settings = app(NetworkSettings::class);
+        $admin = User::factory()->create(['role' => 'super_admin']);
+        $initial = $settings->state();
+        $settings->saveDraft($admin->id, fn (array $current) => array_replace($current, [
+            'weather_key_encrypted' => 'PRIVATE_REVIEW_FIXTURE', 'weather_enabled' => true,
+            'publication_policy' => ['listings' => 'verified'],
+        ]));
+        $this->actingAs($admin)->get($base)->assertOk()->assertSee('Weather credential')->assertSee('Different credential (hidden)')
+            ->assertSee('New Marketplace listings')->assertDontSee('PRIVATE_REVIEW_FIXTURE');
+        $settings->publish($admin->id);
+        $settings->saveDraft($admin->id, fn (array $current) => array_replace($current, ['local_clock_enabled' => false]));
+        $state = $settings->state();
+        $version = NetworkSettings::stateVersion($state);
+        $this->get($base)->assertOk()->assertSee('Review what restoration would change')->assertSee('Removed')->assertDontSee('PRIVATE_REVIEW_FIXTURE');
+        $this->post($base.'/rollback', ['configuration_version' => $version])->assertSessionHasErrors('confirm_restore');
+        $this->post($base.'/rollback', ['configuration_version' => str_repeat('0', 64), 'confirm_restore' => '1'])->assertSessionHasErrors('configuration_version');
+        $this->post($base.'/rollback', ['configuration_version' => $version, 'confirm_restore' => '1'])->assertRedirect($base)->assertSessionHasNoErrors();
+        $after = $settings->state();
+        $this->assertEquals($initial->published_id, $after->published_id);
+        $this->assertEquals($state->draft_id, $after->draft_id);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'configuration.rollback', 'actor_id' => $admin->id]);
+    }
+
     public function test_administration_is_provincial_and_role_protected(): void
     {
         $this->get('https://canadamb.ca/admin')->assertRedirect();

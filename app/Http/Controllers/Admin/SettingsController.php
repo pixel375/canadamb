@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Support\ConfigurationReview;
 use App\Support\NetworkSettings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -15,25 +16,12 @@ class SettingsController extends Controller
 
         $published = $settings->revision($state->published_id);
         $draft = $settings->revision($state->draft_id ?? $state->published_id);
-        $sections = [
-            'Theme and appearance' => ['preset', 'palette'], 'Module availability' => ['modules', 'permitted_module_overrides'],
-            'App installation and registration' => ['pwa_install_enabled', 'prelaunch_test_registration_enabled'],
-            'Moderation policy' => ['publication_policy'], 'Local clock and weather' => ['local_clock_enabled', 'clock_format', 'weather_enabled', 'weather_key_encrypted'],
-            'Commercial planning' => ['commercial_catalog'],
-        ];
-        $changes = [];
-        foreach ($sections as $label => $keys) {
-            foreach ($keys as $key) {
-                if (($published[$key] ?? null) !== ($draft[$key] ?? null)) {
-                    $changes[] = $label;
-                    break;
-                }
-            }
-        }
+        $changes = ConfigurationReview::changes($published, $draft);
+        $restoreChanges = $state->previous_id ? ConfigurationReview::changes($published, $settings->revision($state->previous_id)) : [];
 
         return view('admin.settings', [
             'state' => $state,
-            'settings' => $draft, 'changes' => $changes,
+            'settings' => $draft, 'changes' => $changes, 'restoreChanges' => $restoreChanges,
             'modules' => NetworkSettings::OPERATIONAL_MODULES,
             'revisions' => DB::table('configuration_revisions')->select(['id', 'actor_id', 'created_at'])->orderByDesc('id')->paginate(15, ['*'], 'revisions')->withQueryString(),
         ]);
@@ -69,6 +57,14 @@ class SettingsController extends Controller
         $settings->discardDraft($request->user()->id, $data['configuration_version']);
 
         return redirect('/admin/settings')->with('status', 'Pending network configuration discarded. Published settings were not changed.');
+    }
+
+    public function rollback(Request $request, NetworkSettings $settings)
+    {
+        $data = $request->validate(['configuration_version' => 'required|string|size:64', 'confirm_restore' => 'accepted']);
+        $settings->publish($request->user()->id, rollback: true, expected: $data['configuration_version']);
+
+        return redirect('/admin/settings')->with('status', 'Previous published network configuration restored.');
     }
 
     public function publish(Request $request, NetworkSettings $settings)

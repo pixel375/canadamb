@@ -306,6 +306,7 @@ Route::prefix('admin')->middleware(['auth', 'verified', 'can:manage-network'])->
         Route::post('/settings', [SettingsController::class, 'save']);
         Route::post('/settings/publish', [SettingsController::class, 'publish']);
         Route::post('/settings/discard', [SettingsController::class, 'discard'])->middleware('throttle:8,1,configuration-discard');
+        Route::post('/settings/rollback', [SettingsController::class, 'rollback'])->middleware('throttle:8,1,configuration-rollback');
         Route::get('/theme', [ThemeController::class, 'edit']);
         Route::post('/theme', [ThemeController::class, 'draft']);
         Route::post('/theme/publish', [ThemeController::class, 'publish']);
