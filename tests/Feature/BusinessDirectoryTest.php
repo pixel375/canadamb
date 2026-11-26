@@ -17,6 +17,35 @@ class BusinessDirectoryTest extends TestCase
 
     protected $seeder = DatabaseSeeder::class;
 
+    public function test_selected_business_update_withdrawal_is_atomic_and_role_scoped(): void
+    {
+        $owner = User::factory()->create();
+        $editor = User::factory()->create();
+        $business = Business::create(['slug' => 'batch-updates', 'name' => 'Batch Updates', 'category' => 'services', 'status' => 'active']);
+        $business->members()->attach($owner->id, ['role' => 'owner']);
+        $business->members()->attach($editor->id, ['role' => 'editor']);
+        $branch = $business->locations()->create(['location_id' => Location::where('slug', 'brandon')->sole()->id, 'address' => '10 Update Road']);
+        $other = $business->locations()->create(['location_id' => Location::where('slug', 'elkhorn')->sole()->id, 'address' => '20 Update Road']);
+        $records = collect();
+        foreach ([[$branch, $owner], [$branch, $editor], [$other, $owner]] as [$place, $author]) {
+            $records->push(BusinessUpdate::create(['business_location_id' => $place->id, 'author_id' => $author->id,
+                'title' => 'Update fixture '.$author->id.' '.$place->id, 'body' => 'A sample update.', 'type' => 'announcement', 'status' => 'approved', 'published_at' => now()]));
+        }
+        $base = 'https://brandonmb.ca/account/businesses/'.$business->id.'/updates';
+        $url = $base.'/withdraw-selected';
+        $versions = $records->mapWithKeys(fn ($record) => [$record->id => $record->fresh()->reviewVersion()])->all();
+        $data = ['updates' => [$records[0]->id, $records[1]->id], 'versions' => $versions, 'confirm_withdraw' => '1'];
+        $this->actingAs($editor)->post($url, $data)->assertNotFound();
+        $this->actingAs($owner)->get($base.'?type=announcement&branch='.$branch->id)->assertOk()->assertSee('2 matching updates')->assertSee('Withdraw selected updates');
+        $this->post($url, array_replace($data, ['updates' => [$records[0]->id, $records[2]->id]]))->assertNotFound();
+        $this->post($url, array_replace($data, ['versions' => array_replace($versions, [$records[1]->id => str_repeat('0', 64)])]))->assertSessionHasErrors('updates');
+        $this->assertSame('approved', $records[0]->fresh()->status);
+        $this->post($url, $data)->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame('withdrawn', $records[0]->fresh()->status);
+        $this->assertSame('withdrawn', $records[1]->fresh()->status);
+        $this->assertSame('approved', $records[2]->fresh()->status);
+    }
+
     public function test_business_team_permissions_are_owner_controlled_and_revocable(): void
     {
         $owner = User::factory()->create();

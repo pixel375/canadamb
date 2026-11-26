@@ -256,15 +256,19 @@ class BusinessController extends Controller
     {
         $item = $this->managed($request, $business);
         $site = $request->attributes->get('site');
-        $filters = $request->validate(['status' => 'nullable|in:pending,approved,rejected,withdrawn', 'q' => 'nullable|string|max:100']);
-        $updates = BusinessUpdate::with('branch.location')->whereHas('branch', fn ($branch) => $branch->where('business_id', $business)
-            ->when($site->location_id, fn ($query, $location) => $query->where('location_id', $location)))
-            ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
+        $filters = $request->validate(['status' => 'nullable|in:pending,approved,rejected,withdrawn', 'q' => 'nullable|string|max:100',
+            'type' => 'nullable|in:announcement,promotion,update', 'branch' => 'nullable|integer|min:1', 'sort' => 'nullable|in:newest,oldest']);
+        $branches = $item->locations()->with('location')->when($site->location_id, fn ($query, $id) => $query->where('location_id', $id))->orderBy('id')->get();
+        $owned = BusinessUpdate::with('branch.location')->whereIn('business_location_id', $branches->pluck('id'))
+            ->when($filters['branch'] ?? null, fn ($query, $id) => $query->where('business_location_id', $id));
+        $counts = (clone $owned)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
+        $updates = $owned->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
+            ->when($filters['type'] ?? null, fn ($query, $type) => $query->where('type', $type))
             ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'body']))
-            ->latest('id')->paginate(20)->withQueryString();
+            ->orderBy('id', ($filters['sort'] ?? 'newest') === 'oldest' ? 'asc' : 'desc')->paginate(20)->withQueryString();
         $canManageAll = $item->members()->whereKey($request->user()->id)->wherePivotIn('role', ['owner', 'manager'])->exists();
 
-        return view('business.manage-updates', compact('item', 'updates', 'filters', 'canManageAll'));
+        return view('business.manage-updates', compact('item', 'updates', 'filters', 'canManageAll', 'branches', 'counts'));
     }
 
     public function reviseUpdate(Request $request, int $business, int $update)
@@ -300,6 +304,37 @@ class BusinessController extends Controller
         }, attempts: 3);
 
         return redirect('/account/businesses/'.$business.'/updates')->with('status', 'Business update withdrawn.');
+    }
+
+    public function withdrawSelectedUpdates(Request $request, int $business)
+    {
+        $data = $request->validate([
+            'updates' => 'required|array|list|min:1|max:10', 'updates.*' => 'required|integer|distinct|min:1',
+            'versions' => 'required|array|max:20', 'versions.*' => 'required|string|size:64', 'confirm_withdraw' => 'accepted',
+        ]);
+        DB::transaction(function () use ($request, $business, $data) {
+            Business::lockForUpdate()->findOrFail($business);
+            $item = $this->managed($request, $business);
+            $site = $request->attributes->get('site');
+            $canManageAll = $item->members()->whereKey($request->user()->id)->wherePivotIn('role', ['owner', 'manager'])->exists();
+            $records = BusinessUpdate::whereHas('branch', fn ($branch) => $branch->where('business_id', $business)
+                ->when($site->location_id, fn ($query, $id) => $query->where('location_id', $id)))
+                ->when(! $canManageAll, fn ($query) => $query->where('author_id', $request->user()->id))
+                ->whereIn('id', $data['updates'])->orderBy('id')->lockForUpdate()->get();
+            abort_unless($records->count() === count($data['updates']), 404);
+            foreach ($records as $record) {
+                if (! in_array($record->status, ['pending', 'approved', 'rejected'], true)
+                    || ! isset($data['versions'][$record->id]) || ! hash_equals($record->reviewVersion(), $data['versions'][$record->id])) {
+                    throw ValidationException::withMessages(['updates' => 'A selected update changed or cannot be withdrawn. No updates changed.']);
+                }
+            }
+            foreach ($records as $record) {
+                $record->update(['status' => 'withdrawn', 'published_at' => null]);
+                Audit::record('business.update-withdrawn', $request->user()->id, context: ['business' => $business, 'update' => $record->id]);
+            }
+        }, attempts: 3);
+
+        return redirect('/account/businesses/'.$business.'/updates')->with('status', count($data['updates']).' business updates withdrawn.');
     }
 
     private function lockedUpdate(Request $request, int $business, int $update): BusinessUpdate

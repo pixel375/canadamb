@@ -224,6 +224,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('/account/businesses/{business}', [BusinessController::class, 'update'])->whereNumber('business')->middleware('throttle:20,1');
     Route::get('/account/businesses/{business}/updates', [BusinessController::class, 'manageUpdates'])->whereNumber('business');
     Route::post('/account/businesses/{business}/updates', [BusinessController::class, 'postUpdate'])->whereNumber('business')->middleware('throttle:8,1,business-update-submit');
+    Route::post('/account/businesses/{business}/updates/withdraw-selected', [BusinessController::class, 'withdrawSelectedUpdates'])->whereNumber('business')->middleware('throttle:5,1,business-update-batch');
     Route::put('/account/businesses/{business}/updates/{update}', [BusinessController::class, 'reviseUpdate'])->whereNumber(['business', 'update'])->middleware('throttle:12,1,business-update-edit');
     Route::post('/account/businesses/{business}/updates/{update}/withdraw', [BusinessController::class, 'withdrawUpdate'])->whereNumber(['business', 'update'])->middleware('throttle:12,1,business-update-withdraw');
 });
