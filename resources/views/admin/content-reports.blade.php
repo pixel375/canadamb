@@ -1,5 +1,11 @@
 <x-layouts.admin title="Content reports">
     <div class="page-intro"><div><h1>Content reports</h1><p>Review concerns about discussions, events, jobs, businesses, member profiles and individually reported private messages. Resolve reports separately from content moderation.</p></div><a class="button button-outline" href="/admin/community">Community moderation</a></div>
+    <nav class="admin-queue-tabs" aria-label="Report review status">
+        @foreach(['all', 'pending', 'resolved'] as $status)
+            @php($params = array_filter(['status' => $status === 'all' ? null : $status, 'type' => $filters['type'] ?? null, 'reference' => $filters['reference'] ?? null]))
+            <a class="seller-status-tile" href="/admin/content-reports{{ $params ? '?'.http_build_query($params) : '' }}" @if(($filters['status'] ?? 'all') === $status) aria-current="page" @endif><strong>{{ $status === 'all' ? $counts->sum() : ($counts[$status] ?? 0) }}</strong><span>{{ ucfirst($status) }}</span></a>
+        @endforeach
+    </nav>
     <form class="panel saved-search" method="get"><label>Status<select name="status"><option value="">All</option>@foreach(['pending','resolved'] as $status)<option value="{{ $status }}" @selected(($filters['status'] ?? '') === $status)>{{ ucfirst($status) }}</option>@endforeach</select></label><label>Content type<select name="type"><option value="">All</option>@foreach(\App\Support\ContentReports::TYPES as $key => $label)<option value="{{ $key }}" @selected(($filters['type'] ?? '') === $key)>{{ $label }}</option>@endforeach</select></label><label>Report reference<input type="number" min="1" name="reference" value="{{ $filters['reference'] ?? '' }}"></label><button class="button button-primary">Filter</button></form>
     <section class="panel">@forelse($items as $item)
         <?php $target = $targets[$item->id]; ?>

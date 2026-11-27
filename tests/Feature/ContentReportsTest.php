@@ -60,15 +60,19 @@ class ContentReportsTest extends TestCase
         $this->actingAs($stranger)->get($url)->assertNotFound();
         $this->post($url, $data)->assertNotFound();
         $this->actingAs($sender)->get($url)->assertNotFound();
-        $this->get($admin)->assertOk()->assertDontSee($data['explanation'])->assertDontSee($message->body);
+        $this->get($admin)->assertOk()->assertDontSee($data['explanation'])->assertDontSee($message->body)
+            ->assertViewHas('counts', fn ($counts) => $counts->sum() === 0);
+        $this->post($admin.'/'.$report->id)->assertForbidden();
         $this->post($admin.'/'.$report->id, ['note' => 'Conflicted moderator attempt.'])->assertForbidden();
         $this->actingAs($reviewer)->get($chat)->assertNotFound();
-        $this->get($admin)->assertOk()->assertSee('View reported message')->assertDontSee($message->body)->assertDontSee($other->body);
+        $this->get($admin)->assertOk()->assertSee('View reported message')->assertDontSee($message->body)->assertDontSee($other->body)
+            ->assertViewHas('counts', fn ($counts) => (int) $counts->get('pending') === 1);
         $this->post($admin.'/'.$report->id.'/evidence')->assertOk()->assertSee($message->body)->assertDontSee($other->body);
         $this->assertDatabaseHas('audit_logs', ['action' => 'content.report-message-accessed']);
         $this->post($admin.'/'.$report->id, ['note' => 'Independent review completed.'])->assertRedirect();
         $this->post($admin.'/'.$report->id.'/evidence')->assertNotFound();
-        $this->get($admin)->assertOk()->assertDontSee($message->body);
+        $this->get($admin.'?status=resolved')->assertOk()->assertDontSee($message->body)
+            ->assertViewHas('counts', fn ($counts) => (int) $counts->get('resolved') === 1 && (int) $counts->get('pending', 0) === 0);
         $this->actingAs($recipient)->get('https://brandonmb.ca/account/content-reports')->assertSee('Review completed');
         $profile = 'https://brandonmb.ca/account/report/profile/'.$sender->id;
         $this->get('https://brandonmb.ca/users/'.$sender->id)->assertSee('Report member');
