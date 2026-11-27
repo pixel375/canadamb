@@ -48,9 +48,11 @@ class BusinessDisputesTest extends TestCase
         $this->get($queue)->assertForbidden();
         $this->actingAs($owner)->get($history)->assertDontSee($data['explanation']);
         $this->get($queue)->assertDontSee($data['contact_email']);
-        $decision = ['decision' => 'escalated', 'note' => 'Further verification is required.'];
+        $decision = ['decision' => 'escalated', 'note' => 'Further verification is required.', 'expected_status' => 'pending'];
+        $this->post($queue.'/'.$id, [])->assertForbidden();
         $this->post($queue.'/'.$id, $decision)->assertForbidden();
         $this->actingAs($reviewer)->get($queue)->assertSee($data['contact_email']);
+        $this->post($queue.'/'.$id, ['decision' => 'escalated', 'note' => $decision['note']])->assertSessionHasErrors('expected_status');
         $this->post($queue.'/'.$id, $decision)->assertRedirect()->assertSessionHasNoErrors();
         $this->assertDatabaseHas('business_disputes', ['id' => $id, 'status' => 'escalated']);
         $this->assertDatabaseHas('business_memberships', ['business_id' => $business->id, 'user_id' => $owner->id, 'role' => 'owner']);
@@ -58,9 +60,12 @@ class BusinessDisputesTest extends TestCase
         $this->actingAs($claimant)->get($history)->assertSee('Escalated')->assertDontSee($decision['note']);
         $this->get($history.'?status=escalated&reference='.$id)->assertOk()->assertSee($data['explanation'])->assertDontSee($decision['note']);
         $this->get($history.'?status=pending')->assertOk()->assertDontSee($data['explanation']);
+        $this->post($history.'/'.$id.'/withdraw', ['expected_status' => 'pending'])->assertSessionHasErrors('expected_status');
+        $this->post($history.'/'.$id.'/withdraw')->assertSessionHasErrors('expected_status');
         $this->post($url, $data)->assertSessionHasErrors('explanation');
         $this->actingAs($reviewer)->get($queue.'?status=escalated')->assertSee($data['contact_email']);
-        $this->post($queue.'/'.$id, ['decision' => 'closed', 'note' => 'Independent verification was completed.'])->assertRedirect();
+        $this->post($queue.'/'.$id, ['decision' => 'closed', 'note' => 'Independent verification was completed.', 'expected_status' => 'pending'])->assertSessionHasErrors('expected_status');
+        $this->post($queue.'/'.$id, ['decision' => 'closed', 'note' => 'Independent verification was completed.', 'expected_status' => 'escalated'])->assertRedirect()->assertSessionHasNoErrors();
         $this->actingAs($claimant)->get($history)->assertSee('Closed');
         $this->post($history.'/'.$id.'/withdraw')->assertConflict();
     }

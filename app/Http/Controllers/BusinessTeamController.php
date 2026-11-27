@@ -23,13 +23,13 @@ class BusinessTeamController extends Controller
     public function store(Request $request, int $business)
     {
         abort_if(config('network.business_access_requests'), 404);
-        $data = $request->validate([
-            'email' => 'required|email|max:254',
-            'role' => 'required|in:manager,editor',
-            'consent' => 'accepted',
-        ]);
-        DB::transaction(function () use ($request, $business, $data) {
+        DB::transaction(function () use ($request, $business) {
             $item = $this->owner($request, $business);
+            $data = $request->validate([
+                'email' => 'required|email|max:254',
+                'role' => 'required|in:manager,editor',
+                'consent' => 'accepted',
+            ]);
             $member = User::where('email', $data['email'])->whereNotNull('email_verified_at')->first();
             if (! $member || $item->members()->whereKey($member->id)->exists() || $item->members()->count() >= 20) {
                 throw ValidationException::withMessages(['email' => 'Unable to add this account. Check the email, verification status, existing membership and team size.']);
@@ -74,11 +74,11 @@ class BusinessTeamController extends Controller
 
     public function leave(Request $request, int $business)
     {
-        $data = $request->validate(['confirm_leave' => 'accepted', 'expected_role' => 'required|in:manager,editor']);
         $member = $request->user()->id;
-        DB::transaction(function () use ($business, $member, $data) {
+        DB::transaction(function () use ($request, $business, $member) {
             $item = Business::lockForUpdate()->findOrFail($business);
             $target = $this->editableMember($item, $member);
+            $data = $request->validate(['confirm_leave' => 'accepted', 'expected_role' => 'required|in:manager,editor']);
             $this->checkRole($target, $data['expected_role']);
             $item->members()->detach($member);
             Audit::record('business.member-left', $member, context: ['business' => $business, 'role' => $target->pivot->role]);

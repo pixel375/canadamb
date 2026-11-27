@@ -33,7 +33,7 @@ class BusinessAccessController extends Controller
             'completed', 'declined', 'rejected', 'cancelled' => $items->where('business_access_requests.status', $filters['status']),
             default => null,
         };
-        $items = $items->latest('business_access_requests.id')->paginate(20)->withQueryString();
+        $items = $items->latest('business_access_requests.id')->paginate(20)->appends($filters);
 
         return view('business.access', compact('items', 'filters'));
     }
@@ -41,12 +41,12 @@ class BusinessAccessController extends Controller
     public function store(Request $request, int $business)
     {
         abort_unless(BusinessAccess::enabled(), 404);
-        $data = $request->validate(['email' => 'required|email|max:254', 'kind' => 'required|in:manager,editor,transfer', 'current_password' => 'required|string|max:72']);
-        $this->confirmPassword($request, $data['current_password']);
-        DB::transaction(function () use ($request, $business, $data) {
+        DB::transaction(function () use ($request, $business) {
             $item = Business::lockForUpdate()->findOrFail($business);
             $id = $request->user()->id;
             abort_unless($item->status === 'active' && $this->owner($item, $id), 404);
+            $data = $request->validate(['email' => 'required|email|max:254', 'kind' => 'required|in:manager,editor,transfer', 'current_password' => 'required|string|max:72']);
+            $this->confirmPassword($request, $data['current_password']);
             $recipient = User::where('email', $data['email'])->whereNotNull('email_verified_at')->first();
             $eligible = $recipient && $recipient->id !== $id && ($data['kind'] === 'transfer'
                 ? $item->members()->wherePivot('role', 'owner')->count() === 1
@@ -78,13 +78,13 @@ class BusinessAccessController extends Controller
     public function respond(Request $request, int $access)
     {
         abort_unless(BusinessAccess::enabled(), 404);
-        $data = $request->validate(['action' => 'required|in:accept,decline', 'current_password' => 'required|string|max:72']);
-        $this->confirmPassword($request, $data['current_password']);
-        DB::transaction(function () use ($request, $access, $data) {
+        DB::transaction(function () use ($request, $access) {
             [$business, $row] = $this->lockRequest($access);
             $id = $request->user()->id;
             abort_unless((int) $row->recipient_id === $id, 404);
             abort_unless($row->status === 'pending' && $row->expires_at > now()->toDateTimeString(), 409);
+            $data = $request->validate(['action' => 'required|in:accept,decline', 'current_password' => 'required|string|max:72']);
+            $this->confirmPassword($request, $data['current_password']);
             if ($data['action'] === 'decline') {
                 $this->change($access, 'declined', $id, $business->id);
 
@@ -141,13 +141,13 @@ class BusinessAccessController extends Controller
     public function review(Request $request, int $access)
     {
         abort_unless(BusinessAccess::enabled(), 404);
-        $data = $request->validate(['decision' => 'required|in:approve,reject', 'note' => 'required|string|min:10|max:1000', 'current_password' => 'required|string|max:72']);
-        $this->confirmPassword($request, $data['current_password']);
-        DB::transaction(function () use ($request, $access, $data) {
+        DB::transaction(function () use ($request, $access) {
             [$business, $row] = $this->lockRequest($access);
             $id = $request->user()->id;
             abort_if(in_array($id, [(int) $row->requester_id, (int) $row->recipient_id], true) || $business->members()->whereKey($id)->exists(), 403);
             abort_unless($row->kind === 'transfer' && $row->status === 'accepted' && $row->expires_at > now()->toDateTimeString(), 409);
+            $data = $request->validate(['decision' => 'required|in:approve,reject', 'note' => 'required|string|min:10|max:1000', 'current_password' => 'required|string|max:72']);
+            $this->confirmPassword($request, $data['current_password']);
             if ($data['decision'] === 'approve') {
                 $this->checkParties($business, $row);
                 abort_unless($business->members()->wherePivot('role', 'owner')->count() === 1, 409);

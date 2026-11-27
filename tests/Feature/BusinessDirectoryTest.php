@@ -149,6 +149,7 @@ class BusinessDirectoryTest extends TestCase
         $this->assertDatabaseMissing('audit_logs', ['action' => 'business.member-role-changed']);
         $this->put($url.'/'.$editor->id, ['role' => 'manager', 'expected_role' => 'editor'])->assertRedirect();
         $this->delete($url.'/'.$editor->id, ['expected_role' => 'editor'])->assertSessionHasErrors('expected_role');
+        $this->post($url.'/leave', [])->assertNotFound();
         $this->post($url.'/leave', ['expected_role' => 'manager', 'confirm_leave' => '1'])->assertNotFound();
         $this->actingAs($editor)->get($url)->assertOk()->assertSee('Leave business team');
         $this->post($url.'/leave', ['expected_role' => 'editor', 'confirm_leave' => '1'])->assertSessionHasErrors('expected_role');

@@ -19,7 +19,7 @@ class BusinessDisputeController extends Controller
         $items = $this->records()->where('claimant_id', $request->user()->id)
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('business_disputes.status', $status))
             ->when($filters['reference'] ?? null, fn ($query, $reference) => $query->where('business_disputes.id', $reference))
-            ->latest('business_disputes.id')->paginate(20)->withQueryString();
+            ->latest('business_disputes.id')->paginate(20)->appends($filters);
 
         return view('business.disputes', compact('items', 'filters'));
     }
@@ -35,10 +35,10 @@ class BusinessDisputeController extends Controller
     public function store(Request $request, string $slug)
     {
         abort_unless(BusinessDisputes::enabled(), 404);
-        $data = $request->validate(['contact_email' => 'required|email|max:254', 'explanation' => 'required|string|min:30|max:2000']);
-        DB::transaction(function () use ($request, $slug, $data) {
+        DB::transaction(function () use ($request, $slug) {
             $item = $this->visible($request, $slug)->lockForUpdate()->firstOrFail();
             abort_unless($item->members()->wherePivot('role', 'owner')->exists(), 404);
+            $data = $request->validate(['contact_email' => 'required|email|max:254', 'explanation' => 'required|string|min:30|max:2000']);
             $id = $request->user()->id;
             $pending = DB::table('business_disputes')->where('business_id', $item->id)
                 ->where('claimant_id', $id)->whereIn('status', ['pending', 'escalated'])->exists();
@@ -62,6 +62,8 @@ class BusinessDisputeController extends Controller
             $id = $request->user()->id;
             $row = DB::table('business_disputes')->where('claimant_id', $id)->where('id', $dispute)->lockForUpdate()->firstOrFail();
             abort_unless(in_array($row->status, ['pending', 'escalated'], true), 409);
+            $data = $request->validate(['expected_status' => 'required|in:pending,escalated']);
+            $this->checkStatus($row, $data['expected_status']);
             DB::table('business_disputes')->where('id', $dispute)->update(['status' => 'withdrawn', 'updated_at' => now()]);
             Audit::record('business.dispute-withdrawn', $id, context: ['dispute' => $dispute]);
         }, attempts: 3);
@@ -84,7 +86,7 @@ class BusinessDisputeController extends Controller
                     ->whereColumn('business_memberships.business_id', 'business_disputes.business_id')
                     ->where('user_id', $id);
             })
-            ->latest('business_disputes.id')->paginate(20)->withQueryString();
+            ->latest('business_disputes.id')->paginate(20)->appends($filters);
 
         return view('admin.business-disputes', compact('items', 'filters'));
     }
@@ -92,14 +94,16 @@ class BusinessDisputeController extends Controller
     public function review(Request $request, int $dispute)
     {
         abort_unless(BusinessDisputes::enabled(), 404);
-        $data = $request->validate(['decision' => 'required|in:closed,escalated', 'note' => 'required|string|min:10|max:1000']);
-        DB::transaction(function () use ($request, $dispute, $data) {
+        DB::transaction(function () use ($request, $dispute) {
             $initial = DB::table('business_disputes')->where('id', $dispute)->firstOrFail();
             $business = Business::lockForUpdate()->findOrFail($initial->business_id);
             $row = DB::table('business_disputes')->where('id', $dispute)->lockForUpdate()->firstOrFail();
             $id = $request->user()->id;
             abort_if((int) $row->claimant_id === $id || $business->members()->whereKey($id)->exists(), 403);
-            abort_unless($row->claimant_id && ($row->status === 'pending' || ($row->status === 'escalated' && $data['decision'] === 'closed')), 409);
+            abort_unless($row->claimant_id && in_array($row->status, ['pending', 'escalated'], true), 409);
+            $data = $request->validate(['decision' => 'required|in:closed,escalated', 'note' => 'required|string|min:10|max:1000', 'expected_status' => 'required|in:pending,escalated']);
+            $this->checkStatus($row, $data['expected_status']);
+            abort_unless($row->status === 'pending' || $data['decision'] === 'closed', 409);
             DB::table('business_disputes')->where('id', $dispute)->update([
                 'status' => $data['decision'], 'review_note' => $data['note'], 'reviewer_id' => $id,
                 'reviewed_at' => now(), 'updated_at' => now(),
@@ -108,6 +112,13 @@ class BusinessDisputeController extends Controller
         }, attempts: 3);
 
         return redirect('/admin/business-disputes')->with('status', 'Review recorded. Business ownership is unchanged.');
+    }
+
+    private function checkStatus(object $row, string $expected): void
+    {
+        if ($row->status !== $expected) {
+            throw ValidationException::withMessages(['expected_status' => 'This dispute changed. Reload before continuing.']);
+        }
     }
 
     private function visible(Request $request, string $slug)

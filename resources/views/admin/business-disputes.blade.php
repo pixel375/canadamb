@@ -7,7 +7,9 @@
     <section class="panel form-stack">@forelse($items as $item)
         <article class="admin-review-card form-stack"><h2>{{ $item->business_name }}</h2><p>Reference #{{ $item->id }} · Account #{{ $item->claimant_id }} · {{ ucfirst($item->status) }}</p><p>{{ $item->contact_email }}</p><p class="prose-text">{{ $item->explanation }}</p>
             @if(in_array($item->status, ['pending','escalated'], true))
-            <form method="post" action="/admin/business-disputes/{{ $item->id }}" class="form-stack">@csrf
+            <form method="post" action="/admin/business-disputes/{{ $item->id }}" class="form-stack">
+                @csrf
+                <input type="hidden" name="expected_status" value="{{ $item->status }}">
                 <label>Internal review note<textarea name="note" minlength="10" maxlength="1000" required></textarea></label>
                 <div class="inline-actions">@if($item->status === 'pending')<button class="button button-primary" name="decision" value="escalated">Escalate for verification</button>@endif<button class="button button-outline" name="decision" value="closed">Close dispute</button></div>
             </form>

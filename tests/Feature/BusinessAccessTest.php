@@ -65,11 +65,13 @@ class BusinessAccessTest extends TestCase
         $data = ['email' => $recipient->email, 'kind' => 'manager', 'current_password' => 'password'];
         $this->actingAs($owner)->post($create, $data)->assertNotFound();
         config(['network.business_access_requests' => true]);
-        $this->actingAs($stranger)->post($create, $data)->assertNotFound();
+        $this->actingAs($stranger)->post($create, [])->assertNotFound();
+        $this->post($create, $data)->assertNotFound();
         $this->actingAs($owner)->post($create, $data)->assertRedirect()->assertSessionHasNoErrors();
         $this->assertDatabaseCount('business_memberships', 1);
         $id = DB::table('business_access_requests')->value('id');
         $this->actingAs($stranger)->get($base)->assertDontSee('Access Test');
+        $this->post($base.'/'.$id.'/respond', [])->assertNotFound();
         $this->post($base.'/'.$id.'/respond', ['action' => 'accept', 'current_password' => 'password'])->assertNotFound();
         $this->actingAs($recipient)->get($base)->assertSee('Access Test');
         $this->post($base.'/'.$id.'/respond', ['action' => 'accept', 'current_password' => 'wrong'])->assertSessionHasErrors('current_password');
@@ -81,7 +83,8 @@ class BusinessAccessTest extends TestCase
         $decision = ['decision' => 'approve', 'note' => 'Independent verification completed.', 'current_password' => 'password'];
         $this->actingAs($reviewer)->post($review, $decision)->assertConflict();
         $this->actingAs($recipient)->post($base.'/'.$transfer.'/respond', ['action' => 'accept', 'current_password' => 'password'])->assertRedirect();
-        $this->actingAs($owner)->post($review, $decision)->assertForbidden();
+        $this->actingAs($owner)->post($review, [])->assertForbidden();
+        $this->post($review, $decision)->assertForbidden();
         $this->actingAs($reviewer)->get('https://canadamb.ca/admin/business-transfers')->assertSee('Access Test');
         $this->post($review, $decision)->assertRedirect()->assertSessionHasNoErrors();
         $this->assertDatabaseMissing('business_memberships', ['business_id' => $business->id, 'user_id' => $owner->id]);
