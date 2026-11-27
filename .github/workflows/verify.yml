@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     services:
       mariadb:
         image: mariadb:11.4
@@ -56,8 +56,11 @@ jobs:
       - name: Ensure MariaDB dump client is installed for the update rehearsal
         run: |
           if ! command -v mariadb-dump >/dev/null; then
-            sudo apt-get update -qq
-            sudo apt-get install -y -qq mariadb-client
+            # Only Ubuntu's signed distribution repositories are needed.
+            # A failing unrelated third-party runner repository must not block QA.
+            sudo apt-get -o Dir::Etc::sourcelist=/etc/apt/sources.list.d/ubuntu.sources -o Dir::Etc::sourceparts=- -o Acquire::Retries=3 update -qq
+            sudo apt-get -o Dir::Etc::sourcelist=/etc/apt/sources.list.d/ubuntu.sources -o Dir::Etc::sourceparts=- -o Acquire::Retries=3 install -y -qq mariadb-client
+            test -x /usr/bin/mariadb-dump
           fi
       - run: php artisan network:deployment-check
         env:
