@@ -8,6 +8,7 @@ use App\Models\BusinessUpdate;
 use App\Models\Location;
 use App\Models\User;
 use App\Support\Audit;
+use App\Support\OwnerNotifications;
 use App\Support\BusinessChanges;
 use App\Support\BusinessInquirySettings;
 use App\Support\KeywordSearch;
@@ -110,6 +111,11 @@ class BusinessReviewController extends Controller
                 BusinessInquirySettings::reset($business->id);
                 BusinessChanges::invalidateContact($business->id);
                 $competing = DB::table('business_claims')->where('business_id', $business->id)->where('id', '!=', $claim)->where('status', 'pending');
+                if (OwnerNotifications::enabled()) {
+                    foreach ((clone $competing)->get(['id', 'user_id']) as $pendingClaim) {
+                        OwnerNotifications::record($pendingClaim->user_id, 'business-claim', $pendingClaim->id, 'superseded');
+                    }
+                }
                 $count = $competing->update(['status' => 'superseded', 'updated_at' => now()]);
                 if ($count) {
                     Audit::record('business.claims-superseded', $request->user()->id, context: ['business' => $business->id, 'count' => $count]);
@@ -119,6 +125,7 @@ class BusinessReviewController extends Controller
                 'status' => $data['decision'], 'notes' => $data['notes'], 'reviewer_id' => $request->user()->id,
                 'reviewed_at' => now(), 'updated_at' => now(),
             ]);
+            OwnerNotifications::record($row->user_id, 'business-claim', $claim, $data['decision']);
             Audit::record('business.claim-'.$data['decision'], $request->user()->id, context: ['claim' => $claim, 'business' => $business->id]);
         });
 
@@ -137,6 +144,7 @@ class BusinessReviewController extends Controller
             abort_unless(hash_equals($item->reviewVersion(), $data['version']), 409, 'This update changed. Reload before reviewing.');
             abort_if($data['decision'] === 'approved' && (! $item->branch->isOpen() || $business->status !== 'active'), 409);
             $item->update(['status' => $data['decision'], 'published_at' => $data['decision'] === 'approved' ? now() : null]);
+            OwnerNotifications::record($item->author_id, 'business-update', $update, $data['decision']);
             Audit::record('business.update-'.$data['decision'], $request->user()->id, context: ['update' => $update, 'notes' => $data['notes']]);
         });
 

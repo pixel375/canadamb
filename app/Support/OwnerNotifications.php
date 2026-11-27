@@ -15,6 +15,10 @@ final class OwnerNotifications
         'discussion' => ['community_threads', 'author_id', 'community', '/account/discussions'],
         'reply' => ['community_replies', 'author_id', 'community', '/account/replies'],
         'event' => ['community_events', 'author_id', 'events', '/account/events'],
+        'job' => ['job_postings', 'author_id', 'jobs', '/account/businesses'],
+        'business-update' => ['business_updates', 'author_id', 'businesses', '/account/businesses'],
+        'business-claim' => ['business_claims', 'user_id', 'businesses', '/account/businesses'],
+        'property' => ['property_listings', 'owner_id', 'real-estate', '/account/properties'],
     ];
 
     public static function enabled(): bool
@@ -29,7 +33,7 @@ final class OwnerNotifications
         if (! $member || ! self::enabled()) {
             return;
         }
-        if (! isset(self::TARGETS[$kind]) || ! in_array($decision, ['approved', 'rejected', 'removed', 'expired'], true)) {
+        if (! isset(self::TARGETS[$kind]) || ! in_array($decision, ['approved', 'rejected', 'removed', 'expired', 'reviewed', 'changes_requested', 'superseded'], true)) {
             throw new \InvalidArgumentException('Unsupported owner notification.');
         }
         DB::table('owner_notifications')->insert([
@@ -45,7 +49,7 @@ final class OwnerNotifications
             ->where(function (Builder $query) use ($site, $modules) {
                 $query->whereRaw('1 = 0');
                 foreach (self::TARGETS as $kind => [$table, $owner, $module]) {
-                    if (! ($modules[$module] ?? false)) {
+                    if ($kind === 'property' ? ! config('network.property_drafts') : ! ($modules[$module] ?? false)) {
                         continue;
                     }
                     $query->orWhere(function (Builder $type) use ($site, $kind, $table, $owner) {
@@ -55,8 +59,24 @@ final class OwnerNotifications
                             if ($kind === 'reply') {
                                 $target->join('community_threads as parent', 'parent.id', '=', 'target.thread_id');
                             }
-                            if ($site->location_id !== null) {
-                                $target->where(($kind === 'reply' ? 'parent' : 'target').'.location_id', $site->location_id);
+                            if (in_array($kind, ['job', 'business-update'], true)) {
+                                $target->join('business_locations as branch', 'branch.id', '=', 'target.business_location_id')
+                                    ->whereExists(fn (Builder $membership) => $membership->selectRaw('1')->from('business_memberships as membership')
+                                        ->whereColumn('membership.business_id', 'branch.business_id')
+                                        ->whereColumn('membership.user_id', 'alert.user_id')
+                                        ->whereIn('membership.role', $kind === 'job' ? ['owner', 'manager'] : ['owner', 'manager', 'editor']));
+                            }
+                            if ($kind === 'business-claim') {
+                                // Claim history belongs to the claimant, not the current business owner.
+                                if ($site->location_id !== null) {
+                                    $target->whereExists(fn (Builder $branch) => $branch->selectRaw('1')->from('business_locations')
+                                        ->whereColumn('business_locations.business_id', 'target.business_id')->where('location_id', $site->location_id));
+                                }
+                            } elseif ($site->location_id !== null) {
+                                $locationTable = match ($kind) {
+                                    'reply' => 'parent', 'job', 'business-update' => 'branch', default => 'target',
+                                };
+                                $target->where($locationTable.'.location_id', $site->location_id);
                             }
                         });
                     });
@@ -76,6 +96,10 @@ final class OwnerNotifications
             'discussion' => 'discussion',
             'reply' => 'comment',
             'event' => 'event',
+            'job' => 'job posting',
+            'business-update' => 'business update',
+            'business-claim' => 'business ownership claim',
+            'property' => 'private property draft',
         };
 
         return match ($decision) {
@@ -83,6 +107,9 @@ final class OwnerNotifications
             'rejected' => 'Your '.$subject.' was not approved.',
             'removed' => 'Your '.$subject.' was removed.',
             'expired' => 'Your '.$subject.' expired.',
+            'reviewed' => 'Your '.$subject.' was reviewed. This is not publication approval.',
+            'changes_requested' => 'Changes were requested for your '.$subject.'.',
+            'superseded' => 'Your '.$subject.' is no longer pending.',
         };
     }
 }

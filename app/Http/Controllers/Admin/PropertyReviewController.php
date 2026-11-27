@@ -7,6 +7,7 @@ use App\Http\Controllers\PropertyDraftController;
 use App\Models\Location;
 use App\Models\PropertyListing;
 use App\Support\Audit;
+use App\Support\OwnerNotifications;
 use App\Support\KeywordSearch;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -59,6 +60,7 @@ class PropertyReviewController extends Controller
                 'status' => $data['action'] === 'review' ? 'reviewed' : 'changes_requested',
                 'review_note' => $data['note'],
             ])->save();
+            OwnerNotifications::record($item->owner_id, 'property', $item->id, $item->status);
             // A checklist records a human review, never publication permission.
             Audit::record('property-draft.'.$data['action'], $request->user()->id, context: [
                 'property' => $item->id,

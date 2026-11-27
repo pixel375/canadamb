@@ -43,7 +43,7 @@
         <p>Owner submission updates: {{ $ownerEnabled ? 'Available' : 'Staged, not active' }}</p>
         @if($ownerEnabled)
             <h3>Recorded status transitions in this period</h3>
-            @foreach(['approved', 'rejected', 'removed', 'expired'] as $decision)<p>{{ ucfirst($decision) }}: {{ number_format($ownerMetrics->get($decision, 0)) }}</p>@endforeach
+            @foreach(['approved', 'rejected', 'removed', 'expired', 'reviewed', 'changes_requested', 'superseded'] as $decision)<p>{{ ucfirst($decision) }}: {{ number_format($ownerMetrics->get($decision, 0)) }}</p>@endforeach
             <p class="field-note">Historical aggregate decisions only; no member details or delivery receipts.</p>
         @endif
         <p>Event discussion linkage: {{ $eventsEnabled ? 'Available' : 'Staged, not active' }}</p>

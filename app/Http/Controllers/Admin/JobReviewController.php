@@ -7,6 +7,7 @@ use App\Models\Business;
 use App\Models\JobPosting;
 use App\Models\Location;
 use App\Support\Audit;
+use App\Support\OwnerNotifications;
 use App\Support\JobBoard;
 use App\Support\KeywordSearch;
 use Illuminate\Http\Request;
@@ -71,6 +72,7 @@ class JobReviewController extends Controller
                 } else {
                     $item->forceFill(['status' => 'rejected'])->save();
                 }
+                OwnerNotifications::record($item->author_id, 'job', $item->id, $item->status);
                 Audit::record('jobs.'.$data['action'], $reviewer, context: ['job' => $item->id, 'reason' => $data['reason'] ?? null, 'batch' => true]);
             }
         }, attempts: 3);
@@ -98,6 +100,7 @@ class JobReviewController extends Controller
                 abort_unless(in_array($item->status, ['pending', 'approved'], true), 409);
                 $item->forceFill(['status' => 'rejected'])->save();
             }
+            OwnerNotifications::record($item->author_id, 'job', $item->id, $item->status);
             Audit::record('jobs.'.$data['action'], $request->user()->id, context: ['job' => $job, 'reason' => $data['reason'] ?? null]);
         });
 

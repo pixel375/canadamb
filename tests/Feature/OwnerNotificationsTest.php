@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Models\Business;
 use App\Models\CommunityThread;
+use App\Models\JobPosting;
 use App\Models\Listing;
 use App\Models\Location;
 use App\Models\User;
@@ -73,4 +75,31 @@ class OwnerNotificationsTest extends TestCase
         $thread->delete();
         $this->get('https://canadamb.ca/account/notifications')->assertOk()->assertDontSee('Your discussion was not approved.');
     }
+
+    public function test_job_review_and_expiry_alerts_require_current_business_membership(): void
+    {
+        config(['network.owner_notifications' => true]);
+        $member = User::factory()->create();
+        $other = User::factory()->create();
+        $admin = User::factory()->create(['role' => 'super_admin']);
+        $business = Business::create(['slug' => 'job-notification-fixture', 'name' => 'Job notification fixture', 'category' => 'services', 'status' => 'active']);
+        $business->members()->attach($member->id, ['role' => 'manager']);
+        $branch = $business->locations()->create(['location_id' => Location::where('slug', 'brandon')->sole()->id, 'address' => '1 Review Road']);
+        $job = JobPosting::create(['business_location_id' => $branch->id, 'author_id' => $member->id, 'title' => 'Job review fixture',
+            'description' => 'A local job for notification tests.', 'employment_type' => 'full-time', 'workplace' => 'on-site',
+            'apply_url' => 'https://example.test/apply', 'closing_on' => today('America/Winnipeg')->addWeek()->toDateString()]);
+        $url = 'https://canadamb.ca/admin/jobs/'.$job->id;
+        $this->actingAs($admin)->post($url, ['action' => 'approve', 'version' => $job->reviewVersion()])->assertRedirect();
+        $this->assertDatabaseHas('owner_notifications', ['user_id' => $member->id, 'kind' => 'job', 'decision' => 'approved']);
+        $this->actingAs($member)->get('https://brandonmb.ca/account/notifications')->assertOk()->assertSee('Your job posting was approved.');
+        $this->actingAs($other)->get('https://canadamb.ca/account/notifications')->assertOk()->assertDontSee('Your job posting was approved.');
+        $job->forceFill(['closing_on' => today('America/Winnipeg')->subDay()->toDateString()])->save();
+        $this->artisan('job-postings:expire')->assertSuccessful();
+        $this->artisan('job-postings:expire')->assertSuccessful();
+        $this->assertDatabaseCount('owner_notifications', 2);
+        $this->actingAs($member)->get('https://canadamb.ca/account/notifications')->assertOk()->assertSee('Your job posting expired.');
+        $business->members()->detach($member->id);
+        $this->get('https://canadamb.ca/account/notifications')->assertOk()->assertDontSee('Your job posting expired.');
+    }
+
 }

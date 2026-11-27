@@ -8,6 +8,7 @@ use App\Support\Audit;
 use App\Support\Identity;
 use App\Support\JobBoard;
 use App\Support\Marketplace;
+use App\Support\OwnerNotifications;
 use App\Support\MessageFileInventory;
 use App\Support\PropertyMediaInventory;
 use App\Support\PushDelivery;
@@ -63,7 +64,16 @@ Schedule::command('marketplace:expire')->hourly()->withoutOverlapping(5);
 Artisan::command('job-postings:expire', function (JobBoard $board) {
     $due = JobPosting::whereIn('status', ['pending', 'approved'])->where('closing_on', '<', $board->closingToday());
     $ids = (clone $due)->oldest('id')->limit(200)->pluck('id');
-    $count = $due->whereIn('id', $ids)->update(['status' => 'expired']);
+    $count = DB::transaction(function () use ($ids, $board) {
+        $items = JobPosting::whereIn('id', $ids)->whereIn('status', ['pending', 'approved'])
+            ->where('closing_on', '<', $board->closingToday())->orderBy('id')->lockForUpdate()->get();
+        foreach ($items as $item) {
+            $item->forceFill(['status' => 'expired'])->save();
+            OwnerNotifications::record($item->author_id, 'job', $item->id, 'expired');
+        }
+
+        return $items->count();
+    }, attempts: 3);
     $this->info("Expired $count job posting(s).");
 })->purpose('Expire a batch of job postings after their Manitoba closing date');
 Schedule::command('job-postings:expire')->hourly()->withoutOverlapping(5);
