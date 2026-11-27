@@ -6,6 +6,7 @@ use App\Models\Listing;
 use App\Models\ListingCategory;
 use App\Models\Location;
 use App\Support\KeywordSearch;
+use App\Support\LocationScope;
 use App\Support\Marketplace;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -43,7 +44,7 @@ class ListingEngagementController extends Controller
         $item = $this->visibleListing($request, $listing);
         DB::table('listing_favourites')->insertOrIgnore(['user_id' => $request->user()->id, 'listing_id' => $item->id]);
 
-        return redirect($request->input('return_to') === 'listing' ? '/marketplace/'.$item->id : '/account/saved')->with('status', 'Listing saved.');
+        return redirect($request->input('return_to') === 'listing' ? LocationScope::detailUrl('/marketplace/'.$item->id) : '/account/saved')->with('status', 'Listing saved.');
     }
 
     public function remove(Request $request, int $listing)
@@ -53,7 +54,7 @@ class ListingEngagementController extends Controller
         }
         DB::table('listing_favourites')->where(['user_id' => $request->user()->id, 'listing_id' => $listing])->delete();
 
-        return redirect($request->input('return_to') === 'listing' ? '/marketplace/'.$listing : '/account/saved')->with('status', 'Listing removed from saved items.');
+        return redirect($request->input('return_to') === 'listing' ? LocationScope::detailUrl('/marketplace/'.$listing) : '/account/saved')->with('status', 'Listing removed from saved items.');
     }
 
     public function saved(Request $request)
@@ -131,7 +132,7 @@ class ListingEngagementController extends Controller
             'created_at' => now(), 'updated_at' => now(),
         ]);
 
-        return redirect('/marketplace/'.$item->id)->with('status', $created ? 'Your report was submitted for review.' : 'You have already reported this listing.');
+        return redirect(LocationScope::detailUrl('/marketplace/'.$item->id))->with('status', $created ? 'Your report was submitted for review.' : 'You have already reported this listing.');
     }
 
     private function visibleListing(Request $request, int $id): Listing

@@ -286,6 +286,14 @@ class HomeDiscoveryNavigationTest extends TestCase
             ->assertSee('href="/community?category=general&amp;location="', false)->assertSee('href="/jobs?location="', false);
         $this->get($base.'/community?location=brandon')->assertOk()->assertSee('href="'.$url.'?browse=brandon"', false);
         $this->get($base.$url.'?browse=brandon')->assertOk()->assertSee('href="/jobs?location=Brandon"', false);
+        $this->actingAs($author)->post($base.$url.'/follow?browse=')->assertRedirect($url.'?browse=');
+        $this->delete($base.$url.'/follow?browse=brandon')->assertRedirect($url.'?browse=brandon');
+        $reply = $thread->replies()->create(['author_id' => $author->id, 'body' => 'Approved scoped comment.']);
+        $reply->forceFill(['status' => 'approved'])->save();
+        $this->get($base.$url.'/replies/'.$reply->id.'?browse=')->assertRedirect($base.$url.'?browse=#reply-'.$reply->id);
+        $this->get($base.'/account/replies/'.$reply->id.'/edit?from=discussion&browse=')->assertOk()
+            ->assertSee('href="'.$url.'?browse=#discussion-replies"', false);
+        $this->post($base.$url.'/replies?browse=', ['body' => 'A new scoped discussion reply.'])->assertRedirect($url.'?browse=');
         $this->get($base.'/community')->assertRedirect('/community?location=winnipeg');
         $this->get('https://brandonmb.ca'.$url.'?browse=winnipeg')->assertOk()->assertSee('href="/community"', false)
             ->assertDontSee('href="/community?location=winnipeg"', false);

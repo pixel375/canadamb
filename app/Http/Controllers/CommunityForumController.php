@@ -253,7 +253,7 @@ class CommunityForumController extends Controller
         }
         $page = (int) ($origin['page'] ?? 1);
 
-        return '/community/'.$item->thread_id.($page > 1 ? '?page='.$page : '').'#discussion-replies';
+        return LocationScope::detailUrl('/community/'.$item->thread_id, $page > 1 ? ['page' => $page] : [], '#discussion-replies');
     }
 
     public function withdrawReply(Request $request, int $reply)

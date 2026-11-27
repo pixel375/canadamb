@@ -81,7 +81,7 @@
                                 <button class="button button-primary">Send message</button>
                             </form>
                             @endif
-                            <form method="post" action="/marketplace/{{ $item->id }}/save">
+                            <form method="post" action="{{ \App\Support\LocationScope::detailUrl('/marketplace/'.$item->id.'/save') }}">
                                 @csrf @if($saved) @method('DELETE') @endif
                                 <input type="hidden" name="return_to" value="listing">
                                 <button class="button button-outline seller-action" aria-pressed="{{ $saved ? 'true' : 'false' }}"><x-icon :name="$saved ? 'check' : 'tag'" size="18"/> {{ $saved ? 'Remove from saved listings' : 'Save listing' }}</button>
@@ -89,7 +89,7 @@
                             @if($saved)<p class="field-note mt-2">Saved to your account. <a class="text-link" href="/account/saved">View saved listings</a></p>@endif
                             @if($reported)<p class="field-note">You have already reported this listing.</p>@else
                             <details class="seller-report" @if($errors->has('reason')) open @endif><summary>Report listing</summary>
-                                <form class="form-stack mt-2" method="post" action="/marketplace/{{ $item->id }}/report">
+                                <form class="form-stack mt-2" method="post" action="{{ \App\Support\LocationScope::detailUrl('/marketplace/'.$item->id.'/report') }}">
                                     @csrf
                                     <p class="field-note">Describe a suspected scam, prohibited item or misleading information. Do not include private financial details.</p><label>Reason<textarea data-character-count name="reason" minlength="8" maxlength="500" required>{{ old('reason') }}</textarea><small class="field-note" data-character-feedback></small></label>
                                     <button class="button button-outline">Submit report</button>

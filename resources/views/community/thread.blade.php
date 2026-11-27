@@ -129,7 +129,7 @@
                                 <a class="text-link discussion-comment-action" data-reply-to="{{ $reply->id }}" href="{{ \App\Support\LocationScope::detailUrl('/community/'.$item->id, ['page' => $replies->currentPage(), 'reply_to' => $reply->id], '#reply-composer') }}"><x-icon name="messages" size="15"/> Reply to comment</a>
                             @endif
                             <x-content-report-link type="reply" :target="$reply->id"/>
-                            @if($canParticipate && !$item->locked && (int) $reply->author_id === auth()->id())<a class="text-link" href="/account/replies/{{ $reply->id }}/edit?from=discussion&amp;page={{ $replies->currentPage() }}">Edit my reply</a>@endif
+                            @if($canParticipate && !$item->locked && (int) $reply->author_id === auth()->id())<a class="text-link" href="{{ \App\Support\LocationScope::detailUrl('/account/replies/'.$reply->id.'/edit', ['from' => 'discussion', 'page' => $replies->currentPage()]) }}">Edit my reply</a>@endif
                         </div>
                     </article>
                 @empty
