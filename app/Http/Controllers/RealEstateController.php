@@ -6,11 +6,11 @@ use App\Models\Location;
 use App\Models\PropertyListing;
 use App\Models\Site;
 use App\Support\KeywordSearch;
+use App\Support\LocationScope;
 use App\Support\Marketplace;
 use App\Support\NetworkUrl;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class RealEstateController extends Controller
@@ -65,7 +65,7 @@ class RealEstateController extends Controller
             default => $query->latest('id'),
         };
 
-        $items = $query->paginate(18)->withQueryString();
+        $items = $query->paginate(18)->appends(LocationScope::preserveAll($filters));
         $publicEnabled = (bool) config('network.real_estate_public_listings');
 
         return view('real-estate.index', compact('items', 'filters', 'locations', 'selectedLocation', 'publicEnabled'));
@@ -85,14 +85,7 @@ class RealEstateController extends Controller
     public function photo(Request $request, int $property, int $photo)
     {
         $item = $this->visible($request)->findOrFail($property);
-        $media = $item->photos()->findOrFail($photo);
-        $disk = Storage::disk('local');
-        abort_unless($disk->exists($media->thumbnail_path), 404);
-
-        return $disk->response($media->thumbnail_path, 'property-photo.webp', [
-            'Content-Type' => 'image/webp',
-            'Cache-Control' => 'private, no-store',
-        ]);
+        return PropertyDraftController::privatePhoto($item, $photo);
     }
 
     /**

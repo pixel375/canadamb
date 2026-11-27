@@ -310,8 +310,7 @@ class PropertyDraftController extends Controller
         $photo = $item->photos()->findOrFail($id);
         $disk = Storage::disk('local');
         $path = $full ? $photo->image_path : $photo->thumbnail_path;
-        $pattern = $full ? '~^property-drafts/[a-f0-9-]{36}\.webp$~D' : '~^property-drafts/[a-f0-9-]{36}-preview\.webp$~D';
-        abort_unless(preg_match($pattern, $path) && $disk->exists($path), 404);
+        abort_unless(ListingPhotos::readablePath('local', 'property-drafts', $path, ! $full), 404);
 
         return $disk->response($path, 'property-photo.webp', ['Content-Type' => 'image/webp', 'Cache-Control' => 'private, no-store', 'X-Content-Type-Options' => 'nosniff', 'X-Robots-Tag' => 'noindex']);
     }

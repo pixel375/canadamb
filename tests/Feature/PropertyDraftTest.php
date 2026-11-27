@@ -215,6 +215,15 @@ class PropertyDraftTest extends TestCase
         $this->assertSame($initial[1]->id, $draft->photos()->first()->id);
         $this->assertCount(2, $draft->photos()->get());
         $this->get($path.'/media/'.$initial[1]->id.'?size=full')->assertOk()->assertHeader('X-Content-Type-Options', 'nosniff');
+        $directory = Storage::disk('local')->path('property-drafts');
+        rename($directory, $directory.'-original');
+        symlink($directory.'-original', $directory);
+        try {
+            $this->get($path.'/media/'.$initial[1]->id.'?size=full')->assertNotFound();
+        } finally {
+            unlink($directory);
+            rename($directory.'-original', $directory);
+        }
         $this->get($path.'/duplicate')->assertOk()->assertSee('Property photo management')->assertSee('Private address, legal land description');
         $this->assertDatabaseCount('property_listings', 1);
         $this->actingAs($admin)->get($path.'/duplicate')->assertNotFound();

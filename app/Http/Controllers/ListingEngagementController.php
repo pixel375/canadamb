@@ -6,6 +6,7 @@ use App\Models\Listing;
 use App\Models\ListingCategory;
 use App\Models\Location;
 use App\Support\KeywordSearch;
+use App\Support\ListingPhotos;
 use App\Support\LocationScope;
 use App\Support\Marketplace;
 use Illuminate\Http\Request;
@@ -26,7 +27,7 @@ class ListingEngagementController extends Controller
         $media = $item->media()->findOrFail($photo);
         $disk = Storage::disk(config('network.media_disk'));
         $path = $thumbnail ? $media->thumbnail_path : $media->image_path;
-        abort_unless(preg_match('~^listings/[a-f0-9-]{36}(-preview)?\\.webp$~D', $path), 404);
+        abort_unless(ListingPhotos::readablePath(config('network.media_disk'), 'listings', $path, $thumbnail), 404);
         $stream = $disk->readStream($path);
         abort_unless(is_resource($stream), 404);
 

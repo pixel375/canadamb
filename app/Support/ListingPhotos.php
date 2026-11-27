@@ -12,6 +12,25 @@ use Throwable;
 
 class ListingPhotos
 {
+    public static function readablePath(string $diskName, string $directory, string $path, bool $thumbnail): bool
+    {
+        if (! in_array($directory, ['listings', 'property-drafts'], true) || config('filesystems.disks.'.$diskName.'.driver') !== 'local') {
+            return false;
+        }
+        $suffix = $thumbnail ? '-preview' : '';
+        if (! preg_match('~^'.preg_quote($directory, '~').'/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}'.$suffix.'[.]webp$~D', $path)) {
+            return false;
+        }
+        $disk = Storage::disk($diskName);
+        // The shared storage/app parent link is intentional.
+        $root = rtrim($disk->path(''), DIRECTORY_SEPARATOR);
+        $folder = $disk->path($directory);
+        $file = $disk->path($path);
+
+        return is_dir($root) && ! is_link($root) && is_dir($folder) && ! is_link($folder)
+            && is_file($file) && ! is_link($file);
+    }
+
     public function store(array $files, string $directory = 'listings', ?string $disk = null): array
     {
         $paths = [];

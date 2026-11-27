@@ -87,6 +87,15 @@ class MarketplaceEngagementTest extends TestCase
         $this->actingAs(User::factory()->create(['role' => 'network_admin']))
             ->post("https://canadamb.ca/admin/moderation/$item->id", ['status' => 'active', 'version' => $item->fresh()->reviewVersion()])->assertRedirect();
         $this->actingAs(User::factory()->create())->get('https://canadamb.ca'.$path)->assertOk()->assertHeader('Content-Type', 'image/webp');
+        $absolute = Storage::disk('local')->path($photo->image_path);
+        rename($absolute, $absolute.'.original');
+        symlink($absolute.'.original', $absolute);
+        try {
+            $this->get('https://canadamb.ca'.$path)->assertNotFound();
+        } finally {
+            unlink($absolute);
+            rename($absolute.'.original', $absolute);
+        }
         $this->get("https://canadamb.ca/marketplace/$item->id")
             ->assertOk()
             ->assertSee('data-listing-gallery', false)

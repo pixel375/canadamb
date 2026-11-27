@@ -54,12 +54,12 @@ class RealEstateBrowsingTest extends TestCase
         $reviewed = $this->property('brandon', 'Never published private rental', 'reviewed', 'rent');
         $listed->forceFill(['private_address' => '100 Private Lane', 'legal_land_description' => 'NW secret quarter'])->save();
         $listed->photos()->create([
-            'image_path' => 'property-drafts/first-full.webp',
-            'thumbnail_path' => 'property-drafts/first-thumb.webp',
+            'image_path' => 'property-drafts/11111111-1111-4111-8111-111111111111.webp',
+            'thumbnail_path' => 'property-drafts/11111111-1111-4111-8111-111111111111-preview.webp',
             'position' => 0,
         ]);
         Storage::fake('local');
-        Storage::disk('local')->put('property-drafts/first-thumb.webp', 'fake webp bytes');
+        Storage::disk('local')->put('property-drafts/11111111-1111-4111-8111-111111111111-preview.webp', 'fake webp bytes');
         $photo = $listed->photos()->first();
 
         // A manually entered 'published' status alone cannot bypass rollout.
@@ -80,8 +80,17 @@ class RealEstateBrowsingTest extends TestCase
             ->assertSee('Potential published ranch')
             ->assertDontSee('100 Private Lane')
             ->assertDontSee('NW secret quarter');
-        $this->get('https://brandonmb.ca/real-estate/'.$listed->id.'/photo/'.$photo->id)
-            ->assertOk()->assertHeader('Content-Type', 'image/webp');
+        $url = 'https://brandonmb.ca/real-estate/'.$listed->id.'/photo/'.$photo->id;
+        $this->get($url)->assertOk()->assertHeader('Content-Type', 'image/webp');
+        $photo->update(['thumbnail_path' => 'unrelated.webp']);
+        Storage::disk('local')->put('unrelated.webp', 'private fixture');
+        $this->get($url)->assertNotFound();
+        $photo->update(['thumbnail_path' => 'property-drafts/11111111-1111-4111-8111-111111111111-preview.webp']);
+        $absolute = Storage::disk('local')->path($photo->thumbnail_path);
+        unlink($absolute);
+        symlink(Storage::disk('local')->path('unrelated.webp'), $absolute);
+        $this->get($url)->assertNotFound();
+        unlink($absolute);
         $this->get('https://brandonmb.ca/real-estate/'.$reviewed->id)->assertNotFound();
         $this->get('https://canadamb.ca/real-estate?transaction=rent')->assertDontSee('Potential published ranch');
         $this->get('https://canadamb.ca/real-estate?location=elkhorn')->assertDontSee('Potential published ranch');
