@@ -75,10 +75,14 @@ class MessageAttachmentsTest extends TestCase
         $this->post($reportUrl, ['reason' => 'privacy', 'explanation' => 'This photo contains private information.'])->assertRedirect()->assertSessionHasNoErrors();
         $report = DB::table('content_reports')->value('id');
         $review = 'https://canadamb.ca/admin/content-reports/'.$report;
-        $this->actingAs($stranger)->get($review.'/photo')->assertOk()->assertHeader('Content-Type', 'image/webp');
+        $this->actingAs($stranger)->get($review.'/photo')->assertMethodNotAllowed();
+        $this->assertDatabaseMissing('audit_logs', ['action' => 'content.report-photo-accessed']);
+        $this->post($review.'/photo')->assertOk()->assertHeader('Content-Type', 'image/webp');
+        $this->actingAs($owner)->post($review.'/photo')->assertForbidden();
+        $this->actingAs($stranger);
         $this->assertDatabaseHas('audit_logs', ['action' => 'content.report-photo-accessed', 'actor_id' => $stranger->id]);
         $this->post($review, ['note' => 'Photo review completed independently.'])->assertRedirect();
-        $this->get($review.'/photo')->assertNotFound();
+        $this->post($review.'/photo')->assertNotFound();
         $this->actingAs($owner);
         $this->post($url.'/sync', ['after' => 0])->assertJsonPath('messages.1.has_attachment', true);
         $this->post($url.'/block')->assertRedirect();

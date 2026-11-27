@@ -9,7 +9,7 @@
                     <h3>Restricted reported evidence</h3>
                     <p class="field-note">Only the individually reported item is accessible while this report is pending. Access is audited. Do not copy private content into review notes.</p>
                     @if($item->status === 'pending')
-                        @if($item->target_type === 'message-photo' && \App\Support\MessageAttachments::enabled())<a class="button button-outline" href="/admin/content-reports/{{ $item->id }}/photo">Download reported photo</a>
+                        @if($item->target_type === 'message-photo' && \App\Support\MessageAttachments::enabled())<form method="post" action="/admin/content-reports/{{ $item->id }}/photo">@csrf<button class="button button-outline">Download reported photo</button></form>
                         @elseif($item->target_type === 'message' || ($item->target_type === 'message-document' && \App\Support\MessageDocuments::enabled()))
                             <form method="post" action="/admin/content-reports/{{ $item->id }}/evidence">@csrf<button class="button button-outline">{{ $item->target_type === 'message-document' ? 'Download reported text attachment' : 'View reported message' }}</button></form>
                         @endif

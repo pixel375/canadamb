@@ -66,22 +66,25 @@ class ContentReportReviewController extends Controller
     {
         abort_unless(ContentReports::enabled() && MessageAttachments::enabled(), 404);
         $reviewer = $request->user()->id;
-        $item = DB::table('content_reports')->where('id', $report)->where('target_type', 'message-photo')
-            ->where('status', 'pending')->where('reporter_id', '!=', $reviewer)->firstOrFail();
-        $target = ContentReports::forReview('message-photo', $item->target_id);
-        abort_unless($target && ! ContentReports::conflicts($target, $reviewer)
-            && $target->sender_id !== (int) $item->reporter_id
-            && in_array((int) $item->reporter_id, [(int) $target->conversation->buyer_id, (int) $target->conversation->seller_id], true), 404);
-        $file = $target->attachment()->firstOrFail();
-        abort_unless(preg_match('/^attachments\/[a-f0-9-]{36}\.webp$/D', $file->image_path), 404);
-        $disk = Storage::disk(MessageAttachments::DISK);
-        abort_unless($disk->exists($file->image_path), 404);
-        Audit::record('content.report-photo-accessed', $reviewer, $item->site_id, ['report' => $report]);
+        return DB::transaction(function () use ($report, $reviewer) {
+            $item = ContentReports::reviewQueue($reviewer)->where('id', $report)
+                ->where('target_type', 'message-photo')->where('status', 'pending')->lockForUpdate()->firstOrFail();
+            $target = ContentReports::forReview('message-photo', $item->target_id);
+            abort_unless($target && ! ContentReports::conflicts($target, $reviewer), 404);
+            $file = $target->attachment()->firstOrFail();
+            abort_unless(preg_match('/^attachments\/[a-f0-9-]{36}\.webp$/D', $file->image_path), 404);
+            $disk = Storage::disk(MessageAttachments::DISK);
+            abort_unless($disk->exists($file->image_path), 404);
+            $path = $disk->path($file->image_path);
+            abort_unless(is_file($path) && ! is_link($path), 404);
+            Audit::record('content.report-photo-accessed', $reviewer, $item->site_id, ['report' => $report]);
 
-        return $disk->download($file->image_path, 'reported-photo.webp', [
-            'Content-Type' => 'image/webp', 'Cache-Control' => 'private, no-store',
-            'X-Content-Type-Options' => 'nosniff', 'X-Robots-Tag' => 'noindex, nofollow',
-        ]);
+            return $disk->download($file->image_path, 'reported-photo.webp', [
+                'Content-Type' => 'image/webp', 'Cache-Control' => 'private, no-store',
+                'X-Content-Type-Options' => 'nosniff', 'X-Robots-Tag' => 'noindex, nofollow',
+                'Referrer-Policy' => 'no-referrer', 'Content-Security-Policy' => "default-src 'none'; sandbox",
+            ]);
+        }, attempts: 3);
     }
 
     public function resolve(Request $request, int $report)
