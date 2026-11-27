@@ -892,7 +892,7 @@ if (weatherWidgets.length) {
 
 // Native form validation remains authoritative. Label indicators follow
 // disabled/required state, including conditional category fields.
-const fieldsOnPage = () => [...document.querySelectorAll('form input:not([type=hidden]), form select, form textarea')];
+const fieldsOnPage = () => [...document.querySelectorAll('input:not([type=hidden]):not([type=submit]):not([type=button]):not([type=reset]), select, textarea')].filter(control => control.form)];
 const syncRequiredMarkers = () => {
     const labels = new Map();
     for (const control of fieldsOnPage()) {
@@ -928,6 +928,17 @@ const showInvalidField = (control, errorId) => {
         control.setAttribute('aria-describedby', [...ids].join(' '));
     }
 };
+const eventBatchField = document.querySelector('#event-batch-edit select[name="field"]');
+const eventBatchValue = document.querySelector('[data-event-batch-value]');
+const syncEventBatchField = () => {
+    if (!eventBatchField || !eventBatchValue) return;
+    const field = eventBatchField.value;
+    eventBatchValue.required = field !== 'event_url';
+    eventBatchValue.maxLength = ({title: 140, venue: 180, organizer: 150, event_url: 1024})[field] || 180;
+    eventBatchValue.type = field === 'event_url' ? 'url' : 'text';
+};
+eventBatchField?.addEventListener('change', syncEventBatchField);
+syncEventBatchField();
 syncRequiredMarkers();
 document.addEventListener('change', syncRequiredMarkers);
 let markerFrame;
@@ -935,15 +946,17 @@ const formStateObserver = new MutationObserver(() => {
     cancelAnimationFrame(markerFrame);
     markerFrame = requestAnimationFrame(syncRequiredMarkers);
 });
-formStateObserver.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['required', 'disabled'] });
+formStateObserver.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['required', 'disabled', 'form'] });
 document.addEventListener('invalid', event => {
-    if (event.target.matches('form input, form select, form textarea')) showInvalidField(event.target);
+    if (event.target.matches('input, select, textarea') && event.target.form) showInvalidField(event.target);
 }, true);
 const validationFields = fieldsOnPage();
 for (const error of document.querySelectorAll('[data-validation-field]')) {
     const name = error.dataset.validationField;
-    const root = name.split('.')[0];
-    const matches = validationFields.filter(control => control.name === name || (root !== name && control.name === root + '[]'));
+    const [root, ...parts] = name.split('.');
+    const bracketName = root + parts.map(part => '[' + part + ']').join('');
+    const matches = validationFields.filter(control => !control.matches(':disabled') &&
+        (control.name === name || control.name === bracketName || (parts.length && control.name === root + '[]')));
     // Shared field names across different forms are ambiguous. Keep those
     // errors in the visible summary instead of marking an unrelated form.
     if (new Set(matches.map(control => control.form)).size === 1) {
@@ -952,7 +965,7 @@ for (const error of document.querySelectorAll('[data-validation-field]')) {
 }
 const clearCorrectedField = event => {
     const control = event.target;
-    if (!control.matches('form input, form select, form textarea') || !control.validity.valid || control.getAttribute('aria-invalid') !== 'true') return;
+    if (!control.matches('input, select, textarea') || !control.form || !control.validity.valid || control.getAttribute('aria-invalid') !== 'true') return;
     control.removeAttribute('aria-invalid');
     const invalid = fieldsOnPage().filter(field => field.getAttribute('aria-invalid') === 'true');
     for (const label of control.labels || []) {

@@ -33,7 +33,7 @@
                 <form id="event-batch-edit" method="post" action="/account/events/revise-selected" class="form-stack mt-3">@csrf
                     <p class="field-note">Choose up to eight upcoming occurrences below. Update one shared field at a time. Dates and descriptions stay unchanged; title changes also update linked discussions and require independent review. Changed events require review.</p>
                     <label>Field<select name="field"><option value="venue">Venue</option><option value="title">Title</option><option value="organizer">Organizer</option><option value="event_url">Event website</option></select></label>
-                    <label>New value<input name="value" maxlength="1024"><small class="field-note">Leave blank only to remove an event website.</small></label>
+                    <label>New value<input name="value" maxlength="1024" data-event-batch-value><small class="field-note">Leave blank only to remove an event website.</small></label>
                     <label class="checkbox-line"><input type="checkbox" name="confirm_update" value="1" required> Confirm changes to selected events</label>
                     <button class="button button-outline">Update selected events</button>
                 </form>
