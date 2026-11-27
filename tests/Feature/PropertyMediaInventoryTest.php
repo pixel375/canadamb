@@ -10,6 +10,7 @@ use App\Support\PropertyMediaInventory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 class PropertyMediaInventoryTest extends TestCase
@@ -36,7 +37,7 @@ class PropertyMediaInventoryTest extends TestCase
             try {
                 $photos->store([UploadedFile::fake()->image('unsafe.png')]);
                 $this->fail('Upload must reject a redirected directory.');
-            } catch (\\Illuminate\\Validation\\ValidationException $exception) {
+            } catch (ValidationException $exception) {
                 $this->assertArrayHasKey('photos', $exception->errors());
             }
         } finally {
