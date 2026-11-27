@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Trusted main only. Remove reconstructible application copies, never shared data.
+# Trusted main only. Retain the active and one verified rollback release and their backup sets.
+# Never touch live shared storage, unknown archives or unverified snapshots.
 set -Eeuo pipefail
 umask 077
 reclaim=$1
@@ -10,7 +11,7 @@ source="$app/source"
 backups="$app/shared/backups"
 [[ -d "$app" && ! -L "$app" && -d "$releases" && ! -L "$releases" &&
    -d "$source/.git" && ! -L "$source" && -d "$backups" && ! -L "$backups" ]] || exit 1
-[[ "$(readlink -e "$releases")" == "$releases" ]] || exit 1
+[[ "$(readlink -e "$releases")" == "$releases" && "$(readlink -e "$backups")" == "$backups" ]] || exit 1
 for lock in update.lock release.lock; do
     [[ ! -L "$app/$lock" ]] || exit 1
 done
@@ -219,4 +220,77 @@ echo "Release entries reclaimed: $((before-after))"
 echo "Unverified entries preserved: $unknown"
 echo "Release directories remaining: $(find -P "$releases" -mindepth 1 -maxdepth 1 -type d -printf '.' | wc -c)"
 /usr/bin/php "$active/artisan" network:deployment-check --hostinger --production-database=u713153343_canadamb --database --migration-state
-echo 'Active release and one verified rollback preserved; shared storage and backups untouched.'
+# Backup retention follows release reclamation, under the same locks. Only
+# checksum-verified, ancestral, no-longer-retained snapshots are eligible.
+# Refuse unknown entries rather than recursively deleting arbitrary data.
+shopt -s dotglob nullglob
+backup_candidates=()
+backup_unknown=0
+for dir in "$backups/"*; do
+    id=$(basename "$dir")
+    if [[ ! "$id" =~ ^[a-f0-9]{40}$ || ! -d "$dir" || -L "$dir" ||
+          "$(readlink -e "$dir")" != "$dir" ]]; then
+        echo 'Unrecognized backup entry preserved.'
+        backup_unknown=$((backup_unknown+1))
+        continue
+    fi
+    [[ -z "${keep[$id]:-}" ]] || continue
+    if [[ -e "$releases/$id" || -L "$releases/$id" ]] ||
+       ! git -C "$source" merge-base --is-ancestor "$id" "$current" ||
+       ! receipt_ok "$id"; then
+        echo "Unverified or still-referenced backup preserved: $id"
+        backup_unknown=$((backup_unknown+1))
+        continue
+    fi
+    valid=true
+    for file in "$dir/"*; do
+        [[ -f "$file" && ! -L "$file" ]] || { valid=false; break; }
+        case "$(basename "$file")" in
+            u713153343_canadamb.sql|storage.tar.gz|checksums.sha256) ;;
+            original-initial-preflight.receipt|verified-initial-checksums.sha256)
+                [[ "$id" == "$initial" ]] || { valid=false; break; } ;;
+            *) valid=false; break ;;
+        esac
+    done
+    if [[ "$valid" != true ]]; then
+        echo "Unexpected backup contents preserved: $id"
+        backup_unknown=$((backup_unknown+1))
+        continue
+    fi
+    backup_candidates+=("$dir")
+    echo "Eligible verified historical backup: $id"
+done
+echo "Historical backup sets eligible: ${#backup_candidates[@]}; unverified entries preserved: $backup_unknown"
+if [[ "$reclaim" == true ]]; then
+    # Verify both surviving backup sets again before deleting any archive.
+    for id in "${!keep[@]}"; do
+        receipt_ok "$id"
+    done
+    for dir in "${backup_candidates[@]}"; do
+        still_safe
+        id=$(basename "$dir")
+        [[ "$id" =~ ^[a-f0-9]{40}$ && -z "${keep[$id]:-}" &&
+           -d "$dir" && ! -L "$dir" && "$(readlink -e "$dir")" == "$dir" &&
+           ! -e "$releases/$id" && ! -L "$releases/$id" ]] || exit 1
+        receipt_ok "$id"
+        # No recursive removal; only known files inside this verified set.
+        rm -- "$dir/u713153343_canadamb.sql" "$dir/storage.tar.gz"
+        rm -f -- "$dir/checksums.sha256"
+        if [[ "$id" == "$initial" ]]; then
+            rm -f -- "$dir/original-initial-preflight.receipt" "$dir/verified-initial-checksums.sha256"
+        fi
+        rmdir -- "$dir"
+        echo "Removed historical backup set: $id"
+    done
+fi
+still_safe
+for id in "${!keep[@]}"; do
+    receipt_ok "$id"
+done
+remaining=$(find -P "$backups" -mindepth 1 -maxdepth 1 -printf '.' | wc -c)
+echo "Backup entries remaining: $remaining"
+if [[ "$reclaim" == true && ( "$remaining" -ne 2 || "$after" -lt 1 || "$unknown" -ne 0 || "$backup_unknown" -ne 0 ) ]]; then
+    echo 'Retention requires reconciliation: unexpected entries remain; no unverified data was deleted.' >&2
+    exit 1
+fi
+echo 'Active release and one verified rollback preserved with their backup sets; live shared storage untouched.'
