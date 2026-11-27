@@ -15,6 +15,30 @@ class EventEditingTest extends TestCase
 
     protected $seeder = DatabaseSeeder::class;
 
+    public function test_event_pagination_preserves_explicit_province_scope_and_validated_filters(): void
+    {
+        $this->travelTo('2026-02-25 12:00:00');
+        $owner = User::factory()->create();
+        $brandon = Location::where('slug', 'brandon')->sole()->id;
+        $winnipeg = Location::where('slug', 'winnipeg')->sole()->id;
+        for ($i = 1; $i <= 25; $i++) {
+            $event = CommunityEvent::create(['author_id' => $owner->id, 'location_id' => $i === 25 ? $winnipeg : $brandon,
+                'title' => 'Pagination event '.$i, 'body' => 'A local community meeting.', 'category' => 'community',
+                'organizer' => 'Local club', 'venue' => 'Club hall', 'starts_at' => '2026-03-01 16:00:00']);
+            $event->forceFill(['status' => 'approved'])->save();
+        }
+
+        $page = $this->withCookie('canadamb_community', 'brandon')
+            ->get('https://canadamb.ca/events?location=&q=Pagination&extra=discard')->assertOk();
+        $next = $page->viewData('items')->nextPageUrl();
+        $this->assertNotNull($next);
+        $this->assertStringContainsString('location=', $next);
+        $this->assertStringContainsString('q=Pagination', $next);
+        $this->assertStringNotContainsString('extra=', $next);
+        $this->get($next)->assertOk()->assertSee('Pagination event 25');
+        $this->get('https://brandonmb.ca/events?location=winnipeg&q=Pagination')->assertOk()->assertDontSee('Pagination event 25');
+    }
+
     public function test_event_corrections_preserve_identity_and_require_fresh_moderation(): void
     {
         $this->travelTo('2026-02-25 12:00:00');
@@ -30,6 +54,7 @@ class EventEditingTest extends TestCase
         $data = ['title' => $event->title, 'body' => $event->body, 'category' => $event->category,
             'organizer' => $event->organizer, 'venue' => $event->venue, 'starts_at' => '2026-03-01T10:00', 'version' => $event->contentVersion()];
         $this->actingAs(User::factory()->create())->get($path.'/edit')->assertNotFound();
+        $this->post($path.'/cancel')->assertNotFound();
         $this->actingAs($owner)->get($path.'/edit')->assertOk()->assertSee('Community meetup');
         $this->put($path, $data)->assertRedirect()->assertSessionHasNoErrors();
         $this->assertSame('approved', $event->fresh()->status);
@@ -48,5 +73,6 @@ class EventEditingTest extends TestCase
         $past->forceFill(['title' => 'Past community meetup', 'starts_at' => '2026-02-01 16:00:00'])->save();
         $this->get('https://brandonmb.ca/account/events')->assertOk()->assertSee('Past community meetup');
         $this->get('https://brandonmb.ca/account/events?sort=upcoming')->assertOk()->assertSee('Community meetup')->assertDontSee('Past community meetup');
+        $this->post('https://brandonmb.ca/account/events/'.$past->id.'/cancel')->assertConflict();
     }
 }

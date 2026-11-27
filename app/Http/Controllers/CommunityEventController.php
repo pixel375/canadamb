@@ -59,7 +59,7 @@ class CommunityEventController extends Controller
             abort_if($month && $day->format('Y-m') !== $month->format('Y-m'), 422);
             $this->community->overlapping($query, $day, $day->addDay());
         }
-        $items = $query->orderBy('starts_at')->orderBy('id')->paginate(24)->withQueryString();
+        $items = $query->orderBy('starts_at')->orderBy('id')->paginate(24)->appends(LocationScope::preserveAll($filters));
 
         $discussionIds = EventDiscussions::publicThreadsForEvents($site, $items->pluck('id')->all());
 
@@ -276,7 +276,7 @@ class CommunityEventController extends Controller
         $items = $matching->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
             ->when(($filters['sort'] ?? null) === 'upcoming', fn ($query) => $query->orderBy('starts_at')->orderBy('id'),
                 fn ($query) => $query->orderByDesc('starts_at')->orderByDesc('id'))
-            ->paginate(20)->withQueryString();
+            ->paginate(20)->appends($filters);
 
         $linked = EventDiscussions::linkedThreads($items->pluck('id')->all());
 
@@ -374,18 +374,19 @@ class CommunityEventController extends Controller
     {
         $site = $request->attributes->get('site');
         abort_unless($this->community->enabled($site, 'events'), 404);
-        $this->ownedEvent($request)->findOrFail($event);
-        $data = $request->validate(['cancellation_note' => 'nullable|string|max:300', 'version' => 'required|string|size:64', 'series' => 'nullable|uuid']);
-        DB::transaction(function () use ($event, $request, $site, $data) {
+        $series = DB::transaction(function () use ($event, $request, $site) {
             $item = $this->community->events($site->location_id)->where('author_id', $request->user()->id)->lockForUpdate()->findOrFail($event);
-            $this->checkSeriesSelection($data['series'] ?? null, [$item->id]);
             abort_unless(in_array($item->status, ['pending', 'approved'], true), 409);
             abort_if($item->status === 'approved' && ($item->localEnd() ?? $item->localStart())->isPast(), 409, 'Past published events cannot be cancelled.');
+            $data = $request->validate(['cancellation_note' => 'nullable|string|max:300', 'version' => 'required|string|size:64', 'series' => 'nullable|uuid']);
+            $this->checkSeriesSelection($data['series'] ?? null, [$item->id]);
             $this->checkVersion($item, $data['version']);
             $this->cancelItem($item, $request->user()->id, $data['cancellation_note'] ?? null);
+
+            return $data['series'] ?? null;
         });
 
-        return redirect($this->seriesReturn($data['series'] ?? null))->with('status', 'Event cancellation recorded.');
+        return redirect($this->seriesReturn($series))->with('status', 'Event cancellation recorded.');
     }
 
     public function reviseSelected(Request $request)
