@@ -101,5 +101,4 @@ class OwnerNotificationsTest extends TestCase
         $business->members()->detach($member->id);
         $this->get('https://canadamb.ca/account/notifications')->assertOk()->assertDontSee('Your job posting expired.');
     }
-
 }
