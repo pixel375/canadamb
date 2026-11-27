@@ -62,6 +62,9 @@ class PropertyDraftTest extends TestCase
         $this->get($thumbnail)->assertOk()->assertHeader('Cache-Control', 'no-store, private');
         $this->actingAs($other)->get($path)->assertNotFound();
         $this->get($thumbnail)->assertNotFound();
+        $this->post($path.'/submit')->assertNotFound();
+        $this->post($path.'/withdraw-review')->assertNotFound();
+        $this->delete($path)->assertNotFound();
         $this->actingAs($author)->get($path)->assertOk()
             ->assertSee('name="authorization_capacity"', false)
             ->assertSee('name="advertising_consent"', false);

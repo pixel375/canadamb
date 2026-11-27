@@ -47,7 +47,7 @@ class PropertyDraftController extends Controller
             'price-high' => $items->orderByDesc('price_cents'),
             default => $items->latest('updated_at'),
         };
-        $items = $items->latest('id')->paginate(20)->withQueryString();
+        $items = $items->latest('id')->paginate(20)->appends($filters);
 
         return view('properties.index', compact('items', 'filters', 'statuses', 'counts', 'places'));
     }
@@ -62,7 +62,7 @@ class PropertyDraftController extends Controller
             ->when($filters['reference'] ?? null, fn ($query, $id) => $query->whereKey($id))
             ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title']))
             ->with('location:id,name')->latest('updated_at')->latest('id')
-            ->paginate(20, ['id', 'title', 'location_id', 'transaction', 'property_type', 'updated_at'])->withQueryString();
+            ->paginate(20, ['id', 'title', 'location_id', 'transaction', 'property_type', 'updated_at'])->appends($filters);
 
         return view('properties.history', compact('items', 'filters'));
     }
@@ -193,14 +193,14 @@ class PropertyDraftController extends Controller
     public function submit(Request $request, int $property)
     {
         abort_unless(config('network.property_drafts'), 404);
-        $data = $request->validate([
-            'version' => 'required|string|size:64',
-            'authorization_capacity' => 'required|in:owner,authorized-agent',
-            'advertising_consent' => 'required|accepted',
-        ]);
-        DB::transaction(function () use ($request, $property, $data) {
+        DB::transaction(function () use ($request, $property) {
             $item = $this->owned($request)->lockForUpdate()->findOrFail($property);
             abort_unless(in_array($item->status, ['draft', 'changes_requested'], true), 409);
+            $data = $request->validate([
+                'version' => 'required|string|size:64',
+                'authorization_capacity' => 'required|in:owner,authorized-agent',
+                'advertising_consent' => 'required|accepted',
+            ]);
             abort_unless(hash_equals($item->contentVersion(), $data['version']), 409, 'Draft changed. Reload before submitting.');
             $item->forceFill(['status' => 'submitted', 'review_note' => null])->save();
             // Store declaration in the existing append-only audit log, without
@@ -240,10 +240,10 @@ class PropertyDraftController extends Controller
 
     public function withdraw(Request $request, int $property)
     {
-        $data = $request->validate(['version' => 'required|string|size:64']);
-        DB::transaction(function () use ($request, $property, $data) {
+        DB::transaction(function () use ($request, $property) {
             $item = $this->owned($request)->lockForUpdate()->findOrFail($property);
             abort_unless(in_array($item->status, ['submitted', 'reviewed'], true), 409);
+            $data = $request->validate(['version' => 'required|string|size:64']);
             abort_unless(hash_equals($item->contentVersion(), $data['version']), 409);
             $item->forceFill(['status' => 'draft', 'review_note' => null])->save();
             Audit::record('property-draft.review-withdrawn', $request->user()->id, context: ['property' => $item->id]);

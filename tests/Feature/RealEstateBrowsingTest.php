@@ -115,6 +115,24 @@ class RealEstateBrowsingTest extends TestCase
         $this->getJson('https://brandonmb.ca/real-estate?min_price=100&max_price=50')->assertUnprocessable()->assertJsonValidationErrors('max_price');
     }
 
+    public function test_pagination_preserves_explicit_province_scope_and_validated_filters(): void
+    {
+        config(['network.real_estate_public_listings' => true]);
+        for ($i = 0; $i < 19; $i++) {
+            $this->property($i === 0 ? 'elkhorn' : 'brandon', 'Scope property '.$i, 'published');
+        }
+        $response = $this->withCookie('canadamb_community', 'brandon')
+            ->get('https://canadamb.ca/real-estate?location=&q=Scope&unused=1')->assertOk();
+        $items = $response->viewData('items');
+        $this->assertSame(19, $items->total());
+        $this->assertStringContainsString('location=', $items->nextPageUrl());
+        $this->assertStringContainsString('q=Scope', $items->nextPageUrl());
+        $this->assertStringNotContainsString('unused', $items->nextPageUrl());
+        $this->get($items->nextPageUrl())->assertOk()->assertSee('Scope property 0');
+        $this->get('https://brandonmb.ca/real-estate?location=elkhorn')->assertOk()
+            ->assertViewHas('items', fn ($items) => $items->total() === 18);
+    }
+
     public function test_filters_are_validated_and_only_supported_cities_are_allowed(): void
     {
         $this->get('https://canadamb.ca/real-estate?transaction=illegal')->assertSessionHasErrors('transaction');
