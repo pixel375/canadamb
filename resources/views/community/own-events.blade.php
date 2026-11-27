@@ -24,6 +24,7 @@
         @if($filters['series'] ?? null)<p class="notice">Showing one recurring series. <a class="text-link" href="/account/events">Return to all events</a></p>@endif
         <p class="field-note seller-results-count">{{ $items->total() }} {{ \Illuminate\Support\Str::plural('event', $items->total()) }} found</p>
         <details class="panel form-stack mb-4"><summary>Cancel selected events</summary><form method="post" id="event-batch-cancel" action="/account/events/cancel-selected" class="form-stack mt-2">@csrf
+                    @if($filters['series'] ?? null)<input type="hidden" name="series" value="{{ $filters['series'] }}">@endif
             <p class="field-note">Choose up to eight eligible events using the checkboxes below. Pending submissions can be withdrawn; upcoming or ongoing approved events can be cancelled. Existing discussions remain intact.</p>
             <label>Private cancellation note<input name="cancellation_note" maxlength="300"></label>
             <label class="checkbox-line"><input type="checkbox" name="confirm_cancel" value="1" required> Confirm cancellation of the selected events</label><button class="button button-outline">Cancel selected events</button>
@@ -31,6 +32,7 @@
         @if(config('network.recurring_events') && $items->contains(fn ($item) => in_array($item->status, ['pending', 'approved', 'rejected'], true) && !$item->scheduleStarted() && (!$item->isDateOnly() || \App\Support\EventSchedule::available())))
             <details class="panel form-stack mb-4"><summary>Update shared event details</summary>
                 <form id="event-batch-edit" method="post" action="/account/events/revise-selected" class="form-stack mt-3">@csrf
+                    @if($filters['series'] ?? null)<input type="hidden" name="series" value="{{ $filters['series'] }}">@endif
                     <p class="field-note">Choose up to eight upcoming occurrences below. Update one shared field at a time. Dates and descriptions stay unchanged; title changes also update linked discussions and require independent review. Changed events require review.</p>
                     <label>Field<select name="field"><option value="venue">Venue</option><option value="title">Title</option><option value="organizer">Organizer</option><option value="event_url">Event website</option></select></label>
                     <label>New value<input name="value" maxlength="1024" data-event-batch-value><small class="field-note">Leave blank only to remove an event website.</small></label>
@@ -42,6 +44,7 @@
         @if(config('network.recurring_events') && $items->contains(fn ($item) => in_array($item->status, ['pending', 'approved', 'rejected'], true) && !$item->scheduleStarted() && (!$item->isDateOnly() || \App\Support\EventSchedule::available())))
             <details class="panel form-stack mb-4"><summary>Reschedule selected events</summary>
                 <form id="event-batch-shift" method="post" action="/account/events/shift-selected" class="form-stack mt-3">@csrf
+                    @if($filters['series'] ?? null)<input type="hidden" name="series" value="{{ $filters['series'] }}">@endif
                     <p class="field-note">Move up to eight upcoming occurrences by the same number of calendar days. Local start and end times stay the same; changed dates require independent review.</p>
                     <label>Days to move<input type="number" name="days" min="-30" max="30" required><small class="field-note">Use a negative number to move earlier or a positive number to move later.</small></label>
                     <label class="checkbox-line"><input type="checkbox" name="confirm_shift" value="1" required> Confirm rescheduling</label>
@@ -79,6 +82,7 @@
                         <label class="checkbox-line"><input form="event-batch-cancel" type="checkbox" name="events[]" value="{{ $item->id }}"> Select for batch cancellation</label><input form="event-batch-cancel" type="hidden" name="versions[{{ $item->id }}]" value="{{ $item->contentVersion() }}">
                         <details class="seller-remove-listing"><summary>{{ $item->status === 'pending' ? 'Withdraw submission' : 'Cancel event' }}</summary>
                             <form method="post" action="/account/events/{{ $item->id }}/cancel" class="form-stack mt-3">@csrf<input type="hidden" name="version" value="{{ $item->contentVersion() }}">
+                                @if($filters['series'] ?? null)<input type="hidden" name="series" value="{{ $filters['series'] }}">@endif
                                 <label>Private cancellation note<input name="cancellation_note" maxlength="300"></label><button class="button button-outline">{{ $item->status === 'pending' ? 'Confirm withdrawal' : 'Confirm cancellation' }}</button>
                             </form>
                         </details>

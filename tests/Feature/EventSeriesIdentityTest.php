@@ -65,13 +65,16 @@ class EventSeriesIdentityTest extends TestCase
         $this->actingAs($member)->post($base.'/events', array_replace($input, ['title' => 'Unrelated event', 'repeat' => 'none']))->assertRedirect()->assertSessionHasNoErrors();
         $data = ['events' => $events->modelKeys(), 'versions' => $events->mapWithKeys(fn ($item) => [$item->id => $item->fresh()->contentVersion()])->all(),
             'thread_versions' => $events->mapWithKeys(fn ($item) => [$item->id => EventDiscussions::linkedThread($item)->contentVersion()])->all(),
-            'field' => 'title', 'value' => 'Unrelated event', 'confirm_update' => '1'];
+            'field' => 'title', 'value' => 'Unrelated event', 'confirm_update' => '1', 'series' => $key];
         $url = $base.'/account/events/revise-selected';
         $this->post($url, $data)->assertSessionHasErrors('value');
         $data['value'] = 'Renamed weekly club';
+        $this->post($url, array_replace($data, ['series' => '11111111-1111-4111-8111-111111111111']))->assertNotFound();
+        $unrelated = CommunityEvent::where('title', 'Unrelated event')->sole();
+        $this->post($url, array_replace($data, ['events' => [$event->id, $unrelated->id]]))->assertNotFound();
         $this->post($url, array_replace($data, ['thread_versions' => []]))->assertSessionHasErrors('thread_versions');
         $this->assertSame('Weekly club fixture', $event->fresh()->title);
-        $this->post($url, $data)->assertRedirect()->assertSessionHasNoErrors();
+        $this->post($url, $data)->assertRedirect($path)->assertSessionHasNoErrors();
         $this->assertSame('Renamed weekly club', $event->fresh()->title);
         $this->assertSame('pending', $event->fresh()->status);
         $this->assertSame('Renamed weekly club', $thread->fresh()->title);
@@ -81,7 +84,7 @@ class EventSeriesIdentityTest extends TestCase
         $this->post($url, $data)->assertSessionHasErrors('version');
         $this->assertSame($key, DB::table('event_series_occurrences')->where('event_id', $event->id)->value('series_key'));
         $this->post($base.'/account/events/'.$event->id.'/cancel')->assertSessionHasErrors('version');
-        $this->post($base.'/account/events/'.$event->id.'/cancel', ['version' => $event->fresh()->contentVersion()])->assertRedirect();
+        $this->post($base.'/account/events/'.$event->id.'/cancel', ['version' => $event->fresh()->contentVersion(), 'series' => $key])->assertRedirect($path);
         $this->get($base.$path)->assertOk()->assertSee('3 events found')->assertSee('Withdrawn');
         config(['network.event_series_identity' => false]);
         $this->get($base.$path)->assertNotFound();

@@ -367,16 +367,17 @@ class CommunityEventController extends Controller
         $site = $request->attributes->get('site');
         abort_unless($this->community->enabled($site, 'events'), 404);
         $this->ownedEvent($request)->findOrFail($event);
-        $data = $request->validate(['cancellation_note' => 'nullable|string|max:300', 'version' => 'required|string|size:64']);
+        $data = $request->validate(['cancellation_note' => 'nullable|string|max:300', 'version' => 'required|string|size:64', 'series' => 'nullable|uuid']);
         DB::transaction(function () use ($event, $request, $site, $data) {
             $item = $this->community->events($site->location_id)->where('author_id', $request->user()->id)->lockForUpdate()->findOrFail($event);
+            $this->checkSeriesSelection($data['series'] ?? null, [$item->id]);
             abort_unless(in_array($item->status, ['pending', 'approved'], true), 409);
             abort_if($item->status === 'approved' && ($item->localEnd() ?? $item->localStart())->isPast(), 409, 'Past published events cannot be cancelled.');
             $this->checkVersion($item, $data['version']);
             $this->cancelItem($item, $request->user()->id, $data['cancellation_note'] ?? null);
         });
 
-        return redirect('/account/events')->with('status', 'Event cancellation recorded.');
+        return redirect($this->seriesReturn($data['series'] ?? null))->with('status', 'Event cancellation recorded.');
     }
 
     public function reviseSelected(Request $request)
@@ -384,6 +385,7 @@ class CommunityEventController extends Controller
         abort_unless(config('network.recurring_events'), 404);
         $data = $request->validate([
             'events' => 'required|array|list|min:1|max:8', 'events.*' => 'required|integer|distinct|min:1',
+            'series' => 'nullable|uuid',
             'versions' => 'required|array|max:20', 'versions.*' => 'required|string|size:64',
             'field' => 'required|in:title,venue,organizer,event_url',
             'thread_versions' => 'sometimes|array|max:20', 'thread_versions.*' => 'required|string|size:64',
@@ -403,6 +405,7 @@ class CommunityEventController extends Controller
             User::lockForUpdate()->findOrFail($author);
             $items = $this->ownedEvent($request)->whereIn('id', $data['events'])->orderBy('id')->lockForUpdate()->get();
             abort_unless($items->count() === count($data['events']), 404);
+            $this->checkSeriesSelection($data['series'] ?? null, $items->modelKeys());
             $threads = [];
             $proposed = [];
             foreach ($items as $item) {
@@ -446,7 +449,7 @@ class CommunityEventController extends Controller
             return $revisions->count();
         }, attempts: 3);
 
-        return redirect('/account/events')->with('status', $changed.' selected events updated. Changed events require moderation.');
+        return redirect($this->seriesReturn($data['series'] ?? null))->with('status', $changed.' selected events updated. Changed events require moderation.');
     }
 
     public function shiftSelected(Request $request)
@@ -454,6 +457,7 @@ class CommunityEventController extends Controller
         abort_unless(config('network.recurring_events'), 404);
         $data = $request->validate([
             'events' => 'required|array|list|min:1|max:8', 'events.*' => 'required|integer|distinct|min:1',
+            'series' => 'nullable|uuid',
             'versions' => 'required|array|max:20', 'versions.*' => 'required|string|size:64',
             'days' => 'required|integer|between:-30,30|not_in:0', 'confirm_shift' => 'accepted',
         ]);
@@ -462,6 +466,7 @@ class CommunityEventController extends Controller
             User::lockForUpdate()->findOrFail($author);
             $items = $this->ownedEvent($request)->whereIn('id', $data['events'])->orderBy('id')->lockForUpdate()->get();
             abort_unless($items->count() === count($data['events']), 404);
+            $this->checkSeriesSelection($data['series'] ?? null, $items->modelKeys());
             $proposed = [];
             foreach ($items as $item) {
                 abort_unless(in_array($item->status, ['pending', 'approved', 'rejected'], true) && ! $item->scheduleStarted(), 409);
@@ -489,7 +494,7 @@ class CommunityEventController extends Controller
             }
         }, attempts: 3);
 
-        return redirect('/account/events')->with('status', count($data['events']).' selected events rescheduled for review.');
+        return redirect($this->seriesReturn($data['series'] ?? null))->with('status', count($data['events']).' selected events rescheduled for review.');
     }
 
     public function cancelSelected(Request $request)
@@ -498,6 +503,7 @@ class CommunityEventController extends Controller
         abort_unless($this->community->enabled($site, 'events'), 404);
         $data = $request->validate([
             'events' => 'required|array|list|min:1|max:8', 'events.*' => 'required|integer|distinct|min:1',
+            'series' => 'nullable|uuid',
             'confirm_cancel' => 'accepted', 'cancellation_note' => 'nullable|string|max:300',
             'versions' => 'required|array|max:20', 'versions.*' => 'required|string|size:64',
         ]);
@@ -506,6 +512,7 @@ class CommunityEventController extends Controller
             $items = $this->community->events($site->location_id)->where('author_id', $author)
                 ->whereIn('id', $data['events'])->orderBy('id')->lockForUpdate()->get();
             abort_unless($items->count() === count($data['events']), 404);
+            $this->checkSeriesSelection($data['series'] ?? null, $items->modelKeys());
             foreach ($items as $item) {
                 abort_unless(in_array($item->status, ['pending', 'approved'], true), 409);
                 abort_if($item->status === 'approved' && ($item->localEnd() ?? $item->localStart())->isPast(), 409, 'Past published events cannot be cancelled.');
@@ -519,7 +526,22 @@ class CommunityEventController extends Controller
             }
         }, attempts: 3);
 
-        return redirect('/account/events')->with('status', count($data['events']).' selected event cancellations recorded.');
+        return redirect($this->seriesReturn($data['series'] ?? null))->with('status', count($data['events']).' selected event cancellations recorded.');
+    }
+
+    private function checkSeriesSelection(?string $series, array $ids): void
+    {
+        if ($series === null) {
+            return;
+        }
+        abort_unless(EventSeriesIdentity::enabled(), 404);
+        abort_unless(DB::table('event_series_occurrences')->where('series_key', $series)
+            ->whereIn('event_id', $ids)->count() === count($ids), 404);
+    }
+
+    private function seriesReturn(?string $series): string
+    {
+        return '/account/events'.($series === null ? '' : '?'.http_build_query(['series' => $series]));
     }
 
     private function cancelItem(CommunityEvent $item, int $author, ?string $note): void
