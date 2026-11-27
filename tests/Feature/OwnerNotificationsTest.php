@@ -89,7 +89,7 @@ class OwnerNotificationsTest extends TestCase
             'description' => 'A local job for notification tests.', 'employment_type' => 'full-time', 'workplace' => 'on-site',
             'apply_url' => 'https://example.test/apply', 'closing_on' => today('America/Winnipeg')->addWeek()->toDateString()]);
         $url = 'https://canadamb.ca/admin/jobs/'.$job->id;
-        $this->actingAs($admin)->post($url, ['action' => 'approve', 'version' => $job->reviewVersion()])->assertRedirect();
+        $this->actingAs($admin)->post($url, ['action' => 'approve', 'version' => $job->fresh()->reviewVersion()])->assertRedirect();
         $this->assertDatabaseHas('owner_notifications', ['user_id' => $member->id, 'kind' => 'job', 'decision' => 'approved']);
         $this->actingAs($member)->get('https://brandonmb.ca/account/notifications')->assertOk()->assertSee('Your job posting was approved.');
         $this->actingAs($other)->get('https://canadamb.ca/account/notifications')->assertOk()->assertDontSee('Your job posting was approved.');
