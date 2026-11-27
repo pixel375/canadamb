@@ -218,7 +218,8 @@ after=$(entries "$releases")
 echo "Release entries after: $after"
 echo "Release entries reclaimed: $((before-after))"
 echo "Unverified entries preserved: $unknown"
-echo "Release directories remaining: $(find -P "$releases" -mindepth 1 -maxdepth 1 -type d -printf '.' | wc -c)"
+release_remaining=$(find -P "$releases" -mindepth 1 -maxdepth 1 -printf '.' | wc -c)
+echo "Release entries (top-level) remaining: $release_remaining"
 /usr/bin/php "$active/artisan" network:deployment-check --hostinger --production-database=u713153343_canadamb --database --migration-state
 # Backup retention follows release reclamation, under the same locks. Only
 # checksum-verified, ancestral, no-longer-retained snapshots are eligible.
@@ -289,7 +290,7 @@ for id in "${!keep[@]}"; do
 done
 remaining=$(find -P "$backups" -mindepth 1 -maxdepth 1 -printf '.' | wc -c)
 echo "Backup entries remaining: $remaining"
-if [[ "$reclaim" == true && ( "$remaining" -ne 2 || "$after" -lt 1 || "$unknown" -ne 0 || "$backup_unknown" -ne 0 ) ]]; then
+if [[ "$reclaim" == true && ( "$remaining" -ne 2 || "$release_remaining" -ne 2 || "$unknown" -ne 0 || "$backup_unknown" -ne 0 ) ]]; then
     echo 'Retention requires reconciliation: unexpected entries remain; no unverified data was deleted.' >&2
     exit 1
 fi
