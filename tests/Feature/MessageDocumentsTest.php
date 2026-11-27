@@ -22,6 +22,7 @@ class MessageDocumentsTest extends TestCase
         $this->artisan('migrate:fresh', ['--seed' => true, '--seeder' => DatabaseSeeder::class])->assertSuccessful();
         $this->artisan('migrate', ['--path' => 'database/proposed-migrations'])->assertSuccessful();
         $this->beforeApplicationDestroyed(function () {
+            DB::table('message_documents')->delete();
             $this->artisan('migrate:rollback', ['--path' => 'database/proposed-migrations'])->assertSuccessful();
             RefreshDatabaseState::$migrated = false;
             RefreshDatabaseState::$inMemoryConnections = [];
@@ -49,6 +50,14 @@ class MessageDocumentsTest extends TestCase
         $this->post($url, $upload('notes.txt', $body))->assertRedirect()->assertSessionHasNoErrors();
         $document = DB::table('message_documents')->sole();
         $this->assertSame(hash('sha256', $body), $document->sha256);
+        $migration = require database_path('proposed-migrations/2026_11_27_000022_create_message_documents.php');
+        try {
+            $migration->down();
+            $this->fail('Rollback must refuse retained private documents.');
+        } catch (\RuntimeException $exception) {
+            $this->assertStringContainsString('retention', $exception->getMessage());
+        }
+        $this->assertDatabaseCount('message_documents', 1);
         $download = $url.'/documents/'.$document->message_id;
         $this->get($download)->assertOk()->assertHeader('Content-Type', 'text/plain; charset=utf-8')->assertHeader('Content-Disposition', 'attachment; filename="canadamb-document.txt"')->assertSee($body);
         $this->actingAs($admin)->get($download)->assertNotFound();

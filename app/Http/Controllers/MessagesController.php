@@ -460,10 +460,13 @@ class MessagesController extends Controller
         abort_unless(preg_match('/^attachments\/[a-f0-9-]{36}\.webp$/D', $item->image_path), 404);
         $disk = Storage::disk(MessageAttachments::DISK);
         abort_unless($disk->exists($item->image_path), 404);
+        $path = $disk->path($item->image_path);
+        abort_unless(is_file($path) && ! is_link($path), 404);
 
         return $disk->download($item->image_path, 'canadamb-photo.webp', [
             'Content-Type' => 'image/webp', 'Cache-Control' => 'private, no-store',
             'X-Content-Type-Options' => 'nosniff', 'X-Robots-Tag' => 'noindex, nofollow',
+            'Referrer-Policy' => 'no-referrer', 'Content-Security-Policy' => "default-src 'none'; sandbox",
         ]);
     }
 

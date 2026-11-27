@@ -120,12 +120,24 @@ class AccountExportController extends Controller
             $photos = DB::table('message_attachments')->join('messages', 'messages.id', '=', 'message_attachments.message_id')
                 ->where('messages.sender_id', $member)->selectRaw('message_attachments.id AS export_id, message_attachments.message_id, messages.conversation_id, message_attachments.created_at');
             $sections['sent-photo-metadata'] = DB::query()->fromSub($photos, 'export_records');
+            $received = DB::table('message_attachments')->join('messages', 'messages.id', '=', 'message_attachments.message_id')
+                ->join('conversations', 'conversations.id', '=', 'messages.conversation_id')
+                ->where('messages.sender_id', '!=', $member)
+                ->where(fn ($query) => $query->where('conversations.buyer_id', $member)->orWhere('conversations.seller_id', $member))
+                ->selectRaw('message_attachments.id AS export_id, message_attachments.message_id, messages.conversation_id, message_attachments.created_at');
+            $sections['received-photo-metadata'] = DB::query()->fromSub($received, 'export_records');
         }
 
         if (Schema::hasTable('message_documents')) {
             $documents = DB::table('message_documents')->join('messages', 'messages.id', '=', 'message_documents.message_id')
                 ->where('messages.sender_id', $member)->selectRaw('message_documents.id AS export_id, message_documents.message_id, messages.conversation_id, message_documents.bytes, message_documents.created_at');
             $sections['sent-text-attachment-metadata'] = DB::query()->fromSub($documents, 'export_records');
+            $received = DB::table('message_documents')->join('messages', 'messages.id', '=', 'message_documents.message_id')
+                ->join('conversations', 'conversations.id', '=', 'messages.conversation_id')
+                ->where('messages.sender_id', '!=', $member)
+                ->where(fn ($query) => $query->where('conversations.buyer_id', $member)->orWhere('conversations.seller_id', $member))
+                ->selectRaw('message_documents.id AS export_id, message_documents.message_id, messages.conversation_id, message_documents.bytes, message_documents.created_at');
+            $sections['received-text-attachment-metadata'] = DB::query()->fromSub($received, 'export_records');
         }
 
         if (Schema::hasTable('event_series_occurrences')) {
