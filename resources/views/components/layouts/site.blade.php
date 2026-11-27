@@ -327,7 +327,7 @@
                                         $searchParams['location'] = $section === 'jobs' ? $searchPlace->name : $searchPlace->slug;
                                     }
                                 ?>
-                                <a class="button button-outline" href="{{ '/'.$section.'?'.http_build_query($searchParams, '', '&', PHP_QUERY_RFC3986) }}">{{ $label }}</a>
+                                <a class="button button-outline" href="{{ '/'.$section.'?'.http_build_query(\App\Support\LocationScope::preserveAll($searchParams), '', '&', PHP_QUERY_RFC3986) }}">{{ $label }}</a>
                             @endif
                         @endforeach
                     </div>

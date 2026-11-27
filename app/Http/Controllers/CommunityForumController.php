@@ -91,7 +91,7 @@ class CommunityForumController extends Controller
         $site = $request->attributes->get('site');
         $canonical = NetworkUrl::to($this->community->canonicalSite($item, 'community'), '/community/'.$item->id);
 
-        $replies = $item->replies()->where('status', 'approved')->with('author')->oldest('id')->paginate(25);
+        $replies = $item->replies()->where('status', 'approved')->with('author')->oldest('id')->paginate(25)->appends(LocationScope::detailParams());
         $replyLinksEnabled = ReplyLinks::enabled();
         $parents = ReplyLinks::publicParents($item, $replies->pluck('id')->all());
         $replyTo = null;
@@ -317,9 +317,9 @@ class CommunityForumController extends Controller
         $approved = $item->replies()->where('status', 'approved')->findOrFail($reply);
         $position = $item->replies()->where('status', 'approved')->where('id', '<=', $approved->id)->count();
         $page = (int) ceil($position / 25);
-        $destination = NetworkUrl::to($request->attributes->get('site'), '/community/'.$item->id);
+        $destination = NetworkUrl::to($request->attributes->get('site'), LocationScope::detailUrl('/community/'.$item->id, $page > 1 ? ['page' => $page] : [], '#reply-'.$approved->id));
 
-        return redirect()->away($destination.($page > 1 ? '?page='.$page : '').'#reply-'.$approved->id,
+        return redirect()->away($destination,
             302, ['Cache-Control' => 'no-store']);
     }
 
@@ -399,7 +399,7 @@ class CommunityForumController extends Controller
         $destination = isset($data['parent_reply_id']) && $reply->status === 'approved'
             ? '/community/'.$thread.'/replies/'.$reply->id : '/community/'.$thread;
 
-        return redirect($destination)->with('status', $reply->status === 'approved' ? 'Reply published.' : 'Reply submitted for review.');
+        return redirect(LocationScope::detailUrl($destination))->with('status', $reply->status === 'approved' ? 'Reply published.' : 'Reply submitted for review.');
     }
 
     public function follow(Request $request, int $thread)
@@ -407,7 +407,7 @@ class CommunityForumController extends Controller
         $item = $this->visible($request)->findOrFail($thread);
         DB::table('community_thread_follows')->insertOrIgnore(['thread_id' => $item->id, 'user_id' => $request->user()->id]);
 
-        return redirect('/community/'.$thread)->with('status', 'You are following this discussion.');
+        return redirect(LocationScope::detailUrl('/community/'.$thread))->with('status', 'You are following this discussion.');
     }
 
     public function unfollow(Request $request, int $thread)
@@ -419,7 +419,7 @@ class CommunityForumController extends Controller
             ->findOrFail($thread);
         DB::table('community_thread_follows')->where(['thread_id' => $thread, 'user_id' => $request->user()->id])->delete();
 
-        return redirect($request->input('return_to') === 'following' ? '/account/followed-discussions' : '/community/'.$thread)
+        return redirect($request->input('return_to') === 'following' ? '/account/followed-discussions' : LocationScope::detailUrl('/community/'.$thread))
             ->with('status', 'You stopped following this discussion.');
     }
 

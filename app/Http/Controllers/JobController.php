@@ -279,7 +279,7 @@ class JobController extends Controller
         $item = $this->visible($request)->findOrFail($job);
         DB::table('job_posting_bookmarks')->insertOrIgnore(['job_posting_id' => $item->id, 'user_id' => $request->user()->id]);
 
-        return redirect($request->input('return_to') === 'job' ? '/jobs/'.$item->id : '/account/saved-jobs')->with('status', 'Job saved.');
+        return redirect($request->input('return_to') === 'job' ? LocationScope::detailUrl('/jobs/'.$item->id) : '/account/saved-jobs')->with('status', 'Job saved.');
     }
 
     public function remove(Request $request, int $job)
@@ -289,7 +289,7 @@ class JobController extends Controller
         }
         DB::table('job_posting_bookmarks')->where(['job_posting_id' => $job, 'user_id' => $request->user()->id])->delete();
 
-        return redirect($request->input('return_to') === 'job' ? '/jobs/'.$job : '/account/saved-jobs')->with('status', 'Job removed from your saved list.');
+        return redirect($request->input('return_to') === 'job' ? LocationScope::detailUrl('/jobs/'.$job) : '/account/saved-jobs')->with('status', 'Job removed from your saved list.');
     }
 
     public function saved(Request $request)

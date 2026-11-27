@@ -77,7 +77,7 @@
                         <a class="button button-primary discussion-context-action" href="{{ $currentSite->isNetwork() ? '/login' : '/auth/start' }}">Sign in to join</a>
                     @endif
                     @if($canParticipate)
-                        <form class="discussion-follow-form" method="post" action="/community/{{ $item->id }}/follow">
+                        <form class="discussion-follow-form" method="post" action="{{ \App\Support\LocationScope::detailUrl('/community/'.$item->id.'/follow') }}">
                             @csrf
                             @if($following)
                                 @method('DELETE')
@@ -119,14 +119,14 @@
                                 <time datetime="{{ $reply->created_at->toIso8601String() }}">{{ $reply->created_at->timezone('America/Winnipeg')->format('M j, Y · g:i a T') }}</time>
                             </div>
                             @if($parent = $parents[$reply->id] ?? null)
-                                <a class="discussion-parent-reference" href="/community/{{ $item->id }}/replies/{{ $parent->id }}">
+                                <a class="discussion-parent-reference" href="{{ \App\Support\LocationScope::detailUrl('/community/'.$item->id.'/replies/'.$parent->id) }}">
                                     <small>Replying to {{ $parent->author_name ?? 'Former member' }}</small>
                                     <span>{{ \Illuminate\Support\Str::limit(\Illuminate\Support\Str::squish($parent->body), 140) }}</span>
                                 </a>
                             @endif
                             <p class="prose-text" data-reply-text>{{ $reply->body }}</p>
                             @if($replyLinksEnabled && $canParticipate && !$item->locked)
-                                <a class="text-link discussion-comment-action" data-reply-to="{{ $reply->id }}" href="/community/{{ $item->id }}?page={{ $replies->currentPage() }}&amp;reply_to={{ $reply->id }}#reply-composer"><x-icon name="messages" size="15"/> Reply to comment</a>
+                                <a class="text-link discussion-comment-action" data-reply-to="{{ $reply->id }}" href="{{ \App\Support\LocationScope::detailUrl('/community/'.$item->id, ['page' => $replies->currentPage(), 'reply_to' => $reply->id], '#reply-composer') }}"><x-icon name="messages" size="15"/> Reply to comment</a>
                             @endif
                             <x-content-report-link type="reply" :target="$reply->id"/>
                             @if($canParticipate && !$item->locked && (int) $reply->author_id === auth()->id())<a class="text-link" href="/account/replies/{{ $reply->id }}/edit?from=discussion&amp;page={{ $replies->currentPage() }}">Edit my reply</a>@endif
@@ -148,7 +148,7 @@
                     <div><h2>Discussion closed</h2><p>This discussion is locked and is no longer accepting replies.</p></div>
                 </div>
             @elseif($canParticipate)
-                <form id="reply-composer" method="post" action="/community/{{ $item->id }}/replies" class="panel form-stack discussion-reply-composer">
+                <form id="reply-composer" method="post" action="{{ \App\Support\LocationScope::detailUrl('/community/'.$item->id.'/replies') }}" class="panel form-stack discussion-reply-composer">
                     @csrf
                     <div>
                         <p class="section-label">Your voice matters</p>
@@ -159,7 +159,7 @@
                             <div class="discussion-parent-reference" data-reply-selection aria-live="polite" @if(!$replyTo) hidden @endif>
                                 <small data-reply-name>Replying to {{ $replyTo?->author?->name ?? 'Former member' }}</small>
                                 <span data-reply-preview>{{ $replyTo ? \Illuminate\Support\Str::limit(\Illuminate\Support\Str::squish($replyTo->body), 140) : '' }}</span>
-                                <a class="text-link" data-reply-cancel href="/community/{{ $item->id }}?page={{ $replies->currentPage() }}#reply-composer">Cancel comment reply</a>
+                                <a class="text-link" data-reply-cancel href="{{ \App\Support\LocationScope::detailUrl('/community/'.$item->id, ['page' => $replies->currentPage()], '#reply-composer') }}">Cancel comment reply</a>
                             </div>
                         @endif
                     </div>

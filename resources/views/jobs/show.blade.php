@@ -52,7 +52,7 @@
                     <a href="{{ $item->apply_url }}" rel="nofollow ugc" class="button button-primary">Apply on the employer’s site <x-icon name="arrow" size="16"/></a>
                     <p class="field-note">Applications are handled by the employer, not CanadaMB. Do not pay application fees or share sensitive information before verifying the employer.</p><a class="text-link" href="/contact?topic=business">Raise a concern about this job</a>
                     @auth
-                        <form method="post" action="/jobs/{{ $item->id }}/save">@csrf @if($saved) @method('DELETE') @endif
+                        <form method="post" action="{{ \App\Support\LocationScope::detailUrl('/jobs/'.$item->id.'/save') }}">@csrf @if($saved) @method('DELETE') @endif
                             <input type="hidden" name="return_to" value="job">
                             <button class="button button-outline seller-action" aria-pressed="{{ $saved ? 'true' : 'false' }}"><x-icon :name="$saved ? 'check' : 'tag'" size="17"/> {{ $saved ? 'Remove saved job' : 'Save job' }}</button>
                         </form>

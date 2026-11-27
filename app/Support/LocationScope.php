@@ -52,7 +52,7 @@ final class LocationScope
 
     private static function detailRequest(): bool
     {
-        return (bool) preg_match('~^(?:marketplace|real-estate|businesses|jobs|community|events|news)/[^/]+$~D', request()->path());
+        return (bool) preg_match('~^(?:marketplace|real-estate|businesses|jobs|community|events|news)/[^/]+(?:/(?:follow|save|replies(?:/[1-9][0-9]*)?))?$~D', request()->path());
     }
 
     public static function explicitAll(Site $site): bool
@@ -76,19 +76,23 @@ final class LocationScope
 
     // Carry temporary GET scope only if it differs from the remembered
     // preference. Never use this query parameter to authorize content.
-    public static function detailUrl(string $path): string
+    public static function detailParams(): array
     {
         $site = request()->attributes->get('site');
         if (! $site?->isNetwork()) {
-            return $path;
+            return [];
         }
         $place = self::currentBrowsing($site);
         $preferred = self::preferred($site, request()->cookie(self::PREFERENCE_COOKIE));
-        if ($place?->id === $preferred?->id) {
-            return $path;
-        }
 
-        return $path.'?'.http_build_query(['browse' => $place?->slug ?? ''], '', '&', PHP_QUERY_RFC3986);
+        return $place?->id === $preferred?->id ? [] : ['browse' => $place?->slug ?? ''];
+    }
+
+    public static function detailUrl(string $path, array $params = [], string $fragment = ''): string
+    {
+        $params += self::detailParams();
+
+        return $path.($params ? '?'.http_build_query($params, '', '&', PHP_QUERY_RFC3986) : '').$fragment;
     }
 
     public static function preserveAll(array $params): array
