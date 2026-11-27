@@ -22,6 +22,7 @@ return [
     'push_private_key' => env('CANADAMB_PUSH_PRIVATE_KEY'),
     'push_subject' => env('CANADAMB_PUSH_SUBJECT'),
     'event_date_only' => env('CANADAMB_EVENT_DATE_ONLY', false),
+    'event_series_identity' => env('CANADAMB_EVENT_SERIES_IDENTITY', false),
     'recurring_events' => env('CANADAMB_RECURRING_EVENTS', false),
     'event_discussions' => env('CANADAMB_EVENT_DISCUSSIONS', false),
     'reply_links' => env('CANADAMB_REPLY_LINKS', false),

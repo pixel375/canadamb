@@ -12,6 +12,7 @@ use App\Support\Community;
 use App\Support\EventDiscussions;
 use App\Support\EventSchedule;
 use App\Support\EventSeries;
+use App\Support\EventSeriesIdentity;
 use App\Support\KeywordSearch;
 use App\Support\LocationScope;
 use App\Support\NetworkUrl;
@@ -187,7 +188,7 @@ class CommunityEventController extends Controller
             throw ValidationException::withMessages(['starts_at' => 'Choose an upcoming date within the next year.']);
         }
         $autoApprove = PublicationPolicy::allows('events', $request->user(), $data['location_id']);
-        DB::transaction(function () use ($request, $site, $data, $dates, $count, $autoApprove) {
+        DB::transaction(function () use ($request, $site, $data, $dates, $count, $frequency, $autoApprove) {
             $author = $request->user()->id;
             User::lockForUpdate()->findOrFail($author);
             if (config('network.recurring_events')) {
@@ -196,13 +197,15 @@ class CommunityEventController extends Controller
                     throw ValidationException::withMessages(['starts_at' => 'You can have up to 24 pending event submissions.']);
                 }
             }
-            foreach ($dates as $date) {
+            $seriesKey = EventSeriesIdentity::newKey($count);
+            foreach ($dates as $index => $date) {
                 $eventData = array_replace($data, $date);
                 if (CommunityEvent::where('author_id', $author)->where('location_id', $data['location_id'])
                     ->where('title', $data['title'])->where('starts_at', $date['starts_at'])->whereIn('status', ['pending', 'approved'])->exists()) {
                     throw ValidationException::withMessages(['starts_at' => 'An occurrence already exists. No events were submitted.']);
                 }
                 $event = CommunityEvent::create($eventData + ['author_id' => $author]);
+                EventSeriesIdentity::record($event->id, $seriesKey, $index + 1, $count, $frequency);
                 Audit::record('community.event.submitted', $author, context: ['event' => $event->id]);
                 if ($autoApprove) {
                     $event->forceFill(['status' => 'approved'])->save();
@@ -229,10 +232,16 @@ class CommunityEventController extends Controller
         $statuses = ['pending', 'approved', 'rejected', 'cancelled', 'withdrawn'];
         $filters = $request->validate(['status' => ['nullable', Rule::in($statuses)], 'q' => 'nullable|string|max:100',
             'sort' => 'nullable|in:upcoming,recent,past', 'category' => ['nullable', Rule::in(array_keys(Community::EVENTS))],
-            'location' => 'nullable|integer|exists:locations,id', 'reference' => 'nullable|integer|min:1']);
+            'location' => 'nullable|integer|exists:locations,id', 'reference' => 'nullable|integer|min:1',
+            'series' => 'nullable|uuid']);
+        abort_if(isset($filters['series']) && ! EventSeriesIdentity::enabled(), 404);
         $owned = $this->community->events($site->location_id)->where('author_id', $request->user()->id);
         $places = Location::whereIn('id', (clone $owned)->select('location_id'))->orderBy('name')->get(['id', 'name']);
         $now = now('UTC');
+        if (isset($filters['series'])) {
+            $owned->whereIn('id', DB::table('event_series_occurrences')->where('series_key', $filters['series'])->select('event_id'));
+            abort_unless((clone $owned)->exists(), 404);
+        }
         $matching = $owned->when($filters['category'] ?? null, fn ($query, $category) => $query->where('category', $category))
             ->when($filters['location'] ?? null, fn ($query, $id) => $query->where('location_id', $id))
             ->when($filters['reference'] ?? null, fn ($query, $id) => $query->whereKey($id))
@@ -249,7 +258,9 @@ class CommunityEventController extends Controller
 
         $linked = EventDiscussions::linkedThreads($items->pluck('id')->all());
 
-        return view('community.own-events', compact('items', 'statuses', 'filters', 'counts', 'linked', 'places'));
+        $series = EventSeriesIdentity::forEvents($items->pluck('id')->all());
+
+        return view('community.own-events', compact('items', 'statuses', 'filters', 'counts', 'linked', 'places', 'series'));
     }
 
     public function edit(Request $request, int $event)

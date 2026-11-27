@@ -128,6 +128,13 @@ class AccountExportController extends Controller
             $sections['sent-text-attachment-metadata'] = DB::query()->fromSub($documents, 'export_records');
         }
 
+        if (Schema::hasTable('event_series_occurrences')) {
+            $occurrences = DB::table('event_series_occurrences')->join('community_events', 'community_events.id', '=', 'event_series_occurrences.event_id')
+                ->where('community_events.author_id', $member)
+                ->selectRaw('event_series_occurrences.event_id AS export_id, event_series_occurrences.series_key, event_series_occurrences.position, event_series_occurrences.original_count, event_series_occurrences.frequency');
+            $sections['event-series-occurrences'] = DB::query()->fromSub($occurrences, 'export_records');
+        }
+
         return $sections;
     }
 

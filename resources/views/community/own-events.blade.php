@@ -8,6 +8,7 @@
             @endforeach
         </nav>
         <form class="panel saved-search" method="get" action="/account/events">
+            @if($filters['series'] ?? null)<input type="hidden" name="series" value="{{ $filters['series'] }}">@endif
             @if($filters['status'] ?? null)<input type="hidden" name="status" value="{{ $filters['status'] }}">@endif
             <label for="owned-event-search">Search your events<input type="search" id="owned-event-search" name="q" maxlength="100" value="{{ $filters['q'] ?? '' }}" placeholder="Search your events"></label>
             @if(request()->attributes->get('site')->isNetwork())
@@ -20,6 +21,7 @@
         @if(array_filter($filters, fn ($value) => $value !== null && $value !== ''))
             <a class="text-link" href="/account/events">Reset event filters</a>
         @endif
+        @if($filters['series'] ?? null)<p class="notice">Showing one recurring series. <a class="text-link" href="/account/events">Return to all events</a></p>@endif
         <p class="field-note seller-results-count">{{ $items->total() }} {{ \Illuminate\Support\Str::plural('event', $items->total()) }} found</p>
         <details class="panel form-stack mb-4"><summary>Cancel selected events</summary><form method="post" id="event-batch-cancel" action="/account/events/cancel-selected" class="form-stack mt-2">@csrf
             <p class="field-note">Choose up to eight upcoming events using the checkboxes below. Pending submissions are withdrawn; approved events are marked cancelled. Existing discussions remain intact.</p>
@@ -51,6 +53,10 @@
             @forelse($items as $item)
                 <article class="panel seller-listing-card">
                     <div class="event-discovery-card"><div class="event-date-tile"><strong>{{ $item->localStart()->format('j') }}</strong><span>{{ $item->localStart()->format('M') }}</span></div><div><span class="member-listing-status" data-status="{{ $item->status }}">{{ ucfirst($item->status) }}</span><h2>{{ $item->title }}</h2><p>{{ $item->startLabel('M j, Y · g:i a') }} · {{ $item->location->name }}</p><p>{{ $item->venue }}</p><p class="field-note">{{ \App\Support\Community::EVENTS[$item->category] }} · Reference #{{ $item->id }}</p></div></div>
+                    @if(isset($series[$item->id]))
+                        <p class="field-note">Series occurrence {{ $series[$item->id]->position }} of {{ $series[$item->id]->original_count }} · {{ ucfirst($series[$item->id]->frequency) }} at submission</p>
+                        @if(\App\Support\EventSeriesIdentity::enabled())<a class="text-link" href="/account/events?series={{ $series[$item->id]->series_key }}">Manage this series</a>@endif
+                    @endif
                     <p class="seller-lifecycle-note">{{ match($item->status) { 'pending' => 'Waiting for moderator approval.', 'approved' => 'Approved for the community calendar.', 'rejected' => 'Not approved for publication.', 'cancelled' => 'Public event marked cancelled.', 'withdrawn' => 'Submission withdrawn before publication.', default => ucfirst($item->status) } }}</p>
                     @if($item->cancellation_note)<p class="field-note">Private cancellation note · {{ $item->cancellation_note }}</p>@endif
                     @if(in_array($item->status, ['approved','cancelled'], true))<a class="button button-outline" href="/events/{{ $item->id }}">View event</a>@endif

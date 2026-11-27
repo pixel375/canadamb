@@ -15,6 +15,7 @@ final class StagedFeatures
         'commercial_payment_events' => ['id', 'attempt_id', 'provider_event_id', 'event_type', 'payload_sha256', 'outcome', 'created_at'],
         'content_reports' => ['id', 'reporter_id', 'site_id', 'target_type', 'target_id', 'reason', 'explanation', 'status', 'reviewer_id', 'review_note', 'resolved_at', 'created_at', 'updated_at'],
         'community_event_discussions' => ['event_id', 'thread_id'],
+        'event_series_occurrences' => ['event_id', 'series_key', 'position', 'original_count', 'frequency'],
         'user_signup_locations' => ['user_id', 'location_id', 'created_at'],
         'community_reply_links' => ['reply_id', 'parent_reply_id'],
         'owner_notifications' => ['id', 'user_id', 'kind', 'target_id', 'decision', 'read_at', 'created_at'],
@@ -44,6 +45,7 @@ final class StagedFeatures
         'commercial_payment_events' => [['id'], ['provider_event_id']],
         'content_reports' => [['id'], ['reporter_id', 'target_type', 'target_id']],
         'community_event_discussions' => [['event_id'], ['thread_id']],
+        'event_series_occurrences' => [['event_id'], ['series_key', 'position']],
         'user_signup_locations' => [['user_id']],
         'community_reply_links' => [['reply_id']],
         'owner_notifications' => [['id']],
@@ -68,6 +70,7 @@ final class StagedFeatures
     ];
 
     public const DEFINITIONS = [
+        ['2026_11_27_000025_create_event_series_occurrences', 'Persistent recurring event series', 'event_series_identity', ['event_series_occurrences'], [], [], 'New repeated submissions only; historical occurrences are never inferred or grouped by title.'],
         ['2026_11_27_000024_create_push_delivery_states', 'Generic Web Push activity delivery', 'push_delivery', ['push_delivery_states'], [], ['push_devices'], 'Separate default-off sender; empty payload, provider allowlist, bounded retries and no sends during prelaunch.'],
         ['2026_11_27_000023_add_event_date_only', 'Date-only event schedule', 'event_date_only', [], ['community_events' => ['date_only']], [], 'Existing timed events preserved; date-only bounds use local calendar days and exclusive end.'],
         ['2026_11_27_000022_create_message_documents', 'Private plain-text attachments', 'message_documents', ['message_documents'], [], [], 'UTF-8 .txt only, bounded private database storage, no inline execution; richer formats require reviewed malware scanning.'],
