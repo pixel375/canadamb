@@ -16,6 +16,7 @@ final class OwnerNotifications
         'reply' => ['community_replies', 'author_id', 'community', '/account/replies'],
         'event' => ['community_events', 'author_id', 'events', '/account/events'],
         'job' => ['job_postings', 'author_id', 'jobs', '/account/businesses'],
+        'business-profile' => ['businesses', null, 'businesses', '/account/businesses'],
         'business-update' => ['business_updates', 'author_id', 'businesses', '/account/businesses'],
         'business-claim' => ['business_claims', 'user_id', 'businesses', '/account/businesses'],
         'property' => ['property_listings', 'owner_id', 'real-estate', '/account/properties'],
@@ -55,7 +56,14 @@ final class OwnerNotifications
                     $query->orWhere(function (Builder $type) use ($site, $kind, $table, $owner) {
                         $type->where('alert.kind', $kind)->whereExists(function (Builder $target) use ($site, $kind, $table, $owner) {
                             $target->selectRaw('1')->from($table.' as target')
-                                ->whereColumn('target.id', 'alert.target_id')->whereColumn('target.'.$owner, 'alert.user_id');
+                                ->whereColumn('target.id', 'alert.target_id');
+                            if ($owner !== null) {
+                                $target->whereColumn('target.'.$owner, 'alert.user_id');
+                            }
+                            if ($kind === 'business-profile') {
+                                $target->whereExists(fn (Builder $membership) => $membership->selectRaw('1')->from('business_memberships as membership')
+                                    ->whereColumn('membership.business_id', 'target.id')->whereColumn('membership.user_id', 'alert.user_id')->where('membership.role', 'owner'));
+                            }
                             if ($kind === 'reply') {
                                 $target->join('community_threads as parent', 'parent.id', '=', 'target.thread_id');
                             }
@@ -66,11 +74,11 @@ final class OwnerNotifications
                                         ->whereColumn('membership.user_id', 'alert.user_id')
                                         ->whereIn('membership.role', $kind === 'job' ? ['owner', 'manager'] : ['owner', 'manager', 'editor']));
                             }
-                            if ($kind === 'business-claim') {
-                                // Claim history belongs to the claimant, not the current business owner.
+                            if (in_array($kind, ['business-claim', 'business-profile'], true)) {
+                                // Claim history belongs to the claimant; profile history requires current ownership.
                                 if ($site->location_id !== null) {
                                     $target->whereExists(fn (Builder $branch) => $branch->selectRaw('1')->from('business_locations')
-                                        ->whereColumn('business_locations.business_id', 'target.business_id')->where('location_id', $site->location_id));
+                                        ->whereColumn('business_locations.business_id', $kind === 'business-profile' ? 'target.id' : 'target.business_id')->where('location_id', $site->location_id));
                                 }
                             } elseif ($site->location_id !== null) {
                                 $locationTable = match ($kind) {
@@ -97,6 +105,7 @@ final class OwnerNotifications
             'reply' => 'comment',
             'event' => 'event',
             'job' => 'job posting',
+            'business-profile' => 'business profile',
             'business-update' => 'business update',
             'business-claim' => 'business ownership claim',
             'property' => 'private property draft',

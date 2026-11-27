@@ -101,4 +101,26 @@ class OwnerNotificationsTest extends TestCase
         $business->members()->detach($member->id);
         $this->get('https://canadamb.ca/account/notifications')->assertOk()->assertDontSee('Your job posting expired.');
     }
+
+    public function test_business_profile_review_alerts_are_visible_only_to_current_owners_in_scope(): void
+    {
+        config(['network.owner_notifications' => true]);
+        $owner = User::factory()->create();
+        $manager = User::factory()->create();
+        $admin = User::factory()->create(['role' => 'super_admin']);
+        $business = Business::create(['slug' => 'profile-alert-fixture', 'name' => 'Private profile alert fixture', 'category' => 'services', 'status' => 'pending']);
+        $business->locations()->create(['location_id' => Location::where('slug', 'winnipeg')->sole()->id, 'address' => '1 Review Road']);
+        $business->members()->attach($owner->id, ['role' => 'owner']);
+        $business->members()->attach($manager->id, ['role' => 'manager']);
+        $url = 'https://canadamb.ca/admin/business-review/'.$business->id;
+        $this->actingAs($admin)->post($url, ['decision' => 'rejected', 'notes' => 'Private review detail.', 'version' => $business->fresh()->profileVersion()])->assertRedirect();
+        $this->assertDatabaseCount('owner_notifications', 1);
+        $this->assertDatabaseHas('owner_notifications', ['kind' => 'business-profile', 'user_id' => $owner->id, 'target_id' => $business->id, 'decision' => 'rejected']);
+        $this->actingAs($owner)->get('https://canadamb.ca/account/notifications')->assertOk()
+            ->assertSee('Your business profile was not approved.')->assertDontSee('Private review detail.');
+        $this->get('https://brandonmb.ca/account/notifications')->assertOk()->assertDontSee('Your business profile was not approved.');
+        $this->actingAs($manager)->get('https://canadamb.ca/account/notifications')->assertOk()->assertDontSee('Your business profile was not approved.');
+        $business->members()->detach($owner->id);
+        $this->actingAs($owner)->get('https://canadamb.ca/account/notifications')->assertOk()->assertDontSee('Your business profile was not approved.');
+    }
 }

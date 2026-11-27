@@ -86,6 +86,14 @@ class BusinessReviewController extends Controller
                 abort_unless(hash_equals($item->profileVersion(), $data['version']), 409, 'This profile changed. Reload before reviewing.');
             }
             $item->update(['status' => $data['decision'] === 'approved' ? 'active' : 'rejected']);
+            if (OwnerNotifications::enabled()) {
+                DB::table('business_memberships')->where('business_id', $item->id)->where('role', 'owner')
+                    ->select('user_id')->chunkById(100, function ($owners) use ($item, $data) {
+                        foreach ($owners as $owner) {
+                            OwnerNotifications::record($owner->user_id, 'business-profile', $item->id, $data['decision']);
+                        }
+                    }, 'user_id');
+            }
             Audit::record('business.'.$data['decision'], $request->user()->id, context: ['business' => $business, 'notes' => $data['notes']]);
         });
 
@@ -112,9 +120,11 @@ class BusinessReviewController extends Controller
                 BusinessChanges::invalidateContact($business->id);
                 $competing = DB::table('business_claims')->where('business_id', $business->id)->where('id', '!=', $claim)->where('status', 'pending');
                 if (OwnerNotifications::enabled()) {
-                    foreach ((clone $competing)->get(['id', 'user_id']) as $pendingClaim) {
-                        OwnerNotifications::record($pendingClaim->user_id, 'business-claim', $pendingClaim->id, 'superseded');
-                    }
+                    (clone $competing)->select('id', 'user_id')->chunkById(100, function ($claims) {
+                        foreach ($claims as $pendingClaim) {
+                            OwnerNotifications::record($pendingClaim->user_id, 'business-claim', $pendingClaim->id, 'superseded');
+                        }
+                    });
                 }
                 $count = $competing->update(['status' => 'superseded', 'updated_at' => now()]);
                 if ($count) {
