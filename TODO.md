@@ -300,3 +300,5 @@ Keep this queue updated; do not interrupt independent implementation for these a
 - E02/E04 prevent rollback of populated private text attachment table; regression calls migration down and verifies record retained (test teardown explicitly clears fixtures only). Participant private photo downloads now require regular non-symlink file and sandbox/no-referrer headers. Account export includes received photo/text metadata scoped strictly to conversation participants, excludes paths, content and hashes; privacy retention runbook updated. Export regressions next. No production data or migration changes.
 
 - E02 added participant export tests for sent/received photo and text attachment metadata, outsider/admin zero records, path/hash/body exclusion. 84c72a20 backend 46013252935 and Chromium 46013252918 both green; exact live deployment receipt not yet confirmed. New attachment security CI pending.
+
+- 84c72a20 verified backend 203 tests / 4581 assertions each database; browser green. 1223dc46 intermediate backend failed Pint unary operator spacing on new photo check; corrected formatting on both photo paths; final verification pending.
