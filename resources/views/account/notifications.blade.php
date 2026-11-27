@@ -37,12 +37,18 @@
         @if($announcements)
             <section class="homepage-section activity-panel">
                 <div class="section-heading"><h2>Network announcements</h2><span>{{ $announcementUnread }} unread</span></div>
+                <nav class="inline-actions mb-4" aria-label="Network announcements filters">
+                    @foreach(['all' => 'All', 'unread' => 'Unread only'] as $mode => $label)
+                        @php($params = array_filter(['announcement_view' => $mode, 'submission_view' => $filters['submission_view'] ?? null]))
+                        <a class="button button-{{ ($filters['announcement_view'] ?? 'all') === $mode ? 'primary' : 'outline' }}" href="/account/notifications?{{ http_build_query($params) }}" @if(($filters['announcement_view'] ?? 'all') === $mode) aria-current="page" @endif>{{ $label }}</a>
+                    @endforeach
+                </nav>
                 <div class="panel">
                     @forelse($announcements as $announcement)
                         <article class="item-row"><div><p class="section-label">Official CanadaMB announcement</p><h3>{{ $announcement->title }}</h3><p class="preserve-lines">{{ $announcement->body }}</p><p>{{ \Illuminate\Support\Carbon::parse($announcement->created_at)->diffForHumans() }}</p></div>
                             @if(!$announcement->read_at)<form method="post" action="/account/notifications/announcements/{{ $announcement->id }}/read">@csrf<button class="button button-outline">Mark as read</button></form>@endif
                         </article>
-                    @empty<p>No network announcements yet.</p>@endforelse
+                    @empty<p>{{ ($filters['announcement_view'] ?? null) === 'unread' ? 'No unread network announcements.' : 'No network announcements yet.' }}</p>@endforelse
                 </div>
                 {{ $announcements->links() }}
             </section>
@@ -80,6 +86,12 @@
         @if($ownerEnabled)
             <section class="homepage-section activity-panel">
                 <div class="section-heading"><h2>My submission updates</h2><span>{{ $ownerUnread }} unread</span></div>
+                <nav class="inline-actions mb-4" aria-label="My submission updates filters">
+                    @foreach(['all' => 'All', 'unread' => 'Unread only'] as $mode => $label)
+                        @php($params = array_filter(['submission_view' => $mode, 'announcement_view' => $filters['announcement_view'] ?? null]))
+                        <a class="button button-{{ ($filters['submission_view'] ?? 'all') === $mode ? 'primary' : 'outline' }}" href="/account/notifications?{{ http_build_query($params) }}" @if(($filters['submission_view'] ?? 'all') === $mode) aria-current="page" @endif>{{ $label }}</a>
+                    @endforeach
+                </nav>
                 <div class="panel">
                     @forelse($ownerAlerts as $alert)
                         <article class="item-row">
@@ -92,7 +104,7 @@
                             @if(!$alert->read_at)<form method="post" action="/account/notifications/updates/{{ $alert->id }}/read">@csrf<button class="button button-outline">Mark as read</button></form>@endif
                         </article>
                     @empty
-                        <p>No submission updates on this portal yet.</p>
+                        <p>{{ ($filters['submission_view'] ?? null) === 'unread' ? 'No unread submission updates on this portal.' : 'No submission updates on this portal yet.' }}</p>
                     @endforelse
                 </div>
                 {{ $ownerAlerts->links() }}
