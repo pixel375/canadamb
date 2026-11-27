@@ -185,6 +185,7 @@ const password = 'New-browser-qa-42';
         await visit(page, '/account/events');
         await page.locator('details').filter({ has: page.locator('#event-batch-edit') }).locator('summary').click();
         for (const input of await events.locator('input[form="event-batch-edit"][name="events[]"]').all()) await input.check();
+        await page.locator('#event-batch-edit select[name="field"]').selectOption('venue');
         await page.locator('#event-batch-edit input[name="value"]').fill('Revised QA hall');
         await page.locator('#event-batch-edit input[name="confirm_update"]').check();
         await submit(page, page.locator('#event-batch-edit').getByRole('button', { name: 'Update selected events' }), '/account/events');
