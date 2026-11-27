@@ -50,6 +50,16 @@ class Listing extends Model
         return hash('sha256', $this->media()->pluck('id')->implode(','));
     }
 
+    public function allowsSellerStatus(string $status): bool
+    {
+        return match ($status) {
+            'sold' => $this->status === 'active' && $this->expires_at !== null && $this->expires_at->isFuture(),
+            'pending' => $this->status === 'expired' || ($this->status === 'active' && $this->expires_at !== null && $this->expires_at->lte(now())),
+            'removed' => in_array($this->status, ['active', 'pending', 'expired', 'rejected', 'sold'], true),
+            default => false,
+        };
+    }
+
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('status', 'active')->where('expires_at', '>', now());

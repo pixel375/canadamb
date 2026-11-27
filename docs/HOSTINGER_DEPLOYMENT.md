@@ -131,7 +131,7 @@ php "$APP/current/artisan" network:admin "$TEST_ADMIN"
 php "$APP/current/artisan" up
 ```
 
-From an allowlisted workstation, run `CANADAMB_SMOKE_PRELAUNCH=1 bash deploy/smoke.sh`. From a different network verify that both portals return a prelaunch 403, that `robots.txt` disallows crawling, and that forwarded headers do not grant access. Run the [two-domain acceptance checklist](DEPLOYMENT_CHECKLIST.md), including real browser OAuth, admin publishing and cleanup of tracked test records. Keep CDN full-page caching disabled during prelaunch.
+From a password-unlocked browser, run the two-domain acceptance checks. From a fresh browser without the preview cookie, verify both portals return HTTP 403 with the preview password form, that `robots.txt` disallows crawling, and that forwarded headers do not grant access. The previous IP-allowlisted command-line smoke is obsolete for production preview. Run the [two-domain acceptance checklist](DEPLOYMENT_CHECKLIST.md), including real browser OAuth, admin publishing and cleanup of tracked test records. Keep CDN full-page caching disabled during prelaunch.
 
 ## 4. Bounded cron, updates, and recovery
 

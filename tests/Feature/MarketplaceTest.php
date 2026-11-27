@@ -55,7 +55,8 @@ class MarketplaceTest extends TestCase
         $this->get(self::MAIN.'/marketplace?view=all')->assertSee('Oak dining table');
         $this->get(self::CITY.'/marketplace?view=all')->assertSee('Oak dining table');
 
-        $this->actingAs($seller)->post(self::CITY."/account/listings/$item->id/status", ['status' => 'removed'])->assertRedirect();
+        $this->actingAs($seller)->post(self::CITY."/account/listings/$item->id/status", ['status' => 'removed'])->assertSessionHasErrors('version');
+        $this->post(self::CITY."/account/listings/$item->id/status", ['status' => 'removed', 'version' => $item->fresh()->reviewVersion()])->assertRedirect();
         $this->get(self::CITY.'/marketplace')->assertDontSee('Oak dining table');
         $this->get(self::MAIN.'/marketplace')->assertDontSee('Oak dining table');
         $this->get(self::CITY."/marketplace/$item->id")->assertNotFound();
@@ -333,6 +334,29 @@ class MarketplaceTest extends TestCase
         $item->refresh()->forceFill(['status' => 'pending'])->save();
         $this->post($moderate, ['status' => 'active', 'version' => $item->fresh()->reviewVersion()])->assertRedirect();
         $this->assertSame($expires, $item->fresh()->expires_at->timestamp);
+    }
+
+    public function test_seller_renewal_at_exact_expiry_is_consistent_for_single_and_batch_actions(): void
+    {
+        $this->freezeSecond();
+        $seller = User::factory()->create();
+        $items = collect();
+        foreach (range(1, 2) as $index) {
+            $item = Listing::create(['user_id' => $seller->id, 'location_id' => Location::where('slug', 'brandon')->sole()->id,
+                'title' => 'Expiry boundary '.$index, 'description' => 'A test listing.', 'category' => 'furniture',
+                'condition' => 'good', 'price_cents' => 1000, 'status' => 'active']);
+            $item->forceFill(['published_at' => now()->subDays(30), 'expires_at' => now()])->save();
+            $items->push($item->fresh());
+        }
+        $this->actingAs($seller)->get(self::CITY.'/marketplace/'.$items[0]->id)->assertNotFound();
+        $path = self::CITY.'/account/listings/'.$items[0]->id.'/status';
+        $version = $items[0]->reviewVersion();
+        $this->post($path, ['status' => 'sold', 'version' => $version])->assertConflict();
+        $this->post($path, ['status' => 'pending', 'version' => $version])->assertRedirect();
+        $this->post(self::CITY.'/account/listings/batch-status', ['status' => 'pending', 'listings' => [$items[1]->id],
+            'versions' => [$items[1]->id => $items[1]->reviewVersion()], 'confirm_batch' => '1'])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame('pending', $items[0]->fresh()->status);
+        $this->assertSame('pending', $items[1]->fresh()->status);
     }
 
     private function listing(string $title): array

@@ -268,14 +268,11 @@ class MarketplaceController extends Controller
     public function status(Request $request, int $listing)
     {
         abort_unless($this->marketplace->enabled($request->attributes->get('site')), 404);
-        $data = $request->validate(['status' => ['required', Rule::in(['removed', 'sold', 'pending'])], 'version' => 'nullable|string|size:64']);
-        DB::transaction(function () use ($request, $listing, $data) {
+        DB::transaction(function () use ($request, $listing) {
             $item = $this->owned($request, $listing, true);
-            if (isset($data['version'])) {
-                abort_unless(hash_equals($item->reviewVersion(), $data['version']), 409, 'Listing changed. Reload before changing status.');
-            }
-            abort_if($data['status'] === 'sold' && ($item->status !== 'active' || ! $item->expires_at?->isFuture()), 409);
-            abort_if($data['status'] === 'pending' && $item->status !== 'expired' && ! ($item->status === 'active' && $item->expires_at?->isPast()), 409);
+            $data = $request->validate(['status' => ['required', Rule::in(['removed', 'sold', 'pending'])], 'version' => 'required|string|size:64']);
+            abort_unless(hash_equals($item->reviewVersion(), $data['version']), 409, 'Listing changed. Reload before changing status.');
+            abort_unless($item->allowsSellerStatus($data['status']), 409);
             $this->marketplace->changeStatus($item, $data['status'], $request->user()->id);
         });
 
@@ -303,10 +300,7 @@ class MarketplaceController extends Controller
                 if (! isset($data['versions'][$item->id]) || ! hash_equals($item->reviewVersion(), $data['versions'][$item->id])) {
                     throw ValidationException::withMessages(['listings' => 'A selected listing changed. Reload and select again.']);
                 }
-                $eligible = $data['status'] === 'sold'
-                    ? $item->status === 'active' && $item->expires_at?->isFuture()
-                    : $item->status === 'expired' || ($item->status === 'active' && $item->expires_at?->isPast());
-                if (! $eligible) {
+                if (! $item->allowsSellerStatus($data['status'])) {
                     throw ValidationException::withMessages(['listings' => 'All selected listings must be eligible for the requested action. No listings changed.']);
                 }
             }
