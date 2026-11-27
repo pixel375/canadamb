@@ -81,6 +81,8 @@ class EventSeriesIdentityTest extends TestCase
         $this->assertSame('pending', $thread->fresh()->status);
         $this->get($base.'/events/'.$event->id.'/calendar')->assertNotFound();
         $this->get($base.$seriesFile)->assertNotFound();
+        $this->post($url, $data)->assertTooManyRequests();
+        $this->travel(61)->seconds();
         $this->post($url, $data)->assertSessionHasErrors('version');
         $this->assertSame($key, DB::table('event_series_occurrences')->where('event_id', $event->id)->value('series_key'));
         $this->post($base.'/account/events/'.$event->id.'/cancel')->assertSessionHasErrors('version');
