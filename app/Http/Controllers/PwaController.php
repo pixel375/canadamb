@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Site;
 use App\Support\NetworkSettings;
+use App\Support\PushDelivery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -46,7 +47,7 @@ class PwaController extends Controller
      */
     public function serviceWorker(Request $request, NetworkSettings $settings): Response
     {
-        $this->enabledSite($request, $settings);
+        $site = $this->enabledSite($request, $settings);
 
         $javascript = <<<'JS'
 self.addEventListener('install', () => {
@@ -63,6 +64,25 @@ self.addEventListener('fetch', event => {
     event.respondWith(fetch(event.request));
 });
 JS;
+        if (PushDelivery::available($site)) {
+            // Ignore all incoming payloads; do not read/store private account
+            // data or navigate to a provider-controlled URL.
+            $javascript .= <<<'JS'
+
+self.addEventListener('push', event => {
+    event.waitUntil(self.registration.showNotification('CanadaMB', {
+        body: 'You may have new account activity. Open CanadaMB to check.',
+        icon: '/pwa/icon/192.png?v=2',
+        tag: 'canadamb-activity',
+        renotify: false
+    }));
+});
+self.addEventListener('notificationclick', event => {
+    event.notification.close();
+    event.waitUntil(self.clients.openWindow(new URL('/account/notifications', self.location.origin).href));
+});
+JS;
+        }
 
         return response($javascript, 200, [
             'Content-Type' => 'application/javascript; charset=utf-8',

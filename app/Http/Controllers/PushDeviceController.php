@@ -16,6 +16,7 @@ final class PushDeviceController extends Controller
     {
         $site = $request->attributes->get('site');
         abort_unless(PushDevices::available($site), 404);
+        abort_unless($request->isJson() && $request->expectsJson(), 415);
         $data = $request->validate([
             'endpoint' => 'required|string|max:2048',
             'keys' => 'required|array:p256dh,auth',
@@ -69,6 +70,7 @@ final class PushDeviceController extends Controller
     public function unsubscribe(Request $request)
     {
         abort_unless(PushDevices::enabled(), 404);
+        abort_unless($request->isJson() && $request->expectsJson(), 415);
         $data = $request->validate(['endpoint' => 'required|string|max:2048']);
         $member = $request->user()->id;
         $site = $request->attributes->get('site');

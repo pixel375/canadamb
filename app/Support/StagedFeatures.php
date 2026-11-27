@@ -19,6 +19,7 @@ final class StagedFeatures
         'community_reply_links' => ['reply_id', 'parent_reply_id'],
         'owner_notifications' => ['id', 'user_id', 'kind', 'target_id', 'decision', 'read_at', 'created_at'],
         'push_devices' => ['id', 'user_id', 'site_id', 'endpoint_hash', 'subscription', 'created_at', 'updated_at'],
+        'push_delivery_states' => ['device_id', 'message_cursor', 'discussion_cursor', 'owner_cursor', 'next_check_at', 'attempts', 'accepted_count', 'last_accepted_at', 'last_result', 'updated_at'],
         'broadcast_consents' => ['user_id', 'opted_in', 'updated_at'],
         'direct_message_preferences' => ['user_id', 'member_messages', 'official_messages', 'updated_at'],
         'announcements' => ['id', 'author_id', 'confirmation_hash', 'title', 'body', 'audience', 'recipient_count', 'created_at'],
@@ -47,6 +48,7 @@ final class StagedFeatures
         'community_reply_links' => [['reply_id']],
         'owner_notifications' => [['id']],
         'push_devices' => [['id'], ['endpoint_hash']],
+        'push_delivery_states' => [['device_id']],
         'broadcast_consents' => [['user_id']],
         'direct_message_preferences' => [['user_id']],
         'announcements' => [['id'], ['confirmation_hash']],
@@ -66,6 +68,7 @@ final class StagedFeatures
     ];
 
     public const DEFINITIONS = [
+        ['2026_11_27_000024_create_push_delivery_states', 'Generic Web Push activity delivery', 'push_delivery', ['push_delivery_states'], [], ['push_devices'], 'Separate default-off sender; empty payload, provider allowlist, bounded retries and no sends during prelaunch.'],
         ['2026_11_27_000023_add_event_date_only', 'Date-only event schedule', 'event_date_only', [], ['community_events' => ['date_only']], [], 'Existing timed events preserved; date-only bounds use local calendar days and exclusive end.'],
         ['2026_11_27_000022_create_message_documents', 'Private plain-text attachments', 'message_documents', ['message_documents'], [], [], 'UTF-8 .txt only, bounded private database storage, no inline execution; richer formats require reviewed malware scanning.'],
         ['2026_11_26_000021_create_direct_message_preferences', 'Direct and official member messaging', 'direct_messaging', ['direct_message_preferences'], ['conversations' => ['direct_kind']], ['extended_messaging'], 'Separate default-off opt-ins; participant-only history and audited official initiation.'],
