@@ -4,11 +4,18 @@
     <section class="panel">@forelse($items as $item)
         <?php $target = $targets[$item->id]; ?>
         <article class="admin-review-card form-stack"><h2>Report #{{ $item->id }} · {{ \App\Support\ContentReports::TYPES[$item->target_type] }} #{{ $item->target_id }}</h2><p>{{ \App\Support\ContentReports::REASONS[$item->reason] }} · {{ ucfirst($item->status) }}</p><p class="prose-text">{{ $item->explanation }}</p>
-            @if($target)<div class="panel"><p class="section-label">Current target @if($target->status) · {{ ucfirst($target->status) }} @endif</p><h3>{{ \App\Support\ContentReports::label($target) }}</h3>@if($item->target_type === 'message')<p class="field-note">Only the reported message is shown. Do not copy private contents into review notes.</p>@endif
-            @if($item->target_type === 'message-photo')
-                <p class="field-note">Only the explicitly reported photo may be downloaded. Access is logged and ends when the report is resolved.</p>
-                @if($item->status === 'pending' && \App\Support\MessageAttachments::enabled())<a class="button button-outline" href="/admin/content-reports/{{ $item->id }}/photo">Download reported photo</a>@endif
-            @else<p class="prose-text">{{ \App\Support\ContentReports::summary($target) }}</p>@endif</div>@else<p>Target no longer exists.</p>@endif
+            @if(\App\Support\ContentReports::privateType($item->target_type))
+                <div class="panel form-stack">
+                    <h3>Restricted reported evidence</h3>
+                    <p class="field-note">Only the individually reported item is accessible while this report is pending. Access is audited. Do not copy private content into review notes.</p>
+                    @if($item->status === 'pending')
+                        @if($item->target_type === 'message-photo' && \App\Support\MessageAttachments::enabled())<a class="button button-outline" href="/admin/content-reports/{{ $item->id }}/photo">Download reported photo</a>
+                        @elseif($item->target_type === 'message' || ($item->target_type === 'message-document' && \App\Support\MessageDocuments::enabled()))
+                            <form method="post" action="/admin/content-reports/{{ $item->id }}/evidence">@csrf<button class="button button-outline">{{ $item->target_type === 'message-document' ? 'Download reported text attachment' : 'View reported message' }}</button></form>
+                        @endif
+                    @else<p>Evidence access closed after resolution.</p>@endif
+                </div>
+            @elseif($target)<div class="panel"><p class="section-label">Current target @if($target->status) · {{ ucfirst($target->status) }} @endif</p><h3>{{ \App\Support\ContentReports::label($target) }}</h3><p class="prose-text">{{ \App\Support\ContentReports::summary($target) }}</p></div>@else<p>Target no longer exists.</p>@endif
             @if($item->status === 'pending')<form method="post" action="/admin/content-reports/{{ $item->id }}" class="form-stack">@csrf<label>Internal review note<textarea name="note" minlength="8" maxlength="1000" required></textarea></label><p class="field-note">Resolving does not remove or approve content. Use the relevant content moderation queue for any necessary action.</p><button class="button button-primary">Resolve report</button></form>@else<p>{{ $item->review_note }}</p>@endif
         </article>
     @empty<p>No reports match these filters.</p>@endforelse{{ $items->links() }}</section>

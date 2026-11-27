@@ -634,6 +634,13 @@ if (chatPanel) {
             report.href = '/account/report/message/' + item.id;
             report.textContent = 'Report message';
             article.append(report);
+            if (item.has_document) {
+                const documentReport = document.createElement('a');
+                documentReport.className = 'text-link field-note';
+                documentReport.href = '/account/report/message-document/' + item.id;
+                documentReport.textContent = 'Report text attachment';
+                article.append(documentReport);
+            }
             if (item.has_attachment) {
                 const photoReport = document.createElement('a');
                 photoReport.className = 'text-link field-note';

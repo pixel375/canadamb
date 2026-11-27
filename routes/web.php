@@ -276,6 +276,7 @@ Route::prefix('admin')->middleware(['auth', 'verified', 'can:manage-network'])->
     Route::post('/jobs/selected', [JobReviewController::class, 'updateSelected'])->middleware('throttle:8,1,job-batch-moderation');
     Route::post('/jobs/{job}', [JobReviewController::class, 'update'])->whereNumber('job');
     Route::get('/content-reports', [ContentReportReviewController::class, 'index']);
+    Route::post('/content-reports/{report}/evidence', [ContentReportReviewController::class, 'evidence'])->whereNumber('report')->middleware('throttle:12,1,reported-evidence');
     Route::get('/content-reports/{report}/photo', [ContentReportReviewController::class, 'photo'])->whereNumber('report')->middleware('throttle:12,1,reported-photo');
     Route::post('/content-reports/{report}', [ContentReportReviewController::class, 'resolve'])->whereNumber('report')->middleware('throttle:12,1,content-report-review');
     Route::get('/community', [CommunityModerationController::class, 'index']);

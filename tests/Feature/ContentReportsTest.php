@@ -63,8 +63,12 @@ class ContentReportsTest extends TestCase
         $this->get($admin)->assertOk()->assertDontSee($data['explanation'])->assertDontSee($message->body);
         $this->post($admin.'/'.$report->id, ['note' => 'Conflicted moderator attempt.'])->assertForbidden();
         $this->actingAs($reviewer)->get($chat)->assertNotFound();
-        $this->get($admin)->assertOk()->assertSee($message->body)->assertDontSee($other->body);
+        $this->get($admin)->assertOk()->assertSee('View reported message')->assertDontSee($message->body)->assertDontSee($other->body);
+        $this->post($admin.'/'.$report->id.'/evidence')->assertOk()->assertSee($message->body)->assertDontSee($other->body);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'content.report-message-accessed']);
         $this->post($admin.'/'.$report->id, ['note' => 'Independent review completed.'])->assertRedirect();
+        $this->post($admin.'/'.$report->id.'/evidence')->assertNotFound();
+        $this->get($admin)->assertOk()->assertDontSee($message->body);
         $this->actingAs($recipient)->get('https://brandonmb.ca/account/content-reports')->assertSee('Review completed');
         $profile = 'https://brandonmb.ca/account/report/profile/'.$sender->id;
         $this->get('https://brandonmb.ca/users/'.$sender->id)->assertSee('Report member');

@@ -45,7 +45,7 @@
                         <p class="chat-bubble">{{ $message->body }}</p>
                         @if($message->document_exists)<a class="text-link" href="/account/messages/{{ $thread->id }}/documents/{{ $message->id }}">Download text attachment (.txt)</a><small class="field-note">Untrusted attachment. Never run commands or follow payment instructions from a stranger.</small>@endif
                         @if($message->attachment_exists)<a class="text-link" href="/account/messages/{{ $thread->id }}/attachments/{{ $message->id }}">Download photo attachment</a>@endif
-                        @if($messageReports && $message->sender_id !== auth()->id())<a class="text-link field-note" href="/account/report/message/{{ $message->id }}">Report message</a>@if($message->attachment_exists)<a class="text-link field-note" href="/account/report/message-photo/{{ $message->id }}">Report photo</a>@endif
+                        @if($messageReports && $message->sender_id !== auth()->id())<a class="text-link field-note" href="/account/report/message/{{ $message->id }}">Report message</a>@if($message->attachment_exists)<a class="text-link field-note" href="/account/report/message-photo/{{ $message->id }}">Report photo</a>@endif @if($message->document_exists)<a class="text-link field-note" href="/account/report/message-document/{{ $message->id }}">Report text attachment</a>@endif
                         @endif
                     </article>
                 @empty<p class="field-note">No messages yet.</p>@endforelse
