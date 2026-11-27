@@ -85,6 +85,16 @@ class EventSeriesIdentityTest extends TestCase
         $this->travel(61)->seconds();
         $this->post($url, $data)->assertSessionHasErrors('version');
         $this->assertSame($key, DB::table('event_series_occurrences')->where('event_id', $event->id)->value('series_key'));
+        $editPath = $base.'/account/events/'.$event->id;
+        $this->get($base.$path)->assertOk()->assertSee('href="/account/events/'.$event->id.'/edit?series='.$key.'"', false);
+        $this->get($editPath.'/edit?series='.$key)->assertOk()->assertSee('name="series" value="'.$key.'"', false)
+            ->assertSee('href="'.$path.'"', false);
+        $this->get($editPath.'/edit?series=11111111-1111-4111-8111-111111111111')->assertNotFound();
+        $editData = array_replace($input, ['title' => $event->fresh()->title, 'venue' => 'Updated hall', 'repeat' => 'none',
+            'version' => $event->fresh()->contentVersion(), 'thread_version' => $thread->fresh()->contentVersion(), 'series' => $key]);
+        $this->put($editPath, array_replace($editData, ['series' => '11111111-1111-4111-8111-111111111111']))->assertNotFound();
+        $this->put($editPath, $editData)->assertRedirect($path)->assertSessionHasNoErrors();
+        $this->assertSame('Updated hall', $event->fresh()->venue);
         $this->post($base.'/account/events/'.$event->id.'/cancel')->assertSessionHasErrors('version');
         $this->post($base.'/account/events/'.$event->id.'/cancel', ['version' => $event->fresh()->contentVersion(), 'series' => $key])->assertRedirect($path);
         $this->get($base.$path)->assertOk()->assertSee('3 events found')->assertSee('Withdrawn');

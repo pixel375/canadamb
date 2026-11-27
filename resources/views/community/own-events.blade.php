@@ -65,7 +65,7 @@
                     @if(in_array($item->status, ['approved','cancelled'], true))<a class="button button-outline" href="/events/{{ $item->id }}">View event</a>@endif
                     @if(in_array($item->status, ['pending', 'approved', 'rejected'], true) && !$item->scheduleStarted() && (!$item->isDateOnly() || \App\Support\EventSchedule::available()))
                         @if(!array_key_exists($item->id, $linked) || ($linked[$item->id] && \App\Support\EventDiscussions::editable($item, $linked[$item->id])))
-                            <a class="button button-outline" href="/account/events/{{ $item->id }}/edit">Edit event</a>
+                            <a class="button button-outline" href="/account/events/{{ $item->id }}/edit{{ isset($filters['series']) ? '?series='.$filters['series'] : '' }}">Edit event</a>
                         @else
                             <p class="field-note">The linked discussion cannot currently be edited. You can cancel and reuse the event.</p>
                         @endif

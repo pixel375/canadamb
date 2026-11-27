@@ -290,8 +290,11 @@ class CommunityEventController extends Controller
         $item = $this->ownedEvent($request)->findOrFail($event);
         $linkedThread = EventDiscussions::linkedThread($item);
         $this->ensureEditable($item, $linkedThread);
+        $series = $request->validate(['series' => 'nullable|uuid'])['series'] ?? null;
+        $this->checkSeriesSelection($series, [$item->id]);
+        $returnUrl = $this->seriesReturn($series);
 
-        return view('community.edit-event', compact('item', 'linkedThread'));
+        return view('community.edit-event', compact('item', 'linkedThread', 'series', 'returnUrl'));
     }
 
     public function update(Request $request, int $event)
@@ -303,7 +306,7 @@ class CommunityEventController extends Controller
             'category' => ['required', Rule::in(array_keys(Community::EVENTS))],
             'organizer' => 'required|string|max:150', 'venue' => 'required|string|max:180', 'event_url' => 'nullable|url:https|max:1024',
             ...EventSchedule::rules(),
-            'version' => 'required|string|size:64', 'thread_version' => 'nullable|string|size:64',
+            'version' => 'required|string|size:64', 'thread_version' => 'nullable|string|size:64', 'series' => 'nullable|uuid',
         ]);
         $date = EventSeries::dates($this->community, $data['starts_at'], $data['ends_at'] ?? null, 'none', 1)[0];
         if (! EventSchedule::upcoming($date)) {
@@ -313,13 +316,14 @@ class CommunityEventController extends Controller
             $author = $request->user()->id;
             User::lockForUpdate()->findOrFail($author);
             $item = $this->ownedEvent($request)->lockForUpdate()->findOrFail($event);
+            $this->checkSeriesSelection($data['series'] ?? null, [$item->id]);
             $linkedThread = EventDiscussions::linkedThread($item, lock: true);
             $this->ensureEditable($item, $linkedThread);
             $this->checkVersion($item, $data['version']);
             if ($linkedThread && (! isset($data['thread_version']) || ! hash_equals($linkedThread->contentVersion(), $data['thread_version']))) {
                 throw ValidationException::withMessages(['thread_version' => 'The linked discussion changed. Reload the event editor before saving.']);
             }
-            $changes = array_replace(collect($data)->except(['version', 'thread_version'])->all(), $date, ['event_url' => $data['event_url'] ?? null]);
+            $changes = array_replace(collect($data)->except(['version', 'thread_version', 'series'])->all(), $date, ['event_url' => $data['event_url'] ?? null]);
             $item->fill($changes);
             if (! $item->isDirty()) {
                 return;
@@ -341,7 +345,7 @@ class CommunityEventController extends Controller
             }
         }, attempts: 3);
 
-        return redirect('/account/events')->with('status', 'Event saved. Changed details require moderation before publication.');
+        return redirect($this->seriesReturn($data['series'] ?? null))->with('status', 'Event saved. Changed details require moderation before publication.');
     }
 
     private function ownedEvent(Request $request)
