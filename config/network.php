@@ -16,6 +16,7 @@ return [
     'broadcast_previews' => env('CANADAMB_BROADCAST_PREVIEWS', false),
     'announcement_delivery' => env('CANADAMB_ANNOUNCEMENT_DELIVERY', false),
     'direct_messaging' => env('CANADAMB_DIRECT_MESSAGING', false),
+    'message_documents' => env('CANADAMB_MESSAGE_DOCUMENTS', false),
     'push_public_key' => env('CANADAMB_PUSH_PUBLIC_KEY'),
     'recurring_events' => env('CANADAMB_RECURRING_EVENTS', false),
     'event_discussions' => env('CANADAMB_EVENT_DISCUSSIONS', false),

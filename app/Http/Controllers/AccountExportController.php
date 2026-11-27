@@ -117,6 +117,12 @@ class AccountExportController extends Controller
             $sections['sent-photo-metadata'] = DB::query()->fromSub($photos, 'export_records');
         }
 
+        if (Schema::hasTable('message_documents')) {
+            $documents = DB::table('message_documents')->join('messages', 'messages.id', '=', 'message_documents.message_id')
+                ->where('messages.sender_id', $member)->selectRaw('message_documents.id AS export_id, message_documents.message_id, messages.conversation_id, message_documents.bytes, message_documents.created_at');
+            $sections['sent-text-attachment-metadata'] = DB::query()->fromSub($documents, 'export_records');
+        }
+
         return $sections;
     }
 

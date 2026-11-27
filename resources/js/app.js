@@ -618,6 +618,16 @@ if (chatPanel) {
             attachment.textContent = 'Download photo attachment';
             article.append(attachment);
         }
+        if (item.has_document && Number.isSafeInteger(item.id) && Number.isSafeInteger(conversation) && conversation > 0) {
+            const documentLink = document.createElement('a');
+            documentLink.className = 'text-link';
+            documentLink.href = '/account/messages/' + conversation + '/documents/' + item.id;
+            documentLink.textContent = 'Download text attachment (.txt)';
+            const warning = document.createElement('small');
+            warning.className = 'field-note';
+            warning.textContent = 'Untrusted attachment. Never run commands or follow payment instructions from a stranger.';
+            article.append(documentLink, warning);
+        }
         if (!item.own && chatPanel.dataset.chatReportable === '1' && Number.isSafeInteger(item.id)) {
             const report = document.createElement('a');
             report.className = 'text-link field-note';

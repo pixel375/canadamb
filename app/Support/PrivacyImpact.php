@@ -67,6 +67,13 @@ final class PrivacyImpact
                 ->join('conversations', 'conversations.id', '=', 'messages.conversation_id')
                 ->where('messages.sender_id', '!=', $member)->where(fn ($query) => $query->where('conversations.buyer_id', $member)->orWhere('conversations.seller_id', $member))->count() : null;
 
+        $counts['Sent text attachments'] = Schema::hasTable('message_documents')
+            ? DB::table('message_documents')->join('messages', 'messages.id', '=', 'message_documents.message_id')->where('messages.sender_id', $member)->count() : null;
+        $counts['Received text attachments'] = Schema::hasTable('message_documents')
+            ? DB::table('message_documents')->join('messages', 'messages.id', '=', 'message_documents.message_id')
+                ->join('conversations', 'conversations.id', '=', 'messages.conversation_id')
+                ->where('messages.sender_id', '!=', $member)->where(fn ($query) => $query->where('conversations.buyer_id', $member)->orWhere('conversations.seller_id', $member))->count() : null;
+
         $counts['Listing photos'] = DB::table('listing_media')->join('listings', 'listings.id', '=', 'listing_media.listing_id')->where('listings.user_id', $member)->count();
         $counts['Private property photos'] = DB::table('property_photos')->join('property_listings', 'property_listings.id', '=', 'property_photos.property_listing_id')->where('property_listings.owner_id', $member)->count();
 

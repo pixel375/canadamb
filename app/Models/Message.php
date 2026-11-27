@@ -20,6 +20,11 @@ class Message extends Model
         return $this->hasOne(MessageAttachment::class);
     }
 
+    public function document(): HasOne
+    {
+        return $this->hasOne(MessageDocument::class);
+    }
+
     public function sender(): BelongsTo
     {
         return $this->belongsTo(User::class, 'sender_id');

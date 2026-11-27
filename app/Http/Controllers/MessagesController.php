@@ -18,6 +18,7 @@ use App\Support\KeywordSearch;
 use App\Support\ListingPhotos;
 use App\Support\Marketplace;
 use App\Support\MessageAttachments;
+use App\Support\MessageDocuments;
 use App\Support\MessagingExtensions;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\Cursor;
@@ -321,6 +322,7 @@ class MessagesController extends Controller
         }
         $messages = $thread->messages()->with('sender:id,name')
             ->when(MessageAttachments::enabled(), fn ($query) => $query->withExists('attachment'))
+            ->when(MessageDocuments::enabled(), fn ($query) => $query->withExists('document'))
             ->latest('id')->cursorPaginate(30, ['*'], 'history', $cursor);
         $latestPage = $cursor === null;
         if ($latestPage && $latest = $messages->first()?->id) {
@@ -379,6 +381,7 @@ class MessagesController extends Controller
         }
         $messages = $thread->messages()->with('sender:id,name')
             ->when(MessageAttachments::enabled(), fn ($query) => $query->withExists('attachment'))
+            ->when(MessageDocuments::enabled(), fn ($query) => $query->withExists('document'))
             ->where('id', '>', $after)->orderBy('id')->limit(30)->get();
 
         return response()->json([
@@ -388,6 +391,7 @@ class MessagesController extends Controller
                 'sender' => $message->sender_id === $id ? 'You' : $message->sender->name,
                 'body' => $message->body,
                 'has_attachment' => (bool) $message->attachment_exists,
+                'has_document' => (bool) $message->document_exists,
                 'created_at' => $message->created_at->toIso8601String(),
                 'time_label' => $message->created_at->diffForHumans(),
             ])->values(),
@@ -401,8 +405,10 @@ class MessagesController extends Controller
         $id = $request->user()->id;
         $thread = Conversation::forMember($id)->findOrFail($conversation);
         $enabled = MessageAttachments::enabled();
-        $data = $request->validate(['body' => 'required|string|max:2000', 'photo' => $enabled ? 'nullable|file|mimes:jpg,jpeg,png,webp|max:4096' : 'prohibited']);
+        $data = $request->validate(['body' => 'required|string|max:2000', 'photo' => $enabled ? 'nullable|file|mimes:jpg,jpeg,png,webp|max:4096' : 'prohibited',
+            'document' => MessageDocuments::enabled() ? 'nullable|file|max:60|prohibits:photo' : 'prohibited']);
         abort_if($this->isBlocked($id, $thread->other($id)) || ! MessagingExtensions::canReply($thread), 403);
+        $document = $request->hasFile('document') ? MessageDocuments::inspect($request->file('document')) : null;
         $media = [];
         try {
             if ($request->hasFile('photo')) {
@@ -415,7 +421,7 @@ class MessagesController extends Controller
                     throw ValidationException::withMessages(['photo' => $exception->validator->errors()->first()]);
                 }
             }
-            DB::transaction(function () use ($id, $conversation, $data, $media) {
+            DB::transaction(function () use ($id, $conversation, $data, $media, $document) {
                 $thread = Conversation::forMember($id)->findOrFail($conversation);
                 if ($thread->inquiry_business_id) {
                     Business::lockForUpdate()->findOrFail($thread->inquiry_business_id);
@@ -425,7 +431,13 @@ class MessagesController extends Controller
                 if ($media && (! MessageAttachments::enabled() || MessageAttachments::quotaExceeded($id, $conversation, lock: true))) {
                     throw ValidationException::withMessages(['photo' => 'Photo attachments are unavailable or the limit has been reached.']);
                 }
+                if ($document && (! MessageDocuments::enabled() || MessageDocuments::quotaExceeded($id, $conversation))) {
+                    throw ValidationException::withMessages(['document' => 'Text attachments are unavailable or the limit has been reached.']);
+                }
                 $message = $this->write($thread, $id, $data['body']);
+                if ($document) {
+                    $message->document()->create($document);
+                }
                 if ($media) {
                     $message->attachment()->create([
                         'image_path' => $media[0]['image_path'], 'thumbnail_path' => $media[0]['thumbnail_path'],
@@ -452,6 +464,20 @@ class MessagesController extends Controller
         return $disk->download($item->image_path, 'canadamb-photo.webp', [
             'Content-Type' => 'image/webp', 'Cache-Control' => 'private, no-store',
             'X-Content-Type-Options' => 'nosniff', 'X-Robots-Tag' => 'noindex, nofollow',
+        ]);
+    }
+
+    public function document(Request $request, int $conversation, int $message)
+    {
+        abort_unless(MessageDocuments::enabled(), 404);
+        $thread = Conversation::forMember($request->user()->id)->findOrFail($conversation);
+        $document = $thread->messages()->findOrFail($message)->document()->firstOrFail();
+        abort_unless(strlen($document->content) === (int) $document->bytes && hash_equals($document->sha256, hash('sha256', $document->content)), 404);
+
+        return response($document->content, 200, [
+            'Content-Type' => 'text/plain; charset=utf-8', 'Content-Disposition' => 'attachment; filename="canadamb-document.txt"',
+            'Cache-Control' => 'private, no-store', 'X-Content-Type-Options' => 'nosniff', 'X-Robots-Tag' => 'noindex, nofollow',
+            'Content-Security-Policy' => "default-src 'none'; sandbox",
         ]);
     }
 

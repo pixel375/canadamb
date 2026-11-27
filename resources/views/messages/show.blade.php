@@ -43,6 +43,7 @@
                             <time datetime="{{ $message->created_at->toIso8601String() }}" title="{{ $message->created_at->timezone('America/Winnipeg')->format('M j, Y · g:i a') }}">{{ $message->created_at->diffForHumans() }}</time>
                         </div>
                         <p class="chat-bubble">{{ $message->body }}</p>
+                        @if($message->document_exists)<a class="text-link" href="/account/messages/{{ $thread->id }}/documents/{{ $message->id }}">Download text attachment (.txt)</a><small class="field-note">Untrusted attachment. Never run commands or follow payment instructions from a stranger.</small>@endif
                         @if($message->attachment_exists)<a class="text-link" href="/account/messages/{{ $thread->id }}/attachments/{{ $message->id }}">Download photo attachment</a>@endif
                         @if($messageReports && $message->sender_id !== auth()->id())<a class="text-link field-note" href="/account/report/message/{{ $message->id }}">Report message</a>@if($message->attachment_exists)<a class="text-link field-note" href="/account/report/message-photo/{{ $message->id }}">Report photo</a>@endif
                         @endif
@@ -55,6 +56,9 @@
                     <label><span class="sr-only">Reply</span><textarea data-character-count name="body" maxlength="2000" rows="2" required placeholder="Write a message…">{{ old('body') }}</textarea><small class="field-note" data-character-feedback></small></label>
                     @if(\App\Support\MessageAttachments::enabled())
                         <details class="chat-attachment-picker" @if($errors->has('photo')) open @endif><summary>Attach a photo</summary><label><span class="sr-only">Photo attachment</span><input type="file" name="photo" accept="image/jpeg,image/png,image/webp"><small class="field-note">One photo, up to 4 MB. Do not send sensitive documents.</small></label></details>
+                    @endif
+                    @if(\App\Support\MessageDocuments::enabled())
+                        <details class="chat-attachment-picker" @if($errors->has('document')) open @endif><summary>Attach a text document</summary><label><span class="sr-only">Text document</span><input type="file" name="document" accept=".txt,text/plain"><small class="field-note">Plain UTF-8 text only, up to 60 KB. Do not upload passwords, sensitive records or a photo with a document.</small></label></details>
                     @endif
                     <div class="chat-composer-footer"><small class="field-note"><a class="text-link" href="/safety">Safety guidance</a> · Keep payment details private.</small><button class="button button-primary" data-chat-send>Send reply <x-icon name="arrow" size="17"/></button></div>
                 </form>
