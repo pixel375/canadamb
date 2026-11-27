@@ -7,8 +7,8 @@ use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Symfony\Component\HttpFoundation\Cookie;
-use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\IpUtils;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Response;
 
 class RestrictPrelaunch
@@ -43,16 +43,16 @@ class RestrictPrelaunch
 
         $hash = config('network.prelaunch_password_hash');
         if (app()->isProduction() || $hash !== null) {
-            if (! self::validHash($hash) || ! config('app.key')) {
+            if (self::validHash($hash) === false || empty(config('app.key'))) {
                 return response('CanadaMB is in prelaunch testing.', 403, $headers);
             }
             if ($request->is('prelaunch-access') && $request->isMethod('POST')) {
                 return $this->unlock($request, $hash, $headers);
             }
-            if (! $this->hasAccess($request, $hash)) {
+            if ($this->hasAccess($request, $hash) === false) {
                 return $this->locked($request, $headers);
             }
-        } elseif (! IpUtils::checkIp((string) $request->server('REMOTE_ADDR'), config('network.prelaunch_ips', []))) {
+        } elseif (IpUtils::checkIp((string) $request->server('REMOTE_ADDR'), config('network.prelaunch_ips', [])) === false) {
             // Legacy non-production fixture mode only; production never bypasses the password by IP.
             return response('CanadaMB is in prelaunch testing.', 403, $headers + ['Content-Type' => 'text/plain; charset=UTF-8']);
         }
@@ -79,7 +79,7 @@ class RestrictPrelaunch
     private function hasAccess(Request $request, string $hash): bool
     {
         $token = $request->cookies->get(self::COOKIE);
-        if (! is_string($token) || ! preg_match('/^([0-9]{1,12})\.([a-f0-9]{64})$/D', $token, $parts)) {
+        if (is_string($token) === false || preg_match('/^([0-9]{1,12})\.([a-f0-9]{64})$/D', $token, $parts) !== 1) {
             return false;
         }
         $expiry = (int) $parts[1];
@@ -97,7 +97,7 @@ class RestrictPrelaunch
             return $this->locked($request, $headers, 'Too many attempts. Try again in a minute.', $target, 429);
         }
         RateLimiter::hit($key, 60);
-        if (! is_string($password) || strlen($password) > 72 || ! password_verify($password, $hash)) {
+        if (is_string($password) === false || strlen($password) > 72 || password_verify($password, $hash) === false) {
             return $this->locked($request, $headers, 'Incorrect password.', $target);
         }
         RateLimiter::clear($key);
@@ -110,7 +110,7 @@ class RestrictPrelaunch
 
     private function safeTarget(mixed $target): string
     {
-        if (! is_string($target) || strlen($target) > 4096 || ! str_starts_with($target, '/')
+        if (is_string($target) === false || strlen($target) > 4096 || str_starts_with($target, '/') === false
             || str_starts_with($target, '//') || str_contains($target, chr(92))
             || preg_match('/[\x00-\x20\x7f]/', $target) || preg_match('~^/(?:%2f|%5c)~i', $target)
             || str_starts_with($target, '/prelaunch-access')) {
@@ -122,7 +122,7 @@ class RestrictPrelaunch
 
     private function locked(Request $request, array $headers, string $message = '', ?string $target = null, int $status = 403): Response
     {
-        if ($request->is('api/*') || $request->expectsJson() || (! $request->isMethodSafe() && ! $request->is('prelaunch-access'))) {
+        if ($request->is('api/*') || $request->expectsJson() || ($request->isMethodSafe() === false && $request->is('prelaunch-access') === false)) {
             return response('CanadaMB is in prelaunch testing.', $status, $headers + ['Content-Type' => 'text/plain; charset=UTF-8']);
         }
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Middleware\RestrictPrelaunch;
 use App\Models\Business;
 use App\Models\BusinessUpdate;
 use App\Models\JobPosting;
@@ -118,7 +119,7 @@ class NetworkController extends Controller
         $prelaunch = (bool) config('network.prelaunch');
         $checks = [
             ['label' => 'Prelaunch access configuration', 'value' => $prelaunch ? 'Enabled' : 'Disabled', 'note' => 'Configuration only; use external HTTP checks to verify enforcement.'],
-            ['label' => 'Prelaunch password gate', 'value' => \App\Http\Middleware\RestrictPrelaunch::validHash(config('network.prelaunch_password_hash')) ? 'Configured' : 'Not configured', 'note' => 'Password remains separate from member and administrator sign-in.'],
+            ['label' => 'Prelaunch password gate', 'value' => RestrictPrelaunch::validHash(config('network.prelaunch_password_hash')) ? 'Configured' : 'Not configured', 'note' => 'Password remains separate from member and administrator sign-in.'],
             ['label' => 'Registration', 'value' => $settings->registrationAllowed() ? 'Available' : 'Disabled', 'note' => 'During private testing, registration should remain intentionally controlled.'],
             ['label' => 'Community sign-in', 'value' => config('network.sso_enabled') ? 'Enabled' : 'Disabled', 'note' => 'Verify a real HTTPS round trip on participating domains.'],
             ['label' => 'Scheduled queue draining', 'value' => config('network.cron_queue_drain') ? 'Configured' : 'Disabled', 'note' => 'Does not establish that the host scheduler is running.'],
