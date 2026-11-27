@@ -54,7 +54,7 @@
                     </article>
                 @empty<p class="field-note">No messages yet.</p>@endforelse
             </div>
-            @if($latestPage)<div class="chat-update-bar"><p class="chat-sync-status field-note" data-chat-status role="status" aria-live="polite"></p><button class="button button-outline chat-latest-button" type="button" data-chat-latest hidden>Jump to latest</button></div>@endif
+            @if($latestPage)<div class="chat-update-bar"><p class="chat-sync-status field-note" data-chat-status role="status" aria-live="polite"></p></div>@endif
             @if(!$blocked)
                 <form method="post" action="/account/messages/{{ $thread->id }}" class="chat-composer form-stack" enctype="multipart/form-data">@csrf
                     <label><span class="sr-only">Reply</span><textarea data-character-count name="body" maxlength="2000" rows="2" required placeholder="Write a message…">{{ old('body') }}</textarea><small class="field-note" data-character-feedback></small></label>

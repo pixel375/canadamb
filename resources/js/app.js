@@ -566,16 +566,18 @@ if (chatPanel) {
     const history = chatPanel.querySelector('[data-chat-history]');
     const status = chatPanel.querySelector('[data-chat-status]');
     const send = chatPanel.querySelector('[data-chat-send]');
-    const latestButton = chatPanel.querySelector('[data-chat-latest]');
     const archiveForm = chatPanel.querySelector('[data-chat-archive]');
     const atLatest = () => history.scrollHeight - history.scrollTop - history.clientHeight < 48;
-    const goLatest = () => {
-        history.scrollTop = history.scrollHeight;
-        latestButton.hidden = true;
-    };
+    let unseenMessages = 0;
+    let newMessageNotice = '';
+    const goLatest = () => { history.scrollTop = history.scrollHeight; };
     goLatest();
-    latestButton.addEventListener('click', goLatest);
-    history.addEventListener('scroll', () => { if (atLatest()) latestButton.hidden = true; }, {passive: true});
+    history.addEventListener('scroll', () => {
+        if (!atLatest() || !unseenMessages) return;
+        unseenMessages = 0;
+        if (status.textContent === newMessageNotice) status.textContent = '';
+        newMessageNotice = '';
+    }, {passive: true});
     // Progressively enhance the server's stable cursor links. No private
     // history is cached, and the original link remains usable without JS.
     const older = history.querySelector('[data-chat-older]');
@@ -718,7 +720,10 @@ if (chatPanel) {
             const wasAtLatest = atLatest();
             for (const item of data.messages) append(item);
             if (data.messages.length && wasAtLatest) goLatest();
-            else if (data.messages.length) latestButton.hidden = false;
+            else if (data.messages.length) {
+                unseenMessages += data.messages.length;
+                newMessageNotice = unseenMessages + (unseenMessages === 1 ? ' new message below.' : ' new messages below.');
+            }
             if (archiveForm && data.archive && data.archive.seen === cursor && data.archive.seen === seen) {
                 const sameState = Boolean(data.archive.archived) === (archiveForm.dataset.archived === '1');
                 archiveForm.querySelector('button').disabled = !sameState;
@@ -730,7 +735,8 @@ if (chatPanel) {
             updateActivityCounts(data.counts);
             if (send) send.disabled = Boolean(data.blocked);
             if (data.blocked) status.textContent = 'New messages are blocked for this conversation.';
-            else if (data.messages.length) status.textContent = data.messages.length + ' new message(s) received.';
+            else if (unseenMessages) status.textContent = newMessageNotice;
+            else if (data.messages.length) status.textContent = data.messages.length + (data.messages.length === 1 ? ' new message received.' : ' new messages received.');
             else if (!send) status.textContent = 'Messaging availability changed. Reload to reply.';
             else status.textContent = defaultStatus;
             delay = 15000;
@@ -919,10 +925,19 @@ const syncRequiredMarkers = () => {
         } else if (!required) marker?.remove();
     }
 };
+// Retain server validation feedback until the rejected value actually changes.
+const serverRejectedValues = new WeakMap();
+const fieldValue = control => {
+    if (control.type === 'checkbox' || control.type === 'radio') return control.checked;
+    if (control.type === 'file') return JSON.stringify([...control.files].map(file => [file.name, file.size, file.lastModified]));
+    if (control.multiple && control.tagName === 'SELECT') return JSON.stringify([...control.selectedOptions].map(option => option.value));
+    return control.value;
+};
 const showInvalidField = (control, errorId) => {
     control.setAttribute('aria-invalid', 'true');
     for (const label of control.labels || []) label.classList.add('invalid-field-label');
     if (errorId) {
+        serverRejectedValues.set(control, fieldValue(control));
         const ids = new Set((control.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean));
         ids.add(errorId);
         control.setAttribute('aria-describedby', [...ids].join(' '));
@@ -966,6 +981,8 @@ for (const error of document.querySelectorAll('[data-validation-field]')) {
 const clearCorrectedField = event => {
     const control = event.target;
     if (!control.matches('input, select, textarea') || !control.form || !control.validity.valid || control.getAttribute('aria-invalid') !== 'true') return;
+    if (serverRejectedValues.has(control) && serverRejectedValues.get(control) === fieldValue(control)) return;
+    serverRejectedValues.delete(control);
     control.removeAttribute('aria-invalid');
     const invalid = fieldsOnPage().filter(field => field.getAttribute('aria-invalid') === 'true');
     for (const label of control.labels || []) {
