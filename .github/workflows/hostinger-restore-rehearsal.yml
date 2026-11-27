@@ -110,8 +110,7 @@ jobs:
           flock -w 90 8
           backup="$app/shared/backups/restore-rehearsal-$run_id"
           [[ -d "$backup" && ! -L "$backup" && "$(readlink -e "$backup")" == "$backup" && ! -e "$app/update.pause" ]] || exit 1
-          [[ "$(find -P "$backup" -mindepth 1 -maxdepth 1 -printf '%f\n' | LC_ALL=C sort)" == 
-checksums.sha256\nu713153343_canadamb.sql' ]] || exit 1
+          [[ "$(find -P "$backup" -mindepth 1 -maxdepth 1 -printf '%f\n' | LC_ALL=C sort)" == "$(printf '%s\n' checksums.sha256 u713153343_canadamb.sql)" ]] || exit 1
           for file in checksums.sha256 u713153343_canadamb.sql; do
             [[ -s "$backup/$file" && -f "$backup/$file" && ! -L "$backup/$file" && "$(stat -c %h "$backup/$file")" == 1 ]] || exit 1
           done
