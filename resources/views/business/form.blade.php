@@ -11,10 +11,12 @@
                     <a class="button button-outline" href="/account/businesses/{{ $business->id }}/changes">Manage branches and contact verification</a>
                 @endif
                 @if(\App\Support\BusinessInquirySettings::enabled() && $business->status === 'active' && $business->members()->whereKey(auth()->id())->wherePivot('role', 'owner')->exists())
+                    @php($inquiryPreferences = \App\Support\BusinessInquirySettings::preferences($business, auth()->id()))
                     <form class="form-stack" method="post" action="/account/businesses/{{ $business->id }}/inquiry-settings">@csrf
+                        <input type="hidden" name="version" value="{{ \App\Support\BusinessInquirySettings::version($business, auth()->id(), $inquiryPreferences) }}">
                         <h2>Private inquiries</h2><p class="field-note">New inquiries go to your personal account. Turning them off does not delete existing conversations. A new owner must opt in separately.</p>
-                        <label>Business inquiries<select name="business_inquiries"><option value="0">Off</option><option value="1" @selected(\App\Support\BusinessInquirySettings::accepts($business, false))>On</option></select></label>
-                        <label>Job inquiries<select name="job_inquiries"><option value="0">Off</option><option value="1" @selected(\App\Support\BusinessInquirySettings::accepts($business, true))>On</option></select></label>
+                        <label>Business inquiries<select name="business_inquiries"><option value="0">Off</option><option value="1" @selected($inquiryPreferences['business_inquiries'])>On</option></select></label>
+                        <label>Job inquiries<select name="job_inquiries"><option value="0">Off</option><option value="1" @selected($inquiryPreferences['job_inquiries'])>On</option></select></label>
                         <button class="button button-outline">Save inquiry preferences</button>
                     </form>
                 @endif

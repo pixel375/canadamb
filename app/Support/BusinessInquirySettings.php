@@ -20,6 +20,18 @@ final class BusinessInquirySettings
         }
     }
 
+    public static function preferences(Business $business, int $owner): array
+    {
+        $row = DB::table('business_inquiry_settings')->where('business_id', $business->id)->where('owner_id', $owner)->first();
+
+        return ['business_inquiries' => (bool) ($row->business_inquiries ?? false), 'job_inquiries' => (bool) ($row->job_inquiries ?? false)];
+    }
+
+    public static function version(Business $business, int $owner, array $preferences): string
+    {
+        return hash('sha256', json_encode([$business->id, $owner, $preferences], JSON_THROW_ON_ERROR));
+    }
+
     public static function accepts(Business $business, bool $job): bool
     {
         if (! config('network.business_inquiry_controls')) {
