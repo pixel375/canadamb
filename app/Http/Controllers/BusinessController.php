@@ -290,14 +290,14 @@ class BusinessController extends Controller
 
     public function reviseUpdate(Request $request, int $business, int $update)
     {
-        $data = $request->validate([
-            'type' => 'required|in:announcement,promotion,update', 'title' => 'required|string|max:140',
-            'body' => 'required|string|max:3000', 'version' => 'required|string|size:64',
-        ]);
-        DB::transaction(function () use ($request, $business, $update, $data) {
+        DB::transaction(function () use ($request, $business, $update) {
             $record = $this->lockedUpdate($request, $business, $update);
             abort_unless($record->branch->isOpen() && $record->branch->business->status === 'active'
                 && in_array($record->status, ['pending', 'approved', 'rejected'], true), 409);
+            $data = $request->validate([
+                'type' => 'required|in:announcement,promotion,update', 'title' => 'required|string|max:140',
+                'body' => 'required|string|max:3000', 'version' => 'required|string|size:64',
+            ]);
             abort_unless(hash_equals($record->reviewVersion(), $data['version']), 409, 'This update changed. Reload before editing.');
             $record->fill(collect($data)->except('version')->all());
             if ($record->isDirty() || $record->status === 'rejected') {
@@ -311,10 +311,10 @@ class BusinessController extends Controller
 
     public function withdrawUpdate(Request $request, int $business, int $update)
     {
-        $data = $request->validate(['version' => 'required|string|size:64']);
-        DB::transaction(function () use ($request, $business, $update, $data) {
+        DB::transaction(function () use ($request, $business, $update) {
             $record = $this->lockedUpdate($request, $business, $update);
             abort_unless(in_array($record->status, ['pending', 'approved', 'rejected'], true), 409);
+            $data = $request->validate(['version' => 'required|string|size:64']);
             abort_unless(hash_equals($record->reviewVersion(), $data['version']), 409, 'This update changed. Reload before withdrawing.');
             $record->update(['status' => 'withdrawn', 'published_at' => null]);
             Audit::record('business.update-withdrawn', $request->user()->id, context: ['business' => $business, 'update' => $update]);

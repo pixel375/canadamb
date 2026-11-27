@@ -153,15 +153,15 @@ class CommunityForumController extends Controller
 
     public function update(Request $request, int $thread)
     {
-        $data = $request->validate([
-            'title' => 'required|string|max:140', 'body' => 'required|string|min:10|max:5000',
-            'category' => ['required', Rule::in(array_keys(Community::FORUMS))],
-            'version' => 'required|string|size:64',
-        ]);
-        DB::transaction(function () use ($request, $thread, $data) {
+        DB::transaction(function () use ($request, $thread) {
             $item = $this->ownedThread($request)->lockForUpdate()->findOrFail($thread);
             abort_if($item->locked || ! in_array($item->status, ['pending', 'approved', 'rejected'], true), 409);
             abort_if(EventDiscussions::eventIdsForThreads([$item->id]) !== [], 409, 'Edit official event details through My events.');
+            $data = $request->validate([
+                'title' => 'required|string|max:140', 'body' => 'required|string|min:10|max:5000',
+                'category' => ['required', Rule::in(array_keys(Community::FORUMS))],
+                'version' => 'required|string|size:64',
+            ]);
             if (! hash_equals($item->contentVersion(), $data['version'])) {
                 throw ValidationException::withMessages(['version' => 'This discussion changed. Reload the editor before saving.']);
             }
@@ -231,19 +231,19 @@ class CommunityForumController extends Controller
 
     public function updateReply(Request $request, int $reply)
     {
-        $data = $request->validate(['body' => 'required|string|min:5|max:3000', 'version' => 'required|string|size:64', 'from' => 'nullable|in:discussion', 'page' => 'nullable|integer|min:1|max:100000']);
-        $returnPath = $this->replyReturnPath($this->ownedReplyQuery($request)->findOrFail($reply), $data);
-        DB::transaction(function () use ($request, $reply, $data) {
+        $returnPath = DB::transaction(function () use ($request, $reply) {
             $initial = $this->ownedReplyQuery($request)->findOrFail($reply);
             $thread = CommunityThread::lockForUpdate()->findOrFail($initial->thread_id);
             $item = $this->ownedReplyQuery($request)->lockForUpdate()->findOrFail($reply);
             $this->ensureReplyEditable($thread, $item);
+            $data = $request->validate(['body' => 'required|string|min:5|max:3000', 'version' => 'required|string|size:64', 'from' => 'nullable|in:discussion', 'page' => 'nullable|integer|min:1|max:100000']);
             $this->checkReplyVersion($item, $data['version']);
-            if ($item->body === $data['body']) {
-                return;
+            if ($item->body !== $data['body']) {
+                $item->forceFill(['body' => $data['body'], 'status' => 'pending'])->save();
+                Audit::record('community.reply.edited', $request->user()->id, context: ['reply' => $reply]);
             }
-            $item->forceFill(['body' => $data['body'], 'status' => 'pending'])->save();
-            Audit::record('community.reply.edited', $request->user()->id, context: ['reply' => $reply]);
+
+            return $this->replyReturnPath($item, $data);
         }, attempts: 3);
 
         return redirect($returnPath)->with('status', 'Reply saved. Changed content requires moderation before publication.');
@@ -261,12 +261,12 @@ class CommunityForumController extends Controller
 
     public function withdrawReply(Request $request, int $reply)
     {
-        $data = $request->validate(['version' => 'required|string|size:64']);
-        DB::transaction(function () use ($request, $reply, $data) {
+        DB::transaction(function () use ($request, $reply) {
             $initial = $this->ownedReplyQuery($request)->findOrFail($reply);
             $thread = CommunityThread::lockForUpdate()->findOrFail($initial->thread_id);
             $item = $this->ownedReplyQuery($request)->lockForUpdate()->findOrFail($reply);
             $this->ensureReplyEditable($thread, $item);
+            $data = $request->validate(['version' => 'required|string|size:64']);
             $this->checkReplyVersion($item, $data['version']);
             $item->forceFill(['status' => 'withdrawn'])->save();
             Audit::record('community.reply.withdrawn', $request->user()->id, context: ['reply' => $reply]);

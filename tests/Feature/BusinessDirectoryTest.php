@@ -335,6 +335,8 @@ class BusinessDirectoryTest extends TestCase
         $manage = "https://brandonmb.ca/account/businesses/$business->id/updates";
         $revision = ['type' => 'announcement', 'title' => 'Workshop opens Sunday', 'body' => 'Updated public workshop hours.', 'version' => $version];
         $this->actingAs($competitor)->put($manage.'/'.$update, $revision)->assertNotFound();
+        $this->put($manage.'/'.$update)->assertNotFound();
+        $this->post($manage.'/'.$update.'/withdraw')->assertNotFound();
         $this->actingAs($claimant)->get($manage)->assertOk()->assertSee('Workshop opens Saturday');
         $this->get('https://brandonmb.ca/account/businesses')->assertOk()->assertSee('href="/account/businesses/'.$business->id.'/updates"', false);
         $this->get($manage.'?q=Workshop&status=pending')->assertOk()->assertDontSee('Workshop opens Saturday')

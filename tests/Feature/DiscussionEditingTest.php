@@ -37,6 +37,8 @@ class DiscussionEditingTest extends TestCase
         $this->assertDatabaseCount('community_notifications', 1);
         $this->actingAs($stranger)->get($base.'/edit')->assertNotFound();
         $this->put($base, ['body' => 'Unauthorized change.', 'version' => $version])->assertNotFound();
+        $this->put($base)->assertNotFound();
+        $this->post($base.'/withdraw')->assertNotFound();
         $this->actingAs($owner)->get($public)->assertSee('Edit my reply')->assertDontSee('Link to this reply');
         $this->get($base.'/edit?from=discussion&page=2')->assertOk()
             ->assertSee('href="/community/'.$thread->id.'?page=2#discussion-replies"', false);
@@ -51,7 +53,8 @@ class DiscussionEditingTest extends TestCase
         $this->get($public)->assertOk()->assertDontSee('Edited reply text.')->assertDontSee('Original reply text.');
         $this->get('https://brandonmb.ca/account/replies?status=pending')->assertSee('Edited reply text.');
         $this->get('https://brandonmb.ca/account/replies?thread='.$thread->id.'&sort=oldest')->assertOk()->assertSee('Edited reply text.');
-        $this->get('https://brandonmb.ca/account/replies?thread='.($thread->id + 1000))->assertOk()->assertDontSee('Edited reply text.');
+        $this->get('https://brandonmb.ca/account/replies?thread='.($thread->id + 1000))->assertOk()->assertDontSee('Edited reply text.')
+            ->assertViewHas('counts', fn ($counts) => $counts->isEmpty());
         $this->actingAs($stranger)->get('https://brandonmb.ca/account/replies')->assertDontSee('Edited reply text.');
         $this->actingAs($admin)->post($review, ['action' => 'approve', 'version' => $version])->assertSessionHasErrors('version');
         $this->post($review, ['action' => 'approve'])->assertSessionHasErrors('version');
@@ -85,12 +88,14 @@ class DiscussionEditingTest extends TestCase
         $public = 'https://brandonmb.ca/community/'.$thread->id;
         $data = ['title' => 'Edited discussion', 'body' => 'The updated discussion content.', 'category' => 'help', 'version' => $thread->contentVersion()];
         $this->actingAs($stranger)->put($url, $data)->assertNotFound();
+        $this->put($url)->assertNotFound();
         $this->actingAs($owner)->get($url.'/edit')->assertOk()->assertSee('Original discussion');
         $this->put($url, $data)->assertRedirect('/account/discussions')->assertSessionHasNoErrors();
         $this->assertSame('pending', $thread->fresh()->status);
         $this->assertFalse($thread->fresh()->pinned);
         $this->get('https://brandonmb.ca/account/discussions?category=help&sort=replies')->assertOk()->assertSee('Edited discussion');
-        $this->get('https://brandonmb.ca/account/discussions?category=general')->assertOk()->assertDontSee('Edited discussion');
+        $this->get('https://brandonmb.ca/account/discussions?category=general')->assertOk()->assertDontSee('Edited discussion')
+            ->assertViewHas('counts', fn ($counts) => $counts->isEmpty());
         $this->get($public)->assertNotFound();
         $this->from($url.'/edit')->put($url, $data)->assertSessionHasErrors('version');
         $this->get($url.'/edit')->assertOk()->assertSee('name="version" value="'.$data['version'].'"', false)->assertSee('Reload editor');
