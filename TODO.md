@@ -337,3 +337,7 @@ Keep this queue updated; do not interrupt independent implementation for these a
 - Intermediate 12fe64f2 Chromium 46054629314 stopped at Vite parse error from extra closing bracket in form control selector; corrected selector syntax before deployment. No production change; exact CI pending.
 
 - 2026-11-27 verification: 1f143926 backend 46054571738 and browser 46054571717 passed. 1fe407d2 browser 46054717652 green, backend 46054717665 failed at EventSeriesIdentityTest line 84: sixth batch-edit POST exceeded the existing five-per-minute limit after adding forged-series regressions. Explicitly assert throttling, advance fixture clock 61 seconds, then assert stale-version refusal; production throttle unchanged. Live remains 9c4d916b until exact new CI/deploy receipt. M03a prior receipt remains valid.
+
+- B12/B13/C09 calendar export now keeps explicit all-Manitoba scope even with a remembered city and uses the remembered preference when directly requested without a location parameter. Local portal remains fixed. Regression verifies matching export link, both-city results, remembered-city results and tampered local query.
+
+- D01/D04/D05 notification and announcement consent changes now require a current version under member lock; omitted tokens and stale opt-in cannot overwrite a later opt-out. Announcement form supplies separate consent version. Extended regression covers missing/stale consent; no live deliveries, activation or schema changes. Exact CI pending.

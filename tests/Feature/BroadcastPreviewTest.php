@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Business;
 use App\Models\User;
+use App\Support\BroadcastConsent;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Foundation\Testing\RefreshDatabaseState;
@@ -33,7 +34,7 @@ class BroadcastPreviewTest extends TestCase
         $admin = User::factory()->create(['role' => 'super_admin']);
         $base = 'https://canadamb.ca';
         $draft = ['title' => 'Official community fixture', 'body' => 'A non-marketing community announcement.', 'audience' => 'all'];
-        $this->actingAs($member)->post($base.'/account/notifications/announcement-consent', ['opted_in' => 1])->assertRedirect();
+        $this->actingAs($member)->post($base.'/account/notifications/announcement-consent', ['opted_in' => 1, 'version' => BroadcastConsent::version(false)])->assertRedirect();
         $preview = $this->actingAs($admin)->post($base.'/admin/notifications/preview', $draft)->assertOk();
         $token = $preview->viewData('confirmation');
         $this->assertIsString($token);
@@ -72,7 +73,7 @@ class BroadcastPreviewTest extends TestCase
         $draft = ['title' => 'Community announcement', 'body' => 'An example announcement.', 'audience' => 'all'];
         $this->actingAs($member)->post($consent, ['opted_in' => 1])->assertNotFound();
         config(['network.broadcast_previews' => true]);
-        $this->post($consent, ['opted_in' => 1])->assertRedirect('/account/notifications');
+        $this->post($consent, ['opted_in' => 1, 'version' => BroadcastConsent::version(false)])->assertRedirect('/account/notifications');
         $this->post($url, $draft)->assertForbidden();
         $this->actingAs($admin)->post($url, $draft)->assertOk()->assertViewHas('count', 1)->assertSee('Nothing was sent')->assertDontSee($member->email);
         $business = Business::create(['slug' => 'announcement-owner-fixture', 'name' => 'Announcement owner fixture', 'category' => 'services', 'status' => 'active']);
@@ -81,7 +82,9 @@ class BroadcastPreviewTest extends TestCase
         $this->post($url, array_replace($draft, ['audience' => 'selected', 'member_ids' => (string) $other->id]))->assertOk()->assertViewHas('count', 0);
         $this->post($url, array_replace($draft, ['audience' => 'selected', 'member_ids' => $member->id.','.$member->id]))->assertOk()->assertViewHas('count', 1);
         $this->assertDatabaseHas('audit_logs', ['action' => 'broadcast.previewed', 'actor_id' => $admin->id]);
-        $this->actingAs($member)->post($consent, ['opted_in' => 0])->assertRedirect();
+        $this->actingAs($member)->post($consent, ['opted_in' => 0, 'version' => BroadcastConsent::version(true)])->assertRedirect();
+        $this->post($consent, ['opted_in' => 1, 'version' => BroadcastConsent::version(true)])->assertSessionHasErrors('version');
+        $this->post($consent, ['opted_in' => 1])->assertSessionHasErrors('version');
         $this->actingAs($admin)->post($url, $draft)->assertOk()->assertViewHas('count', 0);
         $this->assertDatabaseCount('community_notifications', 0);
         $this->assertDatabaseCount('owner_notifications', 0);

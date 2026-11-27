@@ -18,6 +18,11 @@ final class BroadcastConsent
         return self::enabled() && (bool) DB::table('broadcast_consents')->where('user_id', $member)->value('opted_in');
     }
 
+    public static function version(bool $optedIn): string
+    {
+        return hash('sha256', $optedIn ? 'announcements:enabled' : 'announcements:disabled');
+    }
+
     public static function audience(string $audience, array $members = []): Builder
     {
         return DB::table('broadcast_consents as consent')->join('users', 'users.id', '=', 'consent.user_id')

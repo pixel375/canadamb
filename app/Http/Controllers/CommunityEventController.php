@@ -75,7 +75,9 @@ class CommunityEventController extends Controller
             'period' => 'nullable|in:today,week,weekend,month',
             'q' => 'nullable|string|max:100', 'category' => ['nullable', Rule::in(array_keys(Community::EVENTS))],
         ]);
-        $place = LocationScope::forBrowsing($site, $filters['location'] ?? null);
+        $place = $request->query->has('location')
+            ? LocationScope::forBrowsing($site, $filters['location'] ?? null)
+            : ($site->isNetwork() ? LocationScope::preferred($site, $request->cookie(LocationScope::PREFERENCE_COOKIE)) : $site->location);
         $query = $this->community->upcoming($this->community->events($place?->id))
             ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'body', 'venue', 'organizer']))
             ->when($filters['category'] ?? null, fn ($query, $category) => $query->where('category', $category));

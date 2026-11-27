@@ -52,6 +52,7 @@
                 <h2>Optional network announcements</h2>
                 <p>Choose whether to receive future non-marketing announcements in your CanadaMB notification centre. This does not enable email, marketing messages or Web Push delivery. Opting out stops new announcements but keeps your existing history.</p>
                 <form method="post" action="/account/notifications/announcement-consent" class="form-stack">@csrf
+                    <input type="hidden" name="version" value="{{ \App\Support\BroadcastConsent::version($broadcastOptedIn) }}">
                     <label>Announcements<select name="opted_in"><option value="0" @selected(!$broadcastOptedIn)>Do not receive announcements</option><option value="1" @selected($broadcastOptedIn)>Receive announcements</option></select></label>
                     <button class="button button-primary">Save announcement preference</button>
                 </form>

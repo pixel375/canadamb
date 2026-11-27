@@ -53,7 +53,8 @@ class NotificationPreferencesTest extends TestCase
         $this->actingAs($admin)->post($review.$reply->id, ['action' => 'approve', 'version' => $reply->contentVersion()])->assertRedirect();
         $this->assertDatabaseMissing('community_notifications', ['user_id' => $member->id, 'reply_id' => $reply->id]);
         $this->assertDatabaseHas('community_notifications', ['user_id' => $other->id, 'reply_id' => $reply->id]);
-        $this->actingAs($member)->post($path, ['discussion_replies' => '1', 'job_summary' => '1'])->assertRedirect();
+        $this->actingAs($member)->post($path, ['discussion_replies' => '1', 'job_summary' => '1'])->assertSessionHasErrors('version');
+        $this->post($path, ['discussion_replies' => '1', 'job_summary' => '1', 'version' => NotificationPreferences::version(NotificationPreferences::forMember($member->id))])->assertRedirect();
         $next = $thread->replies()->create(['author_id' => $author->id, 'body' => 'Second approved reply.']);
         $this->actingAs($admin)->post($review.$next->id, ['action' => 'approve', 'version' => $next->contentVersion()])->assertRedirect();
         $this->assertDatabaseHas('community_notifications', ['user_id' => $member->id, 'reply_id' => $next->id]);

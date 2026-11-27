@@ -27,13 +27,13 @@ final class AccountNotificationsController extends Controller
         $data = $request->validate([
             'discussion_replies' => 'required|boolean',
             'job_summary' => 'required|boolean',
-            'version' => 'nullable|string|size:64',
+            'version' => 'required|string|size:64',
         ]);
         DB::transaction(function () use ($request, $data) {
             $member = $request->user()->id;
             User::lockForUpdate()->findOrFail($member);
             $current = NotificationPreferences::forMember($member);
-            if (isset($data['version']) && ! hash_equals(NotificationPreferences::version($current), $data['version'])) {
+            if (! hash_equals(NotificationPreferences::version($current), $data['version'])) {
                 throw ValidationException::withMessages(['version' => 'Your notification preferences changed. Reload before saving.']);
             }
             $next = ['discussion_replies' => (bool) $data['discussion_replies'], 'job_summary' => (bool) $data['job_summary']];
@@ -79,12 +79,16 @@ final class AccountNotificationsController extends Controller
     public function announcementConsent(Request $request)
     {
         abort_unless(BroadcastConsent::enabled(), 404);
-        $data = $request->validate(['opted_in' => 'required|boolean']);
+        $data = $request->validate(['opted_in' => 'required|boolean', 'version' => 'required|string|size:64']);
         $member = $request->user()->id;
         $next = (bool) $data['opted_in'];
-        DB::transaction(function () use ($member, $next) {
+        DB::transaction(function () use ($member, $next, $data) {
             User::lockForUpdate()->findOrFail($member);
-            if (BroadcastConsent::optedIn($member) !== $next) {
+            $current = BroadcastConsent::optedIn($member);
+            if (! hash_equals(BroadcastConsent::version($current), $data['version'])) {
+                throw ValidationException::withMessages(['version' => 'Your announcement preference changed. Reload before saving.']);
+            }
+            if ($current !== $next) {
                 DB::table('broadcast_consents')->updateOrInsert(['user_id' => $member], ['opted_in' => $next, 'updated_at' => now()]);
                 Audit::record('broadcast.consent-changed', $member, context: ['opted_in' => $next]);
             }

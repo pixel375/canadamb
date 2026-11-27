@@ -71,7 +71,7 @@
             </section>
         @else<a class="button button-outline mb-4" href="/events?{{ http_build_query(\App\Support\LocationScope::preserveAll(array_filter($filters) + ['month' => now('America/Winnipeg')->format('Y-m')])) }}">Open this month’s calendar</a>@endif
         @if($items->total())
-            <div class="inline-actions mb-4"><a class="button button-outline" href="/events/calendar?{{ http_build_query(array_filter($filters, fn ($value) => $value !== null && $value !== '')) }}">Download matching events (.ics)</a><span class="field-note">Calendar snapshot · {{ min($items->total(), 50) }} of {{ $items->total() }} events, earliest first. Future updates are not synchronized.</span></div>
+            <div class="inline-actions mb-4"><a class="button button-outline" href="/events/calendar?{{ http_build_query(\App\Support\LocationScope::preserveAll(array_filter($filters, fn ($value) => $value !== null && $value !== ''))) }}">Download matching events (.ics)</a><span class="field-note">Calendar snapshot · {{ min($items->total(), 50) }} of {{ $items->total() }} events, earliest first. Future updates are not synchronized.</span></div>
         @endif
         <div class="section-heading"><h2>{{ $items->total() }} matching {{ \Illuminate\Support\Str::plural('event', $items->total()) }}</h2><a class="text-link" href="{{ \App\Support\LocationScope::browseUrl($eventSite, '/events', $place) }}">Clear filters</a></div>
         <div class="browse-feed">

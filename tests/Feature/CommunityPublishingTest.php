@@ -91,6 +91,30 @@ class CommunityPublishingTest extends TestCase
         $this->get("https://brandonmb.ca/events/$event->id")->assertNotFound();
     }
 
+    public function test_calendar_export_preserves_explicit_all_and_remembered_location(): void
+    {
+        $this->travelTo('2026-11-26 12:00:00');
+        $owner = User::factory()->create();
+        $events = [];
+        foreach (['brandon', 'winnipeg'] as $slug) {
+            $events[$slug] = CommunityEvent::create([
+                'author_id' => $owner->id, 'location_id' => Location::where('slug', $slug)->sole()->id,
+                'title' => ucfirst($slug).' calendar scope fixture', 'body' => 'A public community event.',
+                'category' => 'community', 'venue' => 'Local hall', 'organizer' => 'Local club',
+                'starts_at' => '2026-12-02 16:00:00',
+            ]);
+            $events[$slug]->forceFill(['status' => 'approved'])->save();
+        }
+        $base = 'https://canadamb.ca';
+        $brandon = 'UID:event-'.$events['brandon']->id.'@canadamb.ca';
+        $winnipeg = 'UID:event-'.$events['winnipeg']->id.'@canadamb.ca';
+        $this->withCookie('canadamb_community', 'winnipeg')->get($base.'/events?location=')
+            ->assertOk()->assertSee('href="/events/calendar?location="', false);
+        $this->get($base.'/events/calendar?location=')->assertOk()->assertSee($brandon)->assertSee($winnipeg);
+        $this->get($base.'/events/calendar')->assertOk()->assertSee($winnipeg)->assertDontSee($brandon);
+        $this->get('https://brandonmb.ca/events/calendar?location=winnipeg')->assertOk()->assertSee($brandon)->assertDontSee($winnipeg);
+    }
+
     public function test_an_event_that_overlaps_two_months_is_listed_on_its_later_local_day(): void
     {
         $this->travelTo('2027-03-15 12:00:00');
