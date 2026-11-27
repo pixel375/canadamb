@@ -129,13 +129,16 @@
                 <input type="hidden" name="view" value="all">
                 @if($selectedGroup)<input type="hidden" name="group" value="{{ $selectedGroup }}">@endif
                 <label>Search<input type="search" name="q" maxlength="100" value="{{ $filters['q'] ?? '' }}" placeholder="Search listings"></label>
-                <label>Category<select name="category" x-model="detailCategory"><option value="">All categories</option>
+                <label>Category<select name="category" x-model="detailCategory"><option value="">{{ $selectedGroup ? 'All in '.$categoryGroups[$selectedGroup]['name'] : 'All categories' }}</option>
                     @foreach($categoryGroups as $group)
                         <optgroup label="{{ $group['name'] }}">
                             @foreach($group['available'] as $key => $label)<option value="{{ $key }}" @selected(($filters['category'] ?? '') === $key)>{{ $label }}</option>@endforeach
                         </optgroup>
                     @endforeach
                 </select></label>
+                @if($selectedGroup)
+                    <a class="text-link" href="{{ $marketLink(array_diff_key($filters, ['group' => true]) + ['view' => 'all']) }}">Search across all categories</a>
+                @endif
                 @if($locations->isNotEmpty())<label>Location<select name="location"><option value="">All Manitoba</option>@foreach($locations as $place)<option value="{{ $place->slug }}" @selected(($filters['location'] ?? '') === $place->slug)>{{ $place->name }}</option>@endforeach</select></label>@endif
                 <x-marketplace-detail-filters :filters="$filters"/>
                 <label>Condition<select name="condition"><option value="">Any condition</option>@foreach(\App\Support\Marketplace::CONDITIONS as $key => $label)<option value="{{ $key }}" @selected(($filters['condition'] ?? '') === $key)>{{ $label }}</option>@endforeach</select></label>
@@ -184,7 +187,7 @@
                         <h3>{{ $activeFilterCount ? 'No listings match your search' : 'No listings posted yet' }}</h3>
                         <p>{{ $activeFilterCount ? 'Try fewer filters or a broader search.' : 'Nothing listed here yet. Be the first to post something.' }}</p>
                         <div class="market-empty-actions">
-                            @if(array_diff_key($filters, ['location' => true, 'view' => true, 'group' => true]))
+                            @if(array_diff_key($filters, ['location' => true, 'view' => true]))
                                 <a class="button button-outline" href="{{ $marketLink(['view' => 'all']) }}">Clear search filters</a>
                             @endif
                             @if($marketPlace)

@@ -54,7 +54,7 @@ class MarketplaceController extends Controller
         return view('marketplace.index', [
             'items' => $items, 'filters' => $filters, 'categories' => $categories,
             'categoryGroups' => $categoryGroups, 'selectedGroup' => $selectedGroup, 'isDiscovery' => $isDiscovery,
-            'sortOptions' => MarketplaceSearch::SORT_OPTIONS, 'activeFilterCount' => count(array_diff_key($filters, ['sort' => true, 'view' => true, 'group' => true])),
+            'sortOptions' => MarketplaceSearch::SORT_OPTIONS, 'activeFilterCount' => count(array_diff_key($filters, ['sort' => true, 'view' => true])),
             'locations' => $site->isNetwork() ? Location::selectable()->orderBy('name')->get() : collect(),
         ]);
     }

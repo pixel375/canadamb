@@ -123,11 +123,19 @@ class MarketplaceCategoryNavigationTest extends TestCase
             ->assertSee('href="/marketplace?group=vehicles&amp;view=all"', false)
             ->assertDontSee('Used family car');
         $this->get(self::MAIN.'/marketplace?group=vehicles&view=all')->assertOk()
-            ->assertSee('Used family car')->assertSee('Elkhorn truck')->assertDontSee('Kitchen sofa');
+            ->assertSee('Used family car')->assertSee('Elkhorn truck')->assertDontSee('Kitchen sofa')
+            ->assertSee('All in Vehicles &amp; Motors', false)->assertSee('1 active filter')
+            ->assertSee('href="/marketplace?view=all">Search across all categories', false);
         $this->get(self::CITY.'/marketplace?group=vehicles&view=all')->assertOk()
             ->assertSee('Used family car')->assertDontSee('Elkhorn truck')->assertDontSee('Kitchen sofa');
         $this->get(self::MAIN.'/marketplace?category=cars')->assertOk()
             ->assertSee('Used family car')->assertSee('Elkhorn truck')->assertDontSee('Kitchen sofa');
+        $this->get(self::MAIN.'/marketplace?group=vehicles&view=all&category=furniture')->assertOk()
+            ->assertSee('Kitchen sofa')->assertDontSee('Used family car');
+        $this->get(self::MAIN.'/marketplace?group=vehicles&view=all&q=Kitchen&location=brandon')->assertOk()
+            ->assertSee('No listings match your search')
+            ->assertSee('Search across all categories')
+            ->assertSee('href="/marketplace?q=Kitchen&amp;view=all&amp;location=brandon', false);
         $this->get(self::MAIN.'/marketplace?q=Kitchen')->assertOk()
             ->assertSee('Kitchen sofa')->assertDontSee('Elkhorn truck');
         $this->getJson(self::MAIN.'/api/v1/marketplace?group=vehicles')->assertOk()
