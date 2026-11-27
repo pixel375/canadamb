@@ -5,7 +5,7 @@
         <nav class="discussion-breadcrumb" aria-label="Discussion navigation">
             <a class="text-link" href="{{ \App\Support\LocationScope::browseUrl($currentSite, '/community', \App\Support\LocationScope::currentBrowsing(request()->attributes->get('site'))) }}">Discussions</a>
             <x-icon name="chevron" size="14"/>
-            <a class="text-link" href="/community?{{ http_build_query(array_filter(['category' => $item->category, 'location' => $currentSite->isNetwork() ? \App\Support\LocationScope::currentBrowsing($currentSite)?->slug : null])) }}">{{ \App\Support\Community::FORUMS[$item->category] }}</a>
+            <a class="text-link" href="/community?{{ http_build_query(\App\Support\LocationScope::preserveAll(array_filter(['category' => $item->category, 'location' => $currentSite->isNetwork() ? \App\Support\LocationScope::currentBrowsing($currentSite)?->slug : null]))) }}">{{ \App\Support\Community::FORUMS[$item->category] }}</a>
         </nav>
 
         <div class="discussion-thread-layout">
@@ -38,7 +38,7 @@
                     <section class="panel form-stack"><p class="section-label">Linked community event</p><h2>{{ $event->title }}</h2>
                         @if($event->status === 'cancelled')<p class="notice notice-error">This event has been cancelled.</p>@endif
                         <p>{{ $event->startLabel('l, F j, Y · g:i a T') }}@if($event->endLabel()) – {{ $event->endLabel('M j · g:i a T') }}@endif</p>
-                        <p>{{ $event->venue }} · {{ $event->organizer }}</p><a class="button button-outline" href="/events/{{ $event->id }}">Go to event</a>
+                        <p>{{ $event->venue }} · {{ $event->organizer }}</p><a class="button button-outline" href="{{ \App\Support\LocationScope::detailUrl('/events/'.$event->id) }}">Go to event</a>
                     </section>
                 @elseif($eventReviewPending)
                     <section class="panel form-stack"><p class="section-label">Linked community event</p>
@@ -91,7 +91,7 @@
                     @endif
                 </section>
                 @if($related->isNotEmpty())
-                    <section class="panel discussion-related"><h2>Related discussions</h2>@foreach($related as $topic)<div><a class="text-link" href="/community/{{ $topic->id }}">{{ $topic->title }}</a><p class="field-note">{{ $topic->replies_count }} {{ \Illuminate\Support\Str::plural('reply', $topic->replies_count) }}</p></div>@endforeach</section>
+                    <section class="panel discussion-related"><h2>Related discussions</h2>@foreach($related as $topic)<div><a class="text-link" href="{{ \App\Support\LocationScope::detailUrl('/community/'.$topic->id) }}">{{ $topic->title }}</a><p class="field-note">{{ $topic->replies_count }} {{ \Illuminate\Support\Str::plural('reply', $topic->replies_count) }}</p></div>@endforeach</section>
                 @endif
                 <a class="discussion-thread-all" href="{{ \App\Support\LocationScope::browseUrl($currentSite, '/community', \App\Support\LocationScope::currentBrowsing(request()->attributes->get('site'))) }}"><x-icon name="arrow" size="16"/> Browse more discussions</a>
             </aside>

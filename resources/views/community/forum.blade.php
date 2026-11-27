@@ -87,7 +87,7 @@
                                         <span class="discussion-topic-pill">Pinned</span>
                                     @endif
                                 </div>
-                                <h3><a href="/community/{{ $thread->id }}">{{ $thread->title }}</a></h3>
+                                <h3><a href="{{ \App\Support\LocationScope::detailUrl('/community/'.$thread->id) }}">{{ $thread->title }}</a></h3>
                                 <p class="discussion-topic-excerpt">{{ \Illuminate\Support\Str::limit($thread->body, 150) }}</p>
                                 <div class="discussion-topic-footer">
                                     <span class="discussion-topic-author">
@@ -139,9 +139,9 @@
                                         @foreach($dayEvents as $event)
                                             <article class="discussion-event">
                                                 <time datetime="{{ $event->startDateValue() }}">{{ $event->localStart()->toDateString() < $date ? 'Ongoing' : $event->timeLabel() }}</time>
-                                                <h3><a href="/events/{{ $event->id }}">{{ $event->title }}</a></h3>
+                                                <h3><a href="{{ \App\Support\LocationScope::detailUrl('/events/'.$event->id) }}">{{ $event->title }}</a></h3>
                                                 <p>{{ $event->venue }} · {{ $event->location->name }}</p>
-                                                @if($linkedDiscussion = \App\Support\EventDiscussions::publicThread(request()->attributes->get('site'), $event))<a class="text-link" href="/community/{{ $linkedDiscussion->id }}">Discussion</a>@endif
+                                                @if($linkedDiscussion = \App\Support\EventDiscussions::publicThread(request()->attributes->get('site'), $event))<a class="text-link" href="{{ \App\Support\LocationScope::detailUrl('/community/'.$linkedDiscussion->id) }}">Discussion</a>@endif
                                             </article>
                                         @endforeach
                                     </div>

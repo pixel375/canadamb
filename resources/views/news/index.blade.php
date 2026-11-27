@@ -48,10 +48,10 @@
                         <article class="panel news-result-card">
                             <div class="news-result-copy">
                                 <p class="section-label">{{ \App\Support\News::CATEGORIES[$article->category] }} · {{ $article->location?->name ?? 'Manitoba' }}</p>
-                                <h2><a href="/news/{{ $article->id }}">{{ $article->title }}</a></h2>
+                                <h2><a href="{{ \App\Support\LocationScope::detailUrl('/news/'.$article->id) }}">{{ $article->title }}</a></h2>
                                 <p>{{ \Illuminate\Support\Str::limit($article->body, 240) }}</p>
                                 <p class="field-note mt-2">{{ $article->source->name }} · <time datetime="{{ $article->published_at->toAtomString() }}">{{ $article->published_at->timezone('America/Winnipeg')->format('M j, Y') }}</time></p>
-                                <a class="text-link mt-2" href="/news/{{ $article->id }}">Read article <x-icon name="arrow" size="16"/></a>
+                                <a class="text-link mt-2" href="{{ \App\Support\LocationScope::detailUrl('/news/'.$article->id) }}">Read article <x-icon name="arrow" size="16"/></a>
                             </div>
                         </article>
                     @endforeach

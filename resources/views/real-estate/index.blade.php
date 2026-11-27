@@ -5,7 +5,7 @@
             if ($site->isNetwork() && isset($filters['location'])) {
                 $params['location'] = $filters['location'];
             }
-            $query = http_build_query($params, '', '&', PHP_QUERY_RFC3986);
+            $query = http_build_query(\App\Support\LocationScope::preserveAll($params), '', '&', PHP_QUERY_RFC3986);
             return '/real-estate'.($query === '' ? '' : '?'.$query);
         };
         $types = [
@@ -128,7 +128,7 @@
                 <div class="property-result-grid">
                     @foreach($items as $item)
                         <article class="property-result-card">
-                            <a href="/real-estate/{{ $item->id }}" aria-label="View {{ $item->title }}" class="property-result-image">
+                            <a href="{{ \App\Support\LocationScope::detailUrl('/real-estate/'.$item->id) }}" aria-label="View {{ $item->title }}" class="property-result-image">
                                 @if($item->photos->isNotEmpty())
                                     <img src="/real-estate/{{ $item->id }}/photo/{{ $item->photos->first()->id }}" alt="" loading="lazy">
                                 @else
@@ -137,7 +137,7 @@
                             </a>
                             <div class="property-result-body">
                                 <p class="section-label">{{ $item->transaction === 'rent' ? 'For rent' : 'For sale' }} · {{ $item->location->name }}</p>
-                                <h3><a href="/real-estate/{{ $item->id }}">{{ $item->title }}</a></h3>
+                                <h3><a href="{{ \App\Support\LocationScope::detailUrl('/real-estate/'.$item->id) }}">{{ $item->title }}</a></h3>
                                 <strong class="property-result-price">${{ number_format($item->price_cents / 100, $item->price_cents % 100 === 0 ? 0 : 2) }}{{ $item->transaction === 'rent' ? ' / month' : '' }}</strong>
                                 <p class="property-result-meta">
                                     {{ \App\Models\PropertyListing::TYPES[$item->property_type] }}

@@ -26,12 +26,12 @@
             <div class="public-profile-main"><section class="panel"><h2>About this event</h2><p class="prose-text">{{ $item->body }}</p></section>
                 @if($related->isNotEmpty())
                     <section class="panel"><h2>More upcoming events in {{ $item->location->name }}</h2>
-                        @foreach($related as $event)<article class="item-row"><div><h3><a class="text-link" href="/events/{{ $event->id }}">{{ $event->title }}</a></h3><p>{{ $event->startLabel('M j · g:i a T') }} · {{ $event->venue }}</p></div></article>@endforeach
+                        @foreach($related as $event)<article class="item-row"><div><h3><a class="text-link" href="{{ \App\Support\LocationScope::detailUrl('/events/'.$event->id) }}">{{ $event->title }}</a></h3><p>{{ $event->startLabel('M j · g:i a T') }} · {{ $event->venue }}</p></div></article>@endforeach
                     </section>
                 @endif
             </div>
             <aside class="public-profile-aside"><section class="panel form-stack">
-                <h2>Event details</h2>@if($discussion)<a class="button button-outline" href="/community/{{ $discussion->id }}">Join event discussion</a>@endif<x-content-report-link type="event" :target="$item->id"/>
+                <h2>Event details</h2>@if($discussion)<a class="button button-outline" href="{{ \App\Support\LocationScope::detailUrl('/community/'.$discussion->id) }}">Join event discussion</a>@endif<x-content-report-link type="event" :target="$item->id"/>
                 <div class="business-contact-row"><x-icon name="calendar" size="20"/><div><h3>When</h3><p><time datetime="{{ $item->startDateValue() }}">{{ $item->startLabel('l, F j, Y · g:i a T') }}</time>@if($item->endLabel()) to <time datetime="{{ $item->endDateValue() }}">{{ $item->endLabel('M j · g:i a T') }}</time>@endif</p></div></div>
                 <div class="business-contact-row"><x-icon name="pin" size="20"/><div><h3>Venue</h3><p>{{ $item->venue }} · {{ $item->location->name }}</p></div></div>
                 <div class="business-contact-row"><x-icon name="person" size="20"/><div><h3>Organizer</h3><p>{{ $item->organizer }}</p></div></div>

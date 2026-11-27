@@ -61,7 +61,7 @@
                         <details @if(($filters['day'] ?? null) === $date) open @endif>
                             <summary>{{ \Carbon\CarbonImmutable::parse($date, 'America/Winnipeg')->format('l, M j') }} · {{ $calendar[$date] }} {{ \Illuminate\Support\Str::plural('event', $calendar[$date]) }}</summary>
                             <div class="form-stack mt-2">@foreach($entries as $entry)
-                                <div><a class="text-link" href="/events/{{ $entry->id }}">{{ $entry->title }}</a><p class="field-note">{{ $entry->venue }}</p></div>
+                                <div><a class="text-link" href="{{ \App\Support\LocationScope::detailUrl('/events/'.$entry->id) }}">{{ $entry->title }}</a><p class="field-note">{{ $entry->venue }}</p></div>
                             @endforeach
                             <a class="text-link" href="{{ $calendarUrl(['month' => $currentMonth, 'day' => $date]) }}">View all events this day</a></div>
                         </details>
@@ -78,11 +78,11 @@
             @forelse($items as $item)
                 <article class="panel event-discovery-card"><div class="event-date-tile"><strong>{{ $item->localStart()->format('j') }}</strong><span>{{ $item->localStart()->format('M') }}</span></div><div>
                     <p class="section-label">{{ $item->startLabel('M j · g:i a T') }} · {{ $item->location->name }}</p>
-                    <h2><a href="/events/{{ $item->id }}">{{ $item->title }}</a></h2>
+                    <h2><a href="{{ \App\Support\LocationScope::detailUrl('/events/'.$item->id) }}">{{ $item->title }}</a></h2>
                     <p>{{ $item->venue }} · {{ \App\Support\Community::EVENTS[$item->category] }}</p>
                     @if(!$item->isDateOnly() && $item->localStart()->isPast() && $item->localEnd()?->isFuture())<p class="field-note">In progress</p>@endif
-                    @if($item->endLabel())<p class="field-note">Ends {{ $item->endLabel('M j · g:i a T') }}</p>@endif<p class="field-note">{{ \Illuminate\Support\Str::limit(\Illuminate\Support\Str::squish($item->body), 160) }}</p><a class="text-link" href="/events/{{ $item->id }}">Event details <x-icon name="arrow" size="16"/></a>
-                    @if($linkedDiscussion = \App\Support\EventDiscussions::publicThread($eventSite, $item))<a class="text-link" href="/community/{{ $linkedDiscussion->id }}">Discussion <x-icon name="messages" size="16"/></a>@endif
+                    @if($item->endLabel())<p class="field-note">Ends {{ $item->endLabel('M j · g:i a T') }}</p>@endif<p class="field-note">{{ \Illuminate\Support\Str::limit(\Illuminate\Support\Str::squish($item->body), 160) }}</p><a class="text-link" href="{{ \App\Support\LocationScope::detailUrl('/events/'.$item->id) }}">Event details <x-icon name="arrow" size="16"/></a>
+                    @if($linkedDiscussion = \App\Support\EventDiscussions::publicThread($eventSite, $item))<a class="text-link" href="{{ \App\Support\LocationScope::detailUrl('/community/'.$linkedDiscussion->id) }}">Discussion <x-icon name="messages" size="16"/></a>@endif
                 </div></article>
             @empty<div class="panel market-results-empty"><h3>No upcoming events match these filters.</h3><a class="button button-outline" href="{{ \App\Support\LocationScope::browseUrl(request()->attributes->get('site'), '/events', $place) }}">Clear filters</a></div>@endforelse
         </div>

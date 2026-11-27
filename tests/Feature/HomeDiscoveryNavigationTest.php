@@ -267,4 +267,28 @@ class HomeDiscoveryNavigationTest extends TestCase
             ->assertSee('href="/real-estate"', false)
             ->assertSee('Coming later');
     }
+
+    public function test_temporary_province_wide_scope_survives_detail_navigation_without_changing_preference(): void
+    {
+        $author = User::factory()->create();
+        $thread = CommunityThread::create([
+            'author_id' => $author->id, 'location_id' => Location::where('slug', 'brandon')->sole()->id,
+            'title' => 'Province-wide browsing fixture', 'category' => 'general',
+            'body' => 'An approved discussion outside the remembered community.',
+        ]);
+        $thread->forceFill(['status' => 'approved', 'last_activity_at' => now()])->save();
+        $base = 'https://canadamb.ca';
+        $url = '/community/'.$thread->id;
+        $this->withCookie('canadamb_community', 'winnipeg')->get($base.'/community?location=')->assertOk()
+            ->assertSee('href="'.$url.'?browse="', false)->assertSee('href="/marketplace?location="', false)
+            ->assertSee('name="location" value=""', false);
+        $this->get($base.$url.'?browse=')->assertOk()->assertSee('href="/community?location="', false)
+            ->assertSee('href="/community?category=general&amp;location="', false)->assertSee('href="/jobs?location="', false);
+        $this->get($base.'/community?location=brandon')->assertOk()->assertSee('href="'.$url.'?browse=brandon"', false);
+        $this->get($base.$url.'?browse=brandon')->assertOk()->assertSee('href="/jobs?location=Brandon"', false);
+        $this->get($base.'/community')->assertRedirect('/community?location=winnipeg');
+        $this->get('https://brandonmb.ca'.$url.'?browse=winnipeg')->assertOk()->assertSee('href="/community"', false)
+            ->assertDontSee('href="/community?location=winnipeg"', false);
+    }
+
 }
