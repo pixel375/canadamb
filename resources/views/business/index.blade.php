@@ -65,13 +65,13 @@
                     @foreach($businesses as $business)
                         <article class="panel business-result-card">
                             <span class="location-icon mb-2"><x-icon :name="$categoryIcons[$business->category] ?? 'building'"/></span>
-                            <h3><a href="/businesses/{{ $business->slug }}">{{ $business->name }}</a></h3>
+                            <h3><a href="{{ \App\Support\LocationScope::detailUrl('/businesses/'.$business->slug) }}">{{ $business->name }}</a></h3>
                             <p>{{ $categories[$business->category] }} · {{ $selectedPlace?->name ?? request()->attributes->get('site')->location?->name ?? $business->openLocations->pluck('location.name')->unique()->join(', ') }}</p>
                             @if(filled($business->description))
                                 <div class="business-result-excerpt">{{ \Illuminate\Support\Str::limit(\Illuminate\Support\Str::squish(strip_tags($business->description)), 140) }}</div>
                             @endif
                             @if($business->phone || $business->website || $business->public_email)<p class="business-contact-summary"><x-icon name="check" size="14"/> Contact details available</p>@endif
-                            <a class="text-link" href="/businesses/{{ $business->slug }}">View profile <x-icon name="arrow" size="16"/></a>
+                            <a class="text-link" href="{{ \App\Support\LocationScope::detailUrl('/businesses/'.$business->slug) }}">View profile <x-icon name="arrow" size="16"/></a>
                         </article>
                     @endforeach
                 </div>

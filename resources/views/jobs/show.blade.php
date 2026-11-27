@@ -65,7 +65,7 @@
                     <h2>About the employer</h2>
                     <p><strong>{{ $item->branch->business->name }}</strong></p><p>{{ $item->branch->location->name }}</p>
                     @if(app(\App\Support\BusinessDirectory::class)->enabled(request()->attributes->get('site')))
-                        <a class="text-link" href="/businesses/{{ $item->branch->business->slug }}">View business profile <x-icon name="arrow" size="16"/></a>
+                        <a class="text-link" href="{{ \App\Support\LocationScope::detailUrl('/businesses/'.$item->branch->business->slug) }}">View business profile <x-icon name="arrow" size="16"/></a>
                     @endif
                 </section>
             </aside>

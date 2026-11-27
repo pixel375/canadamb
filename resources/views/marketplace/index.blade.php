@@ -6,7 +6,7 @@
             if (isset($filters['location'])) {
                 $params['location'] = $filters['location'];
             }
-            $query = http_build_query($params, '', '&', PHP_QUERY_RFC3986);
+            $query = http_build_query(\App\Support\LocationScope::preserveAll($params), '', '&', PHP_QUERY_RFC3986);
 
             return '/marketplace'.($query === '' ? '' : '?'.$query);
         };
@@ -44,7 +44,7 @@
                 </div>
                 @unless($selectedGroup)
                     <form class="market-quick-search" action="/marketplace" method="get" role="search">
-                        @if($marketPlace)<input type="hidden" name="location" value="{{ $filters['location'] }}">@endif
+                        @if($marketPlace || \App\Support\LocationScope::explicitAll(request()->attributes->get('site')))<input type="hidden" name="location" value="{{ $filters['location'] ?? '' }}">@endif
                         <x-icon name="search" size="19"/>
                         <label class="sr-only" for="marketplace-quick-query">Search all classifieds</label>
                         <input id="marketplace-quick-query" type="search" name="q" placeholder="Search listings" maxlength="100">
@@ -83,7 +83,7 @@
                                 </a>
                             </article>
                         @endforeach
-                        <a class="market-category-card market-category-upcoming" href="/real-estate{{ isset($filters['location']) ? '?'.http_build_query(['location' => $filters['location']]) : '' }}" aria-label="Browse Real Estate categories, listings coming later">
+                        <a class="market-category-card market-category-upcoming" href="{{ \App\Support\LocationScope::browseUrl(request()->attributes->get('site'), '/real-estate', \App\Support\LocationScope::currentBrowsing(request()->attributes->get('site'))) }}" aria-label="Browse Real Estate categories, listings coming later">
                             <span class="market-category-icon" aria-hidden="true"><x-icon name="house" size="25"/></span>
                             <span class="market-category-name">Real Estate</span>
                             <span class="market-category-description">Explore homes, rentals, acreages and land in a dedicated section.</span>

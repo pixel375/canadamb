@@ -3,7 +3,7 @@
     $homeModules = app(\App\Support\NetworkSettings::class)->forSite($site)['modules'];
     $enabled = app(\App\Support\Marketplace::class)->enabled($site);
     $place = $location->name ?? 'Manitoba';
-    $scope = $site->isNetwork() && $location ? '?location='.$location->slug : '';
+    $scope = $site->isNetwork() && ($location || \App\Support\LocationScope::explicitAll($site)) ? '?location='.rawurlencode($location?->slug ?? '') : '';
     $homeBrowseLink = fn (string $path) => \App\Support\LocationScope::browseUrl($site, $path, $location);
     $newsEnabled = $homeModules['news'] ?? false;
     $eventsEnabled = $homeModules['events'] ?? false;
@@ -39,7 +39,7 @@
                                 <x-icon name="search" size="19"/>
                                 <label class="sr-only" for="home-search-marketplace">Search Marketplace listings</label>
                                 <input id="home-search-marketplace" type="search" name="q" maxlength="100" placeholder="Search listings, vehicles, furniture...">
-                                @if($site->isNetwork() && $location)<input type="hidden" name="location" value="{{ $location->slug }}">@endif
+                                @if($site->isNetwork() && ($location || \App\Support\LocationScope::explicitAll($site)))<input type="hidden" name="location" value="{{ $location?->slug ?? '' }}">@endif
                                 <button class="button button-primary" type="submit">Search listings</button>
                             </form>
                         @endif
@@ -48,7 +48,7 @@
                                 <x-icon name="search" size="19"/>
                                 <label class="sr-only" for="home-search-businesses">Search local businesses</label>
                                 <input id="home-search-businesses" type="search" name="q" maxlength="100" placeholder="Search shops, services, and businesses...">
-                                @if($site->isNetwork() && $location)<input type="hidden" name="location" value="{{ $location->slug }}">@endif
+                                @if($site->isNetwork() && ($location || \App\Support\LocationScope::explicitAll($site)))<input type="hidden" name="location" value="{{ $location?->slug ?? '' }}">@endif
                                 <button class="button button-primary" type="submit">Find businesses</button>
                             </form>
                         @endif
@@ -57,7 +57,7 @@
                                 <x-icon name="search" size="19"/>
                                 <label class="sr-only" for="home-search-community">Search discussion topics</label>
                                 <input id="home-search-community" type="search" name="q" maxlength="100" placeholder="Search questions and conversations...">
-                                @if($site->isNetwork() && $location)<input type="hidden" name="location" value="{{ $location->slug }}">@endif
+                                @if($site->isNetwork() && ($location || \App\Support\LocationScope::explicitAll($site)))<input type="hidden" name="location" value="{{ $location?->slug ?? '' }}">@endif
                                 <button class="button button-primary" type="submit">Find discussions</button>
                             </form>
                         @endif
@@ -66,7 +66,7 @@
                                 <x-icon name="search" size="19"/>
                                 <label class="sr-only" for="home-search-jobs">Search jobs</label>
                                 <input id="home-search-jobs" type="search" name="q" maxlength="100" placeholder="Search local jobs and opportunities...">
-                                @if($site->isNetwork() && $location)<input type="hidden" name="location" value="{{ $location->name }}">@endif
+                                @if($site->isNetwork() && ($location || \App\Support\LocationScope::explicitAll($site)))<input type="hidden" name="location" value="{{ $location?->name ?? '' }}">@endif
                                 <button class="button button-primary" type="submit">Find jobs</button>
                             </form>
                         @endif
@@ -75,7 +75,7 @@
                                 <form class="home-search-form" data-home-search-section="{{ $mode }}" action="/{{ $mode }}" method="get" role="search">
                                     <x-icon name="search" size="19"/><label class="sr-only" for="home-search-{{ $mode }}">{{ $button }}</label>
                                     <input id="home-search-{{ $mode }}" type="search" name="q" maxlength="100" placeholder="{{ $placeholder }}">
-                                    @if($site->isNetwork() && $location)<input type="hidden" name="location" value="{{ $location->slug }}">@endif
+                                    @if($site->isNetwork() && ($location || \App\Support\LocationScope::explicitAll($site)))<input type="hidden" name="location" value="{{ $location?->slug ?? '' }}">@endif
                                     <button class="button button-primary" type="submit">{{ $button }}</button>
                                 </form>
                             @endif
@@ -173,7 +173,7 @@
                 <div class="section-heading"><h2 id="news-title">Latest news</h2>@unless($preview ?? false)<a class="text-link" href="{{ $homeBrowseLink('/news') }}">All news <x-icon name="arrow" size="16"/></a>@endunless</div>
                 <div class="home-news-grid">
                     @forelse($articles as $article)
-                                                <article class="panel home-news-card"><p class="section-label">{{ \App\Support\News::CATEGORIES[$article->category] }} · {{ $article->location?->name ?? 'Manitoba' }}</p><h3>@if($preview ?? false){{ $article->title }}@else<a href="/news/{{ $article->id }}">{{ $article->title }}</a>@endif</h3><p>{{ \Illuminate\Support\Str::limit(\Illuminate\Support\Str::squish($article->body), 150) }}</p><p class="field-note">{{ $article->source->name }} · {{ $article->published_at->timezone('America/Winnipeg')->format('M j, Y') }}</p></article>
+                                                <article class="panel home-news-card"><p class="section-label">{{ \App\Support\News::CATEGORIES[$article->category] }} · {{ $article->location?->name ?? 'Manitoba' }}</p><h3>@if($preview ?? false){{ $article->title }}@else<a href="{{ \App\Support\LocationScope::detailUrl('/news/'.$article->id) }}">{{ $article->title }}</a>@endif</h3><p>{{ \Illuminate\Support\Str::limit(\Illuminate\Support\Str::squish($article->body), 150) }}</p><p class="field-note">{{ $article->source->name }} · {{ $article->published_at->timezone('America/Winnipeg')->format('M j, Y') }}</p></article>
                     @empty
                         <div class="panel home-news-empty"><x-icon name="news" size="26"/><div><h3>No published news here yet</h3><p>Check the local news section for source-attributed reports and public notices.</p>@unless($preview ?? false)<a class="text-link" href="{{ $homeBrowseLink('/news') }}">Browse news <x-icon name="arrow" size="16"/></a>@endunless</div></div>
                     @endforelse
@@ -186,7 +186,7 @@
         <section class="homepage-section" aria-labelledby="market-title">
             <div class="section-heading">
                 <div><p class="section-label"><x-icon name="marketplace" size="15"/> Marketplace</p><h2 id="market-title">Latest in {{ $place }}</h2></div>
-                @unless($preview ?? false)<a class="text-link" href="/marketplace?{{ http_build_query(['view' => 'all'] + ($site->isNetwork() && $location ? ['location' => $location->slug] : [])) }}">View all listings <x-icon name="arrow" size="16"/></a>@endunless
+                @unless($preview ?? false)<a class="text-link" href="/marketplace?{{ http_build_query(\App\Support\LocationScope::preserveAll(['view' => 'all'] + ($site->isNetwork() && $location ? ['location' => $location->slug] : []))) }}">View all listings <x-icon name="arrow" size="16"/></a>@endunless
             </div>
             @if($latest->isEmpty())
                 <div class="empty-state">
@@ -209,7 +209,7 @@
                 <div class="panel">
                     @forelse($businessUpdates as $update)
                         <article class="item-row">
-                            <div><h3>@if($preview ?? false){{ $update->title }}@else<a href="/businesses/{{ $update->branch->business->slug }}">{{ $update->title }}</a>@endif</h3><p>{{ $update->branch->business->name }} · {{ $update->branch->location->name }}</p></div>
+                            <div><h3>@if($preview ?? false){{ $update->title }}@else<a href="{{ \App\Support\LocationScope::detailUrl('/businesses/'.$update->branch->business->slug) }}">{{ $update->title }}</a>@endif</h3><p>{{ $update->branch->business->name }} · {{ $update->branch->location->name }}</p></div>
                             <time datetime="{{ $update->published_at->toDateString() }}">{{ $update->published_at->format('M j, Y') }}</time>
                         </article>
                     @empty
@@ -251,7 +251,7 @@
                                 @forelse($recentDiscussions as $thread)
                                     <article class="home-community-item">
                                         <p class="home-community-item-eyebrow">{{ \App\Support\Community::FORUMS[$thread->category] ?? 'Discussion' }} · {{ $thread->location?->name ?? 'Manitoba' }}</p>
-                                        <h4>@if($preview ?? false){{ $thread->title }}@else<a href="/community/{{ $thread->id }}">{{ $thread->title }}</a>@endif</h4>
+                                        <h4>@if($preview ?? false){{ $thread->title }}@else<a href="{{ \App\Support\LocationScope::detailUrl('/community/'.$thread->id) }}">{{ $thread->title }}</a>@endif</h4>
                                         <p>{{ $thread->replies_count }} {{ \Illuminate\Support\Str::plural('reply', $thread->replies_count) }} · {{ \Illuminate\Support\Str::limit($thread->body, 88) }}</p>
                                     </article>
                                 @empty
@@ -279,7 +279,7 @@
                                             <strong>{{ $event->localStart()->format('j') }}</strong><small>{{ $event->localStart()->format('M') }}</small>
                                         </time>
                                         <div>
-                                            <h4>@if($preview ?? false){{ $event->title }}@else<a href="/events/{{ $event->id }}">{{ $event->title }}</a>@endif</h4>
+                                            <h4>@if($preview ?? false){{ $event->title }}@else<a href="{{ \App\Support\LocationScope::detailUrl('/events/'.$event->id) }}">{{ $event->title }}</a>@endif</h4>
                                             <p>{{ $event->timeLabel() }} · {{ $event->location->name }}</p>
                                         </div>
                                     </article>
@@ -305,7 +305,7 @@
                                 @forelse($latestJobs as $job)
                                     <article class="home-community-item">
                                         <p class="home-community-item-eyebrow">{{ $job->branch->location->name }}</p>
-                                        <h4>@if($preview ?? false){{ $job->title }}@else<a href="/jobs/{{ $job->id }}">{{ $job->title }}</a>@endif</h4>
+                                        <h4>@if($preview ?? false){{ $job->title }}@else<a href="{{ \App\Support\LocationScope::detailUrl('/jobs/'.$job->id) }}">{{ $job->title }}</a>@endif</h4>
                                         <p>{{ $job->branch->business->name }}</p>
                                     </article>
                                 @empty

@@ -16,7 +16,7 @@
                 <div class="browse-feed">
                     @forelse($updates as $update)
                         <article class="panel business-update-card">
-                            <div class="business-update-heading"><span class="business-category-icon"><x-icon name="building" size="20"/></span><div><a class="text-link" href="/businesses/{{ $update->branch->business->slug }}">{{ $update->branch->business->name }}</a><p class="field-note">{{ $update->branch->location->name }} · {{ $update->published_at->format('M j, Y') }}</p></div><span class="member-listing-status">{{ ucfirst($update->type) }}</span></div>
+                            <div class="business-update-heading"><span class="business-category-icon"><x-icon name="building" size="20"/></span><div><a class="text-link" href="{{ \App\Support\LocationScope::detailUrl('/businesses/'.$update->branch->business->slug) }}">{{ $update->branch->business->name }}</a><p class="field-note">{{ $update->branch->location->name }} · {{ $update->published_at->format('M j, Y') }}</p></div><span class="member-listing-status">{{ ucfirst($update->type) }}</span></div>
                             <h3>{{ $update->title }}</h3><p class="prose-text">{{ $update->body }}</p>
                         </article>
                     @empty

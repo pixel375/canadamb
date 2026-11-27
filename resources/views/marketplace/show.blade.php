@@ -4,11 +4,11 @@
         <nav class="listing-breadcrumb" aria-label="Breadcrumb">
             <a class="text-link" href="{{ \App\Support\LocationScope::browseUrl($currentSite, '/marketplace', \App\Support\LocationScope::currentBrowsing(request()->attributes->get('site'))) }}">Marketplace</a>
             <span aria-hidden="true">/</span>
-            <a class="text-link" href="/marketplace?{{ http_build_query(array_filter(['category' => $item->category, 'location' => $currentSite->isNetwork() ? \App\Support\LocationScope::currentBrowsing($currentSite)?->slug : null])) }}">{{ $item->categoryRecord->name }}</a>
+            <a class="text-link" href="/marketplace?{{ http_build_query(\App\Support\LocationScope::preserveAll(array_filter(['category' => $item->category, 'location' => $currentSite->isNetwork() ? \App\Support\LocationScope::currentBrowsing($currentSite)?->slug : null]))) }}">{{ $item->categoryRecord->name }}</a>
         </nav>
         <div class="listing-detail-layout">
             <article class="panel listing-detail">
-                <p class="section-label"><a href="/marketplace?{{ http_build_query(array_filter(['category' => $item->category, 'location' => $currentSite->isNetwork() ? \App\Support\LocationScope::currentBrowsing($currentSite)?->slug : null])) }}">{{ $item->categoryRecord->name }}</a></p>
+                <p class="section-label"><a href="/marketplace?{{ http_build_query(\App\Support\LocationScope::preserveAll(array_filter(['category' => $item->category, 'location' => $currentSite->isNetwork() ? \App\Support\LocationScope::currentBrowsing($currentSite)?->slug : null]))) }}">{{ $item->categoryRecord->name }}</a></p>
                 <h1>{{ $item->title }}</h1>
                 <p class="listing-price">{{ $item->priceLabel() }} <small>{{ $item->negotiable ? 'Negotiable' : '' }}</small></p>
                 <p class="listing-meta"><x-icon name="pin" size="14"/> {{ $item->location->name }} <span aria-hidden="true">·</span> Listed {{ $item->published_at->diffForHumans() }}</p>

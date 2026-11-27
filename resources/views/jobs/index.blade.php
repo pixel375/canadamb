@@ -22,7 +22,7 @@
         @php
             $activeFilters = array_filter($filters, fn ($value) => $value !== null && $value !== '');
             $localSite = request()->attributes->get('site')->location;
-            $scope = !$localSite && filled($activeFilters['location'] ?? null) ? ['location' => $activeFilters['location']] : [];
+            $scope = \App\Support\LocationScope::preserveAll(!$localSite && filled($activeFilters['location'] ?? null) ? ['location' => $activeFilters['location']] : []);
             $clearUrl = '/jobs'.($scope ? '?'.http_build_query($scope) : '');
             $wideFilters = array_diff_key($activeFilters, ['location' => true]);
             $wideUrl = '/jobs'.($wideFilters ? '?'.http_build_query($wideFilters) : '');

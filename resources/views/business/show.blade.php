@@ -1,7 +1,7 @@
 @php($structured = ['@context' => 'https://schema.org', '@type' => 'LocalBusiness', 'name' => $business->name, 'url' => $canonical, 'address' => ['@type' => 'PostalAddress', 'streetAddress' => $branches->first()->address, 'addressLocality' => $branches->first()->location->name, 'addressRegion' => 'MB', 'addressCountry' => 'CA']])
 <x-layouts.site :title="$business->name.' | '.($branches->pluck('location.name')->unique()->count() === 1 ? $branches->first()->location->name : 'Manitoba').' business directory'" :description="\Illuminate\Support\Str::limit($business->description ?? ($business->name.' business profile and contact information.'), 155)" :canonical="$canonical" :structured-data="$structured">
     <div class="container page-shell">
-        <a class="text-link mb-4" href="/businesses"><x-icon name="building" size="16"/> Business directory</a>
+        <a class="text-link mb-4" href="{{ \App\Support\LocationScope::browseUrl(request()->attributes->get('site'), '/businesses', \App\Support\LocationScope::currentBrowsing(request()->attributes->get('site'))) }}"><x-icon name="building" size="16"/> Business directory</a>
         <header class="panel public-business-hero">
             <span class="public-business-avatar"><x-icon name="building" size="40"/></span>
             <div class="public-business-heading">
@@ -34,7 +34,7 @@
             <aside class="public-profile-aside">
                 <section class="panel form-stack">
                     <h2>Contact and locations</h2><x-content-report-link type="business" :target="$business->id"/>
-                    @if($multiCommunity && !request()->attributes->get('site')->isNetwork())<p class="field-note">Showing branches on this portal. <a class="text-link" href="{{ $canonical }}">View all Manitoba branches</a>.</p>@endif
+                    @if($multiCommunity && !request()->attributes->get('site')->isNetwork())<p class="field-note">Showing only branches in this community.</p>@endif
                     @foreach($branches as $branch)<div class="business-contact-row"><x-icon name="pin" size="20"/><div><h3>{{ $branch->location->name }}</h3><p>{{ $branch->address }}</p></div></div>@endforeach
                     @if($business->hours)<div class="business-contact-row"><x-icon name="clock" size="20"/><div><h3>Hours</h3><p class="whitespace-pre-line">{{ $business->hours }}</p></div></div>@endif
                     @if($business->website)<a class="button button-primary" href="{{ $business->website }}" rel="nofollow ugc">Visit website <x-icon name="arrow" size="16"/></a>@endif
