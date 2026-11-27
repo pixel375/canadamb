@@ -46,7 +46,11 @@
                 <div class="panel">
                     @forelse($announcements as $announcement)
                         <article class="item-row"><div><p class="section-label">Official CanadaMB announcement</p><h3>{{ $announcement->title }}</h3><p class="preserve-lines">{{ $announcement->body }}</p><p>{{ \Illuminate\Support\Carbon::parse($announcement->created_at)->diffForHumans() }}</p></div>
-                            @if(!$announcement->read_at)<form method="post" action="/account/notifications/announcements/{{ $announcement->id }}/read">@csrf@foreach($filters as $name => $value)@if($value !== null)<input type="hidden" name="{{ $name }}" value="{{ $value }}">@endif@endforeach<button class="button button-outline">Mark as read</button></form>@endif
+                            @if(!$announcement->read_at)<form method="post" action="/account/notifications/announcements/{{ $announcement->id }}/read">@csrf
+                                @foreach(array_filter($filters) as $name => $value)
+                                    <input type="hidden" name="{{ $name }}" value="{{ $value }}">
+                                @endforeach
+                                <button class="button button-outline">Mark as read</button></form>@endif
                         </article>
                     @empty<p>{{ ($filters['announcement_view'] ?? null) === 'unread' ? 'No unread network announcements.' : 'No network announcements yet.' }}</p>@endforelse
                 </div>
@@ -101,7 +105,11 @@
                                 <a class="text-link" href="{{ $ownerDestinations[$alert->id] ?? \App\Support\OwnerNotifications::destination($alert->kind, (int) $alert->target_id) }}">{{ in_array($alert->kind, ['listing', 'discussion', 'reply', 'event', 'job', 'business-update', 'business-profile', 'business-claim', 'property'], true) ? 'View submission status' : 'Manage my submissions' }}</a>
                                 @if(in_array($alert->decision, ['rejected', 'removed', 'changes_requested', 'superseded'], true))<a class="text-link" href="/contact">Contact support about this decision</a>@endif
                             </div>
-                            @if(!$alert->read_at)<form method="post" action="/account/notifications/updates/{{ $alert->id }}/read">@csrf@foreach($filters as $name => $value)@if($value !== null)<input type="hidden" name="{{ $name }}" value="{{ $value }}">@endif@endforeach<button class="button button-outline">Mark as read</button></form>@endif
+                            @if(!$alert->read_at)<form method="post" action="/account/notifications/updates/{{ $alert->id }}/read">@csrf
+                                @foreach(array_filter($filters) as $name => $value)
+                                    <input type="hidden" name="{{ $name }}" value="{{ $value }}">
+                                @endforeach
+                                <button class="button button-outline">Mark as read</button></form>@endif
                         </article>
                     @empty
                         <p>{{ ($filters['submission_view'] ?? null) === 'unread' ? 'No unread submission updates on this portal.' : 'No submission updates on this portal yet.' }}</p>
