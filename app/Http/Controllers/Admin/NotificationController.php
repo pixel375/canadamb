@@ -10,7 +10,9 @@ use App\Support\BroadcastConsent;
 use App\Support\EventDiscussions;
 use App\Support\NotificationPreferences;
 use App\Support\OwnerNotifications;
+use App\Support\PushDelivery;
 use App\Support\PushDevices;
+use App\Support\VapidPush;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -123,8 +125,11 @@ final class NotificationController extends Controller
         $pushEnabled = PushDevices::enabled();
         $pushKeyConfigured = PushDevices::publicKey() !== null;
         $pushCount = $pushEnabled ? DB::table('push_devices')->count() : null;
+        $pushDeliveryEnabled = PushDelivery::enabled();
+        $pushSigningReady = VapidPush::signingKey() !== null;
+        $pushStates = $pushDeliveryEnabled ? DB::table('push_delivery_states')->selectRaw('last_result, COUNT(*) AS total')->groupBy('last_result')->pluck('total', 'last_result') : collect();
 
-        return response()->view('admin.notifications', compact('days', 'metrics', 'preferencesEnabled', 'paused', 'eventsEnabled', 'ownerEnabled', 'ownerMetrics', 'pushEnabled', 'pushKeyConfigured', 'pushCount', 'broadcastEnabled', 'announcementDelivery', 'announcementHistory', 'announcementMetrics'))
+        return response()->view('admin.notifications', compact('days', 'metrics', 'preferencesEnabled', 'paused', 'eventsEnabled', 'ownerEnabled', 'ownerMetrics', 'pushEnabled', 'pushKeyConfigured', 'pushCount', 'pushDeliveryEnabled', 'pushSigningReady', 'pushStates', 'broadcastEnabled', 'announcementDelivery', 'announcementHistory', 'announcementMetrics'))
             ->header('Cache-Control', 'private, no-store');
     }
 }

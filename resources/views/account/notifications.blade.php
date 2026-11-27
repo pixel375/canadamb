@@ -60,7 +60,7 @@
         @if($pushEnabled)
             <section class="panel form-stack" data-push-devices data-public-key="{{ $pushKey ?? '' }}">
                 <h2>Device notifications</h2>
-                <p>Register this browser for future notification delivery. Delivery is not available yet. Registration is optional and specific to your account and website.</p>
+                <p>Register this browser for optional activity alerts. {{ $pushDelivery ? 'Generic alerts contain no private content. Open your account to check activity.' : 'Delivery is not available yet.' }} Registration is specific to your account and website.</p>
                 <form hidden data-push-token>@csrf</form>
                 <div class="form-grid" hidden data-push-controls>
                     @if($pushKey)<button type="button" class="button button-primary" data-push-register>Register this device</button>@endif

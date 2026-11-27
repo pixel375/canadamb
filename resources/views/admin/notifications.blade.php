@@ -51,8 +51,10 @@
         <p>Device registry: {{ $pushEnabled ? 'Available' : 'Staged, not active' }}</p>
         <p>Public application key: {{ $pushKeyConfigured ? 'Configured (format checked)' : 'Not configured' }}</p>
         @if($pushCount !== null)<p>{{ number_format($pushCount) }} registered devices across the network.</p>@endif
-        <p>External push and email delivery: not available. No automatic sends or permission prompts are initiated from this page.</p>
-        <p class="field-note">After review, configure CANADAMB_PUSH_PUBLIC_KEY in the private hosting environment and enable CANADAMB_PUSH_DEVICES only after migration approval. Keep the future sender's private VAPID key out of browser code, GitHub and administrator forms. Device registration does not imply marketing consent.</p>
+        <p>Generic push delivery: {{ $pushDeliveryEnabled && $pushSigningReady ? 'Enabled' : 'Disabled or not configured' }}. Email delivery is not available. No sends or permission prompts are initiated from this page.</p>
+        <p>Private signing key and contact: {{ $pushSigningReady ? 'Configured and matched' : 'Not ready' }}</p>
+        @if($pushDeliveryEnabled)<h3>Current device delivery states</h3>@foreach(['idle', 'accepted', 'retry', 'failed', 'paused', 'baseline'] as $state)<p>{{ ucfirst($state) }}: {{ number_format($pushStates->get($state, 0)) }}</p>@endforeach<p class="field-note">Provider acceptance is not proof of delivery or reading.</p>@endif
+        <p class="field-note">After review, configure CANADAMB_PUSH_PUBLIC_KEY in the private hosting environment and enable CANADAMB_PUSH_DEVICES only after migration approval. Configure matching CANADAMB_PUSH_PRIVATE_KEY (base64 of a P-256 PEM private key) and CANADAMB_PUSH_SUBJECT (mailto: operator contact) only in the private hosting environment. Enable CANADAMB_PUSH_DELIVERY separately after reviewed migration and device acceptance. Never place the private VAPID key in browser code, GitHub or administrator forms. Device registration does not imply marketing consent.</p>
         <p class="field-note">Discussion preferences do not constitute consent to receive administrator broadcasts or marketing messages.</p>
     </section>
 </x-layouts.admin>

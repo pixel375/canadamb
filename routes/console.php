@@ -10,8 +10,10 @@ use App\Support\JobBoard;
 use App\Support\Marketplace;
 use App\Support\MessageFileInventory;
 use App\Support\PropertyMediaInventory;
+use App\Support\PushDelivery;
 use App\Support\QueueInventory;
 use App\Support\StagedFeatures;
+use App\Support\VapidPush;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schedule;
@@ -95,6 +97,14 @@ Artisan::command('media:inventory {--limit=500}', function (PropertyMediaInvento
 Artisan::command('network:queue-inventory', function (QueueInventory $inventory) {
     $this->line(json_encode($inventory->inspect(), JSON_THROW_ON_ERROR));
 })->purpose('Read-only aggregate queue backlog observations without payloads');
+
+Artisan::command('notifications:push-activity', function (PushDelivery $delivery, VapidPush $transport) {
+    $this->line(json_encode($delivery->run($transport), JSON_THROW_ON_ERROR));
+})->purpose('Deliver bounded, consented generic activity signals; no message payloads');
+
+if (config('network.push_delivery') && ! config('network.prelaunch')) {
+    Schedule::command('notifications:push-activity')->everyMinute()->withoutOverlapping(3);
+}
 
 Schedule::command('passport:purge --hours=24')->daily()->withoutOverlapping(10);
 if (config('network.news_polling') && ! config('network.prelaunch')) {

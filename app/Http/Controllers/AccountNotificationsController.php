@@ -12,6 +12,7 @@ use App\Support\EventDiscussions;
 use App\Support\JobSearches;
 use App\Support\NotificationPreferences;
 use App\Support\OwnerNotifications;
+use App\Support\PushDelivery;
 use App\Support\PushDevices;
 use App\Support\ReplyLinks;
 use Illuminate\Http\Request;
@@ -116,6 +117,7 @@ final class AccountNotificationsController extends Controller
         $broadcastEnabled = BroadcastConsent::enabled();
         $broadcastOptedIn = BroadcastConsent::optedIn($user->id);
         $pushEnabled = PushDevices::enabled();
+        $pushDelivery = PushDelivery::available($site);
         $pushKey = PushDevices::available($site) ? PushDevices::publicKey() : null;
         $pushDevices = $pushEnabled ? DB::table('push_devices')->join('sites', 'sites.id', '=', 'push_devices.site_id')
             ->where('push_devices.user_id', $user->id)->orderByDesc('push_devices.id')
@@ -127,7 +129,7 @@ final class AccountNotificationsController extends Controller
         $jobAlertsEnabled = JobSearches::enabled($site) && $preferences['job_summary'];
         $matchingSearches = $jobAlertsEnabled ? JobSearches::alertingSearchCount($user->id, $site) : 0;
 
-        return response()->view('account.notifications', compact('counts', 'discussionsEnabled', 'recent', 'preferencesEnabled', 'preferences', 'jobAlertsEnabled', 'matchingSearches', 'directReplies', 'eventThreads', 'ownerEnabled', 'ownerAlerts', 'ownerUnread', 'replyUnread', 'pushEnabled', 'pushKey', 'pushDevices', 'broadcastEnabled', 'broadcastOptedIn', 'announcements', 'announcementUnread'))
+        return response()->view('account.notifications', compact('counts', 'discussionsEnabled', 'recent', 'preferencesEnabled', 'preferences', 'jobAlertsEnabled', 'matchingSearches', 'directReplies', 'eventThreads', 'ownerEnabled', 'ownerAlerts', 'ownerUnread', 'replyUnread', 'pushEnabled', 'pushDelivery', 'pushKey', 'pushDevices', 'broadcastEnabled', 'broadcastOptedIn', 'announcements', 'announcementUnread'))
             ->header('Cache-Control', 'private, no-store');
     }
 }
