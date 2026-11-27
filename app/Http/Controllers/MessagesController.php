@@ -466,7 +466,7 @@ class MessagesController extends Controller
                 }
             }, attempts: 3);
         } catch (Throwable $exception) {
-            $photos->delete($media, MessageAttachments::DISK);
+            $photos->delete($media, MessageAttachments::DISK, 'attachments');
             throw $exception;
         }
 

@@ -12,27 +12,55 @@ use Throwable;
 
 class ListingPhotos
 {
-    public static function readablePath(string $diskName, string $directory, string $path, bool $thumbnail): bool
+    private static function safeDirectory(string $diskName, string $directory): bool
     {
-        if (! in_array($directory, ['listings', 'property-drafts'], true) || config('filesystems.disks.'.$diskName.'.driver') !== 'local') {
+        if (config('filesystems.disks.'.$diskName.'.driver') !== 'local') {
             return false;
         }
-        $suffix = $thumbnail ? '-preview' : '';
-        if (! preg_match('~^'.preg_quote($directory, '~').'/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}'.$suffix.'[.]webp$~D', $path)) {
+        if ($directory === 'attachments') {
+            return $diskName === MessageAttachments::DISK && MessageAttachments::safeDirectory();
+        }
+        if (! in_array($directory, ['listings', 'property-drafts'], true) || ($directory === 'property-drafts' && $diskName !== 'local')) {
             return false;
         }
         $disk = Storage::disk($diskName);
         // The shared storage/app parent link is intentional.
         $root = rtrim($disk->path(''), DIRECTORY_SEPARATOR);
-        $folder = $disk->path($directory);
-        $file = $disk->path($path);
+        foreach ([$root, $disk->path($directory)] as $folder) {
+            if (is_link($folder) || (file_exists($folder) && ! is_dir($folder))) {
+                return false;
+            }
+        }
 
-        return is_dir($root) && ! is_link($root) && is_dir($folder) && ! is_link($folder)
-            && is_file($file) && ! is_link($file);
+        return true;
+    }
+
+    private static function validPath(string $directory, string $path, bool $thumbnail): bool
+    {
+        $suffix = $thumbnail ? '-preview' : '';
+
+        return (bool) preg_match('~^'.preg_quote($directory, '~').'/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}'.$suffix.'[.]webp$~D', $path);
+    }
+
+    public static function readablePath(string $diskName, string $directory, string $path, bool $thumbnail): bool
+    {
+        if (! self::safeDirectory($diskName, $directory) || ! self::validPath($directory, $path, $thumbnail)) {
+            return false;
+        }
+        $file = Storage::disk($diskName)->path($path);
+
+        return is_file($file) && ! is_link($file);
     }
 
     public function store(array $files, string $directory = 'listings', ?string $disk = null): array
     {
+        if ($files === []) {
+            return [];
+        }
+        $disk ??= config('network.media_disk');
+        if (! self::safeDirectory($disk, $directory)) {
+            throw ValidationException::withMessages(['photos' => 'Photo storage is temporarily unavailable.']);
+        }
         $paths = [];
         try {
             foreach ($files as $index => $file) {
@@ -47,17 +75,26 @@ class ListingPhotos
                 $this->write($image, $paths[$index]['thumbnail_path'], 480, $disk);
             }
         } catch (Throwable $exception) {
-            $this->delete($paths, $disk);
+            $this->delete($paths, $disk, $directory);
             throw $exception;
         }
 
         return $paths;
     }
 
-    public function delete(array $paths, ?string $disk = null): void
+    public function delete(array $paths, ?string $disk = null, string $directory = 'listings'): void
     {
+        if ($paths === []) {
+            return;
+        }
+        $disk ??= config('network.media_disk');
         foreach ($paths as $photo) {
-            Storage::disk($disk ?? config('network.media_disk'))->delete([$photo['image_path'], $photo['thumbnail_path']]);
+            foreach (['image_path' => false, 'thumbnail_path' => true] as $key => $thumbnail) {
+                $path = $photo[$key] ?? null;
+                if (is_string($path) && self::readablePath($disk, $directory, $path, $thumbnail)) {
+                    Storage::disk($disk)->delete($path);
+                }
+            }
         }
     }
 
@@ -95,7 +132,9 @@ class ListingPhotos
                 throw new RuntimeException('Could not encode the listing photo.');
             }
             rewind($stream);
-            if (! Storage::disk($disk ?? config('network.media_disk'))->put($path, $stream)) {
+            $disk ??= config('network.media_disk');
+            if (! self::safeDirectory($disk, dirname($path)) || is_link(Storage::disk($disk)->path($path))
+                || ! Storage::disk($disk)->put($path, $stream)) {
                 throw new RuntimeException('Could not store the listing photo.');
             }
         } finally {

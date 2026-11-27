@@ -5,8 +5,10 @@ namespace Tests\Feature;
 use App\Models\Listing;
 use App\Models\Location;
 use App\Models\User;
+use App\Support\ListingPhotos;
 use App\Support\PropertyMediaInventory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -15,6 +17,37 @@ class PropertyMediaInventoryTest extends TestCase
     use RefreshDatabase;
 
     protected $seed = true;
+
+    public function test_photo_cleanup_and_upload_never_follow_unsafe_references(): void
+    {
+        Storage::fake('local');
+        config(['network.media_disk' => 'local']);
+        $disk = Storage::disk('local');
+        $photos = app(ListingPhotos::class);
+        $paths = $photos->store([UploadedFile::fake()->image('fixture.png')]);
+        $disk->put('unrelated.webp', 'unrelated data');
+        $photos->delete([['image_path' => 'unrelated.webp', 'thumbnail_path' => $paths[0]['image_path']]]);
+        $disk->assertExists(['unrelated.webp', $paths[0]['image_path'], $paths[0]['thumbnail_path']]);
+        $directory = $disk->path('listings');
+        rename($directory, $directory.'-original');
+        symlink($directory.'-original', $directory);
+        try {
+            $photos->delete($paths);
+            try {
+                $photos->store([UploadedFile::fake()->image('unsafe.png')]);
+                $this->fail('Upload must reject a redirected directory.');
+            } catch (\\Illuminate\\Validation\\ValidationException $exception) {
+                $this->assertArrayHasKey('photos', $exception->errors());
+            }
+        } finally {
+            unlink($directory);
+            rename($directory.'-original', $directory);
+        }
+        $disk->assertExists([$paths[0]['image_path'], $paths[0]['thumbnail_path']]);
+        $photos->delete($paths);
+        $disk->assertMissing([$paths[0]['image_path'], $paths[0]['thumbnail_path']]);
+        $disk->assertExists('unrelated.webp');
+    }
 
     public function test_media_inventory_is_bounded_and_never_deletes_files_or_exposes_paths(): void
     {

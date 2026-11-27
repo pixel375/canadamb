@@ -102,7 +102,7 @@ class PropertyDraftController extends Controller
                 return $item;
             });
         } catch (Throwable $exception) {
-            $photos->delete($paths, 'local');
+            $photos->delete($paths, 'local', 'property-drafts');
             throw $exception;
         }
 
@@ -174,10 +174,10 @@ class PropertyDraftController extends Controller
                 return $old;
             });
         } catch (Throwable $exception) {
-            $photos->delete($paths, 'local');
+            $photos->delete($paths, 'local', 'property-drafts');
             throw $exception;
         }
-        $photos->delete($replaced, 'local');
+        $photos->delete($replaced, 'local', 'property-drafts');
 
         return redirect('/account/properties/'.$property)->with('status', 'Private property draft updated.');
     }
@@ -291,7 +291,7 @@ class PropertyDraftController extends Controller
 
             return $old;
         });
-        $photos->delete($paths, 'local');
+        $photos->delete($paths, 'local', 'property-drafts');
 
         return redirect('/account/properties')->with('status', 'Private property draft archived.');
     }
