@@ -36,7 +36,18 @@ git -C "$source" remote add origin "$home/origin.git"
 ln -s "$app/releases/$current" "$app/current"
 printf 'member data\n' > "$app/shared/storage/sentinel"
 run() { bash "$repo/ops/hostinger-release-retention.sh" "$1"; }
+legacy="$app/shared/backups/restore-rehearsal-44630938711"
+mkdir "$legacy" "$app/shared/backups/restore-rehearsal-44630210485"
+printf 'test SQL\n' > "$legacy/u713153343_canadamb.sql"
+sha256sum "$legacy/u713153343_canadamb.sql" > "$legacy/checksums.sha256"
+config_backup="$app/shared/backups/allowlist-44654858210"
+mkdir "$config_backup"
+for file in append-ip.php original-config.php original.env; do
+    printf 'fixture\n' > "$config_backup/$file"
+done
 run false
+test -d "$legacy"
+test -d "$config_backup"
 test -d "$app/releases/$oldest"
 test -d "$app/shared/backups/$oldest"
 mv "$app/shared/backups/$current/checksums.sha256" "$home/receipt"
@@ -47,6 +58,9 @@ printf 'unknown\n' > "$app/shared/backups/$older/unrecognized"
 if run true; then exit 1; fi
 test -f "$app/shared/backups/$older/unrecognized"
 test ! -e "$app/shared/backups/$oldest"
+test ! -e "$legacy"
+test ! -e "$config_backup"
+test ! -e "$app/shared/backups/restore-rehearsal-44630210485"
 test ! -e "$app/releases/$oldest"
 test -d "$app/shared/backups/$rollback"
 test -d "$app/shared/backups/$current"

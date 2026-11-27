@@ -226,7 +226,190 @@ echo "Release entries (top-level) remaining: $release_remaining"
 # Refuse unknown entries rather than recursively deleting arbitrary data.
 shopt -s dotglob nullglob
 backup_candidates=()
+legacy_candidates=()
 backup_unknown=0
+# Exact historical run IDs verified against GitHub Actions on 2026-11-27.
+# These are not release backup sets. Successful allowlist changes have since
+# survived independently verified deployments; restore rehearsals are obsolete.
+# Refuse changed contents, symlinks, or unexpected directory entries.
+legacy_ok() {
+    local dir=$1 name file names
+    name=$(basename "$dir")
+    [[ -d "$dir" && ! -L "$dir" && "$(readlink -e "$dir")" == "$dir" ]] || return 1
+    names=$(find -P "$dir" -mindepth 1 -maxdepth 1 -printf '%f\n' | LC_ALL=C sort) || return 1
+    for file in "$dir/"*; do
+        [[ -f "$file" && ! -L "$file" && "$(stat -c %h "$file")" == 1 ]] || return 1
+    done
+    case "$name" in
+        allowlist-44654858210|allowlist-45507325094)
+            [[ "$names" == 
+for dir in "$backups/"*; do
+    id=$(basename "$dir")
+    if legacy_ok "$dir"; then
+        legacy_candidates+=("$dir")
+        echo "Eligible retired maintenance backup: $id"
+        continue
+    fi
+    if [[ ! "$id" =~ ^[a-f0-9]{40}$ || ! -d "$dir" || -L "$dir" ||
+          "$(readlink -e "$dir")" != "$dir" ]]; then
+        echo 'Unrecognized backup entry preserved.'
+        backup_unknown=$((backup_unknown+1))
+        continue
+    fi
+    [[ -z "${keep[$id]:-}" ]] || continue
+    if [[ -e "$releases/$id" || -L "$releases/$id" ]] ||
+       ! git -C "$source" merge-base --is-ancestor "$id" "$current" ||
+       ! receipt_ok "$id"; then
+        echo "Unverified or still-referenced backup preserved: $id"
+        backup_unknown=$((backup_unknown+1))
+        continue
+    fi
+    valid=true
+    for file in "$dir/"*; do
+        [[ -f "$file" && ! -L "$file" ]] || { valid=false; break; }
+        case "$(basename "$file")" in
+            u713153343_canadamb.sql|storage.tar.gz|checksums.sha256) ;;
+            original-initial-preflight.receipt|verified-initial-checksums.sha256)
+                [[ "$id" == "$initial" ]] || { valid=false; break; } ;;
+            *) valid=false; break ;;
+        esac
+    done
+    if [[ "$valid" != true ]]; then
+        echo "Unexpected backup contents preserved: $id"
+        backup_unknown=$((backup_unknown+1))
+        continue
+    fi
+    backup_candidates+=("$dir")
+    echo "Eligible verified historical backup: $id"
+done
+echo "Historical backup sets eligible: ${#backup_candidates[@]}; legacy maintenance entries eligible: ${#legacy_candidates[@]}; unverified entries preserved: $backup_unknown"
+if [[ "$reclaim" == true ]]; then
+    # Verify both surviving backup sets again before deleting any archive.
+    for id in "${!keep[@]}"; do
+        receipt_ok "$id"
+    done
+    for dir in "${backup_candidates[@]}"; do
+        still_safe
+        id=$(basename "$dir")
+        [[ "$id" =~ ^[a-f0-9]{40}$ && -z "${keep[$id]:-}" &&
+           -d "$dir" && ! -L "$dir" && "$(readlink -e "$dir")" == "$dir" &&
+           ! -e "$releases/$id" && ! -L "$releases/$id" ]] || exit 1
+        receipt_ok "$id"
+        # No recursive removal; only known files inside this verified set.
+        rm -- "$dir/u713153343_canadamb.sql" "$dir/storage.tar.gz"
+        rm -f -- "$dir/checksums.sha256"
+        if [[ "$id" == "$initial" ]]; then
+            rm -f -- "$dir/original-initial-preflight.receipt" "$dir/verified-initial-checksums.sha256"
+        fi
+        rmdir -- "$dir"
+        echo "Removed historical backup set: $id"
+    done
+    for dir in "${legacy_candidates[@]}"; do
+        still_safe
+        legacy_ok "$dir" || exit 1
+        case "$(basename "$dir")" in
+            allowlist-44654858210|allowlist-45507325094)
+                rm -- "$dir/append-ip.php" "$dir/original-config.php" "$dir/original.env" ;;
+            restore-rehearsal-44630210485) ;;
+            restore-rehearsal-44630938711|restore-rehearsal-45866760393)
+                rm -- "$dir/checksums.sha256" "$dir/u713153343_canadamb.sql" ;;
+            *) exit 1 ;;
+        esac
+        rmdir -- "$dir"
+        echo "Removed retired maintenance backup: $(basename "$dir")"
+    done
+fi
+still_safe
+for id in "${!keep[@]}"; do
+    receipt_ok "$id"
+done
+remaining=$(find -P "$backups" -mindepth 1 -maxdepth 1 -printf '.' | wc -c)
+echo "Backup entries remaining: $remaining"
+if [[ "$reclaim" == true && ( "$remaining" -ne 2 || "$release_remaining" -ne 2 || "$unknown" -ne 0 || "$backup_unknown" -ne 0 ) ]]; then
+    echo 'Retention requires reconciliation: unexpected entries remain; no unverified data was deleted.' >&2
+    exit 1
+fi
+echo 'Active release and one verified rollback preserved with their backup sets; live shared storage untouched.'
+append-ip.php\noriginal-config.php\noriginal.env' &&
+               -s "$dir/append-ip.php" && -s "$dir/original-config.php" && -s "$dir/original.env" ]] ;;
+        restore-rehearsal-44630210485)
+            [[ -z "$names" ]] ;;
+        restore-rehearsal-44630938711|restore-rehearsal-45866760393)
+            [[ "$names" == 
+for dir in "$backups/"*; do
+    id=$(basename "$dir")
+    if [[ ! "$id" =~ ^[a-f0-9]{40}$ || ! -d "$dir" || -L "$dir" ||
+          "$(readlink -e "$dir")" != "$dir" ]]; then
+        echo 'Unrecognized backup entry preserved.'
+        backup_unknown=$((backup_unknown+1))
+        continue
+    fi
+    [[ -z "${keep[$id]:-}" ]] || continue
+    if [[ -e "$releases/$id" || -L "$releases/$id" ]] ||
+       ! git -C "$source" merge-base --is-ancestor "$id" "$current" ||
+       ! receipt_ok "$id"; then
+        echo "Unverified or still-referenced backup preserved: $id"
+        backup_unknown=$((backup_unknown+1))
+        continue
+    fi
+    valid=true
+    for file in "$dir/"*; do
+        [[ -f "$file" && ! -L "$file" ]] || { valid=false; break; }
+        case "$(basename "$file")" in
+            u713153343_canadamb.sql|storage.tar.gz|checksums.sha256) ;;
+            original-initial-preflight.receipt|verified-initial-checksums.sha256)
+                [[ "$id" == "$initial" ]] || { valid=false; break; } ;;
+            *) valid=false; break ;;
+        esac
+    done
+    if [[ "$valid" != true ]]; then
+        echo "Unexpected backup contents preserved: $id"
+        backup_unknown=$((backup_unknown+1))
+        continue
+    fi
+    backup_candidates+=("$dir")
+    echo "Eligible verified historical backup: $id"
+done
+echo "Historical backup sets eligible: ${#backup_candidates[@]}; unverified entries preserved: $backup_unknown"
+if [[ "$reclaim" == true ]]; then
+    # Verify both surviving backup sets again before deleting any archive.
+    for id in "${!keep[@]}"; do
+        receipt_ok "$id"
+    done
+    for dir in "${backup_candidates[@]}"; do
+        still_safe
+        id=$(basename "$dir")
+        [[ "$id" =~ ^[a-f0-9]{40}$ && -z "${keep[$id]:-}" &&
+           -d "$dir" && ! -L "$dir" && "$(readlink -e "$dir")" == "$dir" &&
+           ! -e "$releases/$id" && ! -L "$releases/$id" ]] || exit 1
+        receipt_ok "$id"
+        # No recursive removal; only known files inside this verified set.
+        rm -- "$dir/u713153343_canadamb.sql" "$dir/storage.tar.gz"
+        rm -f -- "$dir/checksums.sha256"
+        if [[ "$id" == "$initial" ]]; then
+            rm -f -- "$dir/original-initial-preflight.receipt" "$dir/verified-initial-checksums.sha256"
+        fi
+        rmdir -- "$dir"
+        echo "Removed historical backup set: $id"
+    done
+fi
+still_safe
+for id in "${!keep[@]}"; do
+    receipt_ok "$id"
+done
+remaining=$(find -P "$backups" -mindepth 1 -maxdepth 1 -printf '.' | wc -c)
+echo "Backup entries remaining: $remaining"
+if [[ "$reclaim" == true && ( "$remaining" -ne 2 || "$release_remaining" -ne 2 || "$unknown" -ne 0 || "$backup_unknown" -ne 0 ) ]]; then
+    echo 'Retention requires reconciliation: unexpected entries remain; no unverified data was deleted.' >&2
+    exit 1
+fi
+echo 'Active release and one verified rollback preserved with their backup sets; live shared storage untouched.'
+checksums.sha256\nu713153343_canadamb.sql' &&
+               -s "$dir/u713153343_canadamb.sql" && -s "$dir/checksums.sha256" &&
+               "$(cat "$dir/checksums.sha256")" == "$(sha256sum "$dir/u713153343_canadamb.sql")" ]] ;;
+        *) return 1 ;;
+    esac
+}
 for dir in "$backups/"*; do
     id=$(basename "$dir")
     if [[ ! "$id" =~ ^[a-f0-9]{40}$ || ! -d "$dir" || -L "$dir" ||
