@@ -36,6 +36,7 @@
                 <div class="business-contact-row"><x-icon name="pin" size="20"/><div><h3>Venue</h3><p>{{ $item->venue }} · {{ $item->location->name }}</p></div></div>
                 <div class="business-contact-row"><x-icon name="person" size="20"/><div><h3>Organizer</h3><p>{{ $item->organizer }}</p></div></div>
                 @if($item->status === 'approved')<a class="button button-outline" href="/events/{{ $item->id }}/calendar">Add to my calendar (.ics)</a>@endif
+                @if($seriesAvailable)<a class="button button-outline" href="/events/{{ $item->id }}/series-calendar">Download upcoming published series (.ics)</a><p class="field-note">Calendar snapshot; future changes are not synchronized.</p>@endif
                 @if($item->event_url && $item->status === 'approved')<a class="button button-primary" rel="nofollow ugc" href="{{ $item->event_url }}">Event or ticket information <x-icon name="arrow" size="16"/></a>@endif
                 @if(auth()->id() === $item->author_id)<a class="button button-outline" href="/account/events">Manage my events</a>@endif
                 <a class="text-link" href="{{ \App\Support\LocationScope::browseUrl($site, '/events', \App\Support\LocationScope::currentBrowsing(request()->attributes->get('site'))) }}">Find more local events <x-icon name="arrow" size="16"/></a>

@@ -89,6 +89,7 @@ Route::get('/community/{thread}/replies/{reply}', [CommunityForumController::cla
 Route::get('/community/{thread}', [CommunityForumController::class, 'thread'])->whereNumber('thread');
 Route::get('/events', [CommunityEventController::class, 'index']);
 Route::get('/events/calendar', [CommunityEventController::class, 'calendarSelection'])->middleware('throttle:10,1,event-calendar-selection');
+Route::get('/events/{event}/series-calendar', [CommunityEventController::class, 'seriesCalendar'])->whereNumber('event')->middleware('throttle:10,1,event-series-calendar');
 Route::get('/events/{event}/calendar', [CommunityEventController::class, 'calendarFile'])->whereNumber('event')->middleware('throttle:30,1,event-calendar');
 Route::get('/events/{event}', [CommunityEventController::class, 'show'])->whereNumber('event');
 Route::get('/jobs', [JobController::class, 'index']);

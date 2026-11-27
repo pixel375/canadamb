@@ -128,7 +128,25 @@ class CommunityEventController extends Controller
         $related = $this->community->upcoming($this->community->events($item->location_id))
             ->whereKeyNot($item->id)->where('category', $item->category)->orderBy('starts_at')->orderBy('id')->limit(4)->get();
 
-        return view('community.event', compact('item', 'canonical', 'discussion', 'related'));
+        $seriesAvailable = $item->status === 'approved' && EventSeriesIdentity::approvedOccurrences($item)->count() > 1;
+
+        return view('community.event', compact('item', 'canonical', 'discussion', 'related', 'seriesAvailable'));
+    }
+
+    public function seriesCalendar(Request $request, int $event)
+    {
+        $site = $request->attributes->get('site');
+        abort_unless(EventSeriesIdentity::enabled() && $this->community->enabled($site, 'events'), 404);
+        $item = $this->community->events($site->location_id)->where('status', 'approved')->findOrFail($event);
+        $events = EventSeriesIdentity::approvedOccurrences($item);
+        abort_unless($events->count() > 1, 404);
+
+        return response(CalendarExport::events($events), 200, [
+            'Content-Type' => 'text/calendar; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="canadamb-series-'.$item->id.'.ics"',
+            'Cache-Control' => 'private, no-store',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
     }
 
     public function calendarFile(Request $request, int $event)

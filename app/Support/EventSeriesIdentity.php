@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use App\Models\CommunityEvent;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -28,6 +30,24 @@ final class EventSeriesIdentity
             'event_id' => $event, 'series_key' => $key, 'position' => $position,
             'original_count' => $count, 'frequency' => $frequency,
         ]);
+    }
+
+    public static function approvedOccurrences(CommunityEvent $anchor): Collection
+    {
+        if (! self::enabled() || $anchor->status !== 'approved') {
+            return collect();
+        }
+        $key = DB::table('event_series_occurrences')->where('event_id', $anchor->id)->value('series_key');
+        if (! $key) {
+            return collect();
+        }
+
+        // Preserve public visibility and never export another owner's or
+        // community's records even if series metadata is inconsistent.
+        return app(Community::class)->upcoming(app(Community::class)->events($anchor->location_id))
+            ->where('author_id', $anchor->author_id)
+            ->whereIn('id', DB::table('event_series_occurrences')->where('series_key', $key)->select('event_id'))
+            ->orderBy('starts_at')->orderBy('id')->limit(8)->get();
     }
 
     public static function forEvents(array $ids): array
