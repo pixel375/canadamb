@@ -43,11 +43,11 @@ class BusinessTeamController extends Controller
 
     public function update(Request $request, int $business, int $member)
     {
-        $data = $request->validate(['role' => 'required|in:manager,editor', 'expected_role' => 'nullable|in:manager,editor']);
-        DB::transaction(function () use ($request, $business, $member, $data) {
+        DB::transaction(function () use ($request, $business, $member) {
             $item = $this->owner($request, $business);
             $target = $this->editableMember($item, $member);
-            $this->checkRole($target, $data['expected_role'] ?? null);
+            $data = $request->validate(['role' => 'required|in:manager,editor', 'expected_role' => 'required|in:manager,editor']);
+            $this->checkRole($target, $data['expected_role']);
             if ($target->pivot->role === $data['role']) {
                 return;
             }
@@ -60,11 +60,11 @@ class BusinessTeamController extends Controller
 
     public function remove(Request $request, int $business, int $member)
     {
-        $data = $request->validate(['expected_role' => 'nullable|in:manager,editor']);
-        DB::transaction(function () use ($request, $business, $member, $data) {
+        DB::transaction(function () use ($request, $business, $member) {
             $item = $this->owner($request, $business);
             $target = $this->editableMember($item, $member);
-            $this->checkRole($target, $data['expected_role'] ?? null);
+            $data = $request->validate(['expected_role' => 'required|in:manager,editor']);
+            $this->checkRole($target, $data['expected_role']);
             $item->members()->detach($member);
             Audit::record('business.member-removed', $request->user()->id, context: ['business' => $business, 'member' => $member]);
         }, attempts: 3);
@@ -87,9 +87,9 @@ class BusinessTeamController extends Controller
         return redirect('/account/businesses')->with('status', 'You left the business team. Your management access has ended.');
     }
 
-    private function checkRole(User $member, ?string $expected): void
+    private function checkRole(User $member, string $expected): void
     {
-        if ($expected !== null && $member->pivot->role !== $expected) {
+        if ($member->pivot->role !== $expected) {
             throw ValidationException::withMessages(['expected_role' => 'This membership changed. Reload the team before continuing.']);
         }
     }

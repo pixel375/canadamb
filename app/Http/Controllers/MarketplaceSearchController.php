@@ -66,13 +66,13 @@ class MarketplaceSearchController extends Controller
     public function revise(Request $request, int $search)
     {
         $this->owned($request)->findOrFail($search);
-        $data = $request->validate(['name' => 'required|string|max:80', 'version' => 'nullable|string|size:64']);
+        $data = $request->validate(['name' => 'required|string|max:80', 'version' => 'required|string|size:64']);
         $filters = $this->normalizedFilters($request);
         $key = hash('sha256', json_encode($filters, JSON_THROW_ON_ERROR));
         DB::transaction(function () use ($request, $search, $data, $filters, $key) {
             User::lockForUpdate()->findOrFail($request->user()->id);
             $item = $this->owned($request)->lockForUpdate()->findOrFail($search);
-            if (isset($data['version']) && ! hash_equals($item->editVersion(), $data['version'])) {
+            if (! hash_equals($item->editVersion(), $data['version'])) {
                 throw ValidationException::withMessages(['version' => 'This saved search changed. Reload before continuing.']);
             }
             if ($this->owned($request)->where('id', '!=', $search)->where('filter_key', $key)->exists()) {
@@ -86,10 +86,11 @@ class MarketplaceSearchController extends Controller
 
     public function rename(Request $request, int $search)
     {
-        $data = $request->validate(['name' => 'required|string|max:80', 'version' => 'nullable|string|size:64']);
+        $this->owned($request)->findOrFail($search);
+        $data = $request->validate(['name' => 'required|string|max:80', 'version' => 'required|string|size:64']);
         DB::transaction(function () use ($request, $search, $data) {
             $item = $this->owned($request)->lockForUpdate()->findOrFail($search);
-            if (isset($data['version']) && ! hash_equals($item->editVersion(), $data['version'])) {
+            if (! hash_equals($item->editVersion(), $data['version'])) {
                 throw ValidationException::withMessages(['version' => 'This saved search changed. Reload before continuing.']);
             }
             $item->update(['name' => $data['name']]);
@@ -100,10 +101,11 @@ class MarketplaceSearchController extends Controller
 
     public function destroy(Request $request, int $search)
     {
-        $data = $request->validate(['version' => 'nullable|string|size:64']);
+        $this->owned($request)->findOrFail($search);
+        $data = $request->validate(['version' => 'required|string|size:64']);
         DB::transaction(function () use ($request, $search, $data) {
             $item = $this->owned($request)->lockForUpdate()->findOrFail($search);
-            if (isset($data['version']) && ! hash_equals($item->editVersion(), $data['version'])) {
+            if (! hash_equals($item->editVersion(), $data['version'])) {
                 throw ValidationException::withMessages(['version' => 'This saved search changed. Reload before continuing.']);
             }
             $item->delete();

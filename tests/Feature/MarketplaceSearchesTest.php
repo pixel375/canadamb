@@ -72,9 +72,12 @@ class MarketplaceSearchesTest extends TestCase
         $this->delete('https://canadamb.ca/account/marketplace-searches/'.$search->id)->assertNotFound();
         $this->get($path.'/edit')->assertOk()->assertSee('Updated furniture');
         $this->actingAs($seller)->put($path, $filters)->assertNotFound();
-        $this->actingAs($member)->put($path, array_replace($filters, ['name' => 'Expanded furniture', 'max_price' => '100']))->assertRedirect()->assertSessionHasNoErrors();
+        $this->actingAs($member)->put($path, $filters)->assertSessionHasErrors('version');
+        $this->post($path.'/rename', ['name' => 'Missing version'])->assertSessionHasErrors('version');
+        $this->delete($path)->assertSessionHasErrors('version');
+        $this->put($path, array_replace($filters, ['name' => 'Expanded furniture', 'max_price' => '100', 'version' => $search->fresh()->editVersion()]))->assertRedirect()->assertSessionHasNoErrors();
         $this->get($base)->assertSee('2 matching listings')->assertSee('Expanded furniture');
-        $this->delete($path)->assertRedirect();
+        $this->delete($path, ['version' => $search->fresh()->editVersion()])->assertRedirect();
         $this->assertDatabaseCount('marketplace_searches', 0);
         $car = Listing::create(['user_id' => $seller->id, 'location_id' => Location::where('slug', 'brandon')->sole()->id,
             'category' => 'cars', 'title' => 'Search detail car', 'description' => 'Vehicle fixture',

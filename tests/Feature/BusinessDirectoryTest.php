@@ -81,10 +81,12 @@ class BusinessDirectoryTest extends TestCase
         $this->actingAs($member)->get($path)->assertOk()->assertDontSee('Grant access');
         $this->get('https://canadamb.ca/account/businesses/'.$business->id.'/jobs')->assertNotFound();
         $this->put($path.'/'.$member->id, ['role' => 'manager'])->assertNotFound();
-        $this->actingAs($owner)->put($path.'/'.$member->id, ['role' => 'manager'])->assertRedirect()->assertSessionHasNoErrors();
+        $this->actingAs($owner)->put($path.'/'.$member->id, ['role' => 'manager'])->assertSessionHasErrors('expected_role');
+        $this->put($path.'/'.$member->id, ['role' => 'manager', 'expected_role' => 'editor'])->assertRedirect()->assertSessionHasNoErrors();
         $this->delete($path.'/'.$owner->id)->assertNotFound();
         $this->actingAs($member)->get('https://canadamb.ca/account/businesses/'.$business->id.'/jobs')->assertOk();
-        $this->actingAs($owner)->delete($path.'/'.$member->id)->assertRedirect();
+        $this->actingAs($owner)->delete($path.'/'.$member->id)->assertSessionHasErrors('expected_role');
+        $this->delete($path.'/'.$member->id, ['expected_role' => 'manager'])->assertRedirect();
         $this->actingAs($member)->get($path)->assertNotFound();
         $this->put('https://canadamb.ca/account/businesses/'.$business->id, ['description' => 'Unauthorized change'])->assertNotFound();
         $this->assertDatabaseHas('audit_logs', ['action' => 'business.member-removed', 'actor_id' => $owner->id]);
