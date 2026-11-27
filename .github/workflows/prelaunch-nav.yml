@@ -89,6 +89,7 @@ jobs:
           CANADAMB_NOTIFICATION_PREFERENCES: 'true'
           CANADAMB_RECURRING_EVENTS: 'true'
           CANADAMB_EVENT_DISCUSSIONS: 'true'
+          CANADAMB_REPLY_LINKS: 'true'
           CANADAMB_CONTENT_REPORTS: 'true'
           CANADAMB_NEWS_CANDIDATE_REVIEW: 'true'
         run: |

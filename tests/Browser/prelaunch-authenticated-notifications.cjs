@@ -609,6 +609,24 @@ const fs = require('node:fs');
             check((await page.locator('[data-character-feedback]').innerText()).includes('22 / 2000'), 'Chat character counter did not update');
             check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Conversation overflow at ' + width);
         }
+        // Stable cursor loading must not replace the composer or jump the visible history.
+        await page.setViewportSize({ width: 390, height: 844 });
+        const history = page.locator('[data-chat-history]');
+        const older = history.locator('[data-chat-older]');
+        check(await history.locator('article[data-message-id]').count() === 30, 'Initial chat history is not bounded');
+        await older.scrollIntoViewIfNeeded();
+        const anchor = history.locator('article[data-message-id]').first();
+        const anchorId = await anchor.getAttribute('data-message-id');
+        const anchorTop = (await anchor.boundingBox()).y;
+        const chatUrl = page.url();
+        await older.click();
+        await history.getByText('History fixture 001', { exact: true }).waitFor({ state: 'attached' });
+        check(page.url() === chatUrl, 'Incremental history replaced the current page');
+        check(await history.locator('article[data-message-id]').count() === 35, 'Older history missing or duplicated');
+        const newTop = (await history.locator('article[data-message-id="' + anchorId + '"]').boundingBox()).y;
+        check(Math.abs(newTop - anchorTop) < 50, 'Loading history displaced the visible anchor');
+        check(await page.locator('textarea[name="body"]').inputValue() === 'Thanks for confirming.', 'History loading discarded draft');
+        console.log('PASS: incremental chat history, scroll anchor and unsent draft');
         await page.locator('.chat-actions summary').click();
         await page.keyboard.press('Escape');
         check(!(await page.locator('.chat-actions').evaluate(el => el.open)), 'Escape did not dismiss chat options');

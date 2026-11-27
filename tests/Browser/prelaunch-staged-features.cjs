@@ -158,6 +158,23 @@ const password = 'New-browser-qa-42';
         await page.locator('.chat-attachment-picker summary').click();
         console.log('PASS: individual and selected conversation archive/restoration and optional photo control');
 
+        await visit(page, '/account/followed-discussions');
+        await page.getByRole('link', { name: 'Community garden neighbours', exact: true }).click();
+        await page.locator('#reply-composer textarea').fill('Draft preserved while choosing a comment.');
+        const threadPath = new URL(page.url()).pathname;
+        const firstReply = page.locator('[data-reply-to]').first();
+        const parentId = await firstReply.getAttribute('data-reply-to');
+        await firstReply.click();
+        check(new URL(page.url()).pathname === threadPath, 'Reply selection changed thread');
+        check(await page.locator('#reply-composer input[name="parent_reply_id"]').inputValue() === parentId, 'Parent reply selection missing');
+        check(await page.locator('#reply-composer textarea').inputValue() === 'Draft preserved while choosing a comment.', 'Reply selection discarded draft');
+        check(await page.locator('[data-reply-selection]').isVisible(), 'Selected parent preview hidden');
+        await page.locator('[data-reply-cancel]').click();
+        check(await page.locator('#reply-composer input[name="parent_reply_id"]').inputValue() === '', 'Cancel retained parent');
+        check(!(await page.locator('[data-reply-selection]').isVisible()), 'Cancelled preview still visible');
+        check(await page.locator('#reply-composer textarea').inputValue() === 'Draft preserved while choosing a comment.', 'Cancel discarded draft');
+        console.log('PASS: mobile comment reply selection and cancellation preserve draft');
+
         await visit(page, '/events/new');
         check(new URL(page.url()).pathname === '/community/new', 'Legacy event link did not use the discussion composer');
         await page.locator('input[name="title"]').fill('Recurring browser QA event');

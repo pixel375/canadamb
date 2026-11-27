@@ -100,6 +100,10 @@ $listing = Listing::create([
 app(Marketplace::class)->changeStatus($listing, 'active', null);
 DB::table('listing_favourites')->insert(['user_id' => $member->id, 'listing_id' => $listing->id]);
 $conversation = Conversation::create(['listing_id' => $listing->id, 'buyer_id' => $member->id, 'seller_id' => $author->id]);
+// Older outgoing history does not change the fixture's incoming unread count.
+for ($index = 1; $index <= 34; $index++) {
+    $conversation->messages()->create(['sender_id' => $member->id, 'body' => sprintf('History fixture %03d', $index)]);
+}
 $conversation->messages()->create(['sender_id' => $author->id, 'body' => 'The oak bookshelf is still available.']);
 
 $ownedListing = Listing::create([
