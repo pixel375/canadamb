@@ -58,7 +58,7 @@
             </section>
         @endif
         @if($pushEnabled)
-            <section class="panel form-stack" data-push-devices data-public-key="{{ $pushKey ?? '' }}">
+            <section class="panel form-stack" data-push-devices data-public-key="{{ $pushKey ?? '' }}" data-delivery-enabled="{{ $pushDelivery ? '1' : '0' }}">
                 <h2>Device notifications</h2>
                 <p>Register this browser for optional activity alerts. {{ $pushDelivery ? 'Generic alerts contain no private content. Open your account to check activity.' : 'Delivery is not available yet.' }} Registration is specific to your account and website.</p>
                 <form hidden data-push-token>@csrf</form>

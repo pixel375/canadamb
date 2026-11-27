@@ -991,22 +991,34 @@ if (pushPanel) {
             const worker = await navigator.serviceWorker.register('/sw.js', {scope: '/'});
             await navigator.serviceWorker.ready;
             const raw = atob(key.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - key.length % 4) % 4));
+            const applicationServerKey = Uint8Array.from(raw, character => character.charCodeAt(0));
             let subscription = await worker.pushManager.getSubscription();
+            if (subscription) {
+                const existingKey = subscription.options?.applicationServerKey;
+                const bytes = existingKey ? new Uint8Array(existingKey) : null;
+                if (!bytes || bytes.length !== applicationServerKey.length || !bytes.every((byte, index) => byte === applicationServerKey[index])) {
+                    status.textContent = 'This browser has a registration using a different or unavailable application key. Choose Unsubscribe this browser, then Register this device again.';
+                    return;
+                }
+            }
             let created = false;
             if (!subscription) {
-                subscription = await worker.pushManager.subscribe({userVisibleOnly: true, applicationServerKey: Uint8Array.from(raw, character => character.charCodeAt(0))});
+                subscription = await worker.pushManager.subscribe({userVisibleOnly: true, applicationServerKey});
                 created = true;
             }
             try { await postDevice('/account/notifications/devices', subscription.toJSON()); }
             catch (error) { if (created) await subscription.unsubscribe().catch(() => {}); throw error; }
-            status.textContent = 'Device registered. Delivery is not enabled yet. Reload to see the registered device.';
+            status.textContent = pushPanel.dataset.deliveryEnabled === '1' ? 'Device registered for generic activity alerts. Reload to see the registered device.' : 'Device registered. Delivery is not enabled yet. Reload to see the registered device.';
         }));
         pushPanel.querySelector('[data-push-unsubscribe]').addEventListener('click', () => act(async () => {
             const worker = await navigator.serviceWorker.getRegistration('/');
             const subscription = await worker?.pushManager.getSubscription();
             if (subscription) {
                 await postDevice('/account/notifications/devices/unsubscribe', {endpoint: subscription.endpoint});
-                await subscription.unsubscribe();
+                if (!(await subscription.unsubscribe())) {
+                    status.textContent = 'Account registration removed, but browser unsubscribe was not confirmed. Try again or review browser notification permissions.';
+                    return;
+                }
             }
             status.textContent = 'Browser unsubscribed. Remove any old registration from the account list if needed.';
         }));

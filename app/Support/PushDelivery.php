@@ -40,7 +40,7 @@ final class PushDelivery
 
     public function run(VapidPush $transport): array
     {
-        $counts = ['examined' => 0, 'accepted' => 0, 'retry' => 0, 'removed' => 0, 'baseline' => 0, 'idle' => 0];
+        $counts = ['examined' => 0, 'accepted' => 0, 'retry' => 0, 'removed' => 0, 'baseline' => 0, 'idle' => 0, 'failed' => 0];
         $key = self::enabled() ? VapidPush::signingKey() : null;
         if (! $key) {
             return $counts;
@@ -136,7 +136,7 @@ final class PushDelivery
         // Never loop forever on a rejected request or a stale activity item.
         $this->save($device->id, $next + ['attempts' => 0, 'next_check_at' => now()->addHours(6), 'last_result' => 'failed']);
 
-        return 'idle';
+        return 'failed';
     }
 
     private function save(int $id, array $values): void

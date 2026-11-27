@@ -104,6 +104,14 @@ class PushDeliveryTest extends TestCase
         $this->assertDatabaseCount('push_delivery_states', 0);
         $this->postJson($url, $subscription)->assertOk();
         $this->assertSame(1, $delivery->run($transport)['baseline']);
+        $thread->messages()->create(['sender_id' => $sender->id, 'body' => 'Terminal failure fixture']);
+        $transport->status = 403;
+        $this->travel(6)->minutes();
+        $this->assertSame(1, $delivery->run($transport)['failed']);
+        $this->assertDatabaseHas('push_delivery_states', ['last_result' => 'failed', 'attempts' => 0]);
+        $this->assertSame(0, $delivery->run($transport)['examined']);
+        $this->travel(6)->hours();
+        $this->assertSame(1, $delivery->run($transport)['idle']);
         Identity::revoke($member);
         $this->assertDatabaseCount('push_devices', 0);
         $this->assertDatabaseCount('push_delivery_states', 0);

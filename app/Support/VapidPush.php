@@ -17,7 +17,7 @@ class VapidPush
         $encoded = config('network.push_private_key');
         $public = PushDevices::publicKey();
         $subject = config('network.push_subject');
-        if (! is_string($encoded) || ! $public || ! is_string($subject)
+        if (! is_string($encoded) || strlen($encoded) > 5500 || ! $public || ! is_string($subject)
             || ! str_starts_with($subject, 'mailto:') || ! filter_var(substr($subject, 7), FILTER_VALIDATE_EMAIL)
             || ! extension_loaded('openssl') || ! extension_loaded('curl') || ! class_exists(JWT::class)) {
             return null;
