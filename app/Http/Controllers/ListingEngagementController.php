@@ -53,7 +53,11 @@ class ListingEngagementController extends Controller
         if ($request->input('return_to') === 'listing') {
             $this->visibleListing($request, $listing);
         }
-        DB::table('listing_favourites')->where(['user_id' => $request->user()->id, 'listing_id' => $listing])->delete();
+        $site = $request->attributes->get('site');
+        abort_unless($this->marketplace->enabled($site), 404);
+        DB::table('listing_favourites')->where(['user_id' => $request->user()->id, 'listing_id' => $listing])
+            ->when($site->location_id, fn ($query, $id) => $query->whereIn('listing_id', Listing::where('location_id', $id)->select('id')))
+            ->delete();
 
         return redirect($request->input('return_to') === 'listing' ? LocationScope::detailUrl('/marketplace/'.$listing) : '/account/saved')->with('status', 'Listing removed from saved items.');
     }
@@ -64,12 +68,15 @@ class ListingEngagementController extends Controller
         abort_unless($this->marketplace->enabled($site), 404);
         $filters = $request->validate(['q' => 'nullable|string|max:100', 'sort' => 'nullable|in:recent,price-low,price-high', 'category' => 'nullable|string|max:64|exists:listing_categories,slug',
             'location' => 'nullable|integer|exists:locations,id']);
+        if (! $site->isNetwork()) {
+            unset($filters['location']);
+        }
         $unavailable = DB::table('listing_favourites')->join('listings', 'listings.id', '=', 'listing_favourites.listing_id')
             ->where('listing_favourites.user_id', $request->user()->id)
             ->when($site->location_id, fn ($query, $id) => $query->where('listings.location_id', $id))
             ->where(function ($query) {
                 $query->where('listings.status', '!=', 'active')->orWhereNull('listings.expires_at')->orWhere('listings.expires_at', '<=', now());
-            })->orderByDesc('listing_favourites.listing_id')->paginate(15, ['listing_favourites.listing_id'], 'unavailable_page')->withQueryString();
+            })->orderByDesc('listing_favourites.listing_id')->paginate(15, ['listing_favourites.listing_id'], 'unavailable_page')->appends($filters);
         $matching = $this->marketplace->visible($site)->whereExists(function ($query) use ($request) {
             $query->selectRaw('1')->from('listing_favourites')->whereColumn('listing_id', 'listings.id')->where('user_id', $request->user()->id);
         });
@@ -84,16 +91,22 @@ class ListingEngagementController extends Controller
             'price-high' => $items->orderByDesc('price_cents'),
             default => $items->latest('published_at'),
         };
-        $items = $items->latest('id')->paginate(18)->withQueryString();
+        $items = $items->latest('id')->paginate(18)->appends($filters);
+        if ($items->currentPage() > 1) {
+            $unavailable->appends(['page' => $items->currentPage()]);
+        }
+        if ($unavailable->currentPage() > 1) {
+            $items->appends(['unavailable_page' => $unavailable->currentPage()]);
+        }
 
         return view('marketplace.saved', compact('items', 'filters', 'total', 'unavailable', 'categories', 'places'));
     }
 
     public function clearUnavailable(Request $request)
     {
-        $request->validate(['confirm_remove' => 'accepted']);
         $site = $request->attributes->get('site');
         abort_unless($this->marketplace->enabled($site), 404);
+        $request->validate(['confirm_remove' => 'accepted']);
         $unavailable = Listing::query()->when($site->location_id, fn ($query, $id) => $query->where('location_id', $id))
             ->where(fn ($query) => $query->where('status', '!=', 'active')->orWhereNull('expires_at')->orWhere('expires_at', '<=', now()))
             ->select('id');
@@ -109,15 +122,15 @@ class ListingEngagementController extends Controller
         $filters = $request->validate(['status' => 'nullable|in:pending,resolved', 'reference' => 'nullable|integer|min:1']);
         $owned = DB::table('listing_reports')->join('listings', 'listings.id', '=', 'listing_reports.listing_id')
             ->where('listing_reports.reporter_id', $request->user()->id)
-            ->when($site->location_id, fn ($query, $id) => $query->where('listings.location_id', $id));
+            ->when($site->location_id, fn ($query, $id) => $query->where('listings.location_id', $id))
+            ->when($filters['reference'] ?? null, fn ($query, $id) => $query->where('listing_reports.id', $id));
         $pending = (clone $owned)->whereNull('listing_reports.resolved_at')->count();
         $resolved = (clone $owned)->whereNotNull('listing_reports.resolved_at')->count();
         $items = $owned->when(($filters['status'] ?? null) === 'pending', fn ($query) => $query->whereNull('listing_reports.resolved_at'))
             ->when(($filters['status'] ?? null) === 'resolved', fn ($query) => $query->whereNotNull('listing_reports.resolved_at'))
-            ->when($filters['reference'] ?? null, fn ($query, $id) => $query->where('listing_reports.id', $id))
             ->select('listing_reports.id', 'listing_reports.listing_id', 'listing_reports.reason', 'listing_reports.created_at', 'listing_reports.resolved_at')
             ->selectRaw("CASE WHEN listings.status = 'active' AND listings.expires_at > ? THEN listings.title ELSE NULL END AS public_title", [now()])
-            ->latest('listing_reports.id')->paginate(20)->withQueryString();
+            ->latest('listing_reports.id')->paginate(20)->appends($filters);
         $marketEnabled = $this->marketplace->enabled($site);
 
         return view('marketplace.reports', compact('items', 'marketEnabled', 'filters', 'pending', 'resolved'));

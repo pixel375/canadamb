@@ -67,6 +67,14 @@ class MarketplaceEngagementTest extends TestCase
         $this->assertDatabaseMissing('listing_favourites', ['user_id' => $member->id, 'listing_id' => $removed->id]);
         $this->assertSame(2, DB::table('listing_favourites')->where('user_id', $member->id)->count());
         $this->assertSame(3, DB::table('listing_favourites')->where('user_id', $other->id)->count());
+        $rural = Listing::where('title', 'Saved winnipeg sold')->sole();
+        $active = Listing::where('title', 'Saved brandon active')->sole();
+        $this->get('https://brandonmb.ca/account/saved?location='.$rural->location_id)->assertOk()->assertSee($active->title);
+        $this->delete('https://brandonmb.ca/marketplace/'.$rural->id.'/save')->assertRedirect('/account/saved');
+        $this->assertDatabaseHas('listing_favourites', ['user_id' => $member->id, 'listing_id' => $rural->id]);
+        $this->delete('https://canadamb.ca/marketplace/'.$rural->id.'/save')->assertRedirect('/account/saved');
+        $this->assertDatabaseMissing('listing_favourites', ['user_id' => $member->id, 'listing_id' => $rural->id]);
+        $this->assertDatabaseHas('listing_favourites', ['user_id' => $other->id, 'listing_id' => $rural->id]);
     }
 
     public function test_listing_photo_access_follows_listing_visibility_and_does_not_leak_a_rural_photo(): void
@@ -240,6 +248,8 @@ class MarketplaceEngagementTest extends TestCase
         $this->get('https://canadamb.ca/account/listing-reports?status=resolved')->assertOk()->assertDontSee('Patio set')->assertSee('No listing reports match these filters.');
         $this->actingAs($stranger)->get('https://canadamb.ca/account/listing-reports')->assertOk()->assertDontSee('The images seem to belong to another seller.');
         $report = DB::table('listing_reports')->value('id');
+        $this->actingAs($buyer)->get('https://canadamb.ca/account/listing-reports?reference='.($report + 1))
+            ->assertOk()->assertSee('0 awaiting review')->assertSee('0 completed');
         $reviewer = User::factory()->create(['role' => 'network_admin']);
         $this->actingAs($reviewer)->post('https://canadamb.ca/admin/moderation/reports/'.$report, ['note' => 'Reviewed the submitted report.'])->assertRedirect();
         $this->post('https://canadamb.ca/admin/moderation/reports/'.$report, ['note' => 'Repeated decision.'])->assertConflict();
