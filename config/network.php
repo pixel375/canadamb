@@ -18,6 +18,7 @@ return [
     'direct_messaging' => env('CANADAMB_DIRECT_MESSAGING', false),
     'message_documents' => env('CANADAMB_MESSAGE_DOCUMENTS', false),
     'push_public_key' => env('CANADAMB_PUSH_PUBLIC_KEY'),
+    'event_date_only' => env('CANADAMB_EVENT_DATE_ONLY', false),
     'recurring_events' => env('CANADAMB_RECURRING_EVENTS', false),
     'event_discussions' => env('CANADAMB_EVENT_DISCUSSIONS', false),
     'reply_links' => env('CANADAMB_REPLY_LINKS', false),

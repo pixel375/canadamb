@@ -28,10 +28,15 @@ final class CalendarExport
         $lines = [
             'BEGIN:VEVENT', 'UID:event-'.$event->id.'@canadamb.ca',
             'DTSTAMP:'.CarbonImmutable::parse($event->updated_at, 'UTC')->utc()->format('Ymd\THis\Z'),
-            'DTSTART:'.$event->localStart()->utc()->format('Ymd\THis\Z'),
         ];
-        if ($event->localEnd()) {
-            $lines[] = 'DTEND:'.$event->localEnd()->utc()->format('Ymd\THis\Z');
+        if ($event->isDateOnly()) {
+            $lines[] = 'DTSTART;VALUE=DATE:'.$event->localStart()->format('Ymd');
+            $lines[] = 'DTEND;VALUE=DATE:'.$event->localEnd()->format('Ymd');
+        } else {
+            $lines[] = 'DTSTART:'.$event->localStart()->utc()->format('Ymd\THis\Z');
+            if ($event->localEnd()) {
+                $lines[] = 'DTEND:'.$event->localEnd()->utc()->format('Ymd\THis\Z');
+            }
         }
         $lines = array_merge($lines, [
             'SUMMARY:'.self::escape($event->title),

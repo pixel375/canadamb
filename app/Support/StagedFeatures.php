@@ -66,6 +66,7 @@ final class StagedFeatures
     ];
 
     public const DEFINITIONS = [
+        ['2026_11_27_000023_add_event_date_only', 'Date-only event schedule', 'event_date_only', [], ['community_events' => ['date_only']], [], 'Existing timed events preserved; date-only bounds use local calendar days and exclusive end.'],
         ['2026_11_27_000022_create_message_documents', 'Private plain-text attachments', 'message_documents', ['message_documents'], [], [], 'UTF-8 .txt only, bounded private database storage, no inline execution; richer formats require reviewed malware scanning.'],
         ['2026_11_26_000021_create_direct_message_preferences', 'Direct and official member messaging', 'direct_messaging', ['direct_message_preferences'], ['conversations' => ['direct_kind']], ['extended_messaging'], 'Separate default-off opt-ins; participant-only history and audited official initiation.'],
         ['2026_11_26_000020_create_announcements', 'In-site announcement delivery', 'announcement_delivery', ['announcements', 'announcement_receipts'], [], ['broadcast_previews'], 'Explicit confirmation, consent recheck, bounded atomic delivery; disabled during prelaunch.'],

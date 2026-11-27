@@ -10,6 +10,7 @@ use App\Support\Audit;
 use App\Support\CalendarExport;
 use App\Support\Community;
 use App\Support\EventDiscussions;
+use App\Support\EventSchedule;
 use App\Support\EventSeries;
 use App\Support\KeywordSearch;
 use App\Support\LocationScope;
@@ -166,11 +167,12 @@ class CommunityEventController extends Controller
     {
         $site = $request->attributes->get('site');
         abort_unless($this->community->enabled($site, 'events'), 404);
+        EventSchedule::normalize($request);
         $data = $request->validate([
             'title' => 'required|string|max:140', 'body' => 'required|string|min:10|max:5000',
             'category' => ['required', Rule::in(array_keys(Community::EVENTS))], 'location_id' => 'nullable|integer',
             'organizer' => 'required|string|max:150', 'venue' => 'required|string|max:180', 'event_url' => 'nullable|url:https|max:1024',
-            'starts_at' => 'required|date_format:Y-m-d\\TH:i', 'ends_at' => 'nullable|date_format:Y-m-d\\TH:i',
+            ...EventSchedule::rules(),
         ]);
         $repeat = $request->validate([
             'repeat' => 'nullable|in:none,weekly,biweekly',
@@ -180,18 +182,10 @@ class CommunityEventController extends Controller
         $count = $frequency === 'none' ? 1 : (int) ($repeat['occurrences'] ?? 2);
         abort_unless($count === 1 || config('network.recurring_events'), 404);
         $data['location_id'] = LocationScope::forPublication($site, isset($data['location_id']) ? (int) $data['location_id'] : null);
-        $starts = $this->community->localEventTime($data['starts_at'], 'starts_at');
-        $ends = isset($data['ends_at']) ? $this->community->localEventTime($data['ends_at'], 'ends_at') : null;
-        if ($starts->greaterThan(now('UTC')->addYear())) {
-            throw ValidationException::withMessages(['starts_at' => 'Choose a date within the next year.']);
-        }
-        if ($starts->isPast()) {
-            throw ValidationException::withMessages(['starts_at' => 'Choose an upcoming date and time.']);
-        }
-        if ($ends && $ends->lessThanOrEqualTo($starts)) {
-            throw ValidationException::withMessages(['ends_at' => 'The end time must come after the start time.']);
-        }
         $dates = EventSeries::dates($this->community, $data['starts_at'], $data['ends_at'] ?? null, $frequency, $count);
+        if (! EventSchedule::upcoming($dates[0])) {
+            throw ValidationException::withMessages(['starts_at' => 'Choose an upcoming date within the next year.']);
+        }
         $autoApprove = PublicationPolicy::allows('events', $request->user(), $data['location_id']);
         DB::transaction(function () use ($request, $site, $data, $dates, $count, $autoApprove) {
             $author = $request->user()->id;
@@ -270,18 +264,18 @@ class CommunityEventController extends Controller
     public function update(Request $request, int $event)
     {
         $this->ownedEvent($request)->findOrFail($event);
+        EventSchedule::normalize($request);
         $data = $request->validate([
             'title' => 'required|string|max:140', 'body' => 'required|string|min:10|max:5000',
             'category' => ['required', Rule::in(array_keys(Community::EVENTS))],
             'organizer' => 'required|string|max:150', 'venue' => 'required|string|max:180', 'event_url' => 'nullable|url:https|max:1024',
-            'starts_at' => 'required|date_format:Y-m-d\\TH:i', 'ends_at' => 'nullable|date_format:Y-m-d\\TH:i',
+            ...EventSchedule::rules(),
             'version' => 'required|string|size:64', 'thread_version' => 'nullable|string|size:64',
         ]);
-        $start = $this->community->localEventTime($data['starts_at'], 'starts_at');
-        if ($start->isPast() || $start->greaterThan(now('UTC')->addYear())) {
+        $date = EventSeries::dates($this->community, $data['starts_at'], $data['ends_at'] ?? null, 'none', 1)[0];
+        if (! EventSchedule::upcoming($date)) {
             throw ValidationException::withMessages(['starts_at' => 'Choose an upcoming date within the next year.']);
         }
-        $date = EventSeries::dates($this->community, $data['starts_at'], $data['ends_at'] ?? null, 'none', 1)[0];
         DB::transaction(function () use ($request, $event, $data, $date) {
             $author = $request->user()->id;
             User::lockForUpdate()->findOrFail($author);
@@ -327,7 +321,8 @@ class CommunityEventController extends Controller
 
     private function ensureEditable(CommunityEvent $item, ?CommunityThread $linkedThread): void
     {
-        abort_if(! in_array($item->status, ['pending', 'approved', 'rejected'], true) || $item->localStart()->isPast(), 409);
+        abort_if(! in_array($item->status, ['pending', 'approved', 'rejected'], true) || $item->scheduleStarted(), 409);
+        abort_if($item->isDateOnly() && ! EventSchedule::available(), 409, 'Date-only event editing is currently unavailable.');
         abort_if($linkedThread && ! EventDiscussions::editable($item, $linkedThread), 409, 'The linked discussion cannot currently be edited.');
     }
 
@@ -378,7 +373,7 @@ class CommunityEventController extends Controller
             $items = $this->ownedEvent($request)->whereIn('id', $data['events'])->orderBy('id')->lockForUpdate()->get();
             abort_unless($items->count() === count($data['events']), 404);
             foreach ($items as $item) {
-                abort_unless(in_array($item->status, ['pending', 'approved', 'rejected'], true) && ! $item->localStart()->isPast(), 409);
+                abort_unless(in_array($item->status, ['pending', 'approved', 'rejected'], true) && ! $item->scheduleStarted(), 409);
                 if (! isset($data['versions'][$item->id])) {
                     throw ValidationException::withMessages(['versions' => 'Reload the event list before updating selected events.']);
                 }
@@ -416,12 +411,12 @@ class CommunityEventController extends Controller
             abort_unless($items->count() === count($data['events']), 404);
             $proposed = [];
             foreach ($items as $item) {
-                abort_unless(in_array($item->status, ['pending', 'approved', 'rejected'], true) && ! $item->localStart()->isPast(), 409);
+                abort_unless(in_array($item->status, ['pending', 'approved', 'rejected'], true) && ! $item->scheduleStarted(), 409);
                 if (! isset($data['versions'][$item->id])) {
                     throw ValidationException::withMessages(['versions' => 'Reload the event list before rescheduling.']);
                 }
                 $this->checkVersion($item, $data['versions'][$item->id]);
-                $dates = EventSeries::shift($this->community, $item->localStart()->format('Y-m-d\TH:i'), $item->localEnd()?->format('Y-m-d\TH:i'), (int) $data['days']);
+                $dates = EventSeries::shift($this->community, $item->startInput(), $item->endInput(), (int) $data['days']);
                 $key = json_encode([$item->location_id, mb_strtolower($item->title), $dates['starts_at']], JSON_THROW_ON_ERROR);
                 if (isset($proposed[$key]) || CommunityEvent::where('author_id', $author)->where('location_id', $item->location_id)
                     ->whereNotIn('id', $items->modelKeys())->where('title', $item->title)->where('starts_at', $dates['starts_at'])

@@ -39,7 +39,7 @@ class Community
     {
         $now = now('UTC')->format('Y-m-d H:i:s');
 
-        return $events->where('status', 'approved')->where(fn (Builder $query) => $query->where('starts_at', '>=', $now)->orWhere('ends_at', '>=', $now));
+        return $events->where('status', 'approved')->where(fn (Builder $query) => $query->where('starts_at', '>=', $now)->orWhere('ends_at', '>', $now));
     }
 
     public function overlapping(Builder $events, CarbonImmutable $from, CarbonImmutable $until): Builder
