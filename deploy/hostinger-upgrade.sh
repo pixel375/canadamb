@@ -168,4 +168,4 @@ state=verifying
 rm -f "$paused_marker"
 state=complete
 echo "CanadaMB prelaunch update OK: $old_sha -> $sha"
-echo "Hostinger PHP/DB verified; manual allowlisted browser and SSO acceptance is still required."
+echo "Hostinger PHP/DB verified; manual password-unlocked browser and SSO acceptance is still required."

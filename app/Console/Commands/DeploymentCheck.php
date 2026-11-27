@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Http\Middleware\RestrictPrelaunch;
 use App\Models\CommunityOAuthClient;
 use App\Models\Site;
 use App\Support\NetworkSettings;
@@ -90,9 +91,8 @@ class DeploymentCheck extends Command
         }
 
         if ($production !== null) {
-            $ips = config('network.prelaunch_ips', []);
-            if ($ips === [] || array_filter($ips, fn ($ip) => filter_var($ip, FILTER_VALIDATE_IP) === false)) {
-                $issues[] = 'Set one or more exact prelaunch tester IP addresses.';
+            if (! RestrictPrelaunch::validHash(config('network.prelaunch_password_hash'))) {
+                $issues[] = 'Configure a valid prelaunch password hash.';
             }
             if (! app()->isProduction() || config('app.url') !== 'https://canadamb.ca' || ! config('network.sso_enabled')
                 || config('network.news_polling') || config('mail.default') !== 'array') {

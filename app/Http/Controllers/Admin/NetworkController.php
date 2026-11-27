@@ -118,7 +118,7 @@ class NetworkController extends Controller
         $prelaunch = (bool) config('network.prelaunch');
         $checks = [
             ['label' => 'Prelaunch access configuration', 'value' => $prelaunch ? 'Enabled' : 'Disabled', 'note' => 'Configuration only; use external HTTP checks to verify enforcement.'],
-            ['label' => 'Approved IP entries', 'value' => count(config('network.prelaunch_ips', [])), 'note' => 'Count only; individual IP addresses are not displayed.'],
+            ['label' => 'Prelaunch password gate', 'value' => \App\Http\Middleware\RestrictPrelaunch::validHash(config('network.prelaunch_password_hash')) ? 'Configured' : 'Not configured', 'note' => 'Password remains separate from member and administrator sign-in.'],
             ['label' => 'Registration', 'value' => $settings->registrationAllowed() ? 'Available' : 'Disabled', 'note' => 'During private testing, registration should remain intentionally controlled.'],
             ['label' => 'Community sign-in', 'value' => config('network.sso_enabled') ? 'Enabled' : 'Disabled', 'note' => 'Verify a real HTTPS round trip on participating domains.'],
             ['label' => 'Scheduled queue draining', 'value' => config('network.cron_queue_drain') ? 'Configured' : 'Disabled', 'note' => 'Does not establish that the host scheduler is running.'],

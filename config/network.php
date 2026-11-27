@@ -3,6 +3,10 @@
 return [
     'staging' => env('CANADAMB_STAGING', false),
     'prelaunch' => env('CANADAMB_PRELAUNCH', false),
+    // Password-only production preview; local/CI fixtures may still exercise the legacy IP gate.
+    // A deployment operator can rotate the bcrypt hash through the private environment.
+    'prelaunch_password_hash' => env('CANADAMB_PRELAUNCH_PASSWORD_HASH', env('APP_ENV') === 'production'
+        ? '$2y$12$Wkou5ySPH5him5CEsCqCcu.FVA1PsyxnxDP0NF6.S4UybnsC3UJr.' : null),
     'prelaunch_ips' => array_values(array_filter(array_map('trim', explode(',', (string) env('CANADAMB_PRELAUNCH_IPS', ''))))),
     'development_hosts' => env('CANADAMB_DEVELOPMENT_HOSTS', false),
     'sso_enabled' => env('CANADAMB_SSO_ENABLED', true),

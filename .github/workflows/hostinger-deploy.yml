@@ -242,7 +242,7 @@ jobs:
             }
             echo "$host: prelaunch access gate returned HTTP 403."
           done
-          echo "External runner cannot perform allowlisted browser/SSO smoke; authorized operator acceptance remains required."
+          echo "Unauthenticated runner denied; password-unlocked physical-device and SSO acceptance remains separate."
       - name: Remove local credentials
         if: always()
         shell: bash
