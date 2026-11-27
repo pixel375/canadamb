@@ -892,7 +892,7 @@ if (weatherWidgets.length) {
 
 // Native form validation remains authoritative. Label indicators follow
 // disabled/required state, including conditional category fields.
-const fieldsOnPage = () => [...document.querySelectorAll('input:not([type=hidden]):not([type=submit]):not([type=button]):not([type=reset]), select, textarea')].filter(control => control.form)];
+const fieldsOnPage = () => [...document.querySelectorAll('input:not([type=hidden]):not([type=submit]):not([type=button]):not([type=reset]), select, textarea')].filter(control => control.form);
 const syncRequiredMarkers = () => {
     const labels = new Map();
     for (const control of fieldsOnPage()) {
