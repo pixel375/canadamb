@@ -42,7 +42,7 @@ class MarketplaceController extends Controller
         $selectedGroup = $filters['group'] ?? null;
         $query = MarketplaceSearch::matching($site, $filters, $categories->all());
         // The category chooser needs no listing query or count on large datasets.
-        $items = $isDiscovery ? null : $query->latest('published_at')->orderByDesc('id')->paginate(18)->appends($filters);
+        $items = $isDiscovery ? null : $query->latest('published_at')->orderByDesc('id')->paginate(18)->appends(LocationScope::preserveAll($filters + ['view' => 'all']));
 
         if ($request->is('api/*')) {
             return response()->json([

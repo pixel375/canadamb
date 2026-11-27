@@ -87,5 +87,10 @@ class MarketplaceSearchesTest extends TestCase
         $this->get($base)->assertOk()->assertSee('1 matching listing')->assertSee('Earliest model year: 2018');
         $this->get($base.'/'.$vehicleSearch->id.'/edit')->assertOk()->assertSee('name="mileage_max" value="50000"', false);
         $this->get('https://brandonmb.ca/marketplace?'.http_build_query($vehicleSearch->filters))->assertOk()->assertSee('Search detail car');
+        $network = 'https://canadamb.ca/account/marketplace-searches';
+        $this->post($network, ['name' => 'All Manitoba desks', 'q' => 'Oak', 'location' => ''])->assertRedirect()->assertSessionHasNoErrors();
+        $this->withCookie('canadamb_community', 'brandon')->get($network)->assertOk()
+            ->assertSee('3 matching listings')->assertSee('href="/marketplace?q=Oak&amp;view=all&amp;location="', false);
+        $this->get('https://canadamb.ca/marketplace?q=Oak&view=all&location=')->assertOk()->assertSee('Oak rural')->assertDontSee('Oak hidden');
     }
 }

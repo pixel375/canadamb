@@ -135,6 +135,21 @@ class MarketplaceCategoryNavigationTest extends TestCase
         $this->get(self::MAIN.'/marketplace?group=unrecognized')->assertSessionHasErrors('group');
     }
 
+    public function test_results_pagination_preserves_explicit_all_manitoba_and_category_group(): void
+    {
+        $seller = User::factory()->create();
+        for ($i = 1; $i <= 19; $i++) {
+            $this->published($seller, 'Car page fixture '.$i, 'cars', $i % 2 ? 'brandon' : 'elkhorn');
+        }
+        $this->published($seller, 'Excluded sofa fixture', 'furniture', 'brandon');
+        $this->withCookie('canadamb_community', 'brandon')->get(self::MAIN.'/marketplace?group=vehicles&view=all&location=')
+            ->assertOk()->assertSee('19 results')->assertSee('name="group" value="vehicles"', false)
+            ->assertSee('name="view" value="all"', false)->assertSee('location=&amp;page=2', false)
+            ->assertDontSee('Excluded sofa fixture');
+        $this->get(self::MAIN.'/marketplace?group=vehicles&view=all&location=&page=2')
+            ->assertOk()->assertSee('19 results')->assertSee('Car page fixture 1');
+    }
+
     public function test_posting_select_uses_subcategories_but_real_estate_is_not_publicly_selectable(): void
     {
         $seller = User::factory()->create();

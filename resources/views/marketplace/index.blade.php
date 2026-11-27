@@ -126,6 +126,8 @@
                 <x-icon class="disclosure-arrow" name="chevron-down" size="17"/>
             </summary>
             <form class="panel filter-bar" method="get" action="/marketplace" x-data="{ detailCategory: @js($filters['category'] ?? '') }">
+                <input type="hidden" name="view" value="all">
+                @if($selectedGroup)<input type="hidden" name="group" value="{{ $selectedGroup }}">@endif
                 <label>Search<input type="search" name="q" maxlength="100" value="{{ $filters['q'] ?? '' }}" placeholder="Search listings"></label>
                 <label>Category<select name="category" x-model="detailCategory"><option value="">All categories</option>
                     @foreach($categoryGroups as $group)
