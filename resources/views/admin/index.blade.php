@@ -18,11 +18,15 @@
             </div>
         </section>
     @endcan
-    <section class="admin-overview-section"><div class="section-heading"><div><p class="section-label">Review workload</p><h2>Moderation queues</h2><p class="field-note">Counts reflect your review permissions and exclude conflicting business and Marketplace records.</p></div><span class="discussion-count">{{ number_format(collect($queues)->sum('count')) }} pending actions</span></div>
+    <section class="admin-overview-section"><div class="section-heading"><div><p class="section-label">Review workload</p><h2>Moderation queues</h2><p class="field-note">Counts reflect your review permissions and exclude conflicting business and Marketplace records.</p></div><span class="discussion-count">{{ number_format($queueTotal) }} pending actions</span></div>
+        <nav class="inline-actions mb-4" aria-label="Moderation queue filter">
+            <a class="button button-outline" href="/admin" @unless($attentionOnly) aria-current="page" @endunless>All queues</a>
+            <a class="button button-outline" href="/admin?queue=attention" @if($attentionOnly) aria-current="page" @endif>Needs attention ({{ $attentionCount }})</a>
+        </nav>
         <div class="admin-queue-grid">
-            @foreach($queues as $queue)
+            @forelse($queues as $queue)
                 <a class="panel admin-queue-card" href="{{ $queue['url'] }}"><span class="account-shortcut-icon"><x-icon :name="$queue['icon']" size="20"/></span><div><strong>{{ $queue['count'] }}</strong><small>{{ $queue['label'] }}</small></div><x-icon name="chevron" size="16"/></a>
-            @endforeach
+            @empty<div class="panel"><h3>No queues need attention</h3><p>There are no pending actions in the queues you can review.</p></div>@endforelse
         </div>
     </section>
     <section class="panel admin-overview-section"><div class="section-heading"><h2>Recent administration activity</h2><a class="text-link" href="/admin/audit">Audit log</a></div>

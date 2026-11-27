@@ -33,8 +33,9 @@ use Illuminate\Validation\ValidationException;
 
 class NetworkController extends Controller
 {
-    public function index(NetworkSettings $settings)
+    public function index(Request $request, NetworkSettings $settings)
     {
+        $filters = $request->validate(['queue' => 'nullable|in:all,attention']);
         $reviewer = auth()->id();
         $listingCount = Listing::where('status', 'pending')->where('user_id', '!=', $reviewer)->count();
         $queues = [
@@ -86,8 +87,14 @@ class NetworkController extends Controller
             $queues[] = ['label' => 'News drafts', 'count' => DB::table('news_articles')->where('status', 'draft')->count(), 'url' => '/admin/news#editorial-queue', 'icon' => 'news'];
         }
 
+        $queueTotal = array_sum(array_column($queues, 'count'));
+        $attentionCount = count(array_filter($queues, fn ($queue) => $queue['count'] > 0));
+        $attentionOnly = ($filters['queue'] ?? null) === 'attention';
+        $visibleQueues = collect($queues)->when($attentionOnly, fn ($items) => $items->filter(fn ($queue) => $queue['count'] > 0))
+            ->sortByDesc('count')->values()->all();
+
         return view('admin.index', [
-            'queues' => $queues,
+            'queues' => $visibleQueues, 'queueTotal' => $queueTotal, 'attentionCount' => $attentionCount, 'attentionOnly' => $attentionOnly,
             'prelaunch' => (bool) config('network.prelaunch'),
             'recentAudit' => DB::table('audit_logs')->select('audit_logs.action', 'audit_logs.created_at', 'users.name')
                 ->leftJoin('users', 'users.id', '=', 'audit_logs.actor_id')->latest('audit_logs.id')->limit(6)->get(),

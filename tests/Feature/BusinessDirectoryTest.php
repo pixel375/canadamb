@@ -32,6 +32,10 @@ class BusinessDirectoryTest extends TestCase
 
             return $counts['Business profiles'] === 1 && $counts['Business updates'] === 1;
         });
+        $this->get('https://canadamb.ca/admin?queue=attention')->assertOk()
+            ->assertViewHas('queues', fn ($queues) => count($queues) >= 2 && collect($queues)->every(fn ($queue) => $queue['count'] > 0))
+            ->assertSee('Needs attention')->assertSee('Business profiles')->assertSee('Business updates');
+        $this->get('https://canadamb.ca/admin?queue=invalid')->assertSessionHasErrors('queue');
     }
 
     public function test_selected_business_update_withdrawal_is_atomic_and_role_scoped(): void
