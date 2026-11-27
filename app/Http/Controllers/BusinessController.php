@@ -154,13 +154,13 @@ class BusinessController extends Controller
         $businesses = $owned->when($filters['role'] ?? null, fn ($query, $role) => $query->managedBy($user, [$role]))
             ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['name', 'description']))
             ->with(['locations.location', 'members' => fn ($query) => $query->whereKey($user)])
-            ->orderBy('name')->orderBy('id')->paginate(20)->withQueryString();
+            ->orderBy('name')->orderBy('id')->paginate(20)->appends($filters);
         $ownedClaims = DB::table('business_claims')->join('businesses', 'businesses.id', '=', 'business_claims.business_id')
             ->where('business_claims.user_id', $user);
         $claimCounts = (clone $ownedClaims)->selectRaw('business_claims.status, COUNT(*) as total')->groupBy('business_claims.status')->pluck('total', 'status');
         $claims = $ownedClaims->when($filters['claim_status'] ?? null, fn ($query, $status) => $query->where('business_claims.status', $status))
             ->when($filters['claim_reference'] ?? null, fn ($query, $id) => $query->where('business_claims.id', $id))
-            ->latest('business_claims.id')->paginate(15, ['business_claims.id', 'businesses.name', 'business_claims.status', 'business_claims.created_at'], 'claims_page')->withQueryString();
+            ->latest('business_claims.id')->paginate(15, ['business_claims.id', 'businesses.name', 'business_claims.status', 'business_claims.created_at'], 'claims_page')->appends($filters);
 
         return view('business.mine', compact('businesses', 'claims', 'filters', 'total', 'claimCounts'));
     }
@@ -276,13 +276,13 @@ class BusinessController extends Controller
             'type' => 'nullable|in:announcement,promotion,update', 'branch' => 'nullable|integer|min:1', 'reference' => 'nullable|integer|min:1', 'sort' => 'nullable|in:newest,oldest']);
         $branches = $item->locations()->with('location')->when($site->location_id, fn ($query, $id) => $query->where('location_id', $id))->orderBy('id')->get();
         $owned = BusinessUpdate::with('branch.location')->whereIn('business_location_id', $branches->pluck('id'))
-            ->when($filters['branch'] ?? null, fn ($query, $id) => $query->where('business_location_id', $id));
-        $counts = (clone $owned)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
-        $updates = $owned->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
+            ->when($filters['branch'] ?? null, fn ($query, $id) => $query->where('business_location_id', $id))
             ->when($filters['reference'] ?? null, fn ($query, $id) => $query->whereKey($id))
             ->when($filters['type'] ?? null, fn ($query, $type) => $query->where('type', $type))
-            ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'body']))
-            ->orderBy('id', ($filters['sort'] ?? 'newest') === 'oldest' ? 'asc' : 'desc')->paginate(20)->withQueryString();
+            ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'body']));
+        $counts = (clone $owned)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
+        $updates = $owned->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
+            ->orderBy('id', ($filters['sort'] ?? 'newest') === 'oldest' ? 'asc' : 'desc')->paginate(20)->appends($filters);
         $canManageAll = $item->members()->whereKey($request->user()->id)->wherePivotIn('role', ['owner', 'manager'])->exists();
 
         return view('business.manage-updates', compact('item', 'updates', 'filters', 'canManageAll', 'branches', 'counts'));

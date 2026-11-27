@@ -427,3 +427,7 @@ Keep this queue updated; do not interrupt independent implementation for these a
 - 2026-11-27 34d607a4 backend 46079830872/browser 46079830753 green, includes fixed media fixture and property scope regressions. e890b73c browser 46079774786 green; backend 46079774780 initially in progress. Exact deploy 46080161463 approved private activation 140777148604 green, both password forms confirmed; independent DB/PWA 140777295934/140777295785 in progress at check, retention pending.
 
 - D01/D04 notification read actions preserve validated All/Unread preferences and return to correct section; filter tabs and paging use section anchors. Invalid return-filter values cannot mark unread items or introduce external redirect destinations; no new delivery behavior. Both member update and announcement regression extended. Exact CI pending.
+
+- 2026-11-27 exact deploy 46080161463 all five jobs green. Independent PWA/DB 140777295785/140777295934 passed; retention 140777334537 confirmed active 34d607a4 rollback 37b8db73, two releases and backups, 11023 reclaimed and HTTP403 both hosts; actual password forms confirmed by activation job.
+
+- H03 business management adds direct Manage updates shortcut on eligible portal branches and status workload tabs using counts scoped to current reference, keyword, type and branch. Validated pagination filters for managed profiles, claims and updates. Regression covers scoped counts independent of selected status and direct shortcut. No schema/flag changes. Exact CI pending.

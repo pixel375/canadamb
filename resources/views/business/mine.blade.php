@@ -25,6 +25,9 @@
                     <div class="inline-actions seller-listing-actions">
                         <a class="button button-primary" href="/account/businesses/{{ $business->id }}">Manage profile</a>
                         <a class="button button-outline" href="/account/businesses/{{ $business->id }}/team">Team</a>
+                        @if($business->locations->contains(fn ($branch) => $site->isNetwork() || $branch->location_id === $site->location_id))
+                            <a class="button button-outline" href="/account/businesses/{{ $business->id }}/updates">Manage updates</a>
+                        @endif
                         @if($business->status === 'active' && in_array($role, ['owner','manager'], true) && app(\App\Support\JobBoard::class)->enabled($site))
                             <a class="button button-outline" href="/account/businesses/{{ $business->id }}/jobs"><x-icon name="briefcase" size="17"/> Manage jobs</a>
                         @endif

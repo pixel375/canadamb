@@ -336,6 +336,11 @@ class BusinessDirectoryTest extends TestCase
         $revision = ['type' => 'announcement', 'title' => 'Workshop opens Sunday', 'body' => 'Updated public workshop hours.', 'version' => $version];
         $this->actingAs($competitor)->put($manage.'/'.$update, $revision)->assertNotFound();
         $this->actingAs($claimant)->get($manage)->assertOk()->assertSee('Workshop opens Saturday');
+        $this->get('https://brandonmb.ca/account/businesses')->assertOk()->assertSee('href="/account/businesses/'.$business->id.'/updates"', false);
+        $this->get($manage.'?q=Workshop&status=pending')->assertOk()->assertDontSee('Workshop opens Saturday')
+            ->assertViewHas('counts', fn ($counts) => (int) $counts->get('approved') === 1);
+        $this->get($manage.'?q=Unmatched')->assertOk()
+            ->assertViewHas('counts', fn ($counts) => $counts->isEmpty());
         $this->put($manage.'/'.$update, $revision)->assertRedirect()->assertSessionHasNoErrors();
         $this->get('https://brandonmb.ca/')->assertDontSee('Workshop opens Sunday')->assertDontSee('Workshop opens Saturday');
         $this->actingAs($admin)->post("https://canadamb.ca/admin/business-updates/$update", ['decision' => 'approved', 'notes' => 'Old approval attempt.', 'version' => $version])->assertConflict();
