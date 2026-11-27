@@ -39,7 +39,7 @@ class RealEstateController extends Controller
         $selectedLocation = $site->isNetwork() && isset($filters['location'])
             ? $locations->firstWhere('slug', $filters['location'])
             : null;
-        if (! $site->isNetwork()) {
+        if ($site->isNetwork() === false) {
             unset($filters['location']);
         }
 
@@ -85,6 +85,7 @@ class RealEstateController extends Controller
     public function photo(Request $request, int $property, int $photo)
     {
         $item = $this->visible($request)->findOrFail($property);
+
         return PropertyDraftController::privatePhoto($item, $photo);
     }
 
@@ -99,7 +100,7 @@ class RealEstateController extends Controller
 
         return PropertyListing::query()->with(['location', 'photos'])
             ->where('status', 'published')
-            ->when(! config('network.real_estate_public_listings'), fn (Builder $query) => $query->whereRaw('1 = 0'))
+            ->when((bool) config('network.real_estate_public_listings') === false, fn (Builder $query) => $query->whereRaw('1 = 0'))
             ->when($site->location_id !== null, fn (Builder $query) => $query->where('location_id', $site->location_id));
     }
 }
