@@ -54,26 +54,42 @@ final class AccountNotificationsController extends Controller
     public function readOwnerAlert(Request $request, int $notification)
     {
         abort_unless(OwnerNotifications::enabled(), 404);
-        DB::transaction(function () use ($request, $notification) {
+        $filters = DB::transaction(function () use ($request, $notification) {
             $query = OwnerNotifications::visible($request->user(), $request->attributes->get('site'))->where('alert.id', $notification);
             $alert = (clone $query)->lockForUpdate()->first();
             abort_unless($alert, 404);
+            $filters = $this->viewFilters($request);
             if (! $alert->read_at) {
                 DB::table('owner_notifications')->where('id', $notification)->where('user_id', $request->user()->id)->whereNull('read_at')->update(['read_at' => now()]);
             }
+
+            return $filters;
         });
 
-        return redirect('/account/notifications');
+        return $this->returnToSection($filters, 'submission-updates');
     }
 
     public function readAnnouncement(Request $request, int $receipt)
     {
         abort_unless(Announcements::enabled(), 404);
         abort_unless(Announcements::visible($request->user()->id)->where('receipt.id', $receipt)->exists(), 404);
+        $filters = $this->viewFilters($request);
         DB::table('announcement_receipts')->where('id', $receipt)->where('user_id', $request->user()->id)
             ->whereNull('read_at')->update(['read_at' => now()]);
 
-        return redirect('/account/notifications');
+        return $this->returnToSection($filters, 'network-announcements');
+    }
+
+    private function viewFilters(Request $request): array
+    {
+        return $request->validate(['submission_view' => 'nullable|in:all,unread', 'announcement_view' => 'nullable|in:all,unread']);
+    }
+
+    private function returnToSection(array $filters, string $section)
+    {
+        $query = http_build_query(array_filter($filters), '', '&', PHP_QUERY_RFC3986);
+
+        return redirect('/account/notifications'.($query === '' ? '' : '?'.$query.'#'.$section));
     }
 
     public function announcementConsent(Request $request)
@@ -101,7 +117,7 @@ final class AccountNotificationsController extends Controller
     {
         $site = $request->attributes->get('site');
         $user = $request->user();
-        $filters = $request->validate(['submission_view' => 'nullable|in:all,unread', 'announcement_view' => 'nullable|in:all,unread']);
+        $filters = $this->viewFilters($request);
         $counts = $activity->counts($user, $site);
         $discussionsEnabled = app(Community::class)->enabled($site, 'community');
         $recent = $discussionsEnabled

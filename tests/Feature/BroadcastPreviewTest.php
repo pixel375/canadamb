@@ -55,7 +55,8 @@ class BroadcastPreviewTest extends TestCase
         $this->actingAs($other)->get($base.'/account/notifications')->assertOk()->assertDontSee($draft['title']);
         $this->post($base.$read)->assertNotFound();
         $this->actingAs($member)->get('https://brandonmb.ca/account/notifications')->assertOk()->assertSee($draft['title']);
-        $this->post('https://brandonmb.ca'.$read)->assertRedirect('/account/notifications');
+        $this->post('https://brandonmb.ca'.$read, ['submission_view' => 'all', 'announcement_view' => 'unread'])
+            ->assertRedirect('/account/notifications?submission_view=all&announcement_view=unread#network-announcements');
         $this->assertNotNull(DB::table('announcement_receipts')->where('id', $receipt->id)->value('read_at'));
         $this->getJson($base.'/account/activity-counts')->assertJsonPath('notifications', 0);
         $this->get($base.'/account/notifications?announcement_view=unread')->assertOk()
