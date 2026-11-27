@@ -130,8 +130,12 @@ final class NotificationController extends Controller
         $pushStates = $pushDeliveryEnabled ? DB::table('push_delivery_states')->selectRaw('last_result, COUNT(*) AS total')->groupBy('last_result')->pluck('total', 'last_result') : collect();
         $pushAcceptedDevices = $pushDeliveryEnabled ? DB::table('push_delivery_states')->where('last_accepted_at', '>=', $since)->count() : null;
         $pushAcceptedTotal = $pushDeliveryEnabled ? (int) DB::table('push_delivery_states')->sum('accepted_count') : null;
+        $pushDue = $pushDeliveryEnabled ? DB::table('push_delivery_states')->where('next_check_at', '<=', now())->count() : null;
+        $pushUninitialized = $pushDeliveryEnabled ? DB::table('push_devices as device')->whereNotExists(fn ($query) => $query->selectRaw('1')
+            ->from('push_delivery_states as state')->whereColumn('state.device_id', 'device.id'))->count() : null;
+        $pushOldestDue = $pushDeliveryEnabled ? DB::table('push_delivery_states')->where('next_check_at', '<=', now())->min('next_check_at') : null;
 
-        return response()->view('admin.notifications', compact('days', 'metrics', 'preferencesEnabled', 'paused', 'eventsEnabled', 'ownerEnabled', 'ownerMetrics', 'pushEnabled', 'pushKeyConfigured', 'pushCount', 'pushDeliveryEnabled', 'pushSigningReady', 'pushStates', 'pushAcceptedDevices', 'pushAcceptedTotal', 'broadcastEnabled', 'announcementDelivery', 'announcementHistory', 'announcementMetrics'))
+        return response()->view('admin.notifications', compact('days', 'metrics', 'preferencesEnabled', 'paused', 'eventsEnabled', 'ownerEnabled', 'ownerMetrics', 'pushEnabled', 'pushKeyConfigured', 'pushCount', 'pushDeliveryEnabled', 'pushSigningReady', 'pushStates', 'pushAcceptedDevices', 'pushAcceptedTotal', 'pushDue', 'pushUninitialized', 'pushOldestDue', 'broadcastEnabled', 'announcementDelivery', 'announcementHistory', 'announcementMetrics'))
             ->header('Cache-Control', 'private, no-store');
     }
 }

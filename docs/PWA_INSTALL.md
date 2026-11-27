@@ -97,3 +97,30 @@ Live application SHA: 90c36b5c9b56530fa15ebbe2633e23cd8b9916b0
 Tracking: https://github.com/pixel375/canadamb/issues/8
 
 Offline mode, push notifications, background sync, polished final icons and per-city PWA admin overrides remain future work.
+## Optional Web Push activation and key rotation (D03, staged)
+
+Do not activate during prelaunch. Device registration and delivery are independent flags and require their reviewed proposed migrations (000018 and 000024). Confirm the production scheduler, HTTPS, PHP OpenSSL/cURL, provider reachability and the matching P-256 key pair. Keep the delivery flag off until explicit approval and disposable-device testing. No administrator page accepts a private key.
+
+Generate a new key only on a trusted private machine, never inside the repository or a logged CI step. The following local PHP CLI script writes the environment fragment to a newly created owner-only file; it refuses to overwrite an existing file. Run on a Unix-like system with PHP OpenSSL, from a private directory outside the web root. Replace the operator contact privately before installing the values through the hosting environment.
+
+```php
+<?php
+umask(0077);
+$key = openssl_pkey_new(['private_key_type' => OPENSSL_KEYTYPE_EC, 'curve_name' => 'prime256v1']);
+if (!$key || !openssl_pkey_export($key, $pem)) {
+    throw new RuntimeException('Key generation failed');
+}
+$ec = openssl_pkey_get_details($key)['ec'];
+$point = chr(4).str_pad($ec['x'], 32, chr(0), STR_PAD_LEFT).str_pad($ec['y'], 32, chr(0), STR_PAD_LEFT);
+$public = rtrim(strtr(base64_encode($point), '+/', '-_'), '=');
+$file = fopen('private-vapid.env', 'x');
+if (!$file) {
+    throw new RuntimeException('Refusing to overwrite an existing key');
+}
+fwrite($file, "CANADAMB_PUSH_PUBLIC_KEY=$public\nCANADAMB_PUSH_PRIVATE_KEY=".base64_encode($pem)."\nCANADAMB_PUSH_SUBJECT=mailto:operator@example.invalid\n");
+fclose($file);
+```
+
+Store the key in protected hosting configuration and an encrypted backup, not in Git, web root, screenshots or chat. Do not print or upload the generated fragment. Install real operator mailto contact, refresh configuration using the normal deployment procedure, and check only the matched/not-ready indicator in admin Notifications. Remove the temporary plaintext fragment from the private machine after secure storage. Keep the old key protected until the rotation decision is final.
+
+For rotation, disable delivery first. Install the new matching pair, invalidate old server registrations through an approved maintenance procedure, then have members explicitly unsubscribe and re-register on each portal/device. The browser rejects mismatched or unavailable application keys; it never silently removes a subscription. Do not silently send a registration for another account. Verify logout and account revocation, separate site registrations, failed permission, old key mismatch, unsubscribe and permission revocation, generic text and current-host notification click, Android installed/browser, supported desktop and iOS installed Home Screen app. Provider acceptance does not imply display or reading. Empty-body notifications are coalesced, best-effort and may be delayed or lost; no private content is included. Monitor due checks, uninitialized devices, failures and retry counts. DNS resolution and IPv4-only provider transport remain hosting compatibility checks. No physical device acceptance or live key has been completed.
