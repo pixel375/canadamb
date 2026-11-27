@@ -43,7 +43,9 @@ class OwnerNotificationsTest extends TestCase
         $this->assertDatabaseCount('owner_notifications', 1);
         $this->assertDatabaseHas('owner_notifications', ['user_id' => $member->id, 'target_id' => $listing->id, 'kind' => 'listing', 'decision' => 'expired']);
         foreach (['https://canadamb.ca', 'https://brandonmb.ca'] as $host) {
-            $this->actingAs($member)->get($host.'/account/notifications')->assertOk()->assertSee('Your Marketplace listing expired.');
+            $this->actingAs($member)->get($host.'/account/notifications')->assertOk()->assertSee('Your Marketplace listing expired.')
+                ->assertSee('href="/account/listings/'.$listing->id.'/history"', false);
+            $this->get($host.'/account/listings/'.$listing->id.'/history')->assertOk()->assertSee($listing->title);
         }
         $admin = User::factory()->create(['role' => 'super_admin']);
         $this->actingAs($admin)->get('https://canadamb.ca/admin/notifications')->assertOk()->assertSee('Expired: 1')->assertDontSee($listing->title);
@@ -69,7 +71,12 @@ class OwnerNotificationsTest extends TestCase
         $this->actingAs($member)->get('https://brandonmb.ca/account/notifications')->assertOk()->assertDontSee('Your discussion was not approved.');
         $this->post('https://brandonmb.ca'.$read)->assertNotFound();
         $this->get('https://canadamb.ca/account/notifications')->assertOk()->assertSee('Your discussion was not approved.')
-            ->assertSee('Contact support about this decision')->assertDontSee('Internal moderation note');
+            ->assertSee('Contact support about this decision')->assertDontSee('Internal moderation note')
+            ->assertSee('href="/account/discussions?reference='.$thread->id.'"', false);
+        $this->get('https://canadamb.ca/account/discussions?reference='.$thread->id)->assertOk()->assertSee($thread->title);
+        $this->get('https://brandonmb.ca/account/discussions?reference='.$thread->id)->assertOk()->assertDontSee($thread->title);
+        $this->actingAs($other)->get('https://canadamb.ca/account/discussions?reference='.$thread->id)->assertOk()->assertDontSee($thread->title);
+        $this->actingAs($member);
         $this->post('https://canadamb.ca'.$read)->assertRedirect('/account/notifications');
         $this->assertNotNull(DB::table('owner_notifications')->where('id', $alert->id)->value('read_at'));
         $thread->delete();

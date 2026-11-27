@@ -11,6 +11,7 @@
             @if($filters['status'] ?? null)<input type="hidden" name="status" value="{{ $filters['status'] }}">@endif
             <label for="own-reply-q" >Search my replies<input id="own-reply-q" type="search" name="q" maxlength="100" value="{{ $filters['q'] ?? '' }}" placeholder="Search your replies"></label>
             <label>Discussion reference<input name="thread" type="number" min="1" value="{{ $filters['thread'] ?? '' }}" placeholder="Any discussion"></label>
+            <label>Reply reference<input name="reference" type="number" min="1" value="{{ $filters['reference'] ?? '' }}"></label>
             <label>Sort<select name="sort"><option value="newest" @selected(($filters['sort'] ?? 'newest') === 'newest')>Newest</option><option value="oldest" @selected(($filters['sort'] ?? '') === 'oldest')>Oldest</option></select></label><button class="button button-primary">Search</button><a class="text-link" href="/account/replies">Reset</a>
         </form>
         <p class="field-note seller-results-count">{{ $items->total() }} {{ \Illuminate\Support\Str::plural('reply', $items->total()) }} found</p>

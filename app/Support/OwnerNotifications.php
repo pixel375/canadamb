@@ -92,9 +92,18 @@ final class OwnerNotifications
             });
     }
 
-    public static function destination(string $kind): string
+    public static function destination(string $kind, ?int $target = null): string
     {
-        return self::TARGETS[$kind][3];
+        $base = self::TARGETS[$kind][3];
+        if ($target === null) {
+            return $base;
+        }
+
+        return match ($kind) {
+            'listing' => $base.'/'.$target.'/history',
+            'discussion', 'reply', 'event' => $base.'?reference='.$target,
+            default => $base,
+        };
     }
 
     public static function description(string $kind, string $decision): string

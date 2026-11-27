@@ -11,6 +11,7 @@
             @if($filters['status'] ?? null)<input type="hidden" name="status" value="{{ $filters['status'] }}">@endif
             <label for="own-discussion-q" >Search my discussions<input id="own-discussion-q" type="search" name="q" maxlength="100" value="{{ $filters['q'] ?? '' }}" placeholder="Search your discussions"></label>
             <label>Category<select name="category"><option value="">All categories</option>@foreach(\App\Support\Community::FORUMS as $key => $label)<option value="{{ $key }}" @selected(($filters['category'] ?? '') === $key)>{{ $label }}</option>@endforeach</select></label>
+            <label>Discussion reference<input name="reference" type="number" min="1" value="{{ $filters['reference'] ?? '' }}"></label>
             <label>Sort<select name="sort"><option value="newest" @selected(($filters['sort'] ?? 'newest') === 'newest')>Newest</option><option value="oldest" @selected(($filters['sort'] ?? '') === 'oldest')>Oldest</option><option value="replies" @selected(($filters['sort'] ?? '') === 'replies')>Most replies</option></select></label><button class="button button-primary">Search</button><a class="text-link" href="/account/discussions">Reset</a>
         </form>
         <p class="field-note seller-results-count">{{ $items->total() }} {{ \Illuminate\Support\Str::plural('discussion', $items->total()) }} found</p>

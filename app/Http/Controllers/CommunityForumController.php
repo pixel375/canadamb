@@ -119,11 +119,13 @@ class CommunityForumController extends Controller
         abort_unless($this->community->enabled($site, 'community'), 404);
         $statuses = ['pending', 'approved', 'rejected', 'withdrawn'];
         $filters = $request->validate(['status' => ['nullable', Rule::in($statuses)], 'q' => 'nullable|string|max:100',
-            'category' => ['nullable', Rule::in(array_keys(Community::FORUMS))], 'sort' => 'nullable|in:newest,oldest,replies']);
+            'category' => ['nullable', Rule::in(array_keys(Community::FORUMS))], 'sort' => 'nullable|in:newest,oldest,replies',
+            'reference' => 'nullable|integer|min:1']);
         $owned = CommunityThread::where('author_id', $request->user()->id)
             ->when($site->location_id, fn ($query, $id) => $query->where('location_id', $id));
         $counts = (clone $owned)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
         $items = $owned->with('location')->withCount(['replies' => fn ($query) => $query->where('status', 'approved')])
+            ->when($filters['reference'] ?? null, fn ($query, $id) => $query->whereKey($id))
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
             ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'body']))
             ->when($filters['category'] ?? null, fn ($query, $category) => $query->where('category', $category));
@@ -203,10 +205,11 @@ class CommunityForumController extends Controller
     {
         $statuses = ['pending', 'approved', 'rejected', 'withdrawn'];
         $filters = $request->validate(['status' => ['nullable', Rule::in($statuses)], 'q' => 'nullable|string|max:100',
-            'sort' => 'nullable|in:newest,oldest', 'thread' => 'nullable|integer|min:1']);
+            'sort' => 'nullable|in:newest,oldest', 'thread' => 'nullable|integer|min:1', 'reference' => 'nullable|integer|min:1']);
         $owned = $this->ownedReplyQuery($request);
         $counts = (clone $owned)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
         $items = $owned->with('thread:id,title,status,locked')
+            ->when($filters['reference'] ?? null, fn ($query, $id) => $query->whereKey($id))
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
             ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['body']))
             ->when($filters['thread'] ?? null, fn ($query, $thread) => $query->where('thread_id', $thread)->whereHas('thread', fn ($parent) => $parent->where('status', 'approved')))
