@@ -64,6 +64,8 @@ jobs:
       - run: npm run build
       - run: npm audit
       - run: bash -n deploy/hostinger-release.sh && bash -n deploy/hostinger-upgrade.sh && bash -n deploy/hostinger-cron.sh && bash -n deploy/smoke.sh && php -l deploy/hostinger-backup.php
+      - name: Rehearse two-release and two-backup retention
+        run: bash tests/Deployment/hostinger-retention.sh
       - name: Ensure MariaDB dump client is installed for the update rehearsal
         run: |
           if ! command -v mariadb-dump >/dev/null; then
