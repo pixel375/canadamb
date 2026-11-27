@@ -21,7 +21,7 @@
                         <input form="job-search-batch" type="hidden" name="versions[{{ $item->id }}]" value="{{ $item->editVersion() }}">
                     @endif
                     <x-saved-filter-summary :filters="$item->filters" kind="jobs"/>
-                    <div class="inline-actions"><a class="button button-primary" href="/account/job-searches/{{ $item->id }}">View matches</a><a class="text-link" href="/jobs?{{ http_build_query($item->filters) }}">Open original search</a><a class="button button-outline" href="/account/job-searches/{{ $item->id }}/edit">Edit filters</a></div>
+                    <div class="inline-actions"><a class="button button-primary" href="/account/job-searches/{{ $item->id }}">View matches</a><a class="text-link" href="/jobs?{{ http_build_query($item->filters + (request()->attributes->get('site')->isNetwork() ? ['location' => ''] : [])) }}">Open original search</a><a class="button button-outline" href="/account/job-searches/{{ $item->id }}/edit">Edit filters</a></div>
                     <details><summary>Search and alert preferences</summary><form class="form-stack mt-2" method="post" action="/account/job-searches/{{ $item->id }}/preferences">@csrf<input type="hidden" name="version" value="{{ $item->editVersion() }}">
                         <label>Name<input name="name" required maxlength="80" value="{{ $item->name }}"></label>
                         <label>New job alerts<select name="alerts"><option value="1" @selected($item->alerts)>On</option><option value="0" @selected(!$item->alerts)>Paused</option></select></label>

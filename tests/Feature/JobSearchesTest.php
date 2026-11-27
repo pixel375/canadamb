@@ -81,19 +81,24 @@ class JobSearchesTest extends TestCase
         $this->get($base)->assertOk()->assertSee('Mark selected searches checked');
         $this->post($url.'/read', ['cutoff' => $cutoff, 'version' => $search->fresh()->editVersion()])->assertRedirect()->assertSessionHasNoErrors();
         $this->get($url)->assertSee('Later clerk');
-        $this->post($url.'/preferences', ['name' => 'Retail search', 'alerts' => '0'])->assertRedirect();
+        $this->post($url.'/preferences', ['name' => 'Retail search', 'alerts' => '0'])->assertSessionHasErrors('version');
+        $this->post($url.'/read', ['version' => $search->fresh()->editVersion()])->assertSessionHasErrors('cutoff');
+        $this->post($url.'/read', ['cutoff' => $cutoff])->assertSessionHasErrors('version');
+        $this->post($url.'/preferences', ['name' => 'Retail search', 'alerts' => '0', 'version' => $search->fresh()->editVersion()])->assertRedirect()->assertSessionHasNoErrors();
         $this->get($base)->assertSee('Alerts paused');
         $this->post($url.'/preferences', ['name' => 'Stale change', 'alerts' => '1', 'version' => $version])->assertSessionHasErrors('version');
         $this->travelTo(now()->addMinutes(2)->startOfSecond());
         $make($branch, 'While paused clerk', 'approved');
-        $this->post($url.'/preferences', ['name' => 'Retail search', 'alerts' => '1'])->assertRedirect();
+        $this->post($url.'/preferences', ['name' => 'Retail search', 'alerts' => '1', 'version' => $search->fresh()->editVersion()])->assertRedirect();
         $this->get($url)->assertDontSee('While paused clerk');
         $this->get($url.'/edit')->assertOk()->assertSee('Retail search');
         $this->actingAs($stranger)->put($url, $filters)->assertNotFound();
-        $this->actingAs($member)->put($url, array_replace($filters, ['name' => 'Lower pay search', 'minimum_pay' => '15']))->assertRedirect()->assertSessionHasNoErrors();
+        $this->actingAs($member)->put($url, $filters)->assertSessionHasErrors('version');
+        $this->put($url, array_replace($filters, ['name' => 'Lower pay search', 'minimum_pay' => '15', 'version' => $search->fresh()->editVersion()]))->assertRedirect()->assertSessionHasNoErrors();
         $this->get($url.'?view=all')->assertSee('Low pay clerk');
         $this->assertSame('15.00', $search->fresh()->filters['minimum_pay']);
-        $this->delete($url)->assertRedirect();
+        $this->delete($url)->assertSessionHasErrors('version');
+        $this->delete($url, ['version' => $search->fresh()->editVersion()])->assertRedirect();
         $this->assertDatabaseCount('job_searches', 0);
     }
 }
