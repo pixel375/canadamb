@@ -12,10 +12,11 @@
                     <summary aria-label="Conversation options"><x-icon name="more-vertical" size="22"/></summary>
                     <div class="chat-actions-menu">
                     @if(\App\Support\MessagingExtensions::enabled() && $latestPage)
-                        <form method="post" action="/account/messages/{{ $thread->id }}/archive">@csrf
+                        <form method="post" action="/account/messages/{{ $thread->id }}/archive" data-chat-archive data-archived="{{ $thread->{$thread->archiveMarker(auth()->id())} ? '1' : '0' }}">@csrf
                             <input type="hidden" name="version" value="{{ $thread->archiveVersion(auth()->id(), (int) ($messages->first()?->id ?? 0)) }}">
                             @if($thread->{$thread->archiveMarker(auth()->id())})@method('DELETE')@endif
                             <button class="button button-outline">{{ $thread->{$thread->archiveMarker(auth()->id())} ? 'Restore conversation' : 'Archive and mark read' }}</button>
+                            <small data-chat-archive-note class="field-note" role="status"></small>
                         </form>
                     @endif
                     <form method="post" action="/account/messages/{{ $thread->id }}/block">

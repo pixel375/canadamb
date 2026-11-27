@@ -567,6 +567,7 @@ if (chatPanel) {
     const status = chatPanel.querySelector('[data-chat-status]');
     const send = chatPanel.querySelector('[data-chat-send]');
     const latestButton = chatPanel.querySelector('[data-chat-latest]');
+    const archiveForm = chatPanel.querySelector('[data-chat-archive]');
     const atLatest = () => history.scrollHeight - history.scrollTop - history.clientHeight < 48;
     const goLatest = () => {
         history.scrollTop = history.scrollHeight;
@@ -718,6 +719,14 @@ if (chatPanel) {
             for (const item of data.messages) append(item);
             if (data.messages.length && wasAtLatest) goLatest();
             else if (data.messages.length) latestButton.hidden = false;
+            if (archiveForm && data.archive && data.archive.seen === cursor && data.archive.seen === seen) {
+                const sameState = Boolean(data.archive.archived) === (archiveForm.dataset.archived === '1');
+                archiveForm.querySelector('button').disabled = !sameState;
+                archiveForm.querySelector('[data-chat-archive-note]').textContent = sameState ? '' : 'Archive state changed. Reload this page before continuing.';
+                if (sameState && /^[a-f0-9]{64}$/.test(data.archive.version)) {
+                    archiveForm.querySelector('input[name="version"]').value = data.archive.version;
+                }
+            }
             updateActivityCounts(data.counts);
             if (send) send.disabled = Boolean(data.blocked);
             if (data.blocked) status.textContent = 'New messages are blocked for this conversation.';

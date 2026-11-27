@@ -81,7 +81,12 @@ class ExtendedMessagingTest extends TestCase
         $this->assertNull($thread->fresh()->seller_archived_at);
         $this->assertLessThan((int) $thread->messages()->max('id'), (int) $thread->fresh()->seller_last_read_id);
         $activity = $thread->fresh()->updated_at->toDateTimeString();
-        $version = $thread->fresh()->archiveVersion($owner->id, (int) $thread->messages()->max('id'));
+        $latest = (int) $thread->messages()->max('id');
+        $this->postJson($url.'/sync', ['after' => $latest, 'seen' => 0])->assertOk()->assertJsonPath('archive', null);
+        $this->postJson($url.'/sync', ['after' => 0, 'seen' => 0])->assertOk()->assertJsonPath('archive', null);
+        $version = $thread->fresh()->archiveVersion($owner->id, $latest);
+        $this->postJson($url.'/sync', ['after' => $latest, 'seen' => $latest])->assertOk()
+            ->assertJsonPath('archive.version', $version)->assertJsonPath('archive.archived', false)->assertJsonPath('archive.seen', $latest);
         $this->post($url.'/archive', ['version' => $version])->assertRedirect()->assertSessionHasNoErrors();
         $this->assertSame($activity, $thread->fresh()->updated_at->toDateTimeString());
         $this->get($base.'/account/messages')->assertDontSee('Local helper');

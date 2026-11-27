@@ -380,7 +380,8 @@ class MessagesController extends Controller
         $data = $request->validate(['after' => 'required|integer|min:0', 'seen' => 'nullable|integer|min:0']);
         $after = (int) $data['after'];
         $seen = (int) ($data['seen'] ?? 0);
-        if ($seen > 0 && $seen <= $after && $thread->messages()->whereKey($seen)->exists()) {
+        $seenValid = $seen > 0 && $seen <= $after && $thread->messages()->whereKey($seen)->exists();
+        if ($seenValid) {
             $marker = $thread->marker($id);
             Conversation::whereKey($thread->id)->where($marker, '<', $seen)->update([$marker => $seen, 'updated_at' => DB::raw('updated_at')]);
         }
@@ -388,8 +389,20 @@ class MessagesController extends Controller
             ->when(MessageAttachments::enabled(), fn ($query) => $query->withExists('attachment'))
             ->when(MessageDocuments::enabled(), fn ($query) => $query->withExists('document'))
             ->where('id', '>', $after)->orderBy('id')->limit(30)->get();
+        $archive = null;
+        // Only refresh the optimistic archive version for history already
+        // acknowledged as visible, not messages merely delivered by polling.
+        if (MessagingExtensions::enabled() && $seenValid && $seen === $after
+            && $messages->isEmpty() && (int) $thread->messages()->max('id') === $seen) {
+            $archive = [
+                'version' => $thread->archiveVersion($id, $seen),
+                'archived' => $thread->{$thread->archiveMarker($id)} !== null,
+                'seen' => $seen,
+            ];
+        }
 
         return response()->json([
+            'archive' => $archive,
             'messages' => $messages->map(fn ($message) => [
                 'id' => $message->id,
                 'own' => $message->sender_id === $id,
