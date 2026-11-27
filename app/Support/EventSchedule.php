@@ -65,7 +65,7 @@ final class EventSchedule
                 throw ValidationException::withMessages(['ends_at' => 'Choose a supported last event date.']);
             }
             $until = $last->utc();
-            if ($last->diffInDays($first->setTimezone('America/Winnipeg'), absolute: true) > 366) {
+            if ($last->diffInDays($first->setTimezone('America/Winnipeg'), true) > 366) {
                 throw ValidationException::withMessages(['ends_at' => 'Choose a date range of at most one year.']);
             }
         } else {

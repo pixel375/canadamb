@@ -54,7 +54,12 @@ class AccountExportController extends Controller
 
     private function sections(): array
     {
-        return self::SECTIONS + array_filter(self::OPTIONAL, fn ($definition) => Schema::hasTable($definition[0]));
+        $sections = self::SECTIONS + array_filter(self::OPTIONAL, fn ($definition) => Schema::hasTable($definition[0]));
+        if (Schema::hasColumn('community_events', 'date_only')) {
+            $sections['events'][2][] = 'date_only';
+        }
+
+        return $sections;
     }
 
     public function index(Request $request)

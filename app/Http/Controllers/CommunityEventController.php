@@ -238,9 +238,9 @@ class CommunityEventController extends Controller
             ->when($filters['reference'] ?? null, fn ($query, $id) => $query->whereKey($id))
             ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'body', 'venue', 'organizer']))
             ->when(($filters['sort'] ?? null) === 'upcoming', fn ($query) => $query->where(fn ($dates) => $dates
-                ->where('starts_at', '>=', $now)->orWhere('ends_at', '>=', $now)))
+                ->where('starts_at', '>=', $now)->orWhere('ends_at', '>', $now)))
             ->when(($filters['sort'] ?? null) === 'past', fn ($query) => $query->where(fn ($dates) => $dates
-                ->where('ends_at', '<', $now)->orWhere(fn ($instant) => $instant->whereNull('ends_at')->where('starts_at', '<', $now))));
+                ->where('ends_at', '<=', $now)->orWhere(fn ($instant) => $instant->whereNull('ends_at')->where('starts_at', '<', $now))));
         $counts = (clone $matching)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
         $items = $matching->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
             ->when(($filters['sort'] ?? null) === 'upcoming', fn ($query) => $query->orderBy('starts_at')->orderBy('id'),

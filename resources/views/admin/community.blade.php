@@ -22,9 +22,9 @@
     </section>
     <section class="panel" id="events"><h2>Events</h2>
         @forelse($events as $item)
-            <article class="admin-review-card form-stack"><h3>{{ $item->title }}</h3><p>{{ $item->location->name }} · {{ $item->venue }} · {{ $item->organizer }} · {{ $item->localStart()->format('M j, Y · g:i a T') }}</p>
+            <article class="admin-review-card form-stack"><h3>{{ $item->title }}</h3><p>{{ $item->location->name }} · {{ $item->venue }} · {{ $item->organizer }} · {{ $item->startLabel('M j, Y · g:i a T') }}</p>
                 <p class="prose-text">{{ $item->body }}</p>
-                @if($item->localEnd())<p>Ends {{ $item->localEnd()->format('M j, Y · g:i a T') }}</p>@endif
+                @if($item->endLabel())<p>Ends {{ $item->endLabel('M j, Y · g:i a T') }}</p>@endif
                 @if($item->event_url)<a class="text-link" rel="noreferrer" href="{{ $item->event_url }}">{{ $item->event_url }}</a>@endif
                 <p>{{ ucfirst($item->status) }}</p>
                 @if($item->cancellation_note)<p>Private cancellation note · {{ $item->cancellation_note }}</p>@endif

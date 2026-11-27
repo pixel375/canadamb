@@ -37,7 +37,7 @@
                 @if($event)
                     <section class="panel form-stack"><p class="section-label">Linked community event</p><h2>{{ $event->title }}</h2>
                         @if($event->status === 'cancelled')<p class="notice notice-error">This event has been cancelled.</p>@endif
-                        <p>{{ $event->localStart()->format('l, F j, Y · g:i a T') }}@if($event->localEnd()) – {{ $event->localEnd()->format('M j · g:i a T') }}@endif</p>
+                        <p>{{ $event->startLabel('l, F j, Y · g:i a T') }}@if($event->endLabel()) – {{ $event->endLabel('M j · g:i a T') }}@endif</p>
                         <p>{{ $event->venue }} · {{ $event->organizer }}</p><a class="button button-outline" href="/events/{{ $event->id }}">Go to event</a>
                     </section>
                 @elseif($eventReviewPending)

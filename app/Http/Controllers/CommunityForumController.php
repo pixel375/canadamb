@@ -73,7 +73,7 @@ class CommunityForumController extends Controller
             $eventPlace = LocationScope::forBrowsing($site, $filters['location'] ?? null);
             $events = $this->community->events($eventPlace?->id)
                 ->where('status', 'approved')->where('starts_at', '<=', $until)
-                ->where(fn ($query) => $query->where('starts_at', '>=', $start)->orWhere('ends_at', '>=', $start))
+                ->where(fn ($query) => $query->where('starts_at', '>=', $start)->orWhere('ends_at', '>', $start))
                 ->orderBy('starts_at')->orderBy('id')->limit(60)->get();
             $today = now('America/Winnipeg')->toDateString();
             $eventDays = $events->groupBy(fn (CommunityEvent $event) => max($today, $event->localStart()->toDateString()));

@@ -8,10 +8,7 @@
             <x-community-location :places="$places" :suggested-location="$suggestedLocation"/>
             <label>Venue<input name="venue" required maxlength="180" value="{{ old('venue', $source?->venue) }}"></label>
             <label>Organizer<input name="organizer" required maxlength="150" value="{{ old('organizer', $source?->organizer) }}"></label>
-            <div class="form-grid">
-                <label>Starts (Manitoba time)<input type="datetime-local" name="starts_at" required value="{{ old('starts_at') }}"></label>
-                <label>Ends (Manitoba time)<input type="datetime-local" name="ends_at" value="{{ old('ends_at') }}"></label>
-            </div>
+            <x-event-schedule-fields/>
             <x-event-repeat-fields/>
             <label>Event or tickets link<input type="url" name="event_url" maxlength="1024" value="{{ old('event_url', $source?->event_url) }}"></label>
             <label>Description<textarea data-character-count name="body" required minlength="10" maxlength="5000" rows="7">{{ old('body', $source?->body) }}</textarea><small class="field-note" data-character-feedback></small></label>

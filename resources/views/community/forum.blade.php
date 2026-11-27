@@ -138,7 +138,7 @@
                                     <div class="discussion-day-events">
                                         @foreach($dayEvents as $event)
                                             <article class="discussion-event">
-                                                <time datetime="{{ $event->localStart()->toAtomString() }}">{{ $event->localStart()->toDateString() < $date ? 'Ongoing' : $event->localStart()->format('g:i a') }}</time>
+                                                <time datetime="{{ $event->startDateValue() }}">{{ $event->localStart()->toDateString() < $date ? 'Ongoing' : $event->startLabel('g:i a') }}</time>
                                                 <h3><a href="/events/{{ $event->id }}">{{ $event->title }}</a></h3>
                                                 <p>{{ $event->venue }} · {{ $event->location->name }}</p>
                                                 @if($linkedDiscussion = \App\Support\EventDiscussions::publicThread(request()->attributes->get('site'), $event))<a class="text-link" href="/community/{{ $linkedDiscussion->id }}">Discussion</a>@endif

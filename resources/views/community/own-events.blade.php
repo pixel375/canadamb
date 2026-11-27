@@ -26,7 +26,7 @@
             <label>Private cancellation note<input name="cancellation_note" maxlength="300"></label>
             <label class="checkbox-line"><input type="checkbox" name="confirm_cancel" value="1" required> Confirm cancellation of the selected events</label><button class="button button-outline">Cancel selected events</button>
         </form></details>
-        @if(config('network.recurring_events') && $items->contains(fn ($item) => in_array($item->status, ['pending', 'approved', 'rejected'], true) && !$item->localStart()->isPast()))
+        @if(config('network.recurring_events') && $items->contains(fn ($item) => in_array($item->status, ['pending', 'approved', 'rejected'], true) && !$item->scheduleStarted() && (!$item->isDateOnly() || \App\Support\EventSchedule::available())))
             <details class="panel form-stack mb-4"><summary>Update shared event details</summary>
                 <form id="event-batch-edit" method="post" action="/account/events/revise-selected" class="form-stack mt-3">@csrf
                     <p class="field-note">Choose up to eight upcoming occurrences below. Update one shared field at a time; dates, descriptions and discussions stay unchanged. Changed events require review.</p>
@@ -37,7 +37,7 @@
                 </form>
             </details>
         @endif
-        @if(config('network.recurring_events') && $items->contains(fn ($item) => in_array($item->status, ['pending', 'approved', 'rejected'], true) && !$item->localStart()->isPast()))
+        @if(config('network.recurring_events') && $items->contains(fn ($item) => in_array($item->status, ['pending', 'approved', 'rejected'], true) && !$item->scheduleStarted() && (!$item->isDateOnly() || \App\Support\EventSchedule::available())))
             <details class="panel form-stack mb-4"><summary>Reschedule selected events</summary>
                 <form id="event-batch-shift" method="post" action="/account/events/shift-selected" class="form-stack mt-3">@csrf
                     <p class="field-note">Move up to eight upcoming occurrences by the same number of calendar days. Local start and end times stay the same; changed dates require independent review.</p>
@@ -50,18 +50,18 @@
         <section class="seller-listing-grid">
             @forelse($items as $item)
                 <article class="panel seller-listing-card">
-                    <div class="event-discovery-card"><div class="event-date-tile"><strong>{{ $item->localStart()->format('j') }}</strong><span>{{ $item->localStart()->format('M') }}</span></div><div><span class="member-listing-status" data-status="{{ $item->status }}">{{ ucfirst($item->status) }}</span><h2>{{ $item->title }}</h2><p>{{ $item->localStart()->format('M j, Y · g:i a') }} · {{ $item->location->name }}</p><p>{{ $item->venue }}</p><p class="field-note">{{ \App\Support\Community::EVENTS[$item->category] }} · Reference #{{ $item->id }}</p></div></div>
+                    <div class="event-discovery-card"><div class="event-date-tile"><strong>{{ $item->localStart()->format('j') }}</strong><span>{{ $item->localStart()->format('M') }}</span></div><div><span class="member-listing-status" data-status="{{ $item->status }}">{{ ucfirst($item->status) }}</span><h2>{{ $item->title }}</h2><p>{{ $item->startLabel('M j, Y · g:i a') }} · {{ $item->location->name }}</p><p>{{ $item->venue }}</p><p class="field-note">{{ \App\Support\Community::EVENTS[$item->category] }} · Reference #{{ $item->id }}</p></div></div>
                     <p class="seller-lifecycle-note">{{ match($item->status) { 'pending' => 'Waiting for moderator approval.', 'approved' => 'Approved for the community calendar.', 'rejected' => 'Not approved for publication.', 'cancelled' => 'Public event marked cancelled.', 'withdrawn' => 'Submission withdrawn before publication.', default => ucfirst($item->status) } }}</p>
                     @if($item->cancellation_note)<p class="field-note">Private cancellation note · {{ $item->cancellation_note }}</p>@endif
                     @if(in_array($item->status, ['approved','cancelled'], true))<a class="button button-outline" href="/events/{{ $item->id }}">View event</a>@endif
-                    @if(in_array($item->status, ['pending', 'approved', 'rejected'], true) && !$item->localStart()->isPast())
+                    @if(in_array($item->status, ['pending', 'approved', 'rejected'], true) && !$item->scheduleStarted() && (!$item->isDateOnly() || \App\Support\EventSchedule::available()))
                         @if(!array_key_exists($item->id, $linked) || ($linked[$item->id] && \App\Support\EventDiscussions::editable($item, $linked[$item->id])))
                             <a class="button button-outline" href="/account/events/{{ $item->id }}/edit">Edit event</a>
                         @else
                             <p class="field-note">The linked discussion cannot currently be edited. You can cancel and reuse the event.</p>
                         @endif
                     @endif
-                    @if(config('network.recurring_events') && in_array($item->status, ['pending', 'approved', 'rejected'], true) && !$item->localStart()->isPast())
+                    @if(config('network.recurring_events') && in_array($item->status, ['pending', 'approved', 'rejected'], true) && !$item->scheduleStarted() && (!$item->isDateOnly() || \App\Support\EventSchedule::available()))
                         <label class="checkbox-line"><input form="event-batch-edit" type="checkbox" name="events[]" value="{{ $item->id }}"> Select for shared detail update</label>
                         <input form="event-batch-edit" type="hidden" name="versions[{{ $item->id }}]" value="{{ $item->contentVersion() }}">
                         <label class="checkbox-line"><input form="event-batch-shift" type="checkbox" name="events[]" value="{{ $item->id }}"> Select for rescheduling</label>
