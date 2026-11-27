@@ -11,8 +11,9 @@
                 <details class="chat-actions">
                     <summary aria-label="Conversation options"><x-icon name="more-vertical" size="22"/></summary>
                     <div class="chat-actions-menu">
-                    @if(\App\Support\MessagingExtensions::enabled())
+                    @if(\App\Support\MessagingExtensions::enabled() && $latestPage)
                         <form method="post" action="/account/messages/{{ $thread->id }}/archive">@csrf
+                            <input type="hidden" name="version" value="{{ $thread->archiveVersion(auth()->id(), (int) ($messages->first()?->id ?? 0)) }}">
                             @if($thread->{$thread->archiveMarker(auth()->id())})@method('DELETE')@endif
                             <button class="button button-outline">{{ $thread->{$thread->archiveMarker(auth()->id())} ? 'Restore conversation' : 'Archive and mark read' }}</button>
                         </form>
@@ -26,6 +27,7 @@
                     </div>
                 </details>
             </header>
+            @error('version')<p class="notice" role="alert">{{ $message }}</p>@enderror
             @if($thread->direct_kind === 'official')<p class="official-chat-note">Started by a CanadaMB administrator. Staff will never ask for your password or payment credentials.</p>@endif
             <div class="chat-history" aria-label="Messages in chronological order" data-chat-history tabindex="0">
                 <nav class="chat-history-nav" aria-label="Conversation history">

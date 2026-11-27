@@ -73,8 +73,16 @@ class ExtendedMessagingTest extends TestCase
         $this->actingAs($other)->get($url)->assertNotFound();
         $this->post($url.'/archive')->assertNotFound();
         $thread->forceFill(['updated_at' => now()->subDay()])->save();
+        $this->actingAs($owner)->get($url)->assertOk()->assertSee('Archive and mark read');
+        $version = $thread->fresh()->archiveVersion($owner->id, (int) $thread->messages()->max('id'));
+        $this->post($url.'/archive')->assertSessionHasErrors('version');
+        $this->actingAs($member)->post($url, ['body' => 'New arrival before archive'])->assertRedirect();
+        $this->actingAs($owner)->post($url.'/archive', ['version' => $version])->assertSessionHasErrors('version');
+        $this->assertNull($thread->fresh()->seller_archived_at);
+        $this->assertLessThan((int) $thread->messages()->max('id'), (int) $thread->fresh()->seller_last_read_id);
         $activity = $thread->fresh()->updated_at->toDateTimeString();
-        $this->actingAs($owner)->post($url.'/archive')->assertRedirect();
+        $version = $thread->fresh()->archiveVersion($owner->id, (int) $thread->messages()->max('id'));
+        $this->post($url.'/archive', ['version' => $version])->assertRedirect()->assertSessionHasNoErrors();
         $this->assertSame($activity, $thread->fresh()->updated_at->toDateTimeString());
         $this->get($base.'/account/messages')->assertDontSee('Local helper');
         $this->get($base.'/account/messages?view=archived')->assertSee('Local helper');

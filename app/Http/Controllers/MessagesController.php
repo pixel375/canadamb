@@ -291,11 +291,16 @@ class MessagesController extends Controller
     {
         abort_unless(MessagingExtensions::enabled(), 404);
         $id = $request->user()->id;
-        DB::transaction(function () use ($id, $conversation, $archive) {
+        DB::transaction(function () use ($request, $id, $conversation, $archive) {
             $thread = Conversation::forMember($id)->lockForUpdate()->findOrFail($conversation);
+            $data = $request->validate(['version' => 'required|string|size:64']);
             $marker = $thread->archiveMarker($id);
+            $latest = (int) $thread->messages()->max('id');
+            if (! hash_equals($thread->archiveVersion($id, $latest), $data['version']) || ($thread->{$marker} === null) !== $archive) {
+                throw ValidationException::withMessages(['version' => 'This conversation changed. Review the latest messages before changing its archive status.']);
+            }
             if ($archive) {
-                $changes = [$marker => now(), $thread->marker($id) => max($thread->{$thread->marker($id)}, $thread->messages()->max('id') ?? 0)];
+                $changes = [$marker => now(), $thread->marker($id) => max($thread->{$thread->marker($id)}, $latest)];
             } else {
                 $changes = [$marker => null];
             }
