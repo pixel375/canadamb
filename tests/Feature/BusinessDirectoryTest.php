@@ -196,7 +196,8 @@ class BusinessDirectoryTest extends TestCase
         $other = Business::create(['slug' => 'other-repair', 'name' => 'Other Repair', 'category' => 'services', 'status' => 'active', 'website' => 'https://example.test']);
         $other->locations()->create(['location_id' => $brandon->id, 'address' => '3 Fixture Road']);
         $this->get('https://brandonmb.ca/businesses/multi-repair')->assertOk()->assertSee('1 Brandon Fixture Road')->assertDontSee('2 Elkhorn Fixture Road')
-            ->assertSee('View all Manitoba branches')->assertSee('<link rel="canonical" href="https://canadamb.ca/businesses/multi-repair">', false);
+            ->assertSee('Showing only branches in this community.')->assertDontSee('<a class="text-link" href="https://canadamb.ca/businesses/multi-repair">', false)
+            ->assertSee('<link rel="canonical" href="https://canadamb.ca/businesses/multi-repair">', false);
         $this->get('https://canadamb.ca/businesses/multi-repair')->assertOk()->assertSee('1 Brandon Fixture Road')->assertSee('2 Elkhorn Fixture Road');
         $this->get('https://canadamb.ca/sitemap.xml')->assertSee('https://canadamb.ca/businesses/multi-repair');
         $this->get('https://brandonmb.ca/sitemap.xml')->assertDontSee('businesses/multi-repair');
