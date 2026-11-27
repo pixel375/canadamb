@@ -20,7 +20,7 @@ final class MessageFileInventory
         }
         $disk = Storage::disk(MessageAttachments::DISK);
         $directory = $disk->path('attachments');
-        if (is_link($directory)) {
+        if (! MessageAttachments::safeDirectory()) {
             $result['directory_symlink'] = true;
 
             return $result;
@@ -30,9 +30,9 @@ final class MessageFileInventory
         foreach ($rows->take($limit) as $row) {
             $result['rows_examined']++;
             foreach ([$row->image_path, $row->thumbnail_path] as $path) {
-                if (! $this->valid($path) || is_link($disk->path($path))) {
+                if (! MessageAttachments::validPath($path, previewAllowed: true) || is_link($disk->path($path))) {
                     $result['invalid_references']++;
-                } elseif (! $disk->exists($path)) {
+                } elseif (! is_file($disk->path($path))) {
                     $result['missing_files']++;
                 }
             }
@@ -47,7 +47,7 @@ final class MessageFileInventory
             }
             $result['files_examined']++;
             $path = 'attachments/'.$file->getFilename();
-            if ($file->isLink() || ! $file->isFile() || ! $this->valid($path)) {
+            if ($file->isLink() || ! $file->isFile() || ! MessageAttachments::validPath($path, previewAllowed: true)) {
                 $result['unexpected_entries']++;
 
                 continue;
@@ -60,10 +60,5 @@ final class MessageFileInventory
         }
 
         return $result;
-    }
-
-    private function valid(string $path): bool
-    {
-        return (bool) preg_match('/^attachments\/[a-f0-9-]{36}(-preview)?\.webp$/D', $path);
     }
 }

@@ -84,7 +84,21 @@ class MessageAttachmentsTest extends TestCase
         $review = 'https://canadamb.ca/admin/content-reports/'.$report;
         $this->actingAs($stranger)->get($review.'/photo')->assertMethodNotAllowed();
         $this->assertDatabaseMissing('audit_logs', ['action' => 'content.report-photo-accessed']);
-        $this->post($review.'/photo')->assertOk()->assertHeader('Content-Type', 'image/webp');
+        $disk = Storage::disk(MessageAttachments::DISK);
+        $directory = $disk->path('attachments');
+        $moved = $disk->path('attachments-original');
+        rename($directory, $moved);
+        symlink($moved, $directory);
+        try {
+            $this->post($review.'/photo')->assertNotFound();
+            $this->assertDatabaseMissing('audit_logs', ['action' => 'content.report-photo-accessed']);
+            $this->actingAs($owner)->get($download)->assertNotFound();
+            $this->actingAs($member)->post($url, ['body' => 'Unsafe storage', 'photo' => UploadedFile::fake()->image('photo.png')])->assertSessionHasErrors('photo');
+        } finally {
+            unlink($directory);
+            rename($moved, $directory);
+        }
+        $this->actingAs($stranger)->post($review.'/photo')->assertOk()->assertHeader('Content-Type', 'image/webp');
         $this->actingAs($owner)->post($review.'/photo')->assertForbidden();
         $this->actingAs($stranger);
         $this->assertDatabaseHas('audit_logs', ['action' => 'content.report-photo-accessed', 'actor_id' => $stranger->id]);

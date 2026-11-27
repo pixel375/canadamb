@@ -73,12 +73,8 @@ class ContentReportReviewController extends Controller
             $target = ContentReports::forReview('message-photo', $item->target_id);
             abort_unless($target && ! ContentReports::conflicts($target, $reviewer), 404);
             $file = $target->attachment()->firstOrFail();
-            abort_unless(preg_match('/^attachments\/[a-f0-9-]{36}\.webp$/D', $file->image_path), 404);
+            abort_unless(MessageAttachments::readable($file->image_path), 404);
             $disk = Storage::disk(MessageAttachments::DISK);
-            abort_unless($disk->exists($file->image_path), 404);
-            $path = $disk->path($file->image_path);
-            abort_unless(is_file($path), 404);
-            abort_if(is_link($path), 404);
             Audit::record('content.report-photo-accessed', $reviewer, $item->site_id, ['report' => $report]);
 
             return $disk->download($file->image_path, 'reported-photo.webp', [

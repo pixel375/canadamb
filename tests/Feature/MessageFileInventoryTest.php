@@ -39,5 +39,17 @@ class MessageFileInventoryTest extends TestCase
         $this->assertSame(1, $result['old_unreferenced_files']);
         $this->assertTrue($inventory->inspect(1)['files_truncated']);
         $disk->assertExists([$old, $recent]);
+        $directory = $disk->path('attachments');
+        $moved = $disk->path('attachments-original');
+        rename($directory, $moved);
+        symlink($moved, $directory);
+        try {
+            $result = $inventory->inspect(10);
+            $this->assertTrue($result['directory_symlink']);
+            $this->assertSame(0, $result['files_examined']);
+        } finally {
+            unlink($directory);
+            rename($moved, $directory);
+        }
     }
 }

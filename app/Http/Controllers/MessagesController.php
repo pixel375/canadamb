@@ -417,6 +417,9 @@ class MessagesController extends Controller
         $media = [];
         try {
             if ($request->hasFile('photo')) {
+                if (! MessageAttachments::safeDirectory()) {
+                    throw ValidationException::withMessages(['photo' => 'Private photo storage is unavailable.']);
+                }
                 if (MessageAttachments::quotaExceeded($id, $conversation)) {
                     throw ValidationException::withMessages(['photo' => 'Photo attachment limit reached.']);
                 }
@@ -462,11 +465,8 @@ class MessagesController extends Controller
         abort_unless(MessageAttachments::enabled(), 404);
         $thread = Conversation::forMember($request->user()->id)->findOrFail($conversation);
         $item = $thread->messages()->findOrFail($message)->attachment()->firstOrFail();
-        abort_unless(preg_match('/^attachments\/[a-f0-9-]{36}\.webp$/D', $item->image_path), 404);
+        abort_unless(MessageAttachments::readable($item->image_path), 404);
         $disk = Storage::disk(MessageAttachments::DISK);
-        abort_unless($disk->exists($item->image_path), 404);
-        $path = $disk->path($item->image_path);
-        abort_unless(is_file($path) && ! is_link($path), 404);
 
         return $disk->download($item->image_path, 'canadamb-photo.webp', [
             'Content-Type' => 'image/webp', 'Cache-Control' => 'private, no-store',
