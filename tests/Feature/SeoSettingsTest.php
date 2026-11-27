@@ -13,6 +13,22 @@ class SeoSettingsTest extends TestCase
 
     protected $seed = true;
 
+    public function test_filtered_discovery_pages_do_not_create_indexable_variants(): void
+    {
+        config(['network.prelaunch' => false, 'network.staging' => false]);
+        foreach (['https://canadamb.ca', 'https://brandonmb.ca'] as $host) {
+            $this->get($host.'/marketplace')->assertOk()
+                ->assertSee('<link rel="canonical" href="'.$host.'/marketplace">', false)
+                ->assertDontSee('<meta name="robots" content="noindex, nofollow">', false)
+                ->assertSee('<meta property="og:locale" content="en_CA">', false)
+                ->assertSee('<meta name="twitter:card" content="summary">', false);
+            foreach (['/marketplace?group=vehicles', '/marketplace?view=all&page=2', '/businesses?category=services', '/jobs?type=full-time', '/events?location='] as $path) {
+                $this->get($host.$path)->assertOk()
+                    ->assertSee('<meta name="robots" content="noindex, nofollow">', false);
+            }
+        }
+    }
+
     public function test_metadata_is_audited_and_does_not_change_indexing_or_other_portals(): void
     {
         config(['network.prelaunch' => true, 'network.prelaunch_ips' => ['127.0.0.1']]);

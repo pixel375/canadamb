@@ -10,11 +10,14 @@
         $seoTitle = $title ? $title.' | '.$brand : ($site->seo_title ?? $brand);
         $seoDescription = \Illuminate\Support\Str::limit(\Illuminate\Support\Str::squish(strip_tags($description ?? $site->overrides['seo_description'] ?? $site->description ?? '')), 160);
         $seoLanding = request()->is('/', 'marketplace', 'businesses', 'business-updates', 'community', 'jobs', 'events', 'news', 'real-estate', 'communities', 'faq');
+        // Filter combinations and pagination are useful to visitors, but
+        // should not create an unlimited set of indexable discovery pages.
+        $seoFiltered = $seoLanding && request()->query->count() > 0;
         $seoCanonical = $canonical ?? (request()->is('/') ? \App\Support\NetworkUrl::to($site) : ($seoLanding && !request()->query->count() ? \App\Support\NetworkUrl::to($site, '/'.request()->path()) : null));
     @endphp
     <title>{{ $seoTitle }}</title>
     <meta name="description" content="{{ $seoDescription }}">
-    @if($preview || config('network.prelaunch') || request()->filled('q') || request()->is('account*', 'admin*', 'auth*', 'login', 'register', 'forgot-password', 'reset-password*', 'email/*'))
+    @if($preview || config('network.prelaunch') || $seoFiltered || request()->filled('q') || request()->is('account*', 'admin*', 'auth*', 'login', 'register', 'forgot-password', 'reset-password*', 'email/*'))
         <meta name="robots" content="noindex, nofollow">
     @endif
     @if(!$preview && $seoCanonical)
@@ -24,6 +27,11 @@
     <meta property="og:title" content="{{ $seoTitle }}">
     <meta property="og:description" content="{{ $seoDescription }}">
     <meta property="og:site_name" content="{{ $site->name }}">
+    <meta property="og:locale" content="en_CA">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="{{ $seoTitle }}">
+    <meta name="twitter:description" content="{{ $seoDescription }}">
     @if($structuredData && ! $preview)
         <script type="application/ld+json">{!! json_encode($structuredData, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_THROW_ON_ERROR) !!}</script>
     @endif
