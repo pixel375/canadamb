@@ -90,7 +90,7 @@ class JobController extends Controller
             'oldest' => $items->orderBy('id'),
             default => $items->latest('id'),
         };
-        $items = $items->paginate(12)->withQueryString();
+        $items = $items->paginate(12)->appends($filters);
 
         return view('jobs.business', compact('employer', 'branches', 'openBranches', 'items', 'statuses', 'filters', 'counts'));
     }
@@ -149,13 +149,13 @@ class JobController extends Controller
         $site = $request->attributes->get('site');
         abort_unless($this->jobs->enabled($site), 404);
         $employer = $this->managedBusiness($request, $business);
-        $data = $this->postingData($request, needsBranch: false);
-        $version = $request->validate(['version' => 'required|string|size:64'])['version'];
-        DB::transaction(function () use ($request, $employer, $job, $data, $version) {
+        DB::transaction(function () use ($request, $employer, $job) {
             Business::lockForUpdate()->findOrFail($employer->id);
             $this->managedBusiness($request, $employer->id);
             $item = $this->managedJob($request, $employer->id, $job, lock: true);
             abort_unless($item->branch->isOpen() && in_array($item->status, ['pending', 'approved', 'rejected', 'expired'], true), 409);
+            $data = $this->postingData($request, needsBranch: false);
+            $version = $request->validate(['version' => 'required|string|size:64'])['version'];
             abort_unless(hash_equals($item->reviewVersion(), $version), 409, 'The posting changed. Reload the editor.');
             $renewal = $item->status === 'expired' || $item->closing_on->toDateString() < $this->jobs->closingToday();
             $item->fill($data);
@@ -182,15 +182,13 @@ class JobController extends Controller
     {
         abort_unless($this->jobs->enabled($request->attributes->get('site')), 404);
         $employer = $this->managedBusiness($request, $business);
-        $data = $request->validate(['version' => 'nullable|string|size:64']);
-        DB::transaction(function () use ($request, $employer, $job, $data) {
+        DB::transaction(function () use ($request, $employer, $job) {
             Business::lockForUpdate()->findOrFail($employer->id);
             $this->managedBusiness($request, $employer->id);
             $item = $this->managedJob($request, $employer->id, $job, lock: true);
             abort_unless(in_array($item->status, ['pending', 'approved'], true), 409);
-            if (isset($data['version'])) {
-                abort_unless(hash_equals($item->reviewVersion(), $data['version']), 409, 'The posting changed. Reload before withdrawing.');
-            }
+            $data = $request->validate(['version' => 'required|string|size:64']);
+            abort_unless(hash_equals($item->reviewVersion(), $data['version']), 409, 'The posting changed. Reload before withdrawing.');
             $item->forceFill(['status' => 'withdrawn'])->save();
             Audit::record('jobs.withdrawn', $request->user()->id, context: ['job' => $job]);
         });

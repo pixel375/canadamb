@@ -433,3 +433,7 @@ Keep this queue updated; do not interrupt independent implementation for these a
 - H03 business management adds direct Manage updates shortcut on eligible portal branches and status workload tabs using counts scoped to current reference, keyword, type and branch. Validated pagination filters for managed profiles, claims and updates. Regression covers scoped counts independent of selected status and direct shortcut. No schema/flag changes. Exact CI pending.
 
 - 2026-11-27 e890b73c backend 46079774780/browser 46079774786 green. 37c15735 backend 46080294255 failed six notification view tests: adjacent Blade directives caused undefined $value. Separated CSRF and foreach directives, removed redundant conditional using validated filter array. c1fd694a checks in progress at initial check. Last verified live 34d607a4; failed build not deployed. Corrected CI pending.
+
+- 2026-11-27 c1fd694a backend 46080351799 reproduced only the same six notification Blade failures, no additional failures. Corrected rendering commit 67f48532 pushed, exact CI pending.
+
+- H04/M02 employer job updates and withdrawals check current scoped record and lifecycle before validating fields under lock. Withdrawal now requires the displayed review version (existing forms supply it); missing/stale versions cannot hide a changed posting. Job editor Back/Cancel links return to exact posting reference; employer paging carries validated filters only. Regression extends missing withdrawal version coverage. No schema/activation changes. Exact CI pending.

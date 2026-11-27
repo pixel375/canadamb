@@ -230,6 +230,7 @@ class JobPostingTest extends TestCase
         $this->put("$url/$job->id", array_replace($input, ['title' => 'Senior storefront supervisor', 'version' => $oldVersion]))->assertSessionHasNoErrors();
         $this->get("https://brandonmb.ca/jobs/$job->id")->assertNotFound();
         $this->put("$url/$job->id", $input + ['version' => $oldVersion])->assertConflict();
+        $this->post("$url/$job->id/withdraw")->assertSessionHasErrors('version');
         $this->post("$url/$job->id/withdraw", ['version' => $oldVersion])->assertConflict();
         $this->actingAs($admin)->post("https://canadamb.ca/admin/jobs/$job->id", ['action' => 'approve', 'version' => $oldVersion])->assertConflict();
         $this->post("https://canadamb.ca/admin/jobs/$job->id", ['action' => 'approve', 'version' => $job->fresh()->reviewVersion()])->assertRedirect();
