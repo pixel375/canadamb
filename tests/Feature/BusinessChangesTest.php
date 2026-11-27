@@ -64,7 +64,7 @@ class BusinessChangesTest extends TestCase
         $contact = DB::table('business_change_requests')->where('kind', 'contact')->value('id');
         $this->actingAs($reviewer)->post($queue.'/'.$contact, ['decision' => 'approved', 'note' => 'Confirmed control of the contact email.'])->assertRedirect()->assertSessionHasNoErrors();
         $this->assertDatabaseHas('business_change_requests', ['id' => $contact, 'status' => 'approved']);
-        $this->actingAs($editor)->put('https://brandonmb.ca/account/businesses/'.$business->id, ['public_email' => 'changed@example.test'])->assertRedirect()->assertSessionHasNoErrors();
+        $this->actingAs($editor)->put('https://brandonmb.ca/account/businesses/'.$business->id, ['public_email' => 'changed@example.test', 'version' => $business->fresh()->profileVersion()])->assertRedirect()->assertSessionHasNoErrors();
         $this->assertDatabaseHas('business_change_requests', ['id' => $contact, 'status' => 'stale']);
         $this->actingAs($owner)->get($url.'?kind=contact&status=stale&reference='.$contact)->assertOk()->assertSee('Reference #'.$contact)->assertSee('1 matching requests');
         $this->get($url.'?status=pending&kind=contact')->assertOk()->assertSee('No requests match these filters.');

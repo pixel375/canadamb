@@ -138,6 +138,8 @@ class BusinessDirectoryTest extends TestCase
         $url = 'https://canadamb.ca/account/businesses/'.$business->id;
         $version = $business->profileVersion();
         $this->actingAs($owner)->get($url)->assertOk()->assertSee($version);
+        $this->put($url, ['description' => 'Missing version'])->assertSessionHasErrors('version');
+        $this->assertSame('Original profile', $business->fresh()->description);
         $this->put($url, ['description' => 'Original profile', 'version' => $version])->assertRedirect()->assertSessionHasNoErrors();
         $this->assertDatabaseMissing('audit_logs', ['action' => 'business.profile-updated']);
         $this->actingAs($editor)->put($url, ['description' => 'Editor changed profile', 'version' => $version])->assertRedirect()->assertSessionHasNoErrors();
@@ -267,7 +269,7 @@ class BusinessDirectoryTest extends TestCase
         $this->assertDatabaseHas('business_memberships', ['business_id' => $business->id, 'user_id' => $claimant->id, 'role' => 'owner']);
         $this->assertDatabaseHas('business_claims', ['user_id' => $competitor->id, 'status' => 'superseded']);
         $this->actingAs($claimant)->put("https://brandonmb.ca/account/businesses/$business->id", [
-            'description' => 'Repairs bicycles.', 'public_email' => 'repairs@example.test',
+            'description' => 'Repairs bicycles.', 'public_email' => 'repairs@example.test', 'version' => $business->fresh()->profileVersion(),
         ])->assertSessionHasNoErrors()->assertRedirect();
         $this->get('https://brandonmb.ca/businesses/test-repair')->assertSee('Repairs bicycles.')->assertDontSee('owner@example.test');
 

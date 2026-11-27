@@ -218,11 +218,12 @@ class BusinessController extends Controller
 
     public function update(Request $request, int $business)
     {
-        $data = $request->validate($this->profileRules() + ['version' => 'nullable|string|size:64']);
+        $this->managed($request, $business);
+        $data = $request->validate($this->profileRules() + ['version' => 'required|string|size:64']);
         DB::transaction(function () use ($request, $business, $data) {
             $item = Business::lockForUpdate()->findOrFail($business);
             $this->managed($request, $business);
-            if (isset($data['version']) && ! hash_equals($item->profileVersion(), $data['version'])) {
+            if (! hash_equals($item->profileVersion(), $data['version'])) {
                 throw ValidationException::withMessages(['version' => 'The business profile changed. Reload before saving.']);
             }
             $previousEmail = $item->public_email;
