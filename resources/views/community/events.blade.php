@@ -82,7 +82,7 @@
                     <p>{{ $item->venue }} · {{ \App\Support\Community::EVENTS[$item->category] }}</p>
                     @if(!$item->isDateOnly() && $item->localStart()->isPast() && $item->localEnd()?->isFuture())<p class="field-note">In progress</p>@endif
                     @if($item->endLabel())<p class="field-note">Ends {{ $item->endLabel('M j · g:i a T') }}</p>@endif<p class="field-note">{{ \Illuminate\Support\Str::limit(\Illuminate\Support\Str::squish($item->body), 160) }}</p><a class="text-link" href="{{ \App\Support\LocationScope::detailUrl('/events/'.$item->id) }}">Event details <x-icon name="arrow" size="16"/></a>
-                    @if($linkedDiscussion = \App\Support\EventDiscussions::publicThread($eventSite, $item))<a class="text-link" href="{{ \App\Support\LocationScope::detailUrl('/community/'.$linkedDiscussion->id) }}">Discussion <x-icon name="messages" size="16"/></a>@endif
+                    @if(isset($discussionIds[$item->id]))<a class="text-link" href="{{ \App\Support\LocationScope::detailUrl('/community/'.$discussionIds[$item->id]) }}">Discussion <x-icon name="messages" size="16"/></a>@endif
                 </div></article>
             @empty<div class="panel market-results-empty"><h3>No upcoming events match these filters.</h3><a class="button button-outline" href="{{ \App\Support\LocationScope::browseUrl(request()->attributes->get('site'), '/events', $place) }}">Clear filters</a></div>@endforelse
         </div>

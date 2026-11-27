@@ -85,7 +85,7 @@ final class EventDiscussions
         }
 
         return $community->threads($site->location_id)
-            ->where('location_id', $event->location_id)
+            ->where('location_id', $event->location_id)->where('author_id', $event->author_id)
             ->whereIn('id', DB::table('community_event_discussions')->where('event_id', $event->id)->select('thread_id'))->first();
     }
 
@@ -97,8 +97,26 @@ final class EventDiscussions
         }
 
         return $community->events($site->location_id)->whereIn('status', ['approved', 'cancelled'])
-            ->where('location_id', $thread->location_id)
+            ->where('location_id', $thread->location_id)->where('author_id', $thread->author_id)
             ->whereIn('id', DB::table('community_event_discussions')->where('thread_id', $thread->id)->select('event_id'))->first();
+    }
+
+    /** Public discussion IDs for the current bounded page of visible events. */
+    public static function publicThreadsForEvents(Site $site, array $ids): array
+    {
+        $community = app(Community::class);
+        if ($ids === [] || ! self::enabled() || ! $community->enabled($site, 'events') || ! $community->enabled($site, 'community')) {
+            return [];
+        }
+
+        return DB::table('community_event_discussions as links')
+            ->join('community_events as events', 'events.id', '=', 'links.event_id')
+            ->join('community_threads as threads', 'threads.id', '=', 'links.thread_id')
+            ->whereIn('links.event_id', $ids)->where('threads.status', 'approved')
+            ->whereIn('events.status', ['approved', 'cancelled'])
+            ->whereColumn('events.location_id', 'threads.location_id')->whereColumn('events.author_id', 'threads.author_id')
+            ->when($site->location_id, fn ($query, $id) => $query->where('events.location_id', $id))
+            ->pluck('links.thread_id', 'links.event_id')->all();
     }
 
     /** Batch classification for already-authorized notification rows. */
@@ -114,7 +132,7 @@ final class EventDiscussions
             ->join('community_threads as threads', 'threads.id', '=', 'links.thread_id')
             ->whereIn('links.thread_id', $ids)->where('threads.status', 'approved')
             ->whereIn('events.status', ['approved', 'cancelled'])
-            ->whereColumn('events.location_id', 'threads.location_id')
+            ->whereColumn('events.location_id', 'threads.location_id')->whereColumn('events.author_id', 'threads.author_id')
             ->when($site->location_id, fn ($query, $id) => $query->where('threads.location_id', $id))
             ->pluck('links.thread_id')->map(fn ($id) => (int) $id)->all();
     }

@@ -341,3 +341,5 @@ Keep this queue updated; do not interrupt independent implementation for these a
 - B12/B13/C09 calendar export now keeps explicit all-Manitoba scope even with a remembered city and uses the remembered preference when directly requested without a location parameter. Local portal remains fixed. Regression verifies matching export link, both-city results, remembered-city results and tampered local query.
 
 - D01/D04/D05 notification and announcement consent changes now require a current version under member lock; omitted tokens and stale opt-in cannot overwrite a later opt-out. Announcement form supplies separate consent version. Extended regression covers missing/stale consent; no live deliveries, activation or schema changes. Exact CI pending.
+
+- C09/D01 event discovery now resolves approved linked discussion IDs in one bounded page query instead of one full thread query per event card. Public event/thread detail links and notification classification require matching author as well as location and independent approval; inconsistent links remain hidden. Two-host regression for mismatched author metadata. No migration or activation. Exact CI pending.

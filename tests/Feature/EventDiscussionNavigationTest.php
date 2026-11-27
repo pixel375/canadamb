@@ -113,6 +113,13 @@ class EventDiscussionNavigationTest extends TestCase
             $this->get($host.'/events/'.$event->id)->assertOk()->assertSee('Join event discussion')
                 ->assertSee('href="/community/'.$thread->id.'"', false);
         }
+        $thread->forceFill(['author_id' => User::factory()->create()->id])->save();
+        foreach (['https://canadamb.ca', 'https://brandonmb.ca'] as $host) {
+            $this->get($host.'/events?month=2026-12')->assertOk()->assertDontSee('href="/community/'.$thread->id.'"', false);
+            $this->get($host.'/events/'.$event->id)->assertOk()->assertDontSee('Join event discussion');
+            $this->get($host.'/community/'.$thread->id)->assertOk()->assertDontSee('Go to event');
+        }
+        $thread->forceFill(['author_id' => $author->id])->save();
         $event->forceFill(['status' => 'rejected'])->save();
         $this->get('https://canadamb.ca/community/'.$thread->id)->assertOk()->assertDontSee('Review pending')
             ->assertDontSee('Go to event')->assertDontSee('Private unpublished venue fixture');

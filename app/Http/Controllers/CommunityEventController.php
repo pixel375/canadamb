@@ -61,7 +61,9 @@ class CommunityEventController extends Controller
         }
         $items = $query->orderBy('starts_at')->orderBy('id')->paginate(24)->withQueryString();
 
-        return view('community.events', compact('items', 'filters', 'month', 'calendar', 'agenda', 'place', 'places'));
+        $discussionIds = EventDiscussions::publicThreadsForEvents($site, $items->pluck('id')->all());
+
+        return view('community.events', compact('items', 'filters', 'month', 'calendar', 'agenda', 'place', 'places', 'discussionIds'));
     }
 
     private function publicSelection(Request $request): array
