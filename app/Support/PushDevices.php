@@ -50,6 +50,9 @@ final class PushDevices
             return false;
         }
         $host = strtolower($url['host'] ?? '');
+        if (strlen($host) > 253 || ! preg_match('/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z0-9-]+$/D', $host)) {
+            return false;
+        }
 
         return in_array($host, ['fcm.googleapis.com', 'updates.push.services.mozilla.com', 'web.push.apple.com'], true)
             || str_ends_with($host, '.push.apple.com') || str_ends_with($host, '.notify.windows.com');

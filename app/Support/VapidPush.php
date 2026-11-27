@@ -65,12 +65,16 @@ class VapidPush
             if (! $curl) {
                 return 0;
             }
-            curl_setopt_array($curl, [
+            $protocolOption = defined('CURLOPT_PROTOCOLS_STR') ? [CURLOPT_PROTOCOLS_STR => 'HTTPS'] : [CURLOPT_PROTOCOLS => CURLPROTO_HTTPS];
+            $configured = curl_setopt_array($curl, $protocolOption + [
                 CURLOPT_POST => true, CURLOPT_POSTFIELDS => '', CURLOPT_HTTPHEADER => $this->headers($endpoint, $key),
-                CURLOPT_PROTOCOLS_STR => 'HTTPS', CURLOPT_FOLLOWLOCATION => false, CURLOPT_PROXY => '',
+                CURLOPT_FOLLOWLOCATION => false, CURLOPT_PROXY => '',
                 CURLOPT_RESOLVE => [$host.':443:'.$addresses[0]], CURLOPT_SSL_VERIFYPEER => true, CURLOPT_SSL_VERIFYHOST => 2,
                 CURLOPT_CONNECTTIMEOUT => 2, CURLOPT_TIMEOUT => 5, CURLOPT_WRITEFUNCTION => fn ($handle, string $bytes) => strlen($bytes),
             ]);
+            if (! $configured) {
+                return 0;
+            }
             $ok = curl_exec($curl);
 
             return $ok === false ? 0 : (int) curl_getinfo($curl, CURLINFO_RESPONSE_CODE);

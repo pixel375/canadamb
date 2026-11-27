@@ -78,6 +78,7 @@ self.addEventListener('push', event => {
     }));
 });
 self.addEventListener('notificationclick', event => {
+    if (event.notification.tag !== 'canadamb-activity') return;
     event.notification.close();
     event.waitUntil(self.clients.openWindow(new URL('/account/notifications', self.location.origin).href));
 });

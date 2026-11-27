@@ -128,8 +128,10 @@ final class NotificationController extends Controller
         $pushDeliveryEnabled = PushDelivery::enabled();
         $pushSigningReady = VapidPush::signingKey() !== null;
         $pushStates = $pushDeliveryEnabled ? DB::table('push_delivery_states')->selectRaw('last_result, COUNT(*) AS total')->groupBy('last_result')->pluck('total', 'last_result') : collect();
+        $pushAcceptedDevices = $pushDeliveryEnabled ? DB::table('push_delivery_states')->where('last_accepted_at', '>=', $since)->count() : null;
+        $pushAcceptedTotal = $pushDeliveryEnabled ? (int) DB::table('push_delivery_states')->sum('accepted_count') : null;
 
-        return response()->view('admin.notifications', compact('days', 'metrics', 'preferencesEnabled', 'paused', 'eventsEnabled', 'ownerEnabled', 'ownerMetrics', 'pushEnabled', 'pushKeyConfigured', 'pushCount', 'pushDeliveryEnabled', 'pushSigningReady', 'pushStates', 'broadcastEnabled', 'announcementDelivery', 'announcementHistory', 'announcementMetrics'))
+        return response()->view('admin.notifications', compact('days', 'metrics', 'preferencesEnabled', 'paused', 'eventsEnabled', 'ownerEnabled', 'ownerMetrics', 'pushEnabled', 'pushKeyConfigured', 'pushCount', 'pushDeliveryEnabled', 'pushSigningReady', 'pushStates', 'pushAcceptedDevices', 'pushAcceptedTotal', 'broadcastEnabled', 'announcementDelivery', 'announcementHistory', 'announcementMetrics'))
             ->header('Cache-Control', 'private, no-store');
     }
 }

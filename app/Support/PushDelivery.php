@@ -57,8 +57,13 @@ final class PushDelivery
             $result = DB::transaction(function () use ($candidate, $transport, $key) {
                 $user = User::lockForUpdate()->find($candidate->user_id);
                 $device = DB::table('push_devices')->where('id', $candidate->id)->lockForUpdate()->first();
-                if (! $user || ! $device || ! $user->hasVerifiedEmail()) {
+                if (! $user || ! $device) {
                     return 'idle';
+                }
+                if (! $user->hasVerifiedEmail()) {
+                    DB::table('push_devices')->where('id', $device->id)->delete();
+
+                    return 'removed';
                 }
                 $site = Site::find($device->site_id);
                 $state = DB::table('push_delivery_states')->where('device_id', $device->id)->lockForUpdate()->first();
@@ -84,11 +89,9 @@ final class PushDelivery
         if (! $state || in_array($state->last_result, ['baseline', 'paused'], true)) {
             // First run baselines existing activity instead of notifying
             // about old records. Future scans deliver only newer unread IDs.
-            if (! $state || $state->last_result === 'paused') {
-                $this->save($device->id, $current + ['next_check_at' => now()->addMinutes(5), 'attempts' => 0, 'last_result' => 'idle']);
+            $this->save($device->id, $current + ['next_check_at' => now()->addMinutes(5), 'attempts' => 0, 'last_result' => 'idle']);
 
-                return 'baseline';
-            }
+            return 'baseline';
         }
         $next = [];
         foreach ($current as $column => $id) {
