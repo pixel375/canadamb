@@ -108,7 +108,7 @@
                     <article class="discussion-reply" id="reply-{{ $reply->id }}">
                         <span class="discussion-avatar discussion-reply-avatar" aria-hidden="true">{{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($reply->author?->name ?? 'M', 0, 1)) }}</span>
                         <div class="discussion-reply-content">
-                            <div class="discussion-reply-byline">
+                            <div class="discussion-reply-byline" data-reply-byline>
                                 <strong>
                                     @if($reply->author)
                                         <a href="/users/{{ $reply->author->id }}">{{ $reply->author->name }}</a>
@@ -124,9 +124,9 @@
                                     <span>{{ \Illuminate\Support\Str::limit(\Illuminate\Support\Str::squish($parent->body), 140) }}</span>
                                 </a>
                             @endif
-                            <p class="prose-text">{{ $reply->body }}</p>
+                            <p class="prose-text" data-reply-text>{{ $reply->body }}</p>
                             @if($replyLinksEnabled && $canParticipate && !$item->locked)
-                                <a class="text-link" href="/community/{{ $item->id }}?page={{ $replies->currentPage() }}&amp;reply_to={{ $reply->id }}#reply-composer">Reply to comment</a>
+                                <a class="text-link discussion-comment-action" data-reply-to="{{ $reply->id }}" href="/community/{{ $item->id }}?page={{ $replies->currentPage() }}&amp;reply_to={{ $reply->id }}#reply-composer"><x-icon name="messages" size="15"/> Reply to comment</a>
                             @endif
                             <x-content-report-link type="reply" :target="$reply->id"/>
                             @if($canParticipate && !$item->locked && (int) $reply->author_id === auth()->id())<a class="text-link" href="/account/replies/{{ $reply->id }}/edit?from=discussion&amp;page={{ $replies->currentPage() }}">Edit my reply</a>@endif
@@ -152,12 +152,14 @@
                     @csrf
                     <div>
                         <p class="section-label">Your voice matters</p>
-                        <h2>{{ $replyTo ? 'Reply to comment' : 'Write a reply' }}</h2>
+                        <h2 data-reply-heading>{{ $replyTo ? 'Reply to comment' : 'Write a reply' }}</h2>
                         <p>Keep your reply helpful and respectful. Replies appear after moderation.</p>
-                        @if($replyTo)
-                            <input type="hidden" name="parent_reply_id" value="{{ $replyTo->id }}">
-                            <div class="discussion-parent-reference"><small>Replying to {{ $replyTo->author?->name ?? 'Former member' }}</small><span>{{ \Illuminate\Support\Str::limit(\Illuminate\Support\Str::squish($replyTo->body), 140) }}</span>
-                                <a class="text-link" href="/community/{{ $item->id }}?page={{ $replies->currentPage() }}#reply-composer">Cancel comment reply</a>
+                        @if($replyLinksEnabled)
+                            <input type="hidden" name="parent_reply_id" value="{{ $replyTo?->id ?? '' }}">
+                            <div class="discussion-parent-reference" data-reply-selection aria-live="polite" @if(!$replyTo) hidden @endif>
+                                <small data-reply-name>Replying to {{ $replyTo?->author?->name ?? 'Former member' }}</small>
+                                <span data-reply-preview>{{ $replyTo ? \Illuminate\Support\Str::limit(\Illuminate\Support\Str::squish($replyTo->body), 140) : '' }}</span>
+                                <a class="text-link" data-reply-cancel href="/community/{{ $item->id }}?page={{ $replies->currentPage() }}#reply-composer">Cancel comment reply</a>
                             </div>
                         @endif
                     </div>

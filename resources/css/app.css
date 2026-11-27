@@ -1965,3 +1965,8 @@ body.chat-page { display:flex; flex-direction:column; height:var(--chat-viewport
 .official-message-label { display:inline-flex; align-self:flex-start; color:var(--primary)!important; font-weight:750; border:1px solid var(--primary); border-radius:6px; padding:2px 7px; max-width:100%; }
 .chat-heading-copy .official-message-label { font-size:.7rem; }
 .official-chat-note { flex-shrink:0; padding:6px 14px; border-bottom:1px solid var(--border); font-size:.75rem; color:var(--muted); }
+
+/* Comment actions remain easy to tap without a full page reload. */
+.discussion-parent-reference[hidden] { display: none; }
+.discussion-comment-action { display: inline-flex; align-items: center; gap: 5px; min-height: 36px; }
+.discussion-parent-reference [data-reply-cancel] { justify-self: start; min-height: 36px; display: inline-flex; align-items: center; }

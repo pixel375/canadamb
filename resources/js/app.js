@@ -509,6 +509,46 @@ const updateActivityCounts = counts => {
     }
 };
 
+// Reply to a visible comment without navigating away from an unsent draft.
+const replyComposer = document.querySelector('#reply-composer');
+if (replyComposer?.querySelector('[data-reply-selection]')) {
+    const selection = replyComposer.querySelector('[data-reply-selection]');
+    const parent = replyComposer.querySelector('input[name="parent_reply_id"]');
+    const heading = replyComposer.querySelector('[data-reply-heading]');
+    const body = replyComposer.querySelector('textarea[name="body"]');
+    const focusReply = () => {
+        replyComposer.scrollIntoView({block: 'nearest'});
+        body.focus({preventScroll: true});
+    };
+    for (const link of document.querySelectorAll('[data-reply-to]')) {
+        link.addEventListener('click', event => {
+            if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+            const article = link.closest('article');
+            const name = article?.querySelector('[data-reply-byline] strong');
+            const text = article?.querySelector('[data-reply-text]');
+            if (!name || !text || !/^[1-9][0-9]*$/.test(link.dataset.replyTo)) return;
+            event.preventDefault();
+            parent.value = link.dataset.replyTo;
+            heading.textContent = 'Reply to comment';
+            selection.querySelector('[data-reply-name]').textContent = 'Replying to ' + name.textContent.trim();
+            const preview = text.textContent.trim().replace(/\s+/g, ' ');
+            selection.querySelector('[data-reply-preview]').textContent = preview.length > 140 ? preview.slice(0, 140) + '…' : preview;
+            selection.hidden = false;
+            window.history.replaceState(null, '', link.href);
+            focusReply();
+        });
+    }
+    selection.querySelector('[data-reply-cancel]').addEventListener('click', event => {
+        if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+        event.preventDefault();
+        parent.value = '';
+        heading.textContent = 'Write a reply';
+        selection.hidden = true;
+        window.history.replaceState(null, '', event.currentTarget.href);
+        focusReply();
+    });
+}
+
 // Keep the composer above the mobile keyboard without scrolling the document.
 if (document.body.classList.contains('chat-page') && window.visualViewport) {
     const fitChat = () => {
