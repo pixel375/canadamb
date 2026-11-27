@@ -13,7 +13,7 @@
             @auth<a class="button button-outline" href="/account/events">My events</a>@endauth
         </div>
         @php
-            $periodParams = array_filter(array_diff_key($filters, ['period' => true, 'month' => true, 'day' => true]), fn ($value) => $value !== null && $value !== '');
+            $periodParams = \App\Support\LocationScope::preserveAll(array_filter(array_diff_key($filters, ['period' => true, 'month' => true, 'day' => true]), fn ($value) => $value !== null && $value !== ''));
             $periodUrl = fn (?string $period) => '/events'.(($query = http_build_query($periodParams + ($period ? ['period' => $period] : []))) ? '?'.$query : '');
         @endphp
         <nav class="discussion-category-nav mb-4" aria-label="Event date shortcuts">
@@ -39,7 +39,7 @@
             @php
                 $calendarFilters = array_filter(['q' => $filters['q'] ?? null, 'category' => $filters['category'] ?? null, 'location' => $filters['location'] ?? null, 'period' => $filters['period'] ?? null], fn ($value) => $value !== null && $value !== '');
                 $currentMonth = $month->format('Y-m');
-                $calendarUrl = fn (array $values) => '/events?'.http_build_query($calendarFilters + $values);
+                $calendarUrl = fn (array $values) => '/events?'.http_build_query(\App\Support\LocationScope::preserveAll($calendarFilters + $values));
             @endphp
             <section class="panel mb-4" aria-label="Monthly event calendar">
                 <div class="item-row"><a class="text-link" href="{{ $calendarUrl(['month' => $month->subMonth()->format('Y-m')]) }}">Previous</a><h2>{{ $month->format('F Y') }}</h2><a class="text-link" href="{{ $calendarUrl(['month' => $month->addMonth()->format('Y-m')]) }}">Next</a></div>
@@ -69,7 +69,7 @@
                     @if(!$agenda || (isset($filters['day']) && !isset($agenda[$filters['day']])))<p class="field-note">No upcoming events in this selection.</p>@endif
                 </div>
             </section>
-        @else<a class="button button-outline mb-4" href="/events?{{ http_build_query(array_filter($filters) + ['month' => now('America/Winnipeg')->format('Y-m')]) }}">Open this month’s calendar</a>@endif
+        @else<a class="button button-outline mb-4" href="/events?{{ http_build_query(\App\Support\LocationScope::preserveAll(array_filter($filters) + ['month' => now('America/Winnipeg')->format('Y-m')])) }}">Open this month’s calendar</a>@endif
         @if($items->total())
             <div class="inline-actions mb-4"><a class="button button-outline" href="/events/calendar?{{ http_build_query(array_filter($filters, fn ($value) => $value !== null && $value !== '')) }}">Download matching events (.ics)</a><span class="field-note">Calendar snapshot · {{ min($items->total(), 50) }} of {{ $items->total() }} events, earliest first. Future updates are not synchronized.</span></div>
         @endif

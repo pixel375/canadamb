@@ -17,16 +17,16 @@
         @php
             $activeFilters = array_filter($filters, fn ($value) => $value !== null && $value !== '');
             $selectedPlace = $places->firstWhere('slug', $activeFilters['location'] ?? null);
-            $scope = $selectedPlace ? ['location' => $selectedPlace->slug] : [];
+            $scope = \App\Support\LocationScope::preserveAll($selectedPlace ? ['location' => $selectedPlace->slug] : []);
             $clearUrl = '/businesses'.($scope ? '?'.http_build_query($scope) : '');
-            $wideFilters = array_diff_key($activeFilters, ['location' => true]);
+            $wideFilters = array_diff_key($activeFilters, ['location' => true]) + ['location' => ''];
             $wideUrl = '/businesses'.($wideFilters ? '?'.http_build_query($wideFilters) : '');
         @endphp
         <section class="panel business-category-discovery" aria-labelledby="business-category-heading">
             <div class="section-heading"><h2 id="business-category-heading">Browse by category</h2><a class="text-link" href="{{ $clearUrl }}">View all businesses</a></div>
             <?php
                 $categoryIcons = ['retail' => 'shopping-bag', 'food' => 'building', 'services' => 'briefcase', 'trades' => 'settings', 'health' => 'shield', 'agriculture' => 'tractor', 'arts' => 'calendar', 'other' => 'layers'];
-                $categoryParams = array_diff_key($activeFilters, ['category' => true]);
+                $categoryParams = \App\Support\LocationScope::preserveAll(array_diff_key($activeFilters, ['category' => true]));
             ?>
             <nav class="business-category-grid" aria-label="Business categories">
                 @foreach($categories as $key => $category)

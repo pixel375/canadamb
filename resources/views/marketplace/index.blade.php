@@ -23,7 +23,7 @@
             </div>
         </div>
         @if($marketPlace)
-            <p class="field-note">Browsing <strong>{{ $marketPlace }}</strong> listings. <a class="text-link" href="/marketplace">See all Manitoba categories</a></p>
+            <p class="field-note">Browsing <strong>{{ $marketPlace }}</strong> listings. <a class="text-link" href="/marketplace?location=">See all Manitoba categories</a></p>
         @endif
         @if($isDiscovery)
             <section class="market-discovery" aria-labelledby="market-discovery-heading">
@@ -186,7 +186,7 @@
                                 <a class="button button-outline" href="{{ $marketLink(['view' => 'all']) }}">Clear search filters</a>
                             @endif
                             @if($marketPlace)
-                                <a class="button button-outline" href="{{ '/marketplace?'.http_build_query(array_diff_key($filters, ['location' => true]) + ['view' => 'all']) }}">Search all Manitoba</a>
+                                <a class="button button-outline" href="{{ '/marketplace?'.http_build_query(array_diff_key($filters, ['location' => true]) + ['view' => 'all', 'location' => '']) }}">Search all Manitoba</a>
                             @endif
                             <a class="button button-outline" href="{{ $marketLink() }}">Browse categories</a>
                             <a class="button button-primary" href="{{ $postUrl }}"><x-icon name="plus" size="16"/> Post a listing</a>

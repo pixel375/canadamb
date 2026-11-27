@@ -10,6 +10,8 @@ final class LocationScope
 {
     public const PREFERENCE_COOKIE = 'canadamb_community';
 
+    private const INDEXES = ['/', 'marketplace', 'real-estate', 'businesses', 'business-updates', 'community', 'jobs', 'events', 'news'];
+
     // Browsing scope is an explicit, shareable GET parameter, never a
     // publication permission or an override for a dedicated city portal.
     public static function forBrowsing(Site $site, mixed $value, bool $byName = false): ?Location
@@ -34,23 +36,69 @@ final class LocationScope
     public static function currentBrowsing(Site $site): ?Location
     {
         $request = request();
-        if ($request->is('/', 'marketplace', 'real-estate', 'businesses', 'business-updates', 'community', 'jobs', 'events', 'news')
-            && $request->query->has('location')) {
+        if (! $site->isNetwork()) {
+            return $site->location;
+        }
+        if ($request->is(...self::INDEXES) && $request->query->has('location')) {
             return self::forBrowsing($site, $request->query('location'), $request->is('jobs'));
         }
 
-        return $site->location ?? self::preferred($site, $request->cookie(self::PREFERENCE_COOKIE));
+        if (self::detailRequest() && $request->query->has('browse')) {
+            return self::forBrowsing($site, $request->query('browse'));
+        }
+
+        return self::preferred($site, $request->cookie(self::PREFERENCE_COOKIE));
     }
 
-    public static function browseUrl(Site $site, string $path, ?Location $place): string
+    private static function detailRequest(): bool
     {
-        if (! $site->isNetwork() || ! $place) {
+        return (bool) preg_match('~^(?:marketplace|real-estate|businesses|jobs|community|events|news)/[^/]+$~D', request()->path());
+    }
+
+    public static function explicitAll(Site $site): bool
+    {
+        if (! $site->isNetwork()) {
+            return false;
+        }
+
+        return self::preferred($site, request()->cookie(self::PREFERENCE_COOKIE)) !== null
+            && self::currentBrowsing($site) === null;
+    }
+
+    public static function browseUrl(Site $site, string $path, ?Location $place, array $params = []): string
+    {
+        if ($site->isNetwork() && ($place || self::explicitAll($site))) {
+            $params['location'] = $path === '/jobs' ? ($place?->name ?? '') : ($place?->slug ?? '');
+        }
+
+        return $path.($params ? '?'.http_build_query($params, '', '&', PHP_QUERY_RFC3986) : '');
+    }
+
+    // Carry temporary GET scope only if it differs from the remembered
+    // preference. Never use this query parameter to authorize content.
+    public static function detailUrl(string $path): string
+    {
+        $site = request()->attributes->get('site');
+        if (! $site?->isNetwork()) {
+            return $path;
+        }
+        $place = self::currentBrowsing($site);
+        $preferred = self::preferred($site, request()->cookie(self::PREFERENCE_COOKIE));
+        if ($place?->id === $preferred?->id) {
             return $path;
         }
 
-        return $path.'?'.http_build_query([
-            'location' => $path === '/jobs' ? $place->name : $place->slug,
-        ], '', '&', PHP_QUERY_RFC3986);
+        return $path.'?'.http_build_query(['browse' => $place?->slug ?? ''], '', '&', PHP_QUERY_RFC3986);
+    }
+
+    public static function preserveAll(array $params): array
+    {
+        $site = request()->attributes->get('site');
+        if ($site && self::explicitAll($site)) {
+            $params['location'] = '';
+        }
+
+        return $params;
     }
 
     public static function forPublication(Site $site, ?int $requested): int

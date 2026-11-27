@@ -79,7 +79,7 @@
     ]);
     $quickSection = array_key_exists(request()->segment(1) ?? '', $searchSections) ? request()->segment(1) : array_key_first($searchSections);
     $quickLabel = $quickSection ? $searchSections[$quickSection] : null;
-    $quickLocation = $site->isNetwork() && $browsePlace ? ($quickSection === 'jobs' ? $browsePlace->name : $browsePlace->slug) : null;
+    $quickLocation = $site->isNetwork() && ($browsePlace || \App\Support\LocationScope::explicitAll($site)) ? ($quickSection === 'jobs' ? ($browsePlace?->name ?? '') : ($browsePlace?->slug ?? '')) : null;
     $quickTerm = request()->query('q');
     $quickTerm = request()->path() === $quickSection && is_string($quickTerm) ? \Illuminate\Support\Str::limit($quickTerm, 100, '') : '';
 ?>
@@ -107,7 +107,7 @@
             <form class="header-search" action="/{{ $quickSection }}" method="get" role="search" aria-label="{{ $quickLabel }} quick search">
                 <x-icon name="search" size="19"/>
                 <input type="search" name="q" maxlength="100" aria-label="Search {{ $quickLabel }}" placeholder="Search {{ $quickLabel }}" value="{{ $quickTerm }}">
-                @if($quickLocation)<input type="hidden" name="location" value="{{ $quickLocation }}">@endif
+                @if($quickLocation !== null)<input type="hidden" name="location" value="{{ $quickLocation }}">@endif
                 <button class="header-search-submit" type="submit" aria-label="Submit {{ $quickLabel }} search"><x-icon name="arrow" size="18"/></button>
             </form>
         @endif
@@ -210,7 +210,7 @@
                 <x-icon name="search" size="19"/>
                 <label class="sr-only" for="site-drawer-query">Search {{ $quickLabel }}</label>
                 <input id="site-drawer-query" type="search" name="q" placeholder="Search {{ $quickLabel }}" maxlength="100" value="{{ $quickTerm }}">
-                @if($quickLocation)<input type="hidden" name="location" value="{{ $quickLocation }}">@endif
+                @if($quickLocation !== null)<input type="hidden" name="location" value="{{ $quickLocation }}">@endif
                 <button type="submit" aria-label="Submit {{ $quickLabel }} search"><x-icon name="arrow" size="18"/></button>
             </form>
             @if($marketEnabled)<a class="button button-primary site-drawer-post" href="{{ $browseLink('/marketplace/new') }}"><x-icon name="plus" size="18"/> Post a listing</a>@endif

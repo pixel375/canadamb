@@ -15,7 +15,7 @@
         </details>
         <div class="browse-results-column">
         <?php
-            $categoryParams = array_filter(array_diff_key($filter, ['category' => true]), fn ($value) => $value !== null && $value !== '');
+            $categoryParams = \App\Support\LocationScope::preserveAll(array_filter(array_diff_key($filter, ['category' => true]), fn ($value) => $value !== null && $value !== ''));
             $allUrl = '/news'.($categoryParams ? '?'.http_build_query($categoryParams) : '');
             $clearUrl = \App\Support\LocationScope::browseUrl(request()->attributes->get('site'), '/news', $place);
         ?>

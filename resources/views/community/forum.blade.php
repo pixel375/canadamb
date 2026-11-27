@@ -3,7 +3,7 @@
     $forumPlace = \App\Support\LocationScope::forBrowsing($forumSite, $filters['location'] ?? null);
     $postParams = array_filter(['location' => $forumSite->isNetwork() ? $forumPlace?->slug : null, 'category' => $filters['category'] ?? null]);
     $postUrl = '/community/new'.($postParams ? '?'.http_build_query($postParams) : '');
-    $categoryParams = array_filter(array_diff_key($filters, ['category' => true]), fn ($value) => $value !== null && $value !== '');
+    $categoryParams = \App\Support\LocationScope::preserveAll(array_filter(array_diff_key($filters, ['category' => true]), fn ($value) => $value !== null && $value !== ''));
     $eventUrl = '/community/new?'.http_build_query(['type' => 'event'] + array_intersect_key($postParams, ['location' => true]));
 ?>
 <x-layouts.site title="Discussions" :location="$forumPlace">
@@ -59,7 +59,7 @@
                     @if($threads->isEmpty())
                         @php
                             $activeFilters = array_filter($filters, fn ($value) => $value !== null && $value !== '');
-                            $scope = array_intersect_key($activeFilters, ['location' => true]);
+                            $scope = \App\Support\LocationScope::preserveAll(array_intersect_key($activeFilters, ['location' => true]));
                             $wideFilters = array_diff_key($activeFilters, ['location' => true]);
                         @endphp
                         <div class="discussion-empty">
@@ -71,7 +71,7 @@
                                     <a class="button button-outline" href="{{ '/community'.($scope ? '?'.http_build_query($scope) : '') }}">Clear search filters</a>
                                 @endif
                                 @if($scope)
-                                    <a class="button button-outline" href="{{ '/community'.($wideFilters ? '?'.http_build_query($wideFilters) : '') }}">Search all Manitoba</a>
+                                    <a class="button button-outline" href="{{ '/community?'.http_build_query($wideFilters + ['location' => '']) }}">Search all Manitoba</a>
                                 @endif
                                 <a class="button button-primary" href="{{ $postUrl }}"><x-icon name="plus" size="16"/> Start a discussion</a>
                             </div>
