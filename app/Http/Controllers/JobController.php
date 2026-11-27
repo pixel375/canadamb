@@ -32,7 +32,7 @@ class JobController extends Controller
             }
             $query->orderByRaw('CASE WHEN pay_max IS NULL THEN 1 ELSE 0 END')->orderByDesc('pay_max');
         }
-        $items = $query->latest('published_at')->latest('id')->paginate(18)->withQueryString();
+        $items = $query->latest('published_at')->latest('id')->paginate(18)->appends(LocationScope::preserveAll($filters));
 
         return view('jobs.index', compact('items', 'filters'));
     }

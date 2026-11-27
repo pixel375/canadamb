@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Business;
 use App\Models\BusinessUpdate;
+use App\Models\JobPosting;
 use App\Models\Location;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
@@ -16,6 +17,37 @@ class BusinessDirectoryTest extends TestCase
     use RefreshDatabase;
 
     protected $seeder = DatabaseSeeder::class;
+
+    public function test_public_directory_update_and_job_pagination_preserves_explicit_provincial_scope(): void
+    {
+        $owner = User::factory()->create();
+        $local = Location::where('slug', 'brandon')->sole();
+        $rural = Location::where('slug', 'elkhorn')->sole();
+        for ($i = 1; $i <= 19; $i++) {
+            $business = Business::create(['slug' => 'scope-fixture-'.$i, 'name' => sprintf('Scope fixture %02d', $i),
+                'category' => 'services', 'status' => 'active']);
+            $branch = $business->locations()->create(['location_id' => $i === 19 ? $rural->id : $local->id, 'address' => '1 Test Road']);
+            BusinessUpdate::create(['business_location_id' => $branch->id, 'author_id' => $owner->id, 'title' => 'Scope update '.$i,
+                'body' => 'A published scope fixture.', 'type' => 'announcement', 'status' => 'approved', 'published_at' => now()]);
+            $job = JobPosting::create(['business_location_id' => $branch->id, 'title' => 'Scope job '.$i,
+                'description' => 'A published scope fixture.', 'employment_type' => 'full-time', 'workplace' => 'on-site',
+                'apply_url' => 'https://example.test/apply', 'closing_on' => today('America/Winnipeg')->addWeek()->toDateString()]);
+            $job->forceFill(['status' => 'approved', 'published_at' => now()])->save();
+        }
+        $this->withCookie('canadamb_community', 'brandon');
+        foreach (['businesses' => 'businesses', 'business-updates' => 'updates', 'jobs' => 'items'] as $path => $variable) {
+            $page = $this->get('https://canadamb.ca/'.$path.'?q=Scope&location=&unused=1')->assertOk();
+            $paginator = $page->viewData($variable);
+            $this->assertSame(19, $paginator->total());
+            $next = $paginator->nextPageUrl();
+            $this->assertStringContainsString('location=', $next);
+            $this->assertStringNotContainsString('unused=', $next);
+            $second = $this->get($next)->assertOk()->viewData($variable);
+            $this->assertSame(19, $second->total());
+            $this->assertSame(1, $second->count());
+            $this->assertSame(18, $this->get('https://brandonmb.ca/'.$path.'?q=Scope&location=')->assertOk()->viewData($variable)->total());
+        }
+    }
 
     public function test_dashboard_excludes_business_records_the_reviewer_cannot_moderate(): void
     {

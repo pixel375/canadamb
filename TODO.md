@@ -385,3 +385,7 @@ Keep this queue updated; do not interrupt independent implementation for these a
 - H03/M02 business profile edits require current profile version, authorize before validation and recheck authorization under business row lock. Existing editor already submits version. Updated legitimate editing/contact verification regressions; omitted/stale tokens cannot overwrite newer details. No schema or activation. Exact CI pending.
 
 - F04/B13 Marketplace category group is now visible in filter count and empty-state behavior; selected group's empty subcategory option explicitly means All in that group. A Search across all categories link removes only group and preserves other validated filters and location. Regression covers group label, clearing group and explicit leaf overriding stale group. Exact CI pending.
+
+- 2026-11-27 deployment 46073514610 fully green, active bfde65a0, rollback 564cc7a6. Retention 140756061654 confirms 2 releases and 2 backups; 11023 entries reclaimed; external HTTP 403 both domains and independent audits passed.
+
+- B13/H03/H04 public business directory, business updates and jobs pagination now appends validated filters and preserves explicit all-Manitoba scope, removing arbitrary query parameters. Added cross-module regression with 19 provincial records, 18 Brandon records, remembered Brandon and explicit province-wide page two. No schema/flag changes. Exact CI pending.

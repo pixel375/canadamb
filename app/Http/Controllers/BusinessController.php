@@ -51,7 +51,7 @@ class BusinessController extends Controller
             'newest' => $query->latest('created_at')->latest('id'),
             default => $query->orderBy('name')->orderBy('id'),
         };
-        $businesses = $query->paginate(18)->withQueryString();
+        $businesses = $query->paginate(18)->appends(LocationScope::preserveAll($filters));
 
         return view('business.index', compact('businesses', 'filters', 'categoryCounts') + [
             'categories' => BusinessDirectory::CATEGORIES,
@@ -95,7 +95,7 @@ class BusinessController extends Controller
         $updates = $this->directory->updates($place?->id)
             ->when($filters['type'] ?? null, fn ($query, $type) => $query->where('type', $type))
             ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'body']))
-            ->paginate(18)->withQueryString();
+            ->paginate(18)->appends(LocationScope::preserveAll($filters));
 
         return view('business.updates', [
             'updates' => $updates,
