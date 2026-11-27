@@ -9,6 +9,7 @@ use App\Support\KeywordSearch;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class TestAccountController extends Controller
 {
@@ -16,12 +17,12 @@ class TestAccountController extends Controller
     {
         abort_unless(config('network.prelaunch'), 404);
 
-        $filters = $request->validate(['status' => 'nullable|in:pending,verified', 'q' => 'nullable|string|max:100']);
+        $filters = $request->validate(['status' => 'nullable|in:pending,verified,all', 'q' => 'nullable|string|max:100']);
         $eligible = $this->testAccounts();
         $pending = (clone $eligible)->whereNull('email_verified_at')->count();
         $verified = (clone $eligible)->whereNotNull('email_verified_at')->count();
-        $accounts = $eligible->when(($filters['status'] ?? 'pending') === 'verified', fn ($query) => $query->whereNotNull('email_verified_at'),
-            fn ($query) => $query->whereNull('email_verified_at'))
+        $accounts = $eligible->when(($filters['status'] ?? 'pending') === 'verified', fn ($query) => $query->whereNotNull('email_verified_at'))
+            ->when(($filters['status'] ?? 'pending') === 'pending', fn ($query) => $query->whereNull('email_verified_at'))
             ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['name', 'email']))
             ->latest('id')->paginate(25)->withQueryString();
 
@@ -34,8 +35,12 @@ class TestAccountController extends Controller
         $actor = $request->user();
         abort_if($actor->id === $account, 403);
 
-        DB::transaction(function () use ($account, $actor) {
+        DB::transaction(function () use ($request, $account, $actor) {
             $user = $this->testAccounts()->lockForUpdate()->findOrFail($account);
+            $data = $request->validate(['version' => 'required|string|size:64']);
+            if (! hash_equals($user->testVerificationVersion(), $data['version'])) {
+                throw ValidationException::withMessages(['version' => 'This test account changed. Reload and confirm the email address before verifying.']);
+            }
             if ($user->hasVerifiedEmail()) {
                 return;
             }

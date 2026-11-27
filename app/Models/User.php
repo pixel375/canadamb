@@ -31,6 +31,11 @@ class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable
         return hash('sha256', json_encode([$this->id, $this->name], JSON_THROW_ON_ERROR));
     }
 
+    public function testVerificationVersion(): string
+    {
+        return hash('sha256', json_encode([$this->id, $this->name, $this->email], JSON_THROW_ON_ERROR));
+    }
+
     protected function casts(): array
     {
         return [

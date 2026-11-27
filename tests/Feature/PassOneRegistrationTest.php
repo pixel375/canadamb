@@ -42,12 +42,18 @@ class PassOneRegistrationTest extends TestCase
         $legacy = User::factory()->unverified()->create();
         $this->get('https://canadamb.ca/admin/test-accounts')->assertOk()->assertDontSee($legacy->email);
         $this->post("https://canadamb.ca/admin/test-accounts/$legacy->id/verify")->assertNotFound();
-        $this->post("https://canadamb.ca/admin/test-accounts/$tester->id/verify")->assertRedirect('/admin/test-accounts');
-        $this->post("https://canadamb.ca/admin/test-accounts/$tester->id/verify")->assertRedirect('/admin/test-accounts');
+        $verifyUrl = "https://canadamb.ca/admin/test-accounts/$tester->id/verify";
+        $version = $tester->testVerificationVersion();
+        $this->post($verifyUrl)->assertSessionHasErrors('version');
+        $this->post($verifyUrl, ['version' => str_repeat('0', 64)])->assertSessionHasErrors('version');
+        $this->assertFalse($tester->fresh()->hasVerifiedEmail());
+        $this->post($verifyUrl, ['version' => $version])->assertRedirect('/admin/test-accounts');
+        $this->post($verifyUrl, ['version' => $version])->assertRedirect('/admin/test-accounts');
         $this->assertTrue($tester->fresh()->hasVerifiedEmail());
         $this->get('https://canadamb.ca/admin/test-accounts?status=verified&q=TAYLOR')->assertOk()->assertSee($tester->email)
             ->assertDontSee('action="/admin/test-accounts/'.$tester->id.'/verify"', false);
         $this->get('https://canadamb.ca/admin/test-accounts?status=pending')->assertOk()->assertDontSee($tester->email);
+        $this->get('https://canadamb.ca/admin/test-accounts?status=all')->assertOk()->assertSee($tester->email)->assertDontSee($legacy->email);
         $this->get('https://canadamb.ca/admin/test-accounts?status=verified&q=missing')->assertOk()->assertDontSee($tester->email);
         $this->assertDatabaseHas('audit_logs', ['action' => 'identity.prelaunch.verified', 'actor_id' => $admin->id]);
         $this->assertSame(1, DB::table('audit_logs')->where('action', 'identity.prelaunch.verified')->count());
