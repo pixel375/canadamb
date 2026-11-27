@@ -23,6 +23,13 @@
                 <form action="/account/community-notifications/read-all" method="post">
                     @csrf
                     <input type="hidden" name="cutoff" value="{{ $readCutoff }}">
+                    <input type="hidden" name="view" value="{{ $view }}">
+                    @if(filled($filters['q'] ?? null))
+                        <input type="hidden" name="q" value="{{ $filters['q'] }}">
+                    @endif
+                    @if(filled($filters['period'] ?? null))
+                        <input type="hidden" name="period" value="{{ $filters['period'] }}">
+                    @endif
                     <button type="submit" class="button button-outline"><x-icon name="check" size="16"/> Mark all as read</button>
                     <p class="field-note">All visible unread notifications received before this page loaded, regardless of search filters.</p>
                 </form>
@@ -39,6 +46,12 @@
             <details class="panel form-stack mb-4"><summary>Manage selected notifications</summary>
                 <form id="notification-selection" method="post" action="/account/community-notifications/selected" class="form-stack mt-2">@csrf
                     <input type="hidden" name="view" value="{{ $view }}">
+                    @if(filled($filters['q'] ?? null))
+                        <input type="hidden" name="q" value="{{ $filters['q'] }}">
+                    @endif
+                    @if(filled($filters['period'] ?? null))
+                        <input type="hidden" name="period" value="{{ $filters['period'] }}">
+                    @endif
                     <p class="field-note">Select up to twenty notifications on this page. This affects your account only.</p>
                     <label>Action<select name="action"><option value="read">Mark selected as read</option><option value="unread">Mark selected as unread</option></select></label>
                     <div><button class="button button-outline">Apply selected action</button></div>
@@ -66,11 +79,23 @@
                             <form method="post" action="/account/community-notifications/{{ $notification->id }}/read">
                                 @csrf
                                 <input type="hidden" name="return_to" value="{{ $view }}">
+                    @if(filled($filters['q'] ?? null))
+                        <input type="hidden" name="q" value="{{ $filters['q'] }}">
+                    @endif
+                    @if(filled($filters['period'] ?? null))
+                        <input type="hidden" name="period" value="{{ $filters['period'] }}">
+                    @endif
                                 <button type="submit" class="button button-outline">Mark as read</button>
                             </form>
                         @else
                             <form method="post" action="/account/community-notifications/selected">@csrf
                                 <input type="hidden" name="view" value="{{ $view }}"><input type="hidden" name="notifications[]" value="{{ $notification->id }}"><input type="hidden" name="action" value="unread">
+                    @if(filled($filters['q'] ?? null))
+                        <input type="hidden" name="q" value="{{ $filters['q'] }}">
+                    @endif
+                    @if(filled($filters['period'] ?? null))
+                        <input type="hidden" name="period" value="{{ $filters['period'] }}">
+                    @endif
                                 <button class="button button-outline">Mark unread</button>
                             </form>
                         @endif

@@ -105,7 +105,8 @@ class DiscussionNotificationWorkflowTest extends TestCase
             ->assertDontSee('Pending reply should not show')
             ->assertDontSee('Other member reply');
 
-        $this->post('https://brandonmb.ca/account/community-notifications/read-all')
+        $this->post('https://brandonmb.ca/account/community-notifications/read-all')->assertSessionHasErrors('cutoff');
+        $this->post('https://brandonmb.ca/account/community-notifications/read-all', ['cutoff' => $brandon])
             ->assertRedirect('/account/community-notifications')
             ->assertSessionHas('status', 'All visible discussion notifications marked as read.');
 
@@ -126,9 +127,27 @@ class DiscussionNotificationWorkflowTest extends TestCase
         $this->get('https://canadamb.ca/account/community-notifications?view=invalid')
             ->assertSessionHasErrors('view');
 
-        $this->actingAs($other)->post('https://brandonmb.ca/account/community-notifications/read-all')
+        $this->actingAs($other)->post('https://brandonmb.ca/account/community-notifications/read-all', ['cutoff' => $otherMember])
             ->assertRedirect();
         $this->assertNull(DB::table('community_notifications')->where('id', $winnipeg)->value('read_at'));
+    }
+
+    public function test_read_actions_preserve_search_and_do_not_mark_newer_activity(): void
+    {
+        $member = User::factory()->create();
+        $author = User::factory()->create();
+        $first = $this->notify($member, $author, 'Garden 0 swap', 'brandon');
+        $url = 'https://brandonmb.ca/account/community-notifications';
+        $page = $this->actingAs($member)->get($url.'?view=unread&q=0&period=7')->assertOk();
+        $cutoff = $page->viewData('readCutoff');
+        $second = $this->notify($member, $author, 'Newer garden reply', 'brandon');
+        $this->post($url.'/read-all', ['cutoff' => $cutoff, 'view' => 'unread', 'q' => '0', 'period' => '7'])
+            ->assertRedirect('/account/community-notifications?view=unread&q=0&period=7');
+        $this->assertNotNull(DB::table('community_notifications')->where('id', $first)->value('read_at'));
+        $this->assertNull(DB::table('community_notifications')->where('id', $second)->value('read_at'));
+        $this->post($url.'/selected', ['notifications' => [$first], 'action' => 'unread', 'view' => 'read', 'q' => '0', 'period' => '7'])
+            ->assertRedirect('/account/community-notifications?view=read&q=0&period=7');
+        $this->assertNull(DB::table('community_notifications')->where('id', $first)->value('read_at'));
     }
 
     public function test_individual_notification_read_returns_to_requested_safe_filter(): void

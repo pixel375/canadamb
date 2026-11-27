@@ -462,7 +462,7 @@ class CommunityForumController extends Controller
         $notifications = $matching->orderByRaw('CASE WHEN notifications.read_at IS NULL THEN 0 ELSE 1 END')
             ->orderByDesc('notifications.id')
             ->paginate(20, ['notifications.id', 'notifications.reply_id', 'notifications.read_at', 'notifications.created_at', 'threads.id as thread_id', 'threads.title', 'actors.name as actor_name'])
-            ->withQueryString();
+            ->appends($filters);
         $directReplies = ReplyLinks::directNotificationIds($request->user()->id, $notifications->pluck('reply_id')->all());
 
         $eventThreads = EventDiscussions::publicThreadIds($request->attributes->get('site'), $notifications->pluck('thread_id')->all());
@@ -474,13 +474,13 @@ class CommunityForumController extends Controller
     public function readNotification(Request $request, int $notification)
     {
         abort_unless($this->visibleNotifications($request)->where('notifications.id', $notification)->exists(), 404);
+        $returnTo = $request->input('return_to');
+        $filters = $request->validate(['q' => 'nullable|string|max:100', 'period' => 'nullable|in:7,30,90']);
         DB::table('community_notifications')->where(['id' => $notification, 'user_id' => $request->user()->id])
             ->whereNull('read_at')->update(['read_at' => now()]);
 
-        $returnTo = $request->input('return_to');
-
         return in_array($returnTo, ['all', 'unread', 'read'], true)
-            ? redirect('/account/community-notifications'.($returnTo !== 'all' ? '?view='.$returnTo : ''))
+            ? redirect($this->notificationReturnPath(['view' => $returnTo === 'all' ? null : $returnTo] + $filters))
                 ->with('status', 'Notification marked as read.')
             : redirect('/account/notifications');
     }
@@ -507,6 +507,7 @@ class CommunityForumController extends Controller
             'notifications.*' => 'required|integer|distinct|min:1',
             'action' => 'required|in:read,unread',
             'view' => 'nullable|in:all,unread,read',
+            'q' => 'nullable|string|max:100', 'period' => 'nullable|in:7,30,90',
         ]);
         DB::transaction(function () use ($request, $data) {
             $ids = $this->visibleNotifications($request)->whereIn('notifications.id', $data['notifications'])
@@ -520,7 +521,7 @@ class CommunityForumController extends Controller
             }
         }, attempts: 3);
 
-        return redirect('/account/community-notifications?view='.($data['view'] ?? 'all'))
+        return redirect($this->notificationReturnPath(['view' => $data['view'] ?? 'all'] + $data))
             ->with('status', 'Selected notifications marked '.$data['action'].'.');
     }
 
@@ -529,8 +530,9 @@ class CommunityForumController extends Controller
         // Only mark the current user's approved, visible replies on this portal.
         // Use bounded updates to avoid large SQL parameter lists.
         $visible = $this->visibleNotifications($request)->whereNull('notifications.read_at');
-        $data = $request->validate(['cutoff' => 'nullable|integer|min:1']);
-        $latest = $data['cutoff'] ?? (clone $visible)->max('notifications.id');
+        $data = $request->validate(['cutoff' => 'required|integer|min:1', 'view' => 'nullable|in:all,unread,read',
+            'q' => 'nullable|string|max:100', 'period' => 'nullable|in:7,30,90']);
+        $latest = $data['cutoff'];
         if ($latest !== null) {
             $visible->where('notifications.id', '<=', $latest)->select('notifications.id as id')
                 ->chunkById(250, function ($rows) use ($request) {
@@ -540,8 +542,16 @@ class CommunityForumController extends Controller
                 }, 'notifications.id', 'id');
         }
 
-        return redirect('/account/community-notifications')
+        return redirect($this->notificationReturnPath($data))
             ->with('status', 'All visible discussion notifications marked as read.');
+    }
+
+    private function notificationReturnPath(array $data): string
+    {
+        $filters = array_intersect_key($data, array_flip(['view', 'q', 'period']));
+        $query = http_build_query(array_filter($filters, fn ($value) => $value !== null && $value !== ''), '', '&', PHP_QUERY_RFC3986);
+
+        return '/account/community-notifications'.($query === '' ? '' : '?'.$query);
     }
 
     private function visibleNotifications(Request $request): Builder

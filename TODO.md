@@ -445,3 +445,5 @@ Keep this queue updated; do not interrupt independent implementation for these a
 - 2026-11-27 db7a8cd6 backend 46081433915/browser 46081433972 still in progress at start of next pass; last independently verified live dcb1cd0e. No premature completion claimed.
 
 - C03/C09/H03/M02 discussion, reply and business update edits/withdrawals now validate submitted fields after scoped eligibility checks inside existing lock transactions. Reply return destination calculated from authorized locked record; no-op remains audit-free. Tests cover malformed unauthorized requests and zero counts with unmatched discussion/reply filters. No schema or flag change. Exact CI pending.
+
+- D01/D04 discussion notifications retain validated search/period/read-state filters on individual and selected read actions and mark-all; pagination drops unrelated query fields. Mark-all now requires the displayed cutoff, with no fallback to newly arrived IDs. Existing portal/user/approval visibility and global-visible (not search-only) mark-all semantics retained. Regression covers literal zero search and new arrival after page load. Exact CI pending.
