@@ -73,7 +73,8 @@ class DirectMessagingTest extends TestCase
         $this->get($base.$path)->assertOk()->assertSee($message['body']);
         $admin->forceFill(['role' => 'member'])->save();
         $this->actingAs($recipient)->post($base.$officialPath, ['body' => 'Reply after role change.'])->assertForbidden();
-        $this->get($base.$officialPath)->assertOk()->assertSee('Official private fixture.');
+        $this->get($base.$officialPath)->assertOk()->assertSee('Official private fixture.')->assertSee('Historical official conversation')->assertDontSee('Started by a CanadaMB administrator');
+        $this->get($base.'/account/messages?kind=official')->assertOk()->assertSee('Former official conversation')->assertDontSee('class="message-thread-kind  official-message-label"', false);
         $this->assertDatabaseCount('conversations', 2);
         $this->assertDatabaseCount('messages', 3);
     }

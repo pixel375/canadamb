@@ -22,11 +22,17 @@ class Conversation extends Model
         return $this->listing?->title ?? $this->inquiry_title ?? 'Private conversation';
     }
 
+    public function currentOfficialInitiator(): bool
+    {
+        return $this->direct_kind === 'official' && $this->buyer?->role === 'super_admin'
+            && $this->buyer->hasVerifiedEmail();
+    }
+
     public function kindLabel(): string
     {
         return match (true) {
             $this->listing_id !== null => 'Marketplace',
-            $this->direct_kind === 'official' => 'Official administrator',
+            $this->direct_kind === 'official' => $this->currentOfficialInitiator() ? 'Official administrator' : 'Former official conversation',
             $this->direct_kind === 'member' => 'Direct member',
             $this->inquiry_job_id !== null => 'Job inquiry',
             default => 'Business inquiry',

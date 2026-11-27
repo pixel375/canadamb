@@ -50,7 +50,7 @@ class MessagesController extends Controller
                 $column = 'CASE WHEN buyer_id = ? THEN buyer_archived_at ELSE seller_archived_at END';
                 $query->whereRaw($column.(($filters['view'] ?? null) === 'archived' ? ' IS NOT NULL' : ' IS NULL'), [$id]);
             })
-            ->with(['listing:id,title', 'buyer:id,name', 'seller:id,name', 'latestMessage'])
+            ->with(['listing:id,title', 'buyer:id,name,role,email_verified_at', 'seller:id,name', 'latestMessage'])
             ->withCount(['messages as unread' => $unread])
             ->addSelect(['blocked_by_me' => DB::table('user_blocks')->selectRaw('1')->where('user_id', $id)
                 ->whereRaw('blocked_id = CASE WHEN conversations.buyer_id = ? THEN conversations.seller_id ELSE conversations.buyer_id END', [$id])->limit(1)])
@@ -313,7 +313,7 @@ class MessagesController extends Controller
     public function show(Request $request, int $conversation)
     {
         $id = $request->user()->id;
-        $thread = Conversation::forMember($id)->with(['listing:id,title', 'buyer:id,name', 'seller:id,name'])->findOrFail($conversation);
+        $thread = Conversation::forMember($id)->with(['listing:id,title', 'buyer:id,name,role,email_verified_at', 'seller:id,name'])->findOrFail($conversation);
         $request->session()->forget('conversation_history_search');
         $data = $request->validate(['history' => 'nullable|string|max:512']);
         $encoded = $data['history'] ?? null;

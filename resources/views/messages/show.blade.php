@@ -6,7 +6,7 @@
                 <a class="chat-back" href="/account/messages" aria-label="Back to messages"><x-icon name="arrow-left" size="23"/></a>
                 <a class="chat-member" href="/users/{{ $thread->other(auth()->id()) }}">
                     <span class="message-avatar" aria-hidden="true"><x-icon name="person" size="24"/></span>
-                    <span class="chat-heading-copy"><strong>{{ $thread->buyer_id === auth()->id() ? $thread->seller->name : $thread->buyer->name }}</strong><small @if($thread->direct_kind === 'official') class="official-message-label" @endif>{{ $thread->direct_kind ? $thread->kindLabel() : $thread->title() }}</small></span>
+                    <span class="chat-heading-copy"><strong>{{ $thread->buyer_id === auth()->id() ? $thread->seller->name : $thread->buyer->name }}</strong><small @if($thread->currentOfficialInitiator()) class="official-message-label" @endif>{{ $thread->direct_kind ? $thread->kindLabel() : $thread->title() }}</small></span>
                 </a>
                 <details class="chat-actions">
                     <summary aria-label="Conversation options"><x-icon name="more-vertical" size="22"/></summary>
@@ -29,7 +29,8 @@
                 </details>
             </header>
             @error('version')<p class="notice" role="alert">{{ $message }}</p>@enderror
-            @if($thread->direct_kind === 'official')<p class="official-chat-note">Started by a CanadaMB administrator. Staff will never ask for your password or payment credentials.</p>@endif
+            @if($thread->currentOfficialInitiator())<p class="official-chat-note">Started by a CanadaMB administrator. Staff will never ask for your password or payment credentials.</p>
+            @elseif($thread->direct_kind === 'official')<p class="notice">Historical official conversation. The initiating account is no longer a verified administrator. Replies are unavailable; do not treat this history as current staff guidance.</p>@endif
             <div class="chat-history" aria-label="Messages in chronological order" data-chat-history tabindex="0">
                 <nav class="chat-history-nav" aria-label="Conversation history">
                     @if($messages->nextPageUrl())<a class="text-link" data-chat-older href="{{ $messages->nextPageUrl() }}">Older messages</a>@endif

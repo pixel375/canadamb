@@ -60,7 +60,7 @@
                         <span class="message-thread-copy">
                             <span class="message-thread-name">{{ $other->name }} @if($thread->blocked_by_me)<small class="field-note"> · Blocked</small>@endif</span>
                             <strong>{{ $thread->title() }}</strong>
-                            @if(\App\Support\MessagingExtensions::enabled())<span class="message-thread-kind @if($thread->direct_kind === 'official') official-message-label @endif">{{ $thread->kindLabel() }}</span>@endif
+                            @if(\App\Support\MessagingExtensions::enabled())<span class="message-thread-kind @if($thread->currentOfficialInitiator()) official-message-label @endif">{{ $thread->kindLabel() }}</span>@endif
                             @if($thread->latestMessage)
                                 <span class="message-thread-preview">{{ $thread->latestMessage->sender_id === $member ? 'You: ' : '' }}{{ \Illuminate\Support\Str::limit(\Illuminate\Support\Str::squish($thread->latestMessage->body), 100) }}</span>
                             @endif
