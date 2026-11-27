@@ -389,3 +389,5 @@ Keep this queue updated; do not interrupt independent implementation for these a
 - 2026-11-27 deployment 46073514610 fully green, active bfde65a0, rollback 564cc7a6. Retention 140756061654 confirms 2 releases and 2 backups; 11023 entries reclaimed; external HTTP 403 both domains and independent audits passed.
 
 - B13/H03/H04 public business directory, business updates and jobs pagination now appends validated filters and preserves explicit all-Manitoba scope, removing arbitrary query parameters. Added cross-module regression with 19 provincial records, 18 Brandon records, remembered Brandon and explicit province-wide page two. No schema/flag changes. Exact CI pending.
+
+- A08/J04 privacy queue now shows open/pending/in-review/withdrawn workload tiles, retaining request-kind filter; no identity/private content added. Review requires current version after locked eligibility check, so missing or stale tokens cannot overwrite a later review. Withdrawal checks owner before password validation while retaining password confirmation and locked recheck. Existing no-deletion boundary unchanged. Regression extended; no activation or migration. Exact CI pending.

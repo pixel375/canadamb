@@ -43,13 +43,16 @@ class AccountPrivacyTest extends TestCase
         $id = DB::table('account_privacy_requests')->value('id');
         $this->get($url)->assertSee('Reference #'.$id);
         $this->actingAs($other)->get($url)->assertDontSee('Reference #'.$id);
+        $this->post($url.'/'.$id.'/withdraw')->assertNotFound();
         $this->post($url.'/'.$id.'/withdraw', ['current_password' => 'password'])->assertNotFound();
         $this->get($queue)->assertForbidden();
-        $this->actingAs($admin)->get($queue)->assertSee('Reference #'.$id);
+        $this->actingAs($admin)->get($queue)->assertSee('Reference #'.$id)->assertSee('aria-label="Privacy request status"', false)
+            ->assertSee('href="/admin/privacy-requests?status=withdrawn"', false);
         $this->get($queue.'?inspect='.$id)->assertOk()->assertSee('Record impact')->assertSee('Business ownership memberships')->assertSee('Private property photos')->assertSee('Saved listings')->assertDontSee($member->email);
         $this->assertDatabaseHas('audit_logs', ['action' => 'user.privacy-impact-inspected', 'actor_id' => $admin->id]);
         $note = 'Check shared records before arranging a response.';
         $version = PrivacyRequests::reviewVersion(DB::table('account_privacy_requests')->where('id', $id)->first());
+        $this->post($queue.'/'.$id, ['note' => $note, 'current_password' => 'password'])->assertSessionHasErrors('version');
         $this->post($queue.'/'.$id, ['note' => $note, 'current_password' => 'password', 'version' => $version])->assertRedirect()->assertSessionHasNoErrors();
         $this->post($queue.'/'.$id, ['note' => 'Stale review must not overwrite progress.', 'current_password' => 'password', 'version' => $version])->assertSessionHasErrors('version');
         $this->assertDatabaseHas('account_privacy_requests', ['id' => $id, 'review_note' => $note]);

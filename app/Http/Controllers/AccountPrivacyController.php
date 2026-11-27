@@ -48,6 +48,7 @@ class AccountPrivacyController extends Controller
     public function withdraw(Request $request, int $privacy)
     {
         abort_unless(PrivacyRequests::enabled(), 404);
+        DB::table('account_privacy_requests')->where('user_id', $request->user()->id)->where('id', $privacy)->firstOrFail();
         $data = $request->validate(['current_password' => 'required|string|max:72']);
         DB::transaction(function () use ($request, $privacy, $data) {
             $user = User::lockForUpdate()->findOrFail($request->user()->id);
@@ -69,6 +70,7 @@ class AccountPrivacyController extends Controller
             'reference' => 'nullable|integer|min:1', 'inspect' => 'nullable|integer|min:1',
         ]);
         $eligible = DB::table('account_privacy_requests')->whereNotNull('user_id')->where('user_id', '!=', $request->user()->id);
+        $counts = (clone $eligible)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
         $items = (clone $eligible)->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status),
             fn ($query) => $query->whereIn('status', ['pending', 'in-review']))
             ->when($filters['kind'] ?? null, fn ($query, $kind) => $query->where('kind', $kind))
@@ -81,20 +83,20 @@ class AccountPrivacyController extends Controller
             Audit::record('user.privacy-impact-inspected', $request->user()->id, context: ['request' => $target->id]);
         }
 
-        return view('admin.privacy-requests', compact('items', 'filters', 'inspection'));
+        return view('admin.privacy-requests', compact('items', 'filters', 'inspection', 'counts'));
     }
 
     public function review(Request $request, int $privacy)
     {
         abort_unless(PrivacyRequests::enabled(), 404);
-        $data = $request->validate(['note' => 'required|string|min:10|max:1000', 'current_password' => 'required|string|max:72', 'version' => 'nullable|string|size:64']);
-        DB::transaction(function () use ($request, $privacy, $data) {
+        DB::transaction(function () use ($request, $privacy) {
             $reviewer = User::lockForUpdate()->findOrFail($request->user()->id);
-            $this->confirmPassword($reviewer, $data['current_password']);
             $item = DB::table('account_privacy_requests')->where('id', $privacy)->lockForUpdate()->firstOrFail();
             abort_if((int) $item->user_id === $request->user()->id, 403);
             abort_unless($item->user_id && in_array($item->status, ['pending', 'in-review'], true), 409);
-            if (isset($data['version']) && ! hash_equals(PrivacyRequests::reviewVersion($item), $data['version'])) {
+            $data = $request->validate(['note' => 'required|string|min:10|max:1000', 'current_password' => 'required|string|max:72', 'version' => 'required|string|size:64']);
+            $this->confirmPassword($reviewer, $data['current_password']);
+            if (! hash_equals(PrivacyRequests::reviewVersion($item), $data['version'])) {
                 throw ValidationException::withMessages(['version' => 'This request changed. Reload the review queue before saving.']);
             }
             if ($item->status === 'in-review' && (int) $item->reviewer_id === $reviewer->id && $item->review_note === $data['note']) {
