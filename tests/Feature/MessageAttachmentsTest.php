@@ -67,8 +67,15 @@ class MessageAttachmentsTest extends TestCase
         Storage::disk(MessageAttachments::DISK)->assertExists($attachment->image_path);
         $download = $url.'/attachments/'.$attachment->message_id;
         $this->get($download)->assertOk()->assertHeader('Content-Type', 'image/webp');
+        $photoExport = ['current_password' => 'password', 'section' => 'sent-photo-metadata'];
+        $this->post($export, $photoExport)->assertOk()->assertJsonCount(1, 'records')
+            ->assertJsonPath('records.0.message_id', $attachment->message_id)->assertJsonMissingPath('records.0.image_path')->assertJsonMissingPath('records.0.thumbnail_path');
         $this->actingAs($stranger)->get($download)->assertNotFound();
-        $this->actingAs($owner)->get($url)->assertSee('Download photo attachment');
+        $photoExport['section'] = 'received-photo-metadata';
+        $this->post($export, $photoExport)->assertOk()->assertJsonCount(0, 'records');
+        $this->actingAs($owner)->post($export, $photoExport)->assertOk()->assertJsonCount(1, 'records')
+            ->assertJsonPath('records.0.message_id', $attachment->message_id)->assertJsonMissingPath('records.0.image_path')->assertJsonMissingPath('records.0.thumbnail_path');
+        $this->get($url)->assertSee('Download photo attachment');
         $this->get($download)->assertOk();
         config(['network.content_reports' => true]);
         $reportUrl = $base.'/account/report/message-photo/'.$attachment->message_id;

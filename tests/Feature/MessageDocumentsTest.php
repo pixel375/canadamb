@@ -60,8 +60,17 @@ class MessageDocumentsTest extends TestCase
         $this->assertDatabaseCount('message_documents', 1);
         $download = $url.'/documents/'.$document->message_id;
         $this->get($download)->assertOk()->assertHeader('Content-Type', 'text/plain; charset=utf-8')->assertHeader('Content-Disposition', 'attachment; filename="canadamb-document.txt"')->assertSee($body);
+        $export = $base.'/account/data-export';
+        $input = ['current_password' => 'password', 'section' => 'sent-text-attachment-metadata'];
+        $this->post($export, $input)->assertOk()->assertJsonCount(1, 'records')
+            ->assertJsonPath('records.0.message_id', $document->message_id)->assertJsonMissingPath('records.0.content')->assertJsonMissingPath('records.0.sha256');
         $this->actingAs($admin)->get($download)->assertNotFound();
-        $this->actingAs($seller)->get($url)->assertOk()->assertSee('Download text attachment')->assertDontSee($body);
+        $input['section'] = 'received-text-attachment-metadata';
+        $this->post($export, $input)->assertOk()->assertJsonCount(0, 'records');
+        $this->actingAs($seller)->post($export, $input)->assertOk()->assertJsonCount(1, 'records')
+            ->assertJsonPath('records.0.message_id', $document->message_id)->assertJsonPath('records.0.bytes', strlen($body))
+            ->assertJsonMissingPath('records.0.content')->assertJsonMissingPath('records.0.sha256');
+        $this->get($url)->assertOk()->assertSee('Download text attachment')->assertDontSee($body);
         $this->postJson($url.'/sync', ['after' => 0])->assertJsonPath('messages.0.has_document', true)->assertDontSee($body);
         $this->get($download)->assertOk();
         $this->post($base.'/account/report/message-document/'.$document->message_id, ['reason' => 'spam', 'explanation' => 'Suspicious text attachment reported.'])->assertRedirect();
