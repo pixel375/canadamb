@@ -240,7 +240,12 @@ jobs:
               echo "::warning::$host returned HTTP $code to an external runner; review prelaunch gate immediately."
               exit 1
             }
-            echo "$host: prelaunch access gate returned HTTP 403."
+            body=$(curl --silent --show-error --max-time 20 "https://$host/")
+            grep -Fq 'name="preview_password"' <<<"$body" || {
+              echo "::error::$host does not show the expected preview password form."
+              exit 1
+            }
+            echo "$host: prelaunch access gate returned HTTP 403 and displayed the password form."
           done
           echo "Unauthenticated runner denied; password-unlocked physical-device and SSO acceptance remains separate."
       - name: Remove local credentials

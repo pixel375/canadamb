@@ -121,7 +121,7 @@ class NetworkTest extends TestCase
         $this->actingAs(User::factory()->create())->get('https://canadamb.ca/admin/readiness')->assertForbidden();
         $this->actingAs(User::factory()->create(['role' => 'super_admin']))->get('https://canadamb.ca/admin/readiness')
             ->assertOk()->assertSee('Read-only configuration indicators')->assertSee('Separate acceptance required')
-            ->assertSee('Approved IP entries');
+            ->assertSee('Prelaunch password gate')->assertDontSee('Approved IP entries');
     }
 
     public function test_admin_dashboard_and_review_filters_remain_role_protected(): void

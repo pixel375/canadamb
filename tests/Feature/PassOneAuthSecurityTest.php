@@ -62,8 +62,14 @@ class PassOneAuthSecurityTest extends TestCase
         app(NetworkSettings::class)->saveDraft($admin->id, fn ($settings) => ['prelaunch_test_registration_enabled' => true] + $settings);
         app(NetworkSettings::class)->publish($admin->id);
 
+        config(['network.prelaunch_password_hash' => password_hash('csrf-preview-fixture', PASSWORD_BCRYPT, ['cost' => 4])]);
         // Laravel skips CSRF while its application environment is testing.
         $this->app->instance('env', 'production');
+        $this->post('https://canadamb.ca/register', [])->assertForbidden();
+        $unlock = $this->post('https://canadamb.ca/prelaunch-access', ['preview_password' => 'csrf-preview-fixture'])->assertStatus(303);
+        $cookie = collect($unlock->headers->getCookies())->first(fn ($cookie) => $cookie->getName() === '__Host-canadamb-preview');
+        $this->assertNotNull($cookie);
+        $this->withUnencryptedCookie('__Host-canadamb-preview', $cookie->getValue());
         $this->post('https://canadamb.ca/register', [])->assertStatus(419);
         $this->actingAs($admin)->post("https://canadamb.ca/admin/test-accounts/$account->id/verify", ['_token' => 'forged'])->assertStatus(419);
         $this->assertFalse($account->fresh()->hasVerifiedEmail());
