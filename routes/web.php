@@ -209,6 +209,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/account/messages/{conversation}/archive', [MessagesController::class, 'unarchive'])->whereNumber('conversation')->middleware('throttle:15,1,message-archive');
     Route::post('/marketplace/{listing}/message', [MessagesController::class, 'start'])->whereNumber('listing')->middleware('throttle:15,1');
     Route::get('/account/messages', [MessagesController::class, 'index']);
+    Route::post('/account/messages/preferences', [MessagesController::class, 'preferences'])->middleware('throttle:8,1,direct-message-preferences');
+    Route::get('/account/messages/member/{member}/{kind}', [MessagesController::class, 'composeDirect'])->whereNumber('member')->whereIn('kind', ['member', 'official'])->middleware('throttle:20,1,direct-compose');
+    Route::post('/account/messages/member/{member}/{kind}', [MessagesController::class, 'startDirect'])->whereNumber('member')->whereIn('kind', ['member', 'official'])->middleware('throttle:5,1,direct-start');
     Route::post('/account/messages/archive-selected', [MessagesController::class, 'archiveSelected'])->middleware('throttle:5,1,message-archive-batch');
     Route::post('/account/messages/read-all', [MessagesController::class, 'readAll'])->middleware('throttle:5,1,message-read-all');
     Route::get('/account/blocked-members', [MessagesController::class, 'blockedMembers']);

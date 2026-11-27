@@ -39,6 +39,19 @@
             <a class="text-link" href="/account/data-export">Download my data</a>
             @if(\App\Support\PrivacyRequests::enabled())<a class="text-link" href="/account/privacy-requests">Request account deletion or data review</a>@endif
         </div>
+        @if($member->hasVerifiedEmail() && \App\Support\DirectMessaging::enabled())
+            @php($directPreferences = \App\Support\DirectMessaging::preferences($member->id))
+            <section class="panel form-stack">
+                <h2>Direct messaging preferences</h2>
+                <p>Choose whether verified members and official CanadaMB administrators may contact you directly. Both are off by default. Changing these preferences does not delete existing history.</p>
+                <form method="post" action="/account/messages/preferences" class="form-stack">@csrf
+                    <label>Direct member messages<select name="member_messages"><option value="0" @selected(!$directPreferences['member_messages'])>Do not accept</option><option value="1" @selected($directPreferences['member_messages'])>Accept</option></select></label>
+                    <label>Official administrator messages<select name="official_messages"><option value="0" @selected(!$directPreferences['official_messages'])>Do not accept</option><option value="1" @selected($directPreferences['official_messages'])>Accept</option></select></label>
+                    <button class="button button-primary">Save messaging preferences</button>
+                </form>
+                <p class="field-note">These preferences are network-wide. Marketplace, business and job inquiries have their existing separate controls.</p>
+            </section>
+        @endif
         <section class="panel form-stack" aria-labelledby="account-security-heading">
             <h2 id="account-security-heading">Account security</h2>
             @if($member->hasVerifiedEmail())<a class="text-link" href="/account/blocked-members">Manage blocked members</a><a class="text-link" href="/account/listing-reports">My listing reports</a>@if(\App\Support\ContentReports::enabled())<a class="text-link" href="/account/content-reports">My content reports</a>@endif @endif

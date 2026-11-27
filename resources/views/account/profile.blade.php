@@ -5,7 +5,13 @@
                 <p>Member since <time datetime="{{ $member->created_at->toDateString() }}">{{ $member->created_at->format('F Y') }}</time></p>
                 @if($signupLocation)<p><x-icon name="pin" size="16"/> {{ $signupLocation }}, Manitoba <small class="field-note">Signup community</small></p>@endif
             </div></div>
-            @if($isOwn)<a class="button button-outline" href="/account/settings">Edit my profile</a>@else<x-content-report-link type="profile" :target="$member->id"/>@endif
+            @if(!$isOwn && auth()->user()?->hasVerifiedEmail() && \App\Support\DirectMessaging::enabled())
+            <div class="inline-actions mb-3">
+                @if(\App\Support\DirectMessaging::allows(auth()->user(), $member, 'member'))<a class="button button-primary" href="/account/messages/member/{{ $member->id }}/member">Message member</a>@endif
+                @if(\App\Support\DirectMessaging::allows(auth()->user(), $member, 'official'))<a class="button button-outline" href="/account/messages/member/{{ $member->id }}/official">Start official conversation</a>@endif
+            </div>
+        @endif
+        @if($isOwn)<a class="button button-outline" href="/account/settings">Edit my profile</a>@else<x-content-report-link type="profile" :target="$member->id"/>@endif
         </div>
         @if($isOwn)
             @unless($member->hasVerifiedEmail())

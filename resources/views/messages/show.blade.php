@@ -6,7 +6,7 @@
                 <a class="chat-back" href="/account/messages" aria-label="Back to messages"><x-icon name="arrow-left" size="23"/></a>
                 <a class="chat-member" href="/users/{{ $thread->other(auth()->id()) }}">
                     <span class="message-avatar" aria-hidden="true"><x-icon name="person" size="24"/></span>
-                    <span class="chat-heading-copy"><strong>{{ $thread->buyer_id === auth()->id() ? $thread->seller->name : $thread->buyer->name }}</strong><small>{{ $thread->title() }}</small></span>
+                    <span class="chat-heading-copy"><strong>{{ $thread->buyer_id === auth()->id() ? $thread->seller->name : $thread->buyer->name }}</strong><small @if($thread->direct_kind === 'official') class="official-message-label" @endif>{{ $thread->direct_kind ? $thread->kindLabel() : $thread->title() }}</small></span>
                 </a>
                 <details class="chat-actions">
                     <summary aria-label="Conversation options"><x-icon name="more-vertical" size="22"/></summary>

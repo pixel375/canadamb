@@ -24,7 +24,7 @@ final class BroadcastConsent
             ->where('consent.opted_in', true)->whereNotNull('users.email_verified_at')
             ->when($audience === 'business-owners', fn (Builder $query) => $query->whereExists(fn (Builder $membership) => $membership
                 ->selectRaw('1')->from('business_memberships')->join('businesses', 'businesses.id', '=', 'business_memberships.business_id')
-                ->whereColumn('business_memberships.user_id', 'users.id')->where('business_memberships.role', 'owner')->where('businesses.status', 'approved')))
+                ->whereColumn('business_memberships.user_id', 'users.id')->where('business_memberships.role', 'owner')->where('businesses.status', 'active')))
             ->when($audience === 'selected', fn (Builder $query) => $query->whereIn('users.id', $members));
     }
 }

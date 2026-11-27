@@ -20,6 +20,7 @@ final class StagedFeatures
         'owner_notifications' => ['id', 'user_id', 'kind', 'target_id', 'decision', 'read_at', 'created_at'],
         'push_devices' => ['id', 'user_id', 'site_id', 'endpoint_hash', 'subscription', 'created_at', 'updated_at'],
         'broadcast_consents' => ['user_id', 'opted_in', 'updated_at'],
+        'direct_message_preferences' => ['user_id', 'member_messages', 'official_messages', 'updated_at'],
         'announcements' => ['id', 'author_id', 'confirmation_hash', 'title', 'body', 'audience', 'recipient_count', 'created_at'],
         'announcement_receipts' => ['id', 'announcement_id', 'user_id', 'read_at', 'created_at'],
         'business_access_requests' => ['id', 'business_id', 'requester_id', 'recipient_id', 'kind', 'status', 'expires_at', 'reviewer_id', 'review_note', 'created_at', 'updated_at'],
@@ -46,6 +47,7 @@ final class StagedFeatures
         'owner_notifications' => [['id']],
         'push_devices' => [['id'], ['endpoint_hash']],
         'broadcast_consents' => [['user_id']],
+        'direct_message_preferences' => [['user_id']],
         'announcements' => [['id'], ['confirmation_hash']],
         'announcement_receipts' => [['id'], ['announcement_id', 'user_id']],
         'business_access_requests' => [['id']],
@@ -62,6 +64,7 @@ final class StagedFeatures
     ];
 
     public const DEFINITIONS = [
+        ['2026_11_26_000021_create_direct_message_preferences', 'Direct and official member messaging', 'direct_messaging', ['direct_message_preferences'], ['conversations' => ['direct_kind']], ['extended_messaging'], 'Separate default-off opt-ins; participant-only history and audited official initiation.'],
         ['2026_11_26_000020_create_announcements', 'In-site announcement delivery', 'announcement_delivery', ['announcements', 'announcement_receipts'], [], ['broadcast_previews'], 'Explicit confirmation, consent recheck, bounded atomic delivery; disabled during prelaunch.'],
         ['2026_11_26_000019_create_broadcast_consents', 'Broadcast audience preview', 'broadcast_previews', ['broadcast_consents'], [], [], 'Separate optional in-site announcements consent; previews only, no sends.'],
         ['2026_11_26_000018_create_push_devices', 'Web Push device registration', 'push_devices', ['push_devices'], [], [], 'Opt-in registry only; no sender, external delivery or unsolicited prompts.'],

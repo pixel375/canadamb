@@ -8,9 +8,11 @@ use App\Models\JobPosting;
 use App\Models\Message;
 use App\Models\User;
 use App\Support\AccountActivity;
+use App\Support\Audit;
 use App\Support\BusinessDirectory;
 use App\Support\BusinessInquirySettings;
 use App\Support\ContentReports;
+use App\Support\DirectMessaging;
 use App\Support\JobBoard;
 use App\Support\KeywordSearch;
 use App\Support\ListingPhotos;
@@ -29,18 +31,20 @@ class MessagesController extends Controller
     public function index(Request $request)
     {
         $id = $request->user()->id;
-        $filters = $request->validate(['view' => 'nullable|in:unread,archived', 'q' => 'nullable|string|max:100', 'kind' => 'nullable|in:marketplace,business,job',
+        $filters = $request->validate(['view' => 'nullable|in:unread,archived', 'q' => 'nullable|string|max:100', 'kind' => 'nullable|in:marketplace,business,job,member,official',
             'role' => 'nullable|in:sent,received', 'sort' => 'nullable|in:recent,oldest']);
         $unread = fn ($messages) => $messages->where('sender_id', '!=', $id)
             ->whereRaw('messages.id > CASE WHEN conversations.buyer_id = ? THEN conversations.buyer_last_read_id ELSE conversations.seller_last_read_id END', [$id]);
         $extended = MessagingExtensions::enabled();
         abort_if(! $extended && (($filters['view'] ?? null) === 'archived' || in_array($filters['kind'] ?? null, ['business', 'job'], true)), 404);
+        abort_if(! DirectMessaging::enabled() && in_array($filters['kind'] ?? null, ['member', 'official'], true), 404);
         $threads = Conversation::forMember($id)
             ->when(($filters['role'] ?? null) === 'sent', fn ($query) => $query->where('buyer_id', $id))
             ->when(($filters['role'] ?? null) === 'received', fn ($query) => $query->where('seller_id', $id))
             ->when(($filters['kind'] ?? null) === 'marketplace', fn ($query) => $query->whereNotNull('listing_id'))
             ->when(($filters['kind'] ?? null) === 'business', fn ($query) => $query->whereNull('listing_id')->whereNotNull('inquiry_business_id')->whereNull('inquiry_job_id'))
             ->when(($filters['kind'] ?? null) === 'job', fn ($query) => $query->whereNull('listing_id')->whereNotNull('inquiry_job_id'))
+            ->when(in_array($filters['kind'] ?? null, ['member', 'official'], true), fn ($query) => $query->where('direct_kind', $filters['kind']))
             ->when($extended, function ($query) use ($filters, $id) {
                 $column = 'CASE WHEN buyer_id = ? THEN buyer_archived_at ELSE seller_archived_at END';
                 $query->whereRaw($column.(($filters['view'] ?? null) === 'archived' ? ' IS NOT NULL' : ' IS NULL'), [$id]);
@@ -95,6 +99,68 @@ class MessagesController extends Controller
             });
 
         return redirect('/account/messages?view=unread')->with('status', 'Messages received before the inbox was opened have been marked read. Newer messages remain unread.');
+    }
+
+    public function preferences(Request $request)
+    {
+        abort_unless(DirectMessaging::enabled(), 404);
+        $data = $request->validate(['member_messages' => 'required|boolean', 'official_messages' => 'required|boolean']);
+        $id = $request->user()->id;
+        DB::transaction(function () use ($id, $data) {
+            User::lockForUpdate()->findOrFail($id);
+            DB::table('direct_message_preferences')->updateOrInsert(['user_id' => $id], [
+                'member_messages' => (bool) $data['member_messages'], 'official_messages' => (bool) $data['official_messages'], 'updated_at' => now(),
+            ]);
+        }, attempts: 3);
+
+        return redirect('/account/settings')->with('status', 'Direct messaging preferences saved.');
+    }
+
+    public function composeDirect(Request $request, int $member, string $kind)
+    {
+        abort_unless(DirectMessaging::enabled(), 404);
+        $recipient = User::findOrFail($member);
+        $sender = $request->user();
+        $key = DirectMessaging::key($sender->id, $member, $kind);
+        $existing = Conversation::forMember($sender->id)->where('inquiry_key', $key)->first();
+        if ($existing) {
+            return redirect('/account/messages/'.$existing->id);
+        }
+        abort_unless(DirectMessaging::allows($sender, $recipient, $kind) && ! $this->isBlocked($sender->id, $member), 404);
+
+        return response()->view('messages.compose-direct', ['recipient' => $recipient, 'kind' => $kind])
+            ->header('Cache-Control', 'private, no-store')->header('Referrer-Policy', 'no-referrer');
+    }
+
+    public function startDirect(Request $request, int $member, string $kind)
+    {
+        abort_unless(DirectMessaging::enabled(), 404);
+        $data = $request->validate(['body' => 'required|string|max:2000']);
+        $id = $request->user()->id;
+        $thread = DB::transaction(function () use ($request, $member, $kind, $data, $id) {
+            $this->lockParticipants($id, $member);
+            $sender = User::findOrFail($id);
+            $recipient = User::findOrFail($member);
+            $key = DirectMessaging::key($id, $member, $kind);
+            $existing = Conversation::forMember($id)->where('inquiry_key', $key)->first();
+            if ($existing) {
+                return $existing;
+            }
+            abort_unless(DirectMessaging::allows($sender, $recipient, $kind) && ! $this->isBlocked($id, $member), 404);
+            abort_if(Conversation::where('buyer_id', $id)->whereNotNull('direct_kind')->where('created_at', '>=', now()->subDay())->count() >= 10, 429, 'New conversation limit reached.');
+            $thread = Conversation::create([
+                'inquiry_key' => $key, 'direct_kind' => $kind, 'buyer_id' => $id, 'seller_id' => $member,
+                'inquiry_title' => $kind === 'official' ? 'Official CanadaMB conversation' : 'Direct member conversation',
+            ]);
+            $this->write($thread, $id, $data['body']);
+            if ($kind === 'official') {
+                Audit::record('message.official-started', $id, $request->attributes->get('site')->id, ['conversation_id' => $thread->id]);
+            }
+
+            return $thread;
+        }, attempts: 3);
+
+        return redirect('/account/messages/'.$thread->id);
     }
 
     public function start(Request $request, int $listing, Marketplace $marketplace)

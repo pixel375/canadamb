@@ -21,6 +21,10 @@ final class MessagingExtensions
             return true;
         }
 
+        if ($thread->direct_kind !== null) {
+            return DirectMessaging::canReply($thread);
+        }
+
         if (! self::enabled() || ! $thread->inquiry_business_id) {
             return false;
         }

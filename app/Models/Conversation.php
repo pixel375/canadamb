@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable(['listing_id', 'buyer_id', 'seller_id', 'inquiry_key', 'inquiry_business_id', 'inquiry_job_id', 'inquiry_title'])]
+#[Fillable(['listing_id', 'buyer_id', 'seller_id', 'inquiry_key', 'inquiry_business_id', 'inquiry_job_id', 'inquiry_title', 'direct_kind'])]
 class Conversation extends Model
 {
     public function scopeForMember(Builder $query, int $id): Builder
@@ -24,7 +24,13 @@ class Conversation extends Model
 
     public function kindLabel(): string
     {
-        return $this->listing_id ? 'Marketplace' : ($this->inquiry_job_id ? 'Job inquiry' : 'Business inquiry');
+        return match (true) {
+            $this->listing_id !== null => 'Marketplace',
+            $this->direct_kind === 'official' => 'Official administrator',
+            $this->direct_kind === 'member' => 'Direct member',
+            $this->inquiry_job_id !== null => 'Job inquiry',
+            default => 'Business inquiry',
+        };
     }
 
     public function archiveVersion(int $member, int $latestMessage): string

@@ -87,7 +87,15 @@ class AccountExportController extends Controller
             $conversations->addSelect('inquiry_business_id', 'inquiry_job_id')
                 ->selectRaw('CASE WHEN buyer_id = ? THEN buyer_archived_at ELSE seller_archived_at END AS own_archived_at', [$member]);
         }
+        if (Schema::hasColumn('conversations', 'direct_kind')) {
+            $conversations->addSelect('direct_kind');
+        }
         $sections = ['conversation-metadata' => DB::query()->fromSub($conversations, 'export_records')];
+        if (Schema::hasTable('direct_message_preferences')) {
+            $preferences = DB::table('direct_message_preferences')->where('user_id', $member)
+                ->selectRaw('user_id AS export_id, member_messages, official_messages, updated_at');
+            $sections['direct-message-preferences'] = DB::query()->fromSub($preferences, 'export_records');
+        }
         $listingPhotos = DB::table('listing_media')->join('listings', 'listings.id', '=', 'listing_media.listing_id')
             ->where('listings.user_id', $member)->selectRaw('listing_media.id AS export_id, listing_media.listing_id, listing_media.position');
         $propertyPhotos = DB::table('property_photos')->join('property_listings', 'property_listings.id', '=', 'property_photos.property_listing_id')

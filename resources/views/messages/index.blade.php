@@ -16,7 +16,7 @@
             <form class="message-search" method="get" action="/account/messages" role="search">
                 @if($unreadOnly || $archived)<input type="hidden" name="view" value="{{ $archived ? 'archived' : 'unread' }}">@endif
                 <input type="search" name="q" maxlength="100" value="{{ $keyword }}" placeholder="Search conversations or names" aria-label="Search conversations">
-                @if(\App\Support\MessagingExtensions::enabled())<label class="message-kind-filter"><span>Conversation type</span><select name="kind"><option value="">All types</option>@foreach(['marketplace' => 'Marketplace', 'business' => 'Business inquiries', 'job' => 'Job inquiries'] as $key => $label)<option value="{{ $key }}" @selected($kind === $key)>{{ $label }}</option>@endforeach</select></label>@endif
+                @if(\App\Support\MessagingExtensions::enabled())<label class="message-kind-filter"><span>Conversation type</span><select name="kind"><option value="">All types</option>@foreach(['marketplace' => 'Marketplace', 'business' => 'Business inquiries', 'job' => 'Job inquiries'] + (\App\Support\DirectMessaging::enabled() ? ['member' => 'Direct member', 'official' => 'Official administrator'] : []) as $key => $label)<option value="{{ $key }}" @selected($kind === $key)>{{ $label }}</option>@endforeach</select></label>@endif
                 <label class="message-kind-filter"><span>My role</span><select name="role"><option value="">Any conversation</option><option value="sent" @selected(($filters['role'] ?? '') === 'sent')>I contacted someone</option><option value="received" @selected(($filters['role'] ?? '') === 'received')>Received inquiries</option></select></label>
                 <label class="message-kind-filter"><span>Sort</span><select name="sort"><option value="recent" @selected(($filters['sort'] ?? 'recent') === 'recent')>Recent activity</option><option value="oldest" @selected(($filters['sort'] ?? '') === 'oldest')>Oldest activity</option></select></label>
                 <button class="button button-primary" type="submit"><x-icon name="search" size="18"/> Search</button>
@@ -60,7 +60,7 @@
                         <span class="message-thread-copy">
                             <span class="message-thread-name">{{ $other->name }} @if($thread->blocked_by_me)<small class="field-note"> · Blocked</small>@endif</span>
                             <strong>{{ $thread->title() }}</strong>
-                            @if(\App\Support\MessagingExtensions::enabled())<span class="message-thread-kind">{{ $thread->kindLabel() }}</span>@endif
+                            @if(\App\Support\MessagingExtensions::enabled())<span class="message-thread-kind @if($thread->direct_kind === 'official') official-message-label @endif">{{ $thread->kindLabel() }}</span>@endif
                             @if($thread->latestMessage)
                                 <span class="message-thread-preview">{{ $thread->latestMessage->sender_id === $member ? 'You: ' : '' }}{{ \Illuminate\Support\Str::limit(\Illuminate\Support\Str::squish($thread->latestMessage->body), 100) }}</span>
                             @endif
