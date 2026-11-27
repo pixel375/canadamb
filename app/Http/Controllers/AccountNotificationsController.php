@@ -115,6 +115,7 @@ final class AccountNotificationsController extends Controller
         $ownerUnread = $ownerQuery ? (clone $ownerQuery)->whereNull('alert.read_at')->count() : 0;
         $ownerAlerts = $ownerQuery ? $ownerQuery->when(($filters['submission_view'] ?? null) === 'unread', fn ($query) => $query->whereNull('alert.read_at'))
             ->orderByRaw('CASE WHEN alert.read_at IS NULL THEN 0 ELSE 1 END')->orderByDesc('alert.id')->paginate(15, pageName: 'updates')->appends($filters) : null;
+        $ownerDestinations = $ownerAlerts ? OwnerNotifications::businessDestinations($ownerAlerts->items()) : [];
         $announcementQuery = Announcements::enabled() ? Announcements::visible($user->id) : null;
         $announcementUnread = $announcementQuery ? (clone $announcementQuery)->whereNull('receipt.read_at')->count() : 0;
         $announcements = $announcementQuery ? $announcementQuery->when(($filters['announcement_view'] ?? null) === 'unread', fn ($query) => $query->whereNull('receipt.read_at'))
@@ -136,7 +137,7 @@ final class AccountNotificationsController extends Controller
         $jobAlertsEnabled = JobSearches::enabled($site) && $preferences['job_summary'];
         $matchingSearches = $jobAlertsEnabled ? JobSearches::alertingSearchCount($user->id, $site) : 0;
 
-        return response()->view('account.notifications', compact('filters', 'counts', 'discussionsEnabled', 'recent', 'preferencesEnabled', 'preferences', 'jobAlertsEnabled', 'matchingSearches', 'directReplies', 'eventThreads', 'ownerEnabled', 'ownerAlerts', 'ownerUnread', 'replyUnread', 'pushEnabled', 'pushDelivery', 'pushKey', 'pushDevices', 'broadcastEnabled', 'broadcastOptedIn', 'announcements', 'announcementUnread'))
+        return response()->view('account.notifications', compact('filters', 'counts', 'discussionsEnabled', 'recent', 'preferencesEnabled', 'preferences', 'jobAlertsEnabled', 'matchingSearches', 'directReplies', 'eventThreads', 'ownerEnabled', 'ownerAlerts', 'ownerDestinations', 'ownerUnread', 'replyUnread', 'pushEnabled', 'pushDelivery', 'pushKey', 'pushDevices', 'broadcastEnabled', 'broadcastOptedIn', 'announcements', 'announcementUnread'))
             ->header('Cache-Control', 'private, no-store');
     }
 }

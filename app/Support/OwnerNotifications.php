@@ -92,7 +92,28 @@ final class OwnerNotifications
             });
     }
 
-    public static function destination(string $kind, ?int $target = null): string
+    public static function businessDestinations(iterable $alerts): array
+    {
+        $alerts = collect($alerts);
+        $result = [];
+        foreach (['job' => 'job_postings', 'business-update' => 'business_updates'] as $kind => $table) {
+            $ids = $alerts->where('kind', $kind)->pluck('target_id');
+            if ($ids->isEmpty()) {
+                continue;
+            }
+            $businesses = DB::table($table.' as record')->join('business_locations as branch', 'branch.id', '=', 'record.business_location_id')
+                ->whereIn('record.id', $ids)->pluck('branch.business_id', 'record.id');
+            foreach ($alerts->where('kind', $kind) as $alert) {
+                if (isset($businesses[$alert->target_id])) {
+                    $result[$alert->id] = self::destination($kind, (int) $alert->target_id, (int) $businesses[$alert->target_id]);
+                }
+            }
+        }
+
+        return $result;
+    }
+
+    public static function destination(string $kind, ?int $target = null, ?int $business = null): string
     {
         $base = self::TARGETS[$kind][3];
         if ($target === null) {
@@ -102,6 +123,9 @@ final class OwnerNotifications
         return match ($kind) {
             'listing' => $base.'/'.$target.'/history',
             'discussion', 'reply', 'event' => $base.'?reference='.$target,
+            'business-profile' => $base.'/'.$target,
+            'business-claim' => $base.'?claim_reference='.$target,
+            'job', 'business-update' => $business ? $base.'/'.$business.($kind === 'job' ? '/jobs' : '/updates').'?reference='.$target : $base,
             default => $base,
         };
     }

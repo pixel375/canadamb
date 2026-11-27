@@ -148,7 +148,7 @@ class BusinessController extends Controller
     {
         $user = $request->user()->id;
         $filters = $request->validate(['q' => 'nullable|string|max:100', 'role' => 'nullable|in:owner,manager,editor',
-            'claim_status' => 'nullable|in:pending,approved,rejected,withdrawn,superseded']);
+            'claim_status' => 'nullable|in:pending,approved,rejected,withdrawn,superseded', 'claim_reference' => 'nullable|integer|min:1']);
         $owned = Business::managedBy($user);
         $total = (clone $owned)->count();
         $businesses = $owned->when($filters['role'] ?? null, fn ($query, $role) => $query->managedBy($user, [$role]))
@@ -159,6 +159,7 @@ class BusinessController extends Controller
             ->where('business_claims.user_id', $user);
         $claimCounts = (clone $ownedClaims)->selectRaw('business_claims.status, COUNT(*) as total')->groupBy('business_claims.status')->pluck('total', 'status');
         $claims = $ownedClaims->when($filters['claim_status'] ?? null, fn ($query, $status) => $query->where('business_claims.status', $status))
+            ->when($filters['claim_reference'] ?? null, fn ($query, $id) => $query->where('business_claims.id', $id))
             ->latest('business_claims.id')->paginate(15, ['business_claims.id', 'businesses.name', 'business_claims.status', 'business_claims.created_at'], 'claims_page')->withQueryString();
 
         return view('business.mine', compact('businesses', 'claims', 'filters', 'total', 'claimCounts'));
@@ -272,12 +273,13 @@ class BusinessController extends Controller
         $item = $this->managed($request, $business);
         $site = $request->attributes->get('site');
         $filters = $request->validate(['status' => 'nullable|in:pending,approved,rejected,withdrawn', 'q' => 'nullable|string|max:100',
-            'type' => 'nullable|in:announcement,promotion,update', 'branch' => 'nullable|integer|min:1', 'sort' => 'nullable|in:newest,oldest']);
+            'type' => 'nullable|in:announcement,promotion,update', 'branch' => 'nullable|integer|min:1', 'reference' => 'nullable|integer|min:1', 'sort' => 'nullable|in:newest,oldest']);
         $branches = $item->locations()->with('location')->when($site->location_id, fn ($query, $id) => $query->where('location_id', $id))->orderBy('id')->get();
         $owned = BusinessUpdate::with('branch.location')->whereIn('business_location_id', $branches->pluck('id'))
             ->when($filters['branch'] ?? null, fn ($query, $id) => $query->where('business_location_id', $id));
         $counts = (clone $owned)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
         $updates = $owned->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
+            ->when($filters['reference'] ?? null, fn ($query, $id) => $query->whereKey($id))
             ->when($filters['type'] ?? null, fn ($query, $type) => $query->where('type', $type))
             ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'body']))
             ->orderBy('id', ($filters['sort'] ?? 'newest') === 'oldest' ? 'asc' : 'desc')->paginate(20)->withQueryString();

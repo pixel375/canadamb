@@ -98,7 +98,7 @@
                             <div>
                                 <h3>{{ \App\Support\OwnerNotifications::description($alert->kind, $alert->decision) }}</h3>
                                 <p>Reference #{{ $alert->target_id }} · {{ \Illuminate\Support\Carbon::parse($alert->created_at)->diffForHumans() }}{{ $alert->read_at ? '' : ' · Unread' }}</p>
-                                <a class="text-link" href="{{ \App\Support\OwnerNotifications::destination($alert->kind, (int) $alert->target_id) }}">{{ in_array($alert->kind, ['listing', 'discussion', 'reply', 'event'], true) ? 'View submission status' : 'Manage my submissions' }}</a>
+                                <a class="text-link" href="{{ $ownerDestinations[$alert->id] ?? \App\Support\OwnerNotifications::destination($alert->kind, (int) $alert->target_id) }}">{{ in_array($alert->kind, ['listing', 'discussion', 'reply', 'event', 'job', 'business-update', 'business-profile', 'business-claim'], true) ? 'View submission status' : 'Manage my submissions' }}</a>
                                 @if(in_array($alert->decision, ['rejected', 'removed', 'changes_requested', 'superseded'], true))<a class="text-link" href="/contact">Contact support about this decision</a>@endif
                             </div>
                             @if(!$alert->read_at)<form method="post" action="/account/notifications/updates/{{ $alert->id }}/read">@csrf<button class="button button-outline">Mark as read</button></form>@endif

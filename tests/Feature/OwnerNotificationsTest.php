@@ -101,7 +101,9 @@ class OwnerNotificationsTest extends TestCase
         $url = 'https://canadamb.ca/admin/jobs/'.$job->id;
         $this->actingAs($admin)->post($url, ['action' => 'approve', 'version' => $job->fresh()->reviewVersion()])->assertRedirect();
         $this->assertDatabaseHas('owner_notifications', ['user_id' => $member->id, 'kind' => 'job', 'decision' => 'approved']);
-        $this->actingAs($member)->get('https://brandonmb.ca/account/notifications')->assertOk()->assertSee('Your job posting was approved.');
+        $this->actingAs($member)->get('https://brandonmb.ca/account/notifications')->assertOk()->assertSee('Your job posting was approved.')
+            ->assertSee('href="/account/businesses/'.$business->id.'/jobs?reference='.$job->id.'"', false);
+        $this->get('https://brandonmb.ca/account/businesses/'.$business->id.'/jobs?reference='.$job->id)->assertOk()->assertSee($job->title);
         $this->actingAs($other)->get('https://canadamb.ca/account/notifications')->assertOk()->assertDontSee('Your job posting was approved.');
         $job->forceFill(['closing_on' => today('America/Winnipeg')->subDay()->toDateString()])->save();
         $this->artisan('job-postings:expire')->assertSuccessful();
@@ -127,7 +129,8 @@ class OwnerNotificationsTest extends TestCase
         $this->assertDatabaseCount('owner_notifications', 1);
         $this->assertDatabaseHas('owner_notifications', ['kind' => 'business-profile', 'user_id' => $owner->id, 'target_id' => $business->id, 'decision' => 'rejected']);
         $this->actingAs($owner)->get('https://canadamb.ca/account/notifications')->assertOk()
-            ->assertSee('Your business profile was not approved.')->assertDontSee('Private review detail.');
+            ->assertSee('Your business profile was not approved.')->assertDontSee('Private review detail.')
+            ->assertSee('href="/account/businesses/'.$business->id.'"', false);
         $this->get('https://brandonmb.ca/account/notifications')->assertOk()->assertDontSee('Your business profile was not approved.');
         $this->actingAs($manager)->get('https://canadamb.ca/account/notifications')->assertOk()->assertDontSee('Your business profile was not approved.');
         $business->members()->detach($owner->id);
