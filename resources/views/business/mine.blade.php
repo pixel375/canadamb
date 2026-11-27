@@ -6,6 +6,7 @@
         <?php $site = request()->attributes->get('site'); ?>
         @if($total > 0)
             <form method="get" action="/account/businesses" class="panel form-stack mb-4">
+                @if(filled($filters['claim_reference'] ?? null))<input type="hidden" name="claim_reference" value="{{ $filters['claim_reference'] }}">@endif
                 @if(filled($filters['claim_status'] ?? null))<input type="hidden" name="claim_status" value="{{ $filters['claim_status'] }}">@endif
                 <div class="form-grid"><label>Search managed profiles<input type="search" name="q" maxlength="100" value="{{ $filters['q'] ?? '' }}"></label><label>My role<select name="role"><option value="">All roles</option>@foreach(['owner', 'manager', 'editor'] as $role)<option value="{{ $role }}" @selected(($filters['role'] ?? '') === $role)>{{ ucfirst($role) }}</option>@endforeach</select></label></div>
                 <div class="inline-actions"><button class="button button-primary">Filter profiles</button><a class="button button-outline" href="/account/businesses">Reset filters</a></div>
@@ -42,10 +43,10 @@
                 <form method="get" action="/account/businesses" class="form-stack mb-4">
                     @if(filled($filters['q'] ?? null))<input type="hidden" name="q" value="{{ $filters['q'] }}">@endif
                     @if(filled($filters['role'] ?? null))<input type="hidden" name="role" value="{{ $filters['role'] }}">@endif
-                    <label>Claim status<select name="claim_status"><option value="">All claims ({{ $claimCounts->sum() }})</option>@foreach(['pending', 'approved', 'rejected', 'withdrawn', 'superseded'] as $status)<option value="{{ $status }}" @selected(($filters['claim_status'] ?? '') === $status)>{{ ucfirst($status) }} ({{ $claimCounts[$status] ?? 0 }})</option>@endforeach</select></label>
-                    <button class="button button-outline">Filter claims</button>
+                    <label>Claim reference<input type="number" name="claim_reference" min="1" value="{{ $filters['claim_reference'] ?? '' }}"></label><label>Claim status<select name="claim_status"><option value="">All claims ({{ $claimCounts->sum() }})</option>@foreach(['pending', 'approved', 'rejected', 'withdrawn', 'superseded'] as $status)<option value="{{ $status }}" @selected(($filters['claim_status'] ?? '') === $status)>{{ ucfirst($status) }} ({{ $claimCounts[$status] ?? 0 }})</option>@endforeach</select></label>
+                    <div class="inline-actions"><button class="button button-outline">Filter claims</button><a class="text-link" href="/account/businesses">Reset filters</a></div>
                 </form>
-                @forelse($claims as $claim)<div class="item-row"><div><h3>{{ $claim->name }}</h3><p>Submitted {{ \Illuminate\Support\Carbon::parse($claim->created_at)->format('M j, Y') }}</p></div><div class="form-stack"><span class="member-listing-status" data-status="{{ $claim->status }}">{{ ucfirst($claim->status) }}</span>
+                @forelse($claims as $claim)<div class="item-row"><div><h3>{{ $claim->name }}</h3><p>Reference #{{ $claim->id }} · Submitted {{ \Illuminate\Support\Carbon::parse($claim->created_at)->format('M j, Y') }}</p></div><div class="form-stack"><span class="member-listing-status" data-status="{{ $claim->status }}">{{ ucfirst($claim->status) }}</span>
                     @if($claim->status === 'pending')<form method="post" action="/account/business-claims/{{ $claim->id }}/withdraw">@csrf<button class="button button-outline">Withdraw claim</button></form>@endif
                     </div></div>@empty<p>No claims match this status.</p>@endforelse
                 {{ $claims->links() }}

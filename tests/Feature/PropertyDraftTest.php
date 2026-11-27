@@ -174,7 +174,10 @@ class PropertyDraftTest extends TestCase
         ])->assertRedirect();
         $this->assertSame('changes_requested', $draft->fresh()->status);
 
-        $this->actingAs($owner)->delete($path)->assertRedirect();
+        $this->actingAs($owner)->delete($path)->assertSessionHasErrors('version');
+        $this->delete($path, ['version' => str_repeat('0', 64)])->assertConflict();
+        $this->assertSame('changes_requested', $draft->fresh()->status);
+        $this->delete($path, ['version' => $draft->fresh()->contentVersion()])->assertRedirect()->assertSessionHasNoErrors();
         $this->assertSame('archived', $draft->fresh()->status);
         $history = 'https://brandonmb.ca/account/properties/history';
         $this->get($history.'?reference='.$draft->id)->assertOk()->assertSee($draft->title)->assertDontSee($draft->description)->assertDontSee('Create similar draft');

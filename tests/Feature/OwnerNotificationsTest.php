@@ -7,6 +7,7 @@ use App\Models\CommunityThread;
 use App\Models\JobPosting;
 use App\Models\Listing;
 use App\Models\Location;
+use App\Models\PropertyListing;
 use App\Models\User;
 use App\Support\OwnerNotifications;
 use Database\Seeders\DatabaseSeeder;
@@ -112,6 +113,29 @@ class OwnerNotificationsTest extends TestCase
         $this->actingAs($member)->get('https://canadamb.ca/account/notifications')->assertOk()->assertSee('Your job posting expired.');
         $business->members()->detach($member->id);
         $this->get('https://canadamb.ca/account/notifications')->assertOk()->assertDontSee('Your job posting expired.');
+    }
+
+    public function test_property_alerts_link_to_current_draft_or_archived_history(): void
+    {
+        config(['network.owner_notifications' => true, 'network.property_drafts' => true]);
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $item = PropertyListing::create(['owner_id' => $owner->id, 'location_id' => Location::where('slug', 'brandon')->sole()->id,
+            'title' => 'Private property review fixture', 'description' => 'Private property details for review.', 'transaction' => 'sale',
+            'property_type' => 'house', 'seller_type' => 'owner', 'price_cents' => 20000000]);
+        $item->forceFill(['status' => 'reviewed'])->save();
+        OwnerNotifications::record($owner->id, 'property', $item->id, 'reviewed');
+        $path = '/account/properties/'.$item->id;
+        foreach (['https://canadamb.ca', 'https://brandonmb.ca'] as $host) {
+            $this->actingAs($owner)->get($host.'/account/notifications')->assertOk()->assertSee('href="'.$path.'"', false);
+            $this->get($host.$path)->assertOk()->assertSee($item->title);
+        }
+        $this->actingAs($other)->get('https://brandonmb.ca'.$path)->assertNotFound();
+        $item->forceFill(['status' => 'archived'])->save();
+        $history = '/account/properties/history?reference='.$item->id;
+        $this->actingAs($owner)->get('https://brandonmb.ca/account/notifications')->assertOk()->assertSee('href="'.$history.'"', false);
+        $this->get('https://brandonmb.ca'.$history)->assertOk()->assertSee($item->title)->assertDontSee($item->description);
+        $this->actingAs($other)->get('https://brandonmb.ca'.$history)->assertOk()->assertDontSee($item->title);
     }
 
     public function test_business_profile_review_alerts_are_visible_only_to_current_owners_in_scope(): void

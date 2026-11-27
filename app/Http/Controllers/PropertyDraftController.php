@@ -279,12 +279,10 @@ class PropertyDraftController extends Controller
 
     public function archive(Request $request, int $property, ListingPhotos $photos)
     {
-        $data = $request->validate(['version' => 'nullable|string|size:64']);
-        $paths = DB::transaction(function () use ($request, $property, $data) {
+        $paths = DB::transaction(function () use ($request, $property) {
             $item = $this->owned($request)->lockForUpdate()->findOrFail($property);
-            if (isset($data['version'])) {
-                abort_unless(hash_equals($item->contentVersion(), $data['version']), 409, 'Draft changed. Reload before archiving.');
-            }
+            $data = $request->validate(['version' => 'required|string|size:64']);
+            abort_unless(hash_equals($item->contentVersion(), $data['version']), 409, 'Draft changed. Reload before archiving.');
             abort_unless(in_array($item->status, ['draft', 'changes_requested', 'submitted', 'reviewed'], true), 409);
             $old = $item->photos()->get(['image_path', 'thumbnail_path'])->toArray();
             $item->photos()->delete();

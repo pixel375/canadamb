@@ -92,7 +92,7 @@ final class OwnerNotifications
             });
     }
 
-    public static function businessDestinations(iterable $alerts): array
+    public static function recordDestinations(iterable $alerts): array
     {
         $alerts = collect($alerts);
         $result = [];
@@ -106,6 +106,19 @@ final class OwnerNotifications
             foreach ($alerts->where('kind', $kind) as $alert) {
                 if (isset($businesses[$alert->target_id])) {
                     $result[$alert->id] = self::destination($kind, (int) $alert->target_id, (int) $businesses[$alert->target_id]);
+                }
+            }
+        }
+
+        $properties = $alerts->where('kind', 'property');
+        if ($properties->isNotEmpty()) {
+            $statuses = DB::table('property_listings')->whereIn('id', $properties->pluck('target_id'))->pluck('status', 'id');
+            foreach ($properties as $alert) {
+                $status = $statuses[$alert->target_id] ?? null;
+                if ($status === 'archived') {
+                    $result[$alert->id] = '/account/properties/history?reference='.$alert->target_id;
+                } elseif (in_array($status, ['draft', 'submitted', 'changes_requested', 'reviewed'], true)) {
+                    $result[$alert->id] = '/account/properties/'.$alert->target_id;
                 }
             }
         }

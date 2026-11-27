@@ -315,6 +315,8 @@ class BusinessDirectoryTest extends TestCase
         $this->get('https://brandonmb.ca/account/businesses?q=Repair&role=owner')->assertOk()->assertSee('Manage jobs')->assertSee('1 matching');
         $this->get('https://brandonmb.ca/account/businesses?role=editor')->assertOk()->assertSee('No managed profiles match your filters.')->assertDontSee('Manage jobs');
         $this->get('https://brandonmb.ca/account/businesses?claim_status=withdrawn')->assertOk()->assertSee('No claims match this status.');
+        $this->get('https://brandonmb.ca/account/businesses?claim_reference='.$claimId)->assertOk()->assertSee('Reference #'.$claimId);
+        $this->get('https://brandonmb.ca/account/businesses?claim_reference='.$competing)->assertOk()->assertDontSee('Reference #'.$competing);
         $this->actingAs($competitor)->get('https://brandonmb.ca/account/businesses?claim_status=withdrawn')->assertOk()->assertSee('Test Repair')->assertDontSee('Manage jobs');
         $this->actingAs($claimant);
         $this->get("https://brandonmb.ca/account/businesses/$business->id")->assertOk()->assertSee('Recent business updates')->assertSee('Workshop opens Saturday')->assertSee('Pending');
