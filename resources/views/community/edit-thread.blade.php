@@ -1,6 +1,6 @@
 <x-layouts.site title="Edit discussion">
     <div class="container page-shell listing-editor">
-        <div class="page-intro"><div><a class="text-link" href="/account/discussions">My discussions</a><h1>Edit discussion</h1><p>{{ $item->location?->name ?? 'Manitoba' }} · {{ ucfirst($item->status) }}</p></div></div>
+        <div class="page-intro"><div><a class="text-link" href="/account/discussions?reference={{ $item->id }}">Back to discussion</a><h1>Edit discussion</h1><p>{{ $item->location?->name ?? 'Manitoba' }} · {{ ucfirst($item->status) }}</p></div></div>
         <p class="notice">Changed discussions return to moderation. Published replies will be hidden while the discussion is under review and restored if it is approved again. Location cannot be changed.</p>
         <form method="post" action="/account/discussions/{{ $item->id }}" class="panel form-stack">@csrf @method('PUT')
             <input type="hidden" name="version" value="{{ old('version', $item->contentVersion()) }}">
@@ -10,7 +10,7 @@
             @if(old('version') && old('version') !== $item->contentVersion())
                 <p role="alert">This discussion changed while the form was open. <a href="/account/discussions/{{ $item->id }}/edit">Reload editor</a> before saving.</p>
             @endif
-            <button class="button button-primary">Save for review</button>
+            <div class="inline-actions"><button class="button button-primary">Save for review</button><a class="button button-outline" href="/account/discussions?reference={{ $item->id }}">Cancel</a></div>
         </form>
     </div>
 </x-layouts.site>

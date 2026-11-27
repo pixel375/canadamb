@@ -123,18 +123,18 @@ class CommunityForumController extends Controller
             'reference' => 'nullable|integer|min:1']);
         $owned = CommunityThread::where('author_id', $request->user()->id)
             ->when($site->location_id, fn ($query, $id) => $query->where('location_id', $id));
-        $counts = (clone $owned)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
-        $items = $owned->with('location')->withCount(['replies' => fn ($query) => $query->where('status', 'approved')])
-            ->when($filters['reference'] ?? null, fn ($query, $id) => $query->whereKey($id))
-            ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
+        $owned->when($filters['reference'] ?? null, fn ($query, $id) => $query->whereKey($id))
             ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'body']))
             ->when($filters['category'] ?? null, fn ($query, $category) => $query->where('category', $category));
+        $counts = (clone $owned)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
+        $items = $owned->with('location')->withCount(['replies' => fn ($query) => $query->where('status', 'approved')])
+            ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status));
         match ($filters['sort'] ?? 'newest') {
             'oldest' => $items->oldest('id'),
             'replies' => $items->orderByDesc('replies_count')->latest('id'),
             default => $items->latest('id'),
         };
-        $items = $items->paginate(18)->withQueryString();
+        $items = $items->paginate(18)->appends($filters);
 
         $linkedEvents = EventDiscussions::eventIdsForThreads($items->pluck('id')->all());
 
@@ -178,11 +178,11 @@ class CommunityForumController extends Controller
 
     public function withdraw(Request $request, int $thread)
     {
-        $data = $request->validate(['version' => 'nullable|string|size:64']);
-        DB::transaction(function () use ($request, $thread, $data) {
+        DB::transaction(function () use ($request, $thread) {
             $item = $this->ownedThread($request)->lockForUpdate()->findOrFail($thread);
             abort_if($item->locked || ! in_array($item->status, ['pending', 'approved', 'rejected'], true), 409);
-            if (isset($data['version']) && ! hash_equals($item->contentVersion(), $data['version'])) {
+            $data = $request->validate(['version' => 'required|string|size:64']);
+            if (! hash_equals($item->contentVersion(), $data['version'])) {
                 throw ValidationException::withMessages(['version' => 'This discussion changed. Reload before withdrawing.']);
             }
             $item->forceFill(['status' => 'withdrawn', 'pinned' => false])->save();
@@ -207,13 +207,13 @@ class CommunityForumController extends Controller
         $filters = $request->validate(['status' => ['nullable', Rule::in($statuses)], 'q' => 'nullable|string|max:100',
             'sort' => 'nullable|in:newest,oldest', 'thread' => 'nullable|integer|min:1', 'reference' => 'nullable|integer|min:1']);
         $owned = $this->ownedReplyQuery($request);
+        $owned->when($filters['reference'] ?? null, fn ($query, $id) => $query->whereKey($id))
+            ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['body']))
+            ->when($filters['thread'] ?? null, fn ($query, $thread) => $query->where('thread_id', $thread)->whereHas('thread', fn ($parent) => $parent->where('status', 'approved')));
         $counts = (clone $owned)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
         $items = $owned->with('thread:id,title,status,locked')
-            ->when($filters['reference'] ?? null, fn ($query, $id) => $query->whereKey($id))
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
-            ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['body']))
-            ->when($filters['thread'] ?? null, fn ($query, $thread) => $query->where('thread_id', $thread)->whereHas('thread', fn ($parent) => $parent->where('status', 'approved')))
-            ->orderBy('id', ($filters['sort'] ?? 'newest') === 'oldest' ? 'asc' : 'desc')->paginate(20)->withQueryString();
+            ->orderBy('id', ($filters['sort'] ?? 'newest') === 'oldest' ? 'asc' : 'desc')->paginate(20)->appends($filters);
 
         return view('community.owned-replies', compact('items', 'counts', 'statuses', 'filters'));
     }

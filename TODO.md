@@ -437,3 +437,7 @@ Keep this queue updated; do not interrupt independent implementation for these a
 - 2026-11-27 c1fd694a backend 46080351799 reproduced only the same six notification Blade failures, no additional failures. Corrected rendering commit 67f48532 pushed, exact CI pending.
 
 - H04/M02 employer job updates and withdrawals check current scoped record and lifecycle before validating fields under lock. Withdrawal now requires the displayed review version (existing forms supply it); missing/stale versions cannot hide a changed posting. Job editor Back/Cancel links return to exact posting reference; employer paging carries validated filters only. Regression extends missing withdrawal version coverage. No schema/activation changes. Exact CI pending.
+
+- 2026-11-27 67f48532 backend 46080495960/browser 46080496016 and dcb1cd0e backend 46080542631/browser 46080542641 green. Exact deployment 46080860097 all five jobs passed; independent DB/PWA 140779468110/140779467985; retention 140779514431 active dcb1cd0e rollback 34d607a4, two releases/backups, 11023 reclaimed, both actual password forms verified.
+
+- C03/C09/M02 discussion withdrawal now requires current displayed version after scoped owner and lifecycle check under lock. Discussion/reply status counts use active reference, text, category/parent filters independently of selected status; pagination carries validated parameters. Discussion editor Back/Cancel return to exact owned record. Updated withdrawal tests including linked events. No migrations or flags. Exact CI pending.

@@ -130,7 +130,7 @@ class ContentReportsTest extends TestCase
         $this->get($eventUrl)->assertSee('Join event discussion');
         $this->actingAs($owner)->post('https://brandonmb.ca/account/events/'.$event->id.'/cancel', ['version' => $event->fresh()->contentVersion()])->assertRedirect()->assertSessionHasNoErrors();
         $this->get($threadUrl)->assertSee('This event has been cancelled.');
-        $this->post('https://brandonmb.ca/account/discussions/'.$thread->id.'/withdraw')->assertRedirect();
+        $this->post('https://brandonmb.ca/account/discussions/'.$thread->id.'/withdraw', ['version' => $thread->fresh()->contentVersion()])->assertRedirect();
         $this->get($eventUrl)->assertOk()->assertDontSee('Join event discussion');
     }
 

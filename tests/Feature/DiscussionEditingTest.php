@@ -102,6 +102,7 @@ class DiscussionEditingTest extends TestCase
         $this->actingAs($owner)->get($url.'/edit')->assertConflict();
         $this->post($url.'/withdraw')->assertConflict();
         $thread->forceFill(['locked' => false])->save();
+        $this->post($url.'/withdraw')->assertSessionHasErrors('version');
         $this->post($url.'/withdraw', ['version' => $data['version']])->assertSessionHasErrors('version');
         $this->post($url.'/withdraw', ['version' => $thread->fresh()->contentVersion()])->assertRedirect();
         $this->get($public)->assertNotFound();
