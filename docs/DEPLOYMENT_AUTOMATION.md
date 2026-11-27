@@ -109,3 +109,5 @@ Avoid repeated long manual SSH/SFTP commands on every change while preserving La
 ## Relevant Hostinger documentation
 - https://www.hostinger.com/support/1583302-how-to-deploy-a-git-repository-in-hostinger/
 - https://www.hostinger.com/support/1583465-how-to-set-up-a-cron-job-at-hostinger/
+
+Temporary allowlist configuration copies are removed only after the same run passes private and external access checks and deployment health. Temporary restore-test SQL is removed only after the same run verifies the checksum and restores successfully to isolated MariaDB. Failed maintenance evidence is retained for reconciliation; routine deployment cleanup never guesses at its contents.

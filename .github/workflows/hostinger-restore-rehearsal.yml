@@ -44,6 +44,8 @@ jobs:
           site="$HOME/domains/canadamb.ca"
           app="$site/canadamb-app"
           source="$app/source"
+          exec 8>"$app/update.lock"
+          flock -w 90 8
           old=$(readlink -e "$app/current")
           [[ "$old" == "$app/releases/"* && -s "$old/artisan" ]] || exit 1
           [[ ! -e "$old/storage/framework/down" && ! -e "$app/update.pause" ]] || exit 1
@@ -52,7 +54,7 @@ jobs:
           git -C "$source" merge-base --is-ancestor "$commit" refs/remotes/origin/main
           scratch="$site/.builds/restore-rehearsal-$run_id"
           backups="$app/shared/backups/restore-rehearsal-$run_id"
-          [[ ! -e "$scratch" && ! -e "$backups" && ! -L "$scratch" && ! -L "$backups" ]] || exit 1
+          [[ ! -e "$scratch" && ! -e "$backups" && ! -L "$scratch" && ! -L "$backups" && ! -L "$app/shared/backups" ]] || exit 1
           install -d -m 700 "$scratch" "$backups"
           git -C "$source" show "$commit:deploy/hostinger-backup.php" > "$scratch/backup.php"
           [[ "$(git -C "$source" hash-object "$scratch/backup.php")" == "$(git -C "$source" rev-parse "$commit:deploy/hostinger-backup.php")" ]] || exit 1
@@ -98,4 +100,25 @@ jobs:
             exit 1
           }
           echo "ACTUAL PRODUCTION BACKUP RESTORE PASSED: tables=$tables; account_count=$accounts; listing_count=$listings; verified_network_hosts=$domains"
-          echo "The temporary runner copy and MariaDB container will be destroyed; the private backup remains on Hostinger."
+          # Retire only this run's temporary dump after successful isolated restoration.
+          "${SSH[@]}" "$SSH_USER@$SSH_HOST" bash -se -- "$GITHUB_RUN_ID" "$actual" <<'REMOTE'
+          set -Eeuo pipefail
+          run_id=$1; expected=$2
+          [[ "$run_id" =~ ^[0-9]+$ && "$expected" =~ ^[a-f0-9]{64}$ ]] || exit 1
+          app="$HOME/domains/canadamb.ca/canadamb-app"
+          exec 8>"$app/update.lock"
+          flock -w 90 8
+          backup="$app/shared/backups/restore-rehearsal-$run_id"
+          [[ -d "$backup" && ! -L "$backup" && "$(readlink -e "$backup")" == "$backup" && ! -e "$app/update.pause" ]] || exit 1
+          [[ "$(find -P "$backup" -mindepth 1 -maxdepth 1 -printf '%f\n' | LC_ALL=C sort)" == 
+checksums.sha256\nu713153343_canadamb.sql' ]] || exit 1
+          for file in checksums.sha256 u713153343_canadamb.sql; do
+            [[ -s "$backup/$file" && -f "$backup/$file" && ! -L "$backup/$file" && "$(stat -c %h "$backup/$file")" == 1 ]] || exit 1
+          done
+          [[ "$(cat "$backup/checksums.sha256")" == "$(sha256sum "$backup/u713153343_canadamb.sql")" ]] || exit 1
+          [[ "$(sha256sum "$backup/u713153343_canadamb.sql" | cut -d' ' -f1)" == "$expected" ]] || exit 1
+          rm -- "$backup/checksums.sha256" "$backup/u713153343_canadamb.sql"
+          rmdir -- "$backup"
+          echo 'Verified temporary rehearsal dump retired; retained deployment backups unchanged.'
+          REMOTE
+          echo 'Temporary runner copy and MariaDB container will be destroyed.'
