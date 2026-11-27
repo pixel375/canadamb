@@ -22,6 +22,11 @@ final class DirectMessaging
         return ['member_messages' => (bool) ($row->member_messages ?? false), 'official_messages' => (bool) ($row->official_messages ?? false)];
     }
 
+    public static function version(array $preferences): string
+    {
+        return hash('sha256', json_encode($preferences, JSON_THROW_ON_ERROR));
+    }
+
     public static function allows(User $sender, User $recipient, string $kind): bool
     {
         if (! self::enabled() || $sender->id === $recipient->id || ! $sender->hasVerifiedEmail() || ! $recipient->hasVerifiedEmail()) {

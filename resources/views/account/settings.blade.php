@@ -45,6 +45,8 @@
                 <h2>Direct messaging preferences</h2>
                 <p>Choose whether verified members and official CanadaMB administrators may contact you directly. Both are off by default. Changing these preferences does not delete existing history.</p>
                 <form method="post" action="/account/messages/preferences" class="form-stack">@csrf
+                    <input type="hidden" name="version" value="{{ \App\Support\DirectMessaging::version($directPreferences) }}">
+                    @error('version')<p role="alert">{{ $message }} <a href="/account/settings">Reload settings</a></p>@enderror
                     <label>Direct member messages<select name="member_messages"><option value="0" @selected(!$directPreferences['member_messages'])>Do not accept</option><option value="1" @selected($directPreferences['member_messages'])>Accept</option></select></label>
                     <label>Official administrator messages<select name="official_messages"><option value="0" @selected(!$directPreferences['official_messages'])>Do not accept</option><option value="1" @selected($directPreferences['official_messages'])>Accept</option></select></label>
                     <button class="button button-primary">Save messaging preferences</button>

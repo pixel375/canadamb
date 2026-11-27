@@ -26,6 +26,7 @@
                     </div>
                 </details>
             </header>
+            @if($thread->direct_kind === 'official')<p class="official-chat-note">Started by a CanadaMB administrator. Staff will never ask for your password or payment credentials.</p>@endif
             <div class="chat-history" aria-label="Messages in chronological order" data-chat-history tabindex="0">
                 <nav class="chat-history-nav" aria-label="Conversation history">
                     @if($messages->nextPageUrl())<a class="text-link" data-chat-older href="{{ $messages->nextPageUrl() }}">Older messages</a>@endif

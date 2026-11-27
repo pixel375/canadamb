@@ -1960,3 +1960,8 @@ body.chat-page { display:flex; flex-direction:column; height:var(--chat-viewport
 .chat-page .chat-history { overflow-anchor:none; }
 .chat-page .chat-composer { max-height:60%; overflow-y:auto; overscroll-behavior:contain; }
 @media(max-height:430px) { .chat-page .chat-heading { padding-block:5px; } .chat-page .chat-composer { max-height:68%; } }
+
+/* This label is derived from server-owned conversation type, never member text. */
+.official-message-label { display:inline-flex; align-self:flex-start; color:var(--primary)!important; font-weight:750; border:1px solid var(--primary); border-radius:6px; padding:2px 7px; max-width:100%; }
+.chat-heading-copy .official-message-label { font-size:.7rem; }
+.official-chat-note { flex-shrink:0; padding:6px 14px; border-bottom:1px solid var(--border); font-size:.75rem; color:var(--muted); }

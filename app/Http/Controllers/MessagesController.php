@@ -104,10 +104,13 @@ class MessagesController extends Controller
     public function preferences(Request $request)
     {
         abort_unless(DirectMessaging::enabled(), 404);
-        $data = $request->validate(['member_messages' => 'required|boolean', 'official_messages' => 'required|boolean']);
+        $data = $request->validate(['member_messages' => 'required|boolean', 'official_messages' => 'required|boolean', 'version' => 'required|string|size:64']);
         $id = $request->user()->id;
         DB::transaction(function () use ($id, $data) {
             User::lockForUpdate()->findOrFail($id);
+            if (! hash_equals(DirectMessaging::version(DirectMessaging::preferences($id)), $data['version'])) {
+                throw ValidationException::withMessages(['version' => 'Your messaging preferences changed. Reload settings before saving.']);
+            }
             DB::table('direct_message_preferences')->updateOrInsert(['user_id' => $id], [
                 'member_messages' => (bool) $data['member_messages'], 'official_messages' => (bool) $data['official_messages'], 'updated_at' => now(),
             ]);

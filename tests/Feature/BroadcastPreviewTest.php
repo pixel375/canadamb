@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Business;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
@@ -74,6 +75,9 @@ class BroadcastPreviewTest extends TestCase
         $this->post($consent, ['opted_in' => 1])->assertRedirect('/account/notifications');
         $this->post($url, $draft)->assertForbidden();
         $this->actingAs($admin)->post($url, $draft)->assertOk()->assertViewHas('count', 1)->assertSee('Nothing was sent')->assertDontSee($member->email);
+        $business = Business::create(['slug' => 'announcement-owner-fixture', 'name' => 'Announcement owner fixture', 'category' => 'services', 'status' => 'active']);
+        $business->members()->attach($member->id, ['role' => 'owner']);
+        $this->post($url, array_replace($draft, ['audience' => 'business-owners']))->assertOk()->assertViewHas('count', 1);
         $this->post($url, array_replace($draft, ['audience' => 'selected', 'member_ids' => (string) $other->id]))->assertOk()->assertViewHas('count', 0);
         $this->post($url, array_replace($draft, ['audience' => 'selected', 'member_ids' => $member->id.','.$member->id]))->assertOk()->assertViewHas('count', 1);
         $this->assertDatabaseHas('audit_logs', ['action' => 'broadcast.previewed', 'actor_id' => $admin->id]);
