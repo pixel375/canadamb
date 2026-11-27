@@ -47,7 +47,7 @@ class MarketplaceSearchesTest extends TestCase
         $base = 'https://brandonmb.ca/account/marketplace-searches';
         $filters = ['name' => 'My furniture', 'q' => 'Oak', 'category' => 'furniture', 'max_price' => '50', 'location' => 'elkhorn'];
         $this->actingAs($member)->post($base, $filters)->assertNotFound();
-        config(['network.marketplace_searches' => true, 'network.extended_messaging' => true, 'network.commercial_planning_records' => true, 'network.broadcast_previews' => true]);
+        config(['network.marketplace_searches' => true, 'network.extended_messaging' => true, 'network.commercial_planning_records' => true, 'network.broadcast_previews' => true, 'network.push_devices' => true]);
         $inventory = StagedFeatures::inspect();
         foreach ($inventory as $feature) {
             $this->assertSame([], $feature['problems'], $feature['label']);
