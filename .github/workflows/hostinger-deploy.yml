@@ -192,6 +192,12 @@ jobs:
           git -C "$app/source" cat-file -e "$sha^{commit}"
           git -C "$app/source" merge-base --is-ancestor "$sha" refs/remotes/origin/main
 
+          # Repair/verify retention before creating another complete release or
+          # snapshot. A failed or unknown prior backup must not accumulate
+          # more releases on an inode-limited shared hosting account.
+          git -C "$app/source" show "$sha:ops/hostinger-release-retention.sh" |
+            bash -s -- true
+
           # Do not extract non-asset paths or links.
           tar -tzf "$incoming/canadamb-build.tgz" | while IFS= read -r item; do
             [[ "$item" == manifest.json || "$item" == source-commit ||
@@ -257,7 +263,7 @@ jobs:
     uses: ./.github/workflows/pwa-external-installability-smoke.yml
 
   retain_releases:
-    name: Retain active release plus one rollback copy
+    name: Retain two releases and two verified backup sets
     needs: [verify_private, verify_public]
     uses: ./.github/workflows/hostinger-release-retention.yml
     with:
