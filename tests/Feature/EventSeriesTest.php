@@ -66,7 +66,7 @@ class EventSeriesTest extends TestCase
             ->assertSee('UID:event-'.$events[0]->id.'@canadamb.ca')->assertDontSee('UID:event-'.$events[1]->id.'@canadamb.ca');
         $this->get($url.'/calendar?month=2026-04')->assertOk()->assertDontSee('BEGIN:VEVENT');
         $this->get($url.'/calendar?month=2026-03&day=2026-04-01')->assertUnprocessable();
-        $this->actingAs($member)->post('https://brandonmb.ca/account/events/'.$events[0]->id.'/cancel')->assertRedirect();
+        $this->actingAs($member)->post('https://brandonmb.ca/account/events/'.$events[0]->id.'/cancel', ['version' => $events[0]->fresh()->contentVersion()])->assertRedirect();
         $this->get($file)->assertNotFound();
         $this->get($url.'/calendar?month=2026-03')->assertOk()->assertDontSee('BEGIN:VEVENT');
         $this->get('https://brandonmb.ca/events/new?reuse='.$events[1]->id)->assertRedirect('/community/new?type=event&reuse='.$events[1]->id);
@@ -90,8 +90,9 @@ class EventSeriesTest extends TestCase
         $this->actingAs($other);
         $batch = 'https://brandonmb.ca/account/events/cancel-selected';
         $selection = ['events' => [$events[1]->id, $events[2]->id], 'confirm_cancel' => '1'];
-        $this->post($batch, $selection)->assertNotFound();
-        $this->actingAs($member)->post($batch, ['events' => [$events[0]->id, $events[1]->id], 'confirm_cancel' => '1'])->assertConflict();
+        $this->post($batch, $selection + ['versions' => $editVersions])->assertNotFound();
+        $this->actingAs($member)->post($batch, $selection)->assertSessionHasErrors('versions');
+        $this->post($batch, ['events' => [$events[0]->id, $events[1]->id], 'confirm_cancel' => '1', 'versions' => [$events[0]->id => $events[0]->fresh()->contentVersion(), $events[1]->id => $events[1]->fresh()->contentVersion()]])->assertConflict();
         $this->assertSame('pending', $events[1]->fresh()->status);
         $versions = [$events[1]->id => $events[1]->fresh()->contentVersion(), $events[2]->id => str_repeat('0', 64)];
         $this->post($batch, $selection + ['versions' => $versions])->assertSessionHasErrors('version');

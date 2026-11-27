@@ -80,7 +80,8 @@ class EventSeriesIdentityTest extends TestCase
         $this->get($base.$seriesFile)->assertNotFound();
         $this->post($url, $data)->assertSessionHasErrors('version');
         $this->assertSame($key, DB::table('event_series_occurrences')->where('event_id', $event->id)->value('series_key'));
-        $this->post($base.'/account/events/'.$event->id.'/cancel')->assertRedirect();
+        $this->post($base.'/account/events/'.$event->id.'/cancel')->assertSessionHasErrors('version');
+        $this->post($base.'/account/events/'.$event->id.'/cancel', ['version' => $event->fresh()->contentVersion()])->assertRedirect();
         $this->get($base.$path)->assertOk()->assertSee('3 events found')->assertSee('Withdrawn');
         config(['network.event_series_identity' => false]);
         $this->get($base.$path)->assertNotFound();

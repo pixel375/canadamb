@@ -84,7 +84,7 @@ class CommunityPublishingTest extends TestCase
         $this->get("https://brandonmb.ca/events/$event->id")->assertSee('3:30 am');
 
         $this->actingAs(User::factory()->create())->post("https://brandonmb.ca/account/events/$event->id/cancel")->assertNotFound();
-        $this->actingAs($organizer)->post("https://brandonmb.ca/account/events/$event->id/cancel", ['cancellation_note' => 'Organizer-only cancellation note'])->assertRedirect();
+        $this->actingAs($organizer)->post("https://brandonmb.ca/account/events/$event->id/cancel", ['cancellation_note' => 'Organizer-only cancellation note', 'version' => $event->fresh()->contentVersion()])->assertRedirect();
         $this->get('https://brandonmb.ca/events')->assertDontSee($input['title']);
         $this->get("https://brandonmb.ca/events/$event->id")->assertSee('Cancelled')->assertDontSee('Organizer-only cancellation note');
         $this->actingAs($admin)->post("https://canadamb.ca/admin/community/events/$event->id", ['action' => 'reject', 'reason' => 'Event detail withdrawn.'])->assertRedirect();

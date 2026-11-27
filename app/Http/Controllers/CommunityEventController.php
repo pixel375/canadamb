@@ -366,13 +366,13 @@ class CommunityEventController extends Controller
     {
         $site = $request->attributes->get('site');
         abort_unless($this->community->enabled($site, 'events'), 404);
-        $data = $request->validate(['cancellation_note' => 'nullable|string|max:300', 'version' => 'nullable|string|size:64']);
+        $this->ownedEvent($request)->findOrFail($event);
+        $data = $request->validate(['cancellation_note' => 'nullable|string|max:300', 'version' => 'required|string|size:64']);
         DB::transaction(function () use ($event, $request, $site, $data) {
             $item = $this->community->events($site->location_id)->where('author_id', $request->user()->id)->lockForUpdate()->findOrFail($event);
             abort_unless(in_array($item->status, ['pending', 'approved'], true), 409);
-            if (isset($data['version'])) {
-                $this->checkVersion($item, $data['version']);
-            }
+            abort_if($item->status === 'approved' && ($item->localEnd() ?? $item->localStart())->isPast(), 409, 'Past published events cannot be cancelled.');
+            $this->checkVersion($item, $data['version']);
             $this->cancelItem($item, $request->user()->id, $data['cancellation_note'] ?? null);
         });
 
@@ -499,7 +499,7 @@ class CommunityEventController extends Controller
         $data = $request->validate([
             'events' => 'required|array|list|min:1|max:8', 'events.*' => 'required|integer|distinct|min:1',
             'confirm_cancel' => 'accepted', 'cancellation_note' => 'nullable|string|max:300',
-            'versions' => 'sometimes|array|max:20', 'versions.*' => 'required|string|size:64',
+            'versions' => 'required|array|max:20', 'versions.*' => 'required|string|size:64',
         ]);
         $author = $request->user()->id;
         DB::transaction(function () use ($site, $data, $author) {
@@ -508,13 +508,11 @@ class CommunityEventController extends Controller
             abort_unless($items->count() === count($data['events']), 404);
             foreach ($items as $item) {
                 abort_unless(in_array($item->status, ['pending', 'approved'], true), 409);
-                abort_if(($item->localEnd() ?? $item->localStart())->isPast(), 409, 'Select only upcoming or ongoing events.');
-                if (isset($data['versions'])) {
-                    if (! isset($data['versions'][$item->id])) {
-                        throw ValidationException::withMessages(['versions' => 'Reload the event list before cancelling selected events.']);
-                    }
-                    $this->checkVersion($item, $data['versions'][$item->id]);
+                abort_if($item->status === 'approved' && ($item->localEnd() ?? $item->localStart())->isPast(), 409, 'Past published events cannot be cancelled.');
+                if (! isset($data['versions'][$item->id])) {
+                    throw ValidationException::withMessages(['versions' => 'Reload the event list before cancelling selected events.']);
                 }
+                $this->checkVersion($item, $data['versions'][$item->id]);
             }
             foreach ($items as $item) {
                 $this->cancelItem($item, $author, $data['cancellation_note'] ?? null);
