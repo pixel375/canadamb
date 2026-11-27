@@ -42,6 +42,32 @@ jobs:
           app="$site/canadamb-app"
           old=$(readlink -e "$app/current")
           [[ "$old" == "$app/releases/"* && -s "$old/artisan" && ! -e "$app/update.pause" ]] || exit 1
+          backups="$app/shared/backups"
+          [[ -d "$backups" && ! -L "$backups" && "$(readlink -e "$backups")" == "$backups" ]] || exit 1
+          # Metadata only: no dump contents, credentials or private filenames from archives.
+          shopt -s nullglob dotglob
+          for entry in "$backups/"*; do
+            name=$(basename "$entry")
+            [[ "$name" =~ ^[a-f0-9]{40}$ ]] && continue
+            if [[ "$name" =~ ^[A-Za-z0-9._-]{1,120}$ ]]; then
+              printf 'Legacy entry %s: ' "$name"
+            else
+              printf 'Legacy entry (nonstandard name): '
+            fi
+            stat -c 'type=%F size=%s' -- "$entry"
+            if [[ -d "$entry" && ! -L "$entry" ]]; then
+              printf '  entries=%s bytes=%s\n' "$(find -P "$entry" -xdev -printf . | wc -c)" "$(du -sb -- "$entry" | cut -f1)"
+              for child in "$entry/"*; do
+                n=$(basename "$child")
+                if [[ "$n" =~ ^[A-Za-z0-9._-]{1,120}$ ]]; then
+                  printf '  %s: ' "$n"
+                else
+                  printf '  nonstandard child: '
+                fi
+                stat -c 'type=%F size=%s' -- "$child"
+              done
+            fi
+          done
           /usr/bin/php -r '
             $fns = ["shell_exec", "proc_open", "fopen", "is_executable", "stream_get_contents"];
             foreach ($fns as $fn) echo "$fn=".((function_exists($fn) && is_callable($fn)) ? "enabled" : "disabled")."\n";
