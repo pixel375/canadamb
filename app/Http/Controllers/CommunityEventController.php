@@ -367,13 +367,15 @@ class CommunityEventController extends Controller
         $data = $request->validate([
             'events' => 'required|array|list|min:1|max:8', 'events.*' => 'required|integer|distinct|min:1',
             'versions' => 'required|array|max:20', 'versions.*' => 'required|string|size:64',
-            'field' => 'required|in:venue,organizer,event_url',
+            'field' => 'required|in:title,venue,organizer,event_url',
+            'thread_versions' => 'sometimes|array|max:20', 'thread_versions.*' => 'required|string|size:64',
             'value' => ['required_unless:field,event_url', 'nullable', 'string', 'max:1024'],
             'confirm_update' => 'accepted',
         ]);
         $field = $data['field'];
         $value = $data['value'] ?? null;
         $request->validate(['value' => match ($field) {
+            'title' => 'required|string|max:140',
             'venue' => 'required|string|max:180',
             'organizer' => 'required|string|max:150',
             default => 'nullable|url:https|max:1024',
@@ -383,12 +385,29 @@ class CommunityEventController extends Controller
             User::lockForUpdate()->findOrFail($author);
             $items = $this->ownedEvent($request)->whereIn('id', $data['events'])->orderBy('id')->lockForUpdate()->get();
             abort_unless($items->count() === count($data['events']), 404);
+            $threads = [];
+            $proposed = [];
             foreach ($items as $item) {
                 abort_unless(in_array($item->status, ['pending', 'approved', 'rejected'], true) && ! $item->scheduleStarted(), 409);
                 if (! isset($data['versions'][$item->id])) {
                     throw ValidationException::withMessages(['versions' => 'Reload the event list before updating selected events.']);
                 }
                 $this->checkVersion($item, $data['versions'][$item->id]);
+                if ($field === 'title') {
+                    $thread = EventDiscussions::linkedThread($item, lock: true);
+                    $this->ensureEditable($item, $thread);
+                    if ($thread && (! isset($data['thread_versions'][$item->id]) || ! hash_equals($thread->contentVersion(), $data['thread_versions'][$item->id]))) {
+                        throw ValidationException::withMessages(['thread_versions' => 'A linked discussion changed. Reload before updating selected events.']);
+                    }
+                    $threads[$item->id] = $thread;
+                    $key = json_encode([$item->location_id, $item->starts_at], JSON_THROW_ON_ERROR);
+                    if (isset($proposed[$key]) || CommunityEvent::where('author_id', $author)->where('location_id', $item->location_id)
+                        ->whereNotIn('id', $items->modelKeys())->where('title', $value)->where('starts_at', $item->starts_at)
+                        ->whereIn('status', ['pending', 'approved'])->exists()) {
+                        throw ValidationException::withMessages(['value' => 'The new title would duplicate an occurrence. No events changed.']);
+                    }
+                    $proposed[$key] = true;
+                }
                 $item->fill([$field => $value]);
             }
             $revisions = $items->filter(fn ($item) => $item->isDirty());
@@ -399,6 +418,11 @@ class CommunityEventController extends Controller
             foreach ($revisions as $item) {
                 $item->forceFill(['status' => 'pending'])->save();
                 Audit::record('community.event.edited', $author, context: ['event' => $item->id]);
+                $thread = $threads[$item->id] ?? null;
+                if ($thread && $thread->title !== $item->title) {
+                    $thread->forceFill(['title' => $item->title, 'status' => 'pending', 'pinned' => false])->save();
+                    Audit::record('community.thread.edited', $author, context: ['thread' => $thread->id, 'event' => $item->id]);
+                }
             }
 
             return $revisions->count();

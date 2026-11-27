@@ -31,8 +31,8 @@
         @if(config('network.recurring_events') && $items->contains(fn ($item) => in_array($item->status, ['pending', 'approved', 'rejected'], true) && !$item->scheduleStarted() && (!$item->isDateOnly() || \App\Support\EventSchedule::available())))
             <details class="panel form-stack mb-4"><summary>Update shared event details</summary>
                 <form id="event-batch-edit" method="post" action="/account/events/revise-selected" class="form-stack mt-3">@csrf
-                    <p class="field-note">Choose up to eight upcoming occurrences below. Update one shared field at a time; dates, descriptions and discussions stay unchanged. Changed events require review.</p>
-                    <label>Field<select name="field"><option value="venue">Venue</option><option value="organizer">Organizer</option><option value="event_url">Event website</option></select></label>
+                    <p class="field-note">Choose up to eight upcoming occurrences below. Update one shared field at a time. Dates and descriptions stay unchanged; title changes also update linked discussions and require independent review. Changed events require review.</p>
+                    <label>Field<select name="field"><option value="title">Title</option><option value="venue">Venue</option><option value="organizer">Organizer</option><option value="event_url">Event website</option></select></label>
                     <label>New value<input name="value" maxlength="1024"><small class="field-note">Leave blank only to remove an event website.</small></label>
                     <label class="checkbox-line"><input type="checkbox" name="confirm_update" value="1" required> Confirm changes to selected events</label>
                     <button class="button button-outline">Update selected events</button>
@@ -70,6 +70,7 @@
                     @if(config('network.recurring_events') && in_array($item->status, ['pending', 'approved', 'rejected'], true) && !$item->scheduleStarted() && (!$item->isDateOnly() || \App\Support\EventSchedule::available()))
                         <label class="checkbox-line"><input form="event-batch-edit" type="checkbox" name="events[]" value="{{ $item->id }}"> Select for shared detail update</label>
                         <input form="event-batch-edit" type="hidden" name="versions[{{ $item->id }}]" value="{{ $item->contentVersion() }}">
+                        @if($linked[$item->id] ?? null)<input form="event-batch-edit" type="hidden" name="thread_versions[{{ $item->id }}]" value="{{ $linked[$item->id]->contentVersion() }}">@endif
                         <label class="checkbox-line"><input form="event-batch-shift" type="checkbox" name="events[]" value="{{ $item->id }}"> Select for rescheduling</label>
                         <input form="event-batch-shift" type="hidden" name="versions[{{ $item->id }}]" value="{{ $item->contentVersion() }}">
                     @endif
