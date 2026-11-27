@@ -66,6 +66,7 @@ class ContentReportReviewController extends Controller
     {
         abort_unless(ContentReports::enabled() && MessageAttachments::enabled(), 404);
         $reviewer = $request->user()->id;
+
         return DB::transaction(function () use ($report, $reviewer) {
             $item = ContentReports::reviewQueue($reviewer)->where('id', $report)
                 ->where('target_type', 'message-photo')->where('status', 'pending')->lockForUpdate()->firstOrFail();
@@ -76,7 +77,8 @@ class ContentReportReviewController extends Controller
             $disk = Storage::disk(MessageAttachments::DISK);
             abort_unless($disk->exists($file->image_path), 404);
             $path = $disk->path($file->image_path);
-            abort_unless(is_file($path) && ! is_link($path), 404);
+            abort_unless(is_file($path), 404);
+            abort_if(is_link($path), 404);
             Audit::record('content.report-photo-accessed', $reviewer, $item->site_id, ['report' => $report]);
 
             return $disk->download($file->image_path, 'reported-photo.webp', [

@@ -1,5 +1,7 @@
 # Hostinger Git auto-deployment — options and safe approach (2026-11-19)
 
+**Backup retention (2026-11-27):** After successful independent live audits, retain the active release and one verified rollback release, plus their two private database/media backup sets. The retention job verifies checksums and ancestry before removing only known historical files, never live shared storage. During preparation a third candidate/backup can temporarily exist; do not destroy recovery evidence for failed updates. Unexpected paths or counts fail retention visibly. Use the retained receipts for verification; investigate failed retention before further deploys. No other hosted sites are affected.
+
 **Current policy (2026-11-26):** All development and production-prelaunch deployments use `main` only. Exact backend and browser push CI automatically dispatch a guarded SHA-pinned deploy, followed by independent live audits and two-release retention. Earlier branch-specific/manual-only instructions below are historical, not current operating instructions. No unapproved schema/flag or public-access changes.
 
 ## 2026-11-21 — Routine deployment now automated after green CI

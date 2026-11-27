@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       reclaim:
-        description: 'Remove verified inactive release directories (otherwise inventory only)'
+        description: 'Remove verified inactive releases and historical backup sets (otherwise inventory only)'
         type: boolean
         default: false
 
@@ -40,7 +40,7 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-      - name: Inventory and retain two complete releases
+      - name: Inventory and retain two complete releases and backup sets
         shell: bash
         run: |
           set -Eeuo pipefail
