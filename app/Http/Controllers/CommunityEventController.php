@@ -416,6 +416,7 @@ class CommunityEventController extends Controller
                     throw ValidationException::withMessages(['versions' => 'Reload the event list before rescheduling.']);
                 }
                 $this->checkVersion($item, $data['versions'][$item->id]);
+                abort_if($item->isDateOnly() && ! EventSchedule::available(), 409, 'Date-only event editing is currently unavailable.');
                 $dates = EventSeries::shift($this->community, $item->startInput(), $item->endInput(), (int) $data['days']);
                 $key = json_encode([$item->location_id, mb_strtolower($item->title), $dates['starts_at']], JSON_THROW_ON_ERROR);
                 if (isset($proposed[$key]) || CommunityEvent::where('author_id', $author)->where('location_id', $item->location_id)

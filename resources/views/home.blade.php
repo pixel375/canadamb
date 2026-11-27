@@ -280,7 +280,7 @@
                                         </time>
                                         <div>
                                             <h4>@if($preview ?? false){{ $event->title }}@else<a href="/events/{{ $event->id }}">{{ $event->title }}</a>@endif</h4>
-                                            <p>{{ $event->startLabel('g:i a') }} · {{ $event->location->name }}</p>
+                                            <p>{{ $event->timeLabel() }} · {{ $event->location->name }}</p>
                                         </div>
                                     </article>
                                 @empty

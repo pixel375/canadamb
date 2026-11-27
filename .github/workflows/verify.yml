@@ -38,7 +38,18 @@ jobs:
           cache: npm
       - run: composer install --prefer-dist --no-interaction --no-progress
       - run: composer validate --strict
-      - run: composer audit --locked
+      - name: Audit locked Composer dependencies (bounded retry for transport failure)
+        run: |
+          for attempt in 1 2 3; do
+            set +e
+            composer audit --locked
+            result=$?
+            set -e
+            if [ "$result" -eq 0 ]; then exit 0; fi
+            # Composer uses exit 100 for transport failures; advisories remain fatal.
+            if [ "$result" -ne 100 ] || [ "$attempt" -eq 3 ]; then exit "$result"; fi
+            sleep $((attempt * 5))
+          done
       - run: vendor/bin/pint --test
       - run: vendor/bin/phpunit
       - run: vendor/bin/phpunit

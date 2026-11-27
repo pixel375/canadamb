@@ -35,6 +35,11 @@ class CommunityEvent extends Model
         return $this->isDateOnly() ? $this->localEnd()?->subDay()->toDateString() : $this->localEnd()?->format('Y-m-d\\TH:i');
     }
 
+    public function timeLabel(): string
+    {
+        return $this->isDateOnly() ? 'Time not specified' : $this->localStart()->format('g:i a');
+    }
+
     public function startLabel(string $format = 'M j, Y · g:i a T'): string
     {
         return $this->isDateOnly() ? $this->localStart()->format('M j, Y').' · Time not specified' : $this->localStart()->format($format);
