@@ -24,7 +24,7 @@
             $localSite = request()->attributes->get('site')->location;
             $scope = \App\Support\LocationScope::preserveAll(!$localSite && filled($activeFilters['location'] ?? null) ? ['location' => $activeFilters['location']] : []);
             $clearUrl = '/jobs'.($scope ? '?'.http_build_query($scope) : '');
-            $wideFilters = array_diff_key($activeFilters, ['location' => true]);
+            $wideFilters = array_diff_key($activeFilters, ['location' => true]) + ['location' => ''];
             $wideUrl = '/jobs'.($wideFilters ? '?'.http_build_query($wideFilters) : '');
         @endphp
         @auth
@@ -44,7 +44,7 @@
             <div class="market-results-heading">
                 <div>
                     <p class="section-label">Employment opportunities</p>
-                    <h2 id="jobs-results-title">Jobs in {{ $localSite?->name ?? ($scope['location'] ?? 'Manitoba') }}</h2>
+                    <h2 id="jobs-results-title">Jobs in {{ $localSite?->name ?? (($scope['location'] ?? '') ?: 'Manitoba') }}</h2>
                 </div>
                 <span class="discussion-count">{{ $items->total() }} {{ \Illuminate\Support\Str::plural('result', $items->total()) }}</span>
             </div>
@@ -57,11 +57,11 @@
                         @if(array_diff_key($activeFilters, ['location' => true]))
                             <a class="button button-outline" href="{{ $clearUrl }}">Clear search filters</a>
                         @endif
-                        @if($scope)
+                        @if(filled($scope['location'] ?? null))
                             <a class="button button-outline" href="{{ $wideUrl }}">Search all Manitoba</a>
                         @endif
                         @if(app(\App\Support\BusinessDirectory::class)->enabled(request()->attributes->get('site')))
-                            <a class="button button-primary" href="/businesses">Explore local businesses</a>
+                            <a class="button button-primary" href="{{ \App\Support\LocationScope::browseUrl(request()->attributes->get('site'), '/businesses', \App\Support\LocationScope::currentBrowsing(request()->attributes->get('site'))) }}">Explore local businesses</a>
                         @endif
                     </div>
                 </div>

@@ -182,7 +182,7 @@ const fs = require('node:fs');
                 const wide = new URL(await page.getByRole('link', { name: 'Search all Manitoba', exact: true }).getAttribute('href'), host);
                 check(clear.searchParams.get('location') === location && !clear.searchParams.has('q'),
                     'Reset lost community or retained query: ' + section);
-                check(!wide.searchParams.has('location') && wide.searchParams.get('q') === missing,
+                check(wide.searchParams.get('location') === '' && wide.searchParams.get('q') === missing,
                     'Broader search lost query or retained location: ' + section);
                 check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
                     'Empty search page overflows: ' + section + ' at ' + width);

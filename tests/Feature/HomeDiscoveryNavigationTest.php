@@ -290,5 +290,4 @@ class HomeDiscoveryNavigationTest extends TestCase
         $this->get('https://brandonmb.ca'.$url.'?browse=winnipeg')->assertOk()->assertSee('href="/community"', false)
             ->assertDontSee('href="/community?location=winnipeg"', false);
     }
-
 }
