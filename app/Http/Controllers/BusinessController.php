@@ -68,7 +68,7 @@ class BusinessController extends Controller
         $canonical = NetworkUrl::to($owner, '/businesses/'.$business->slug);
         $multiCommunity = $business->openLocations->pluck('location_id')->unique()->count() > 1;
         $branches = $business->openLocations->when($site->location_id, fn ($locations, $id) => $locations->where('location_id', $id));
-        $updates = $this->directory->updates($site->location_id)->whereIn('business_location_id', $branches->pluck('id'))->paginate(12);
+        $updates = $this->directory->updates($site->location_id)->whereIn('business_location_id', $branches->pluck('id'))->paginate(12)->appends(LocationScope::detailParams());
         $claimed = $business->members()->wherePivot('role', 'owner')->exists();
 
         $jobs = app(JobBoard::class);

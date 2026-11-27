@@ -26,7 +26,7 @@
                 @if($updates->isNotEmpty())
                     <section class="panel">
                         <h2>Business updates</h2>
-                        @foreach($updates as $update)<article class="item-row"><div><p class="section-label">{{ ucfirst($update->type) }} · {{ $update->published_at->format('M j, Y') }}</p><h3>{{ $update->title }}</h3><p class="prose-text">{{ $update->body }}</p><x-content-report-link type="business-update" :target="$update->id"/></div></article>@endforeach
+                        @foreach($updates as $update)<article class="item-row"><div><p class="section-label">{{ ucfirst($update->type) }} · {{ $update->branch->location->name }} · {{ $update->published_at->format('M j, Y') }}</p><h3>{{ $update->title }}</h3><p class="prose-text">{{ $update->body }}</p><x-content-report-link type="business-update" :target="$update->id"/></div></article>@endforeach
                         {{ $updates->links() }}
                     </section>
                 @endif

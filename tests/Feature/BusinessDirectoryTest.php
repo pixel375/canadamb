@@ -207,6 +207,31 @@ class BusinessDirectoryTest extends TestCase
             ->assertSee('value="'.$rural->id.'" selected', false);
     }
 
+    public function test_business_profile_update_pages_preserve_browsing_scope_and_branch_visibility(): void
+    {
+        $business = Business::create(['slug' => 'branch-update-pages', 'name' => 'Branch Update Pages', 'category' => 'services', 'status' => 'active']);
+        $owner = User::factory()->create();
+        $business->members()->attach($owner->id, ['role' => 'owner']);
+        $brandon = $business->locations()->create(['location_id' => Location::where('slug', 'brandon')->sole()->id, 'address' => '1 Local Road']);
+        $rural = $business->locations()->create(['location_id' => Location::where('slug', 'elkhorn')->sole()->id, 'address' => '2 Rural Road']);
+        for ($i = 1; $i <= 13; $i++) {
+            BusinessUpdate::create(['business_location_id' => $brandon->id, 'author_id' => $owner->id,
+                'title' => 'Local update fixture '.$i, 'body' => 'A published business update.', 'type' => 'announcement',
+                'status' => 'approved', 'published_at' => now()]);
+        }
+        BusinessUpdate::create(['business_location_id' => $rural->id, 'author_id' => $owner->id,
+            'title' => 'Rural branch fixture update', 'body' => 'A published business update.', 'type' => 'announcement',
+            'status' => 'approved', 'published_at' => now()]);
+        $path = '/businesses/'.$business->slug;
+        $this->withCookie('canadamb_community', 'winnipeg')->get('https://canadamb.ca'.$path.'?browse=')
+            ->assertOk()->assertSee('Rural branch fixture update')->assertSee('Announcement · Elkhorn')
+            ->assertSee('browse=&amp;page=2', false);
+        $this->get('https://canadamb.ca'.$path.'?browse=&page=2')->assertOk()
+            ->assertSee('Local update fixture 1')->assertSee('href="/businesses?location="', false);
+        $this->get('https://brandonmb.ca'.$path)->assertOk()->assertSee('Announcement · Brandon')
+            ->assertDontSee('Rural branch fixture update');
+    }
+
     public function test_verified_claim_requires_review_and_grants_business_editing_to_the_claimant(): void
     {
         $business = Business::create(['slug' => 'test-repair', 'name' => 'Test Repair', 'category' => 'services', 'status' => 'active']);
