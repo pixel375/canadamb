@@ -963,8 +963,31 @@ const formStateObserver = new MutationObserver(() => {
     markerFrame = requestAnimationFrame(syncRequiredMarkers);
 });
 formStateObserver.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['required', 'disabled', 'form'] });
+// Native errors also have persistent visible text, not just a coloured border.
+const nativeErrors = new WeakMap();
+let nativeErrorSequence = 0;
+const showNativeError = control => {
+    let message = nativeErrors.get(control);
+    if (!message) {
+        message = document.createElement('small');
+        message.className = 'native-field-error';
+        message.id = 'native-validation-error-' + (++nativeErrorSequence);
+        // Keep the error out of the label's accessible name; aria-describedby
+        // explicitly associates it with the input instead.
+        message.setAttribute('aria-hidden', 'true');
+        const label = control.closest('label');
+        if (label) label.append(message);
+        else control.insertAdjacentElement('afterend', message);
+        nativeErrors.set(control, message);
+    }
+    message.textContent = control.validationMessage;
+    const ids = new Set((control.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean));
+    ids.add(message.id);
+    control.setAttribute('aria-describedby', [...ids].join(' '));
+    showInvalidField(control);
+};
 document.addEventListener('invalid', event => {
-    if (event.target.matches('input, select, textarea') && event.target.form) showInvalidField(event.target);
+    if (event.target.matches('input, select, textarea') && event.target.form) showNativeError(event.target);
 }, true);
 const validationFields = fieldsOnPage();
 for (const error of document.querySelectorAll('[data-validation-field]')) {
@@ -979,9 +1002,8 @@ for (const error of document.querySelectorAll('[data-validation-field]')) {
         for (const control of matches) showInvalidField(control, error.id);
     }
 }
-const clearCorrectedField = event => {
-    const control = event.target;
-    if (!control.matches('input, select, textarea') || !control.form || !control.validity.valid || control.getAttribute('aria-invalid') !== 'true') return;
+const clearFieldError = control => {
+    if (!control.validity.valid || control.getAttribute('aria-invalid') !== 'true') return;
     if (serverRejectedValues.has(control) && serverRejectedValues.get(control) === fieldValue(control)) return;
     serverRejectedValues.delete(control);
     control.removeAttribute('aria-invalid');
@@ -989,9 +1011,23 @@ const clearCorrectedField = event => {
     for (const label of control.labels || []) {
         if (!invalid.some(field => [...(field.labels || [])].includes(label))) label.classList.remove('invalid-field-label');
     }
-    const ids = (control.getAttribute('aria-describedby') || '').split(/\s+/).filter(id => id && !id.startsWith('validation-error-'));
+    const nativeMessage = nativeErrors.get(control);
+    nativeMessage?.remove();
+    nativeErrors.delete(control);
+    const ids = (control.getAttribute('aria-describedby') || '').split(/\s+/).filter(id => id && !id.startsWith('validation-error-') && id !== nativeMessage?.id);
     if (ids.length) control.setAttribute('aria-describedby', ids.join(' '));
     else control.removeAttribute('aria-describedby');
+};
+const clearCorrectedField = event => {
+    const control = event.target;
+    if (!control.matches('input, select, textarea') || !control.form) return;
+    const group = control.type === 'radio' && control.name
+        ? [...control.form.elements].filter(field => field.type === 'radio' && field.name === control.name)
+        : [control];
+    for (const field of group) {
+        if (field.validity.valid) clearFieldError(field);
+        else if (nativeErrors.has(field)) showNativeError(field);
+    }
 };
 document.addEventListener('input', clearCorrectedField);
 document.addEventListener('change', clearCorrectedField);

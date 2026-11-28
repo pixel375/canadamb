@@ -1939,6 +1939,8 @@ body.chat-page { display:flex; flex-direction:column; height:var(--chat-viewport
 .required-marker { color: #c44e52; font-weight: 800; }
 [aria-invalid="true"] { border-color: #c44e52 !important; outline: 1px solid #c44e52; }
 .invalid-field-label { text-decoration: underline dotted #c44e52; text-underline-offset: 3px; }
+.native-field-error { display:block; color:var(--text); font-size:.8rem; font-weight:600; text-decoration:none; grid-column:1 / -1; overflow-wrap:anywhere; }
+.native-field-error::before { content:"! "; color:#c44e52; }
 
 .notification-open-link { color:var(--link); font:inherit; font-weight:inherit; border:0; background:none; padding:0; text-align:left; overflow-wrap:anywhere; }
 .notification-open-link:hover { text-decoration:underline; text-underline-offset:3px; }
