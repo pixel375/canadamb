@@ -41,7 +41,9 @@ class ExtendedMessagingTest extends TestCase
         $base = 'https://brandonmb.ca';
         $this->actingAs($member)->post($base.'/businesses/'.$business->id.'/message', ['body' => 'Business question'])->assertNotFound();
         config(['network.extended_messaging' => true]);
-        $this->post($base.'/businesses/'.$business->id.'/message', ['body' => 'Business question'])->assertRedirect();
+        $this->actingAs($owner)->post($base.'/businesses/'.$business->id.'/message', [])->assertForbidden();
+        $this->post($base.'/jobs/'.$job->id.'/message', [])->assertForbidden();
+        $this->actingAs($member)->post($base.'/businesses/'.$business->id.'/message', ['body' => 'Business question'])->assertRedirect();
         $this->post($base.'/jobs/'.$job->id.'/message', ['body' => 'Job question'])->assertRedirect();
         $this->assertDatabaseCount('conversations', 2);
         $this->get($base.'/account/messages?kind=job')->assertSee('Local helper')->assertDontSee('Business question');

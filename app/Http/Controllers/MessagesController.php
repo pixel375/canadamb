@@ -201,11 +201,10 @@ class MessagesController extends Controller
         $site = $request->attributes->get('site');
         $directory = app(BusinessDirectory::class);
         abort_unless($directory->enabled($site), 404);
-        $data = $request->validate(['body' => 'required|string|max:2000']);
-        $thread = DB::transaction(function () use ($request, $site, $directory, $business, $data) {
+        $thread = DB::transaction(function () use ($request, $site, $directory, $business) {
             $item = $directory->visible($site)->lockForUpdate()->findOrFail($business);
 
-            return $this->startInquiry($item, null, $request->user()->id, $data['body']);
+            return $this->startInquiry($request, $item, null, $request->user()->id);
         }, attempts: 3);
 
         return redirect('/account/messages/'.$thread->id);
@@ -217,20 +216,19 @@ class MessagesController extends Controller
         $site = $request->attributes->get('site');
         $board = app(JobBoard::class);
         abort_unless($board->enabled($site), 404);
-        $data = $request->validate(['body' => 'required|string|max:2000']);
-        $thread = DB::transaction(function () use ($request, $site, $board, $job, $data) {
+        $thread = DB::transaction(function () use ($request, $site, $board, $job) {
             $initial = $board->visible($site->location_id)->findOrFail($job);
             $business = Business::lockForUpdate()->findOrFail($initial->branch->business_id);
             $item = $board->visible($site->location_id)->lockForUpdate()->findOrFail($job);
             abort_unless($item->branch->business_id === $business->id, 409);
 
-            return $this->startInquiry($business, $item, $request->user()->id, $data['body']);
+            return $this->startInquiry($request, $business, $item, $request->user()->id);
         }, attempts: 3);
 
         return redirect('/account/messages/'.$thread->id);
     }
 
-    private function startInquiry(Business $business, ?JobPosting $job, int $id, string $body): Conversation
+    private function startInquiry(Request $request, Business $business, ?JobPosting $job, int $id): Conversation
     {
         $owners = $business->members()->wherePivot('role', 'owner')->get(['users.id', 'users.email_verified_at']);
         abort_unless($owners->count() === 1 && $owners->first()->hasVerifiedEmail() && $business->status === 'active', 404);
@@ -240,13 +238,14 @@ class MessagesController extends Controller
         $this->lockParticipants($id, $recipient);
         abort_unless(User::whereKey($recipient)->whereNotNull('email_verified_at')->exists(), 404);
         abort_if($this->isBlocked($id, $recipient), 403, 'Messaging is blocked for this conversation.');
+        $data = $request->validate(['body' => 'required|string|max:2000']);
         $key = hash('sha256', implode(':', [$job ? 'job' : 'business', $job?->id ?? $business->id, $id, $recipient]));
         $thread = Conversation::firstOrCreate(['inquiry_key' => $key], [
             'buyer_id' => $id, 'seller_id' => $recipient, 'inquiry_business_id' => $business->id,
             'inquiry_job_id' => $job?->id, 'inquiry_title' => $job?->title ?? $business->name,
         ]);
         abort_unless(MessagingExtensions::canReply($thread), 403);
-        $this->write($thread, $id, $body);
+        $this->write($thread, $id, $data['body']);
 
         return $thread;
     }
