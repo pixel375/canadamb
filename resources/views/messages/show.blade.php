@@ -57,7 +57,7 @@
             @if($latestPage)<div class="chat-update-bar"><p class="chat-sync-status field-note" data-chat-status role="status" aria-live="polite"></p></div>@endif
             @if(!$blocked)
                 <form method="post" action="/account/messages/{{ $thread->id }}" class="chat-composer form-stack" enctype="multipart/form-data">@csrf
-                    <label><span class="sr-only">Reply</span><textarea data-character-count name="body" maxlength="2000" rows="2" required placeholder="Write a message…">{{ old('body') }}</textarea><small class="field-note" data-character-feedback></small></label>
+                    <label><span class="sr-only" id="chat-reply-label">Reply</span><textarea data-character-count name="body" maxlength="2000" rows="2" required aria-labelledby="chat-reply-label" aria-describedby="chat-reply-count" placeholder="Write a message…">{{ old('body') }}</textarea><small id="chat-reply-count" class="field-note" data-character-feedback>Up to 2,000 characters</small></label>
                     @if(\App\Support\MessageAttachments::enabled())
                         <details class="chat-attachment-picker" @if($errors->has('photo')) open @endif><summary>Attach a photo</summary><label><span class="sr-only">Photo attachment</span><input type="file" name="photo" accept="image/jpeg,image/png,image/webp"><small class="field-note">One photo, up to 4 MB. Do not send sensitive documents.</small></label></details>
                     @endif

@@ -573,7 +573,24 @@ if (chatPanel) {
     let newMessageNotice = '';
     const goLatest = () => { history.scrollTop = history.scrollHeight; };
     goLatest();
+    // Preserve the latest-message anchor when the keyboard, composer or viewport
+    // changes size. Do not jump readers who have intentionally scrolled back.
+    let historyHeight = history.clientHeight;
+    let historyWidth = history.clientWidth;
+    let pinnedToLatest = atLatest();
+    const historyResized = () => historyHeight !== history.clientHeight || historyWidth !== history.clientWidth;
+    if (typeof ResizeObserver !== 'undefined') {
+        const observer = new ResizeObserver(() => {
+            if (!historyResized()) return;
+            historyHeight = history.clientHeight;
+            historyWidth = history.clientWidth;
+            if (pinnedToLatest) goLatest();
+            pinnedToLatest = atLatest();
+        });
+        observer.observe(history);
+    }
     history.addEventListener('scroll', () => {
+        if (!historyResized() || typeof ResizeObserver === 'undefined') pinnedToLatest = atLatest();
         if (!atLatest() || !unseenMessages) return;
         unseenMessages = 0;
         if (status.textContent === newMessageNotice) status.textContent = '';

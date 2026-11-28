@@ -629,6 +629,24 @@ const fs = require('node:fs');
         const history = page.locator('[data-chat-history]');
         const older = history.locator('[data-chat-older]');
         check(await history.locator('article[data-message-id]').count() === 30, 'Initial chat history is not bounded');
+        check(await page.locator('textarea[name="body"]').getAttribute('aria-describedby') === 'chat-reply-count', 'Chat count is not associated with composer');
+        await history.evaluate(el => { el.scrollTop = el.scrollHeight; });
+        await page.waitForFunction(() => {
+            const el = document.querySelector('[data-chat-history]');
+            return el.scrollHeight - el.scrollTop - el.clientHeight < 3;
+        });
+        await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+        await page.setViewportSize({ width: 390, height: 500 });
+        await page.waitForFunction(() => {
+            const el = document.querySelector('[data-chat-history]');
+            return el.scrollHeight - el.scrollTop - el.clientHeight < 3;
+        });
+        check(await page.locator('textarea[name="body"]').inputValue() === 'Thanks for confirming.', 'Keyboard-sized viewport discarded draft');
+        await history.evaluate(el => { el.scrollTop = 0; });
+        await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+        await page.setViewportSize({ width: 390, height: 844 });
+        await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+        check(await history.evaluate(el => el.scrollTop < 3), 'Viewport resize jumped a reader away from older messages');
         await older.scrollIntoViewIfNeeded();
         const olderUrl = await older.evaluate(el => el.href);
         let historyRequestIntercepted = false;

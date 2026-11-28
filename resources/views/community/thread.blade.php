@@ -164,11 +164,11 @@
                             </div>
                         @endif
                     </div>
-                    <label for="discussion-reply-body">Your reply
-                        <textarea id="discussion-reply-body" data-character-count name="body" required minlength="5" maxlength="3000" rows="5" placeholder="Share your thoughts with the community...">{{ old('body') }}</textarea><small class="field-note" data-character-feedback></small>
+                    <label for="discussion-reply-body"><span id="discussion-reply-label">Your reply</span>
+                        <textarea id="discussion-reply-body" data-character-count name="body" required minlength="5" maxlength="3000" rows="5" aria-labelledby="discussion-reply-label" aria-describedby="discussion-reply-count discussion-reply-guidance" placeholder="Share your thoughts with the community...">{{ old('body') }}</textarea><small id="discussion-reply-count" class="field-note" data-character-feedback>Up to 3,000 characters</small>
                     </label>
                     <div class="discussion-reply-submit">
-                        <span>5–3,000 characters · Reviewed before publication</span>
+                        <span id="discussion-reply-guidance">5–3,000 characters · Reviewed before publication</span>
                         <button class="button button-primary" type="submit"><x-icon name="arrow" size="17"/> Submit reply for review</button>
                     </div>
                 </form>
