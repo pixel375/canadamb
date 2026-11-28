@@ -91,11 +91,23 @@ class NewsFeedTest extends TestCase
         $this->actingAs(User::factory()->create(['role' => 'news_editor']))
             ->post($uri, ['feed_url' => 'https://news.example.test/feed'])->assertForbidden();
         $this->actingAs(User::factory()->create(['role' => 'network_admin']))
-            ->post($uri, ['feed_url' => 'https://different.example.test/feed'])->assertSessionHasErrors('feed_url');
+            ->post($uri, ['feed_url' => 'https://news.example.test/feed'])->assertSessionHasErrors('version');
         $version = $source->fresh()->configurationVersion();
+        $this->post($uri, ['feed_url' => 'https://different.example.test/feed', 'version' => $version])->assertSessionHasErrors('feed_url');
         $this->post($uri, ['feed_url' => 'https://news.example.test/new-feed', 'version' => $version])->assertSessionHasNoErrors();
         $this->post($uri, ['feed_url' => 'https://news.example.test/stale-feed', 'version' => $version])->assertSessionHasErrors('version');
         $this->assertDatabaseHas('news_sources', ['id' => $source->id, 'feed_url' => 'https://news.example.test/new-feed']);
+        $status = "https://canadamb.ca/admin/news/source/$source->id";
+        $rights = $status.'/rights';
+        $this->post($status, ['enabled' => '0'])->assertSessionHasErrors('version');
+        $this->post($status, ['enabled' => '0', 'version' => $version])->assertSessionHasErrors('version');
+        $policy = ['reuse' => 'link-only', 'reuse_notes' => 'Summary rights are not currently confirmed.'];
+        $this->post($rights, $policy)->assertSessionHasErrors('version');
+        $this->post($rights, $policy + ['version' => $version])->assertSessionHasErrors('version');
+        $this->post($rights, $policy + ['version' => $source->fresh()->configurationVersion()])->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('news_sources', ['id' => $source->id, 'reuse' => 'link-only', 'enabled' => true]);
+        $this->post($status, ['enabled' => '0', 'version' => $source->fresh()->configurationVersion()])->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('news_sources', ['id' => $source->id, 'enabled' => false]);
     }
 
     public function test_an_empty_feed_is_logged_without_stopping_the_rest_of_the_batch(): void

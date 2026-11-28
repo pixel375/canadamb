@@ -75,8 +75,9 @@ class News
         try {
             return DB::transaction(function () use ($source, $data) {
                 $locked = NewsSource::lockForUpdate()->findOrFail($source->id);
-                if (! $locked->enabled || $locked->reuse !== 'summary-permitted') {
-                    throw ValidationException::withMessages(['source_id' => 'That source was disabled.']);
+                if (! $locked->enabled || $locked->reuse !== 'summary-permitted'
+                    || ! hash_equals($source->configurationVersion(), $locked->configurationVersion())) {
+                    throw ValidationException::withMessages(['source_id' => 'Source settings changed. Review the source before submitting again.']);
                 }
                 $existing = NewsArticle::where(['source_id' => $source->id, 'external_key' => $data['external_key']])->first()
                     ?? NewsArticle::where('source_hash', $data['source_hash'])->first();

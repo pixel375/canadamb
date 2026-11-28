@@ -67,7 +67,7 @@ class EditorialController extends Controller
             ->when($filters['source_id'] ?? null, fn ($query, $id) => $query->where('news_feed_checks.source_id', $id));
         $counts = (clone $query)->selectRaw('news_feed_checks.status, COUNT(*) AS total')->groupBy('news_feed_checks.status')->pluck('total', 'status');
         $checks = $query->when($filters['status'] ?? null, fn ($query, $status) => $query->where('news_feed_checks.status', $status))
-            ->latest('news_feed_checks.id')->paginate(25, ['news_feed_checks.id', 'news_feed_checks.status', 'news_feed_checks.new_candidates', 'news_feed_checks.created_at', 'news_sources.name'])->withQueryString();
+            ->latest('news_feed_checks.id')->paginate(25, ['news_feed_checks.id', 'news_feed_checks.status', 'news_feed_checks.new_candidates', 'news_feed_checks.created_at', 'news_sources.name'])->appends($filters);
         $polling = (bool) config('network.news_polling') && ! config('network.prelaunch');
 
         return response()->view('admin.feed-health', compact('sources', 'checks', 'counts', 'filters', 'period', 'polling'))->header('Cache-Control', 'private, no-store');
@@ -93,10 +93,10 @@ class EditorialController extends Controller
 
     public function sourceStatus(Request $request, NewsSource $source)
     {
-        $data = $request->validate(['enabled' => 'required|boolean', 'version' => 'nullable|string|size:64']);
+        $data = $request->validate(['enabled' => 'required|boolean', 'version' => 'required|string|size:64']);
         DB::transaction(function () use ($request, $source, $data) {
             $source = NewsSource::lockForUpdate()->findOrFail($source->id);
-            $this->checkSourceVersion($source, $data['version'] ?? null);
+            $this->checkSourceVersion($source, $data['version']);
             if ($source->enabled === (bool) $data['enabled']) {
                 return;
             }
@@ -109,10 +109,10 @@ class EditorialController extends Controller
 
     public function sourceRights(Request $request, NewsSource $source)
     {
-        $data = $request->validate(['reuse' => 'required|in:summary-permitted,link-only,unreviewed', 'reuse_notes' => 'required|string|max:2000', 'version' => 'nullable|string|size:64']);
+        $data = $request->validate(['reuse' => 'required|in:summary-permitted,link-only,unreviewed', 'reuse_notes' => 'required|string|max:2000', 'version' => 'required|string|size:64']);
         DB::transaction(function () use ($request, $source, $data) {
             $current = NewsSource::lockForUpdate()->findOrFail($source->id);
-            $this->checkSourceVersion($current, $data['version'] ?? null);
+            $this->checkSourceVersion($current, $data['version']);
             if ($current->reuse === $data['reuse'] && $current->reuse_notes === $data['reuse_notes']) {
                 return;
             }
@@ -125,7 +125,7 @@ class EditorialController extends Controller
 
     public function sourceFeed(Request $request, NewsSource $source)
     {
-        $data = $request->validate(['feed_url' => 'present|nullable|url:https|max:1024', 'version' => 'nullable|string|size:64']);
+        $data = $request->validate(['feed_url' => 'present|nullable|url:https|max:1024', 'version' => 'required|string|size:64']);
         $host = parse_url($source->url, PHP_URL_HOST);
         $url = isset($data['feed_url']) && is_string($host) ? FeedUrl::normalize($data['feed_url'], $host) : null;
         if (isset($data['feed_url']) && $url === null) {
@@ -134,7 +134,7 @@ class EditorialController extends Controller
 
         DB::transaction(function () use ($request, $source, $url, $data) {
             $current = NewsSource::lockForUpdate()->findOrFail($source->id);
-            $this->checkSourceVersion($current, $data['version'] ?? null);
+            $this->checkSourceVersion($current, $data['version']);
             if ($current->feed_url !== $url) {
                 $current->forceFill(['feed_url' => $url, 'next_poll_at' => null, 'poll_claim' => null, 'poll_failures' => 0])->save();
                 Audit::record('news.source-feed-updated', $request->user()->id, context: ['source' => $current->id, 'configured' => $url !== null]);
@@ -144,9 +144,9 @@ class EditorialController extends Controller
         return redirect('/admin/news')->with('status', 'Source feed saved.');
     }
 
-    private function checkSourceVersion(NewsSource $source, ?string $version): void
+    private function checkSourceVersion(NewsSource $source, string $version): void
     {
-        if ($version !== null && ! hash_equals($source->configurationVersion(), $version)) {
+        if (! hash_equals($source->configurationVersion(), $version)) {
             throw ValidationException::withMessages(['version' => 'Source settings changed. Reload before saving.']);
         }
     }
