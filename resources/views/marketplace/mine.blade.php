@@ -1,11 +1,12 @@
 <x-layouts.site title="My listings">
     @php($returnFilters = array_filter($filters, fn ($value) => $value !== null && $value !== ''))
+    @php($returnQuery = $returnFilters ? '?'.http_build_query(['return_filters' => $returnFilters], '', '&', PHP_QUERY_RFC3986) : '')
     @php($canSell = $items->contains(fn ($item) => $item->allowsSellerStatus('sold')))
     @php($canRenew = $items->contains(fn ($item) => $item->allowsSellerStatus('pending')))
     <div class="container page-shell">
         <div class="page-intro">
             <div><a class="text-link" href="/account/profile">My account</a><h1>My listings</h1><p>Manage your Marketplace posts, publication status and renewals.</p></div>
-            <div class="inline-actions"><a class="button button-outline" href="/account/saved">Saved listings</a><a class="button button-primary" href="/marketplace/new"><x-icon name="plus" size="18"/> Post a listing</a></div>
+            <div class="inline-actions"><a class="button button-outline" href="/account/saved">Saved listings</a><a class="button button-primary" href="/marketplace/new{{ $returnQuery }}"><x-icon name="plus" size="18"/> Post a listing</a></div>
         </div>
         <nav class="seller-status-grid" aria-label="Filter listings by status">
             @foreach(array_merge(['all'], $statuses) as $status)
@@ -70,13 +71,13 @@
                         @endswitch
                     </p>
                     <div class="inline-actions seller-listing-actions">
-                        <a class="text-link" href="/account/listings/{{ $item->id }}/history">Status history</a>
-                        @if(in_array($item->status, ['sold','expired','rejected'], true))<a class="button button-outline" href="/account/listings/{{ $item->id }}/duplicate">Create similar listing</a>@endif
+                        <a class="text-link" href="/account/listings/{{ $item->id }}/history{{ $returnQuery }}">Status history</a>
+                        @if(in_array($item->status, ['sold','expired','rejected'], true))<a class="button button-outline" href="/account/listings/{{ $item->id }}/duplicate{{ $returnQuery }}">Create similar listing</a>@endif
                         @if($item->status === 'active' && $item->expires_at?->isFuture())
                             <a class="button button-outline" href="/marketplace/{{ $item->id }}">View listing</a>
                         @endif
                         @if(in_array($item->status, ['pending','active','expired','rejected'], true))
-                            <a class="button button-outline" href="/account/listings/{{ $item->id }}/edit">Edit</a>
+                            <a class="button button-outline" href="/account/listings/{{ $item->id }}/edit{{ $returnQuery }}">Edit</a>
                         @endif
                         @if($item->allowsSellerStatus('sold') || $item->allowsSellerStatus('pending'))
                             <form method="post" action="/account/listings/{{ $item->id }}/status">@csrf @foreach($returnFilters as $key => $value)<input type="hidden" name="return_filters[{{ $key }}]" value="{{ $value }}">@endforeach<input type="hidden" name="version" value="{{ $item->reviewVersion() }}">
@@ -99,7 +100,7 @@
                     @if(array_filter($filters, fn ($value) => $value !== null && $value !== ''))
                         <h3>No listings match these filters.</h3><a class="button button-outline" href="/account/listings">View all my listings</a>
                     @else
-                        <h3>You have no listings on this portal.</h3><p>Post your first item to reach local buyers.</p><a class="button button-primary" href="/marketplace/new">Post a listing</a>
+                        <h3>You have no listings on this portal.</h3><p>Post your first item to reach local buyers.</p><a class="button button-primary" href="/marketplace/new{{ $returnQuery }}">Post a listing</a>
                     @endif
                 </div>
             @endforelse

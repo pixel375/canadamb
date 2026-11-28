@@ -1,10 +1,13 @@
 @php($site = request()->attributes->get('site'))
 <x-layouts.site :title="$item->exists ? 'Edit listing' : 'Post a listing'">
     <div class="container page-shell listing-editor">
-        <div class="page-intro"><div><a class="text-link" href="/account/listings">My listings</a><h1>{{ $item->exists ? 'Edit listing' : 'Post a listing' }}</h1><p>Basic listings are free. Publication follows the network’s moderation policy.</p></div></div>
+        <div class="page-intro"><div><a class="text-link" href="{{ $returnUrl }}">My listings</a><h1>{{ $item->exists ? 'Edit listing' : 'Post a listing' }}</h1><p>Basic listings are free. Publication follows the network’s moderation policy.</p></div></div>
         @if($duplicating ?? false)<p class="notice">Copied text and item details only. Review the information and upload new photos. This will create a new listing requiring approval; messages, saves and reports stay with the original.</p>@endif
         <form class="listing-editor-form form-stack" method="post" enctype="multipart/form-data" action="{{ $item->exists ? '/account/listings/'.$item->id : '/marketplace' }}" x-data="{ category: @js(old('category', $item->category ?? '')) }">
             @csrf
+            @foreach($returnFilters as $key => $value)
+                <input type="hidden" name="return_filters[{{ $key }}]" value="{{ $value }}">
+            @endforeach
             @unless($item->exists)<x-shared-publication-note/><p class="field-note">Listings are active for 30 days; expired listings can be renewed for 7 days after review.</p>@endunless
             @if($item->exists)@method('PUT')<input type="hidden" name="version" value="{{ old('version', $item->reviewVersion()) }}">@endif
             <section class="panel form-stack listing-editor-section" aria-labelledby="listing-details-heading">
@@ -42,7 +45,7 @@
                 <input type="hidden" name="manage_photos" value="1">
                 <input type="hidden" name="photo_version" value="{{ old('photo_version', $photoVersion) }}">
                 @if(old('photo_version') && old('photo_version') !== $photoVersion)
-                    <p class="notice notice-error">The existing photos changed while this form was open. <a href="/account/listings/{{ $item->id }}/edit">Reload the editor</a> before continuing.</p>
+                    <p class="notice notice-error">The existing photos changed while this form was open. <a href="/account/listings/{{ $item->id }}/edit{{ $returnFilters ? '?'.http_build_query(['return_filters' => $returnFilters], '', '&', PHP_QUERY_RFC3986) : '' }}">Reload the editor</a> before continuing.</p>
                 @endif
                 <div data-existing-photos>
                     <h3>Existing photos</h3>
@@ -81,7 +84,7 @@
             @endif
             </section>
             @if($item->exists && old('version') && old('version') !== $item->reviewVersion())
-                <p class="notice notice-error">The listing changed while this form was open. <a href="/account/listings/{{ $item->id }}/edit">Reload the editor</a> before continuing.</p>
+                <p class="notice notice-error">The listing changed while this form was open. <a href="/account/listings/{{ $item->id }}/edit{{ $returnFilters ? '?'.http_build_query(['return_filters' => $returnFilters], '', '&', PHP_QUERY_RFC3986) : '' }}">Reload the editor</a> before continuing.</p>
             @endif
             <div class="panel listing-editor-submit"><p>New listings may be approved automatically under the published moderation policy. Edited listings require review. Check your details before submitting.</p><button class="button button-primary">Submit for review</button></div>
         </form>

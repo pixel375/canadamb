@@ -214,7 +214,13 @@ class MarketplaceTest extends TestCase
         $path = self::CITY.'/account/listings/'.$item->id;
         $this->actingAs($admin)->post(self::MAIN.'/admin/moderation/'.$item->id, ['status' => 'active', 'version' => $item->fresh()->reviewVersion()])->assertRedirect();
         $version = $item->fresh()->reviewVersion();
-        $this->actingAs($seller)->put($path, $data + ['version' => $version])->assertRedirect();
+        $this->actingAs($seller)->get($path.'/edit?return_filters%5Bq%5D=0&return_filters%5Bsort%5D=oldest')->assertOk()
+            ->assertSee('name="return_filters[q]" value="0"', false)
+            ->assertSee('href="/account/listings?q=0&amp;sort=oldest"', false);
+        $this->get($path.'/history?return_filters%5Bsort%5D=oldest')->assertOk()
+            ->assertSee('href="/account/listings?sort=oldest"', false);
+        $this->put($path, $data + ['version' => $version, 'return_filters' => ['q' => '0', 'sort' => 'oldest']])
+            ->assertRedirect('/account/listings?q=0&sort=oldest');
         $this->assertSame('active', $item->fresh()->status);
         $this->put($path, array_replace($data, ['title' => 'Revised desk', 'version' => $version]))->assertRedirect();
         $this->put($path, $data + ['version' => $version])->assertConflict();
@@ -246,7 +252,10 @@ class MarketplaceTest extends TestCase
         $this->assertSame('active', $items[0]->fresh()->status);
         $this->post($url, $input + ['return_filters' => ['q' => '0', 'sort' => 'oldest']])
             ->assertRedirect('/account/listings?q=0&sort=oldest')->assertSessionHasNoErrors();
-        $this->get(self::CITY.'/account/listings?status=sold')->assertOk()->assertDontSee('Manage selected listings');
+        $this->get(self::CITY.'/account/listings?status=sold')->assertOk()->assertDontSee('Manage selected listings')
+            ->assertSee('href="/account/listings/'.$items[0]->id.'/duplicate?return_filters%5Bstatus%5D=sold"', false);
+        $this->get(self::CITY.'/account/listings/'.$items[0]->id.'/duplicate?return_filters%5Bstatus%5D=sold')->assertOk()
+            ->assertSee('name="return_filters[status]" value="sold"', false);
         $this->assertSame('sold', $items[0]->fresh()->status);
         $this->assertSame('sold', $items[1]->fresh()->status);
         $this->assertSame('active', $items[2]->fresh()->status);

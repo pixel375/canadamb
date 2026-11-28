@@ -103,6 +103,7 @@ class MarketplaceController extends Controller
     {
         abort_unless($this->marketplace->enabled($request->attributes->get('site')), 404);
         $data = $request->attributesForPersistence();
+        $filters = $request->is('api/*') ? [] : $this->sellerReturnFilters($request);
         $media = $photos->store($request->file('photos', []));
         try {
             $item = DB::transaction(function () use ($request, $data, $media) {
@@ -124,7 +125,7 @@ class MarketplaceController extends Controller
             return response()->json(['data' => $this->publicData($item) + ['status' => $item->status]], 201);
         }
 
-        return redirect('/account/listings')->with('status', $item->status === 'active' ? 'Your listing was published.' : 'Your listing was submitted for review.');
+        return redirect($this->sellerReturnPath($filters))->with('status', $item->status === 'active' ? 'Your listing was published.' : 'Your listing was submitted for review.');
     }
 
     public function mine(Request $request)
@@ -173,10 +174,12 @@ class MarketplaceController extends Controller
         abort_unless($this->marketplace->enabled($site), 404);
         $item = Listing::with('location')->where('user_id', $request->user()->id)
             ->when($site->location_id, fn ($query, $id) => $query->where('location_id', $id))->findOrFail($listing);
+        $filters = $this->sellerReturnFilters($request);
+        $returnUrl = $this->sellerReturnPath($filters);
         $history = DB::table('listing_status_history')->where('listing_id', $item->id)
-            ->latest('id')->paginate(30, ['id', 'previous_status', 'status', 'created_at']);
+            ->latest('id')->paginate(30, ['id', 'previous_status', 'status', 'created_at'])->appends(['return_filters' => $filters]);
 
-        return view('marketplace.history', compact('item', 'history'));
+        return view('marketplace.history', compact('item', 'history', 'returnUrl'));
     }
 
     public function duplicate(Request $request, int $listing)
@@ -201,6 +204,7 @@ class MarketplaceController extends Controller
         abort_unless($this->marketplace->enabled($request->attributes->get('site')), 404);
         $data = $request->attributesForPersistence();
         $this->owned($request, $listing);
+        $filters = $this->sellerReturnFilters($request);
         $media = $photos->store($request->file('photos', []));
         try {
             $removed = DB::transaction(function () use ($request, $listing, $data, $media) {
@@ -254,7 +258,7 @@ class MarketplaceController extends Controller
         }
         $photos->delete($removed);
 
-        return redirect('/account/listings')->with('status', 'Listing saved. Changed content requires review.');
+        return redirect($this->sellerReturnPath($filters))->with('status', 'Listing saved. Changed content requires review.');
     }
 
     public function status(Request $request, int $listing)
@@ -349,7 +353,10 @@ class MarketplaceController extends Controller
         $site = $request->attributes->get('site');
         abort_unless($this->marketplace->enabled($site), 404);
 
+        $returnFilters = $this->sellerReturnFilters($request);
+
         return view('marketplace.form', [
+            'returnFilters' => $returnFilters, 'returnUrl' => $this->sellerReturnPath($returnFilters),
             'item' => $item, 'categories' => $this->categories(), 'conditions' => Marketplace::CONDITIONS,
             'fields' => Marketplace::FIELDS, 'locations' => $site->isNetwork() ? Location::selectable()->orderBy('name')->get() : collect(),
             'suggestedLocation' => $item->exists ? null : ($duplicateLocation ?? LocationScope::currentBrowsing($site)),
