@@ -21,7 +21,7 @@ class AccountPrivacyController extends Controller
         $openCount = (clone $owned)->whereIn('status', ['pending', 'in-review'])->count();
         $items = $owned->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
             ->when($filters['kind'] ?? null, fn ($query, $kind) => $query->where('kind', $kind))
-            ->latest('id')->paginate(20, ['id', 'kind', 'status', 'created_at', 'updated_at'])->withQueryString();
+            ->latest('id')->paginate(20, ['id', 'kind', 'status', 'created_at', 'updated_at'])->appends($filters);
 
         return view('account.privacy-requests', compact('items', 'filters', 'openCount'));
     }
@@ -48,13 +48,12 @@ class AccountPrivacyController extends Controller
     public function withdraw(Request $request, int $privacy)
     {
         abort_unless(PrivacyRequests::enabled(), 404);
-        DB::table('account_privacy_requests')->where('user_id', $request->user()->id)->where('id', $privacy)->firstOrFail();
-        $data = $request->validate(['current_password' => 'required|string|max:72']);
-        DB::transaction(function () use ($request, $privacy, $data) {
+        DB::transaction(function () use ($request, $privacy) {
             $user = User::lockForUpdate()->findOrFail($request->user()->id);
-            $this->confirmPassword($user, $data['current_password']);
             $item = DB::table('account_privacy_requests')->where('user_id', $user->id)->where('id', $privacy)->lockForUpdate()->firstOrFail();
             abort_unless(in_array($item->status, ['pending', 'in-review'], true), 409);
+            $data = $request->validate(['current_password' => 'required|string|max:72']);
+            $this->confirmPassword($user, $data['current_password']);
             DB::table('account_privacy_requests')->where('id', $privacy)->update(['status' => 'withdrawn', 'updated_at' => now()]);
             Audit::record('user.privacy-withdrawn', $user->id, context: ['request' => $privacy]);
         }, attempts: 3);
@@ -70,12 +69,12 @@ class AccountPrivacyController extends Controller
             'reference' => 'nullable|integer|min:1', 'inspect' => 'nullable|integer|min:1',
         ]);
         $eligible = DB::table('account_privacy_requests')->whereNotNull('user_id')->where('user_id', '!=', $request->user()->id);
-        $counts = (clone $eligible)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
-        $items = (clone $eligible)->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status),
+        $matching = (clone $eligible)->when($filters['kind'] ?? null, fn ($query, $kind) => $query->where('kind', $kind))
+            ->when($filters['reference'] ?? null, fn ($query, $reference) => $query->where('id', $reference));
+        $counts = (clone $matching)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
+        $items = $matching->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status),
             fn ($query) => $query->whereIn('status', ['pending', 'in-review']))
-            ->when($filters['kind'] ?? null, fn ($query, $kind) => $query->where('kind', $kind))
-            ->when($filters['reference'] ?? null, fn ($query, $reference) => $query->where('id', $reference))
-            ->orderBy('id')->paginate(20)->withQueryString();
+            ->orderBy('id')->paginate(20)->appends($filters);
         $inspection = null;
         if (isset($filters['inspect'])) {
             $target = (clone $eligible)->whereIn('status', ['pending', 'in-review'])->where('id', $filters['inspect'])->firstOrFail();

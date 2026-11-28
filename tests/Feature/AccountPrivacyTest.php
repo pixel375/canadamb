@@ -48,6 +48,11 @@ class AccountPrivacyTest extends TestCase
         $this->get($queue)->assertForbidden();
         $this->actingAs($admin)->get($queue)->assertSee('Reference #'.$id)->assertSee('aria-label="Privacy request status"', false)
             ->assertSee('href="/admin/privacy-requests?status=withdrawn"', false);
+        $filtered = $this->get($queue.'?kind=data-review')->assertOk();
+        $this->assertSame(0, $filtered->viewData('counts')->sum());
+        $filtered = $this->get($queue.'?reference='.($id + 1))->assertOk();
+        $this->assertSame(0, $filtered->viewData('counts')->sum());
+        $this->get($queue.'?reference='.$id)->assertOk()->assertSee('href="/admin/privacy-requests?status=withdrawn&amp;reference='.$id.'"', false);
         $this->get($queue.'?inspect='.$id)->assertOk()->assertSee('Record impact')->assertSee('Business ownership memberships')->assertSee('Private property photos')->assertSee('Saved listings')->assertDontSee($member->email);
         $this->assertDatabaseHas('audit_logs', ['action' => 'user.privacy-impact-inspected', 'actor_id' => $admin->id]);
         $note = 'Check shared records before arranging a response.';
@@ -62,6 +67,7 @@ class AccountPrivacyTest extends TestCase
         $this->assertDatabaseHas('users', ['id' => $member->id]);
         $this->post($url.'/'.$id.'/withdraw', ['current_password' => 'password'])->assertRedirect();
         $this->assertDatabaseHas('account_privacy_requests', ['id' => $id, 'status' => 'withdrawn']);
+        $this->post($url.'/'.$id.'/withdraw')->assertConflict();
         $this->actingAs($admin)->get($queue.'?inspect='.$id)->assertNotFound();
         $this->get($queue.'?status=withdrawn&reference='.$id)->assertOk()->assertSee('Withdrawn by the member');
         $this->post($queue.'/'.$id, ['note' => $note, 'current_password' => 'password'])->assertConflict();

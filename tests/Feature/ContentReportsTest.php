@@ -190,7 +190,9 @@ class ContentReportsTest extends TestCase
         $history = 'https://brandonmb.ca/account/content-reports';
         $this->get($history)->assertOk()->assertSee($data['explanation']);
         $this->get($history.'?status=pending&type=discussion')->assertOk()->assertSee($data['explanation']);
-        $this->get($history.'?type=job')->assertOk()->assertDontSee($data['explanation'])->assertSee('No reports match these filters.');
+        $this->get($history.'?type=job')->assertOk()->assertDontSee($data['explanation'])->assertSee('No reports match these filters.')
+            ->assertSee('0 awaiting review')->assertSee('0 completed');
+        $this->get($history.'?status=resolved&type=discussion')->assertOk()->assertSee('1 awaiting review')->assertSee('0 completed');
         $this->actingAs($author)->get($history)->assertOk()->assertDontSee($data['explanation']);
         $this->get('https://canadamb.ca/admin/content-reports')->assertForbidden();
         $this->actingAs($admin)->get('https://canadamb.ca/admin/content-reports')->assertOk()->assertSee($data['explanation'])->assertSee($thread->title);

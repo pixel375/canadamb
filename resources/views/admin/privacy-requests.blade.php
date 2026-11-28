@@ -2,7 +2,7 @@
     <div class="page-intro"><div><h1>Privacy requests</h1><p>Restricted intake queue. Review identity, retention and shared records before arranging a lawful response. This page never deletes accounts or marks deletion complete.</p></div></div>
     <nav class="seller-status-grid mb-4" aria-label="Privacy request status">
         @foreach(['' => 'Open requests', 'pending' => 'Pending', 'in-review' => 'In review', 'withdrawn' => 'Withdrawn'] as $state => $label)
-            @php($params = array_filter(['status' => $state, 'kind' => $filters['kind'] ?? null], fn ($value) => $value !== null && $value !== ''))
+            @php($params = array_filter(['status' => $state, 'kind' => $filters['kind'] ?? null, 'reference' => $filters['reference'] ?? null], fn ($value) => $value !== null && $value !== ''))
             <a class="seller-status-tile" href="/admin/privacy-requests{{ $params ? '?'.http_build_query($params) : '' }}" @if(($filters['status'] ?? '') === $state) aria-current="page" @endif><strong>{{ $state === '' ? ($counts['pending'] ?? 0) + ($counts['in-review'] ?? 0) : ($counts[$state] ?? 0) }}</strong><span>{{ $label }}</span></a>
         @endforeach
     </nav>
@@ -10,7 +10,7 @@
         <div class="form-grid"><label>Status<select name="status"><option value="">Open requests</option>@foreach(['pending','in-review','withdrawn'] as $state)<option value="{{ $state }}" @selected(($filters['status'] ?? '') === $state)>{{ ucfirst(str_replace('-', ' ', $state)) }}</option>@endforeach</select></label>
         <label>Kind<select name="kind"><option value="">All types</option><option value="deletion" @selected(($filters['kind'] ?? '') === 'deletion')>Account deletion</option><option value="data-review" @selected(($filters['kind'] ?? '') === 'data-review')>Data review</option></select></label>
         <label>Reference number<input type="number" name="reference" min="1" value="{{ $filters['reference'] ?? '' }}"></label></div>
-        <button class="button button-primary">Filter requests</button>
+        <div class="inline-actions"><button class="button button-primary">Filter requests</button><a class="button button-outline" href="/admin/privacy-requests">Reset filters</a></div>
     </form>
     @if($inspection)
         <section class="panel form-stack mb-4"><h2>Record impact · request #{{ $inspection['reference'] }}</h2>
