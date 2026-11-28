@@ -56,7 +56,7 @@ class JobSearchController extends Controller
         $onlyNew = $item->alerts && ($filters['view'] ?? 'new') === 'new';
         $query = $onlyNew ? JobSearches::newMatches($item, $site) : JobSearches::matching($item, $site);
         $cutoff = now()->startOfSecond();
-        $jobs = $query->latest('published_at')->latest('id')->paginate(18)->withQueryString();
+        $jobs = $query->latest('published_at')->latest('id')->paginate(18)->appends($filters);
 
         return view('jobs.search-matches', compact('item', 'jobs', 'onlyNew', 'cutoff'));
     }

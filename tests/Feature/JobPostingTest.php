@@ -63,6 +63,13 @@ class JobPostingTest extends TestCase
         $this->assertDatabaseMissing('job_posting_bookmarks', ['user_id' => $member->id, 'job_posting_id' => $removed->id]);
         $this->assertSame(2, DB::table('job_posting_bookmarks')->where('user_id', $member->id)->count());
         $this->assertSame(3, DB::table('job_posting_bookmarks')->where('user_id', $other->id)->count());
+        $rural = JobPosting::where('title', 'Saved winnipeg expired')->sole();
+        $this->get('https://brandonmb.ca/account/saved-jobs?location=Winnipeg')->assertOk()->assertSee('Saved brandon approved');
+        $this->delete('https://brandonmb.ca/jobs/'.$rural->id.'/save')->assertRedirect('/account/saved-jobs');
+        $this->assertDatabaseHas('job_posting_bookmarks', ['user_id' => $member->id, 'job_posting_id' => $rural->id]);
+        $this->delete('https://canadamb.ca/jobs/'.$rural->id.'/save')->assertRedirect('/account/saved-jobs');
+        $this->assertDatabaseMissing('job_posting_bookmarks', ['user_id' => $member->id, 'job_posting_id' => $rural->id]);
+        $this->assertDatabaseHas('job_posting_bookmarks', ['user_id' => $other->id, 'job_posting_id' => $rural->id]);
     }
 
     public function test_bulk_withdrawal_respects_employer_roles_portal_and_stale_versions(): void

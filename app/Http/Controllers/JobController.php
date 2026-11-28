@@ -285,7 +285,11 @@ class JobController extends Controller
         if ($request->input('return_to') === 'job') {
             $this->visible($request)->findOrFail($job);
         }
-        DB::table('job_posting_bookmarks')->where(['job_posting_id' => $job, 'user_id' => $request->user()->id])->delete();
+        $site = $request->attributes->get('site');
+        abort_unless($this->jobs->enabled($site), 404);
+        DB::table('job_posting_bookmarks')->where(['job_posting_id' => $job, 'user_id' => $request->user()->id])
+            ->when($site->location_id, fn ($query, $id) => $query->whereIn('job_posting_id', JobPosting::whereHas('branch', fn ($branch) => $branch->where('location_id', $id))->select('id')))
+            ->delete();
 
         return redirect($request->input('return_to') === 'job' ? LocationScope::detailUrl('/jobs/'.$job) : '/account/saved-jobs')->with('status', 'Job removed from your saved list.');
     }
@@ -297,13 +301,15 @@ class JobController extends Controller
             ->where('user_id', $request->user()->id)->select('job_posting_id'));
         $total = (clone $matching)->count();
         $site = $request->attributes->get('site');
+        if (! $site->isNetwork()) {
+            unset($filters['location']);
+        }
         $items = $this->jobs->filter($matching, $site, $filters);
         if (($filters['sort'] ?? 'recent') === 'closing') {
             $items->orderBy('closing_on');
         }
-        $items = $items->latest('published_at')->latest('id')->paginate(18)->withQueryString();
+        $items = $items->latest('published_at')->latest('id')->paginate(18)->appends($filters);
 
-        $site = $request->attributes->get('site');
         $unavailable = DB::table('job_posting_bookmarks as bookmarks')->join('job_postings as jobs', 'jobs.id', '=', 'bookmarks.job_posting_id')
             ->join('business_locations as branches', 'branches.id', '=', 'jobs.business_location_id')
             ->join('businesses', 'businesses.id', '=', 'branches.business_id')
@@ -311,16 +317,22 @@ class JobController extends Controller
             ->when($site->location_id, fn ($query, $id) => $query->where('branches.location_id', $id))
             ->where(fn ($query) => $query->where('jobs.status', '!=', 'approved')->orWhere('jobs.closing_on', '<', $this->jobs->closingToday())
                 ->orWhere('businesses.status', '!=', 'active')->orWhere('branches.location_status', 'closed'))
-            ->orderByDesc('bookmarks.job_posting_id')->paginate(15, ['bookmarks.job_posting_id'], 'unavailable_page')->withQueryString();
+            ->orderByDesc('bookmarks.job_posting_id')->paginate(15, ['bookmarks.job_posting_id'], 'unavailable_page')->appends($filters);
+        if ($items->currentPage() > 1) {
+            $unavailable->appends(['page' => $items->currentPage()]);
+        }
+        if ($unavailable->currentPage() > 1) {
+            $items->appends(['unavailable_page' => $unavailable->currentPage()]);
+        }
 
         return view('jobs.saved', compact('items', 'filters', 'total', 'unavailable'));
     }
 
     public function clearUnavailable(Request $request)
     {
-        $request->validate(['confirm_remove' => 'accepted']);
         $site = $request->attributes->get('site');
         abort_unless($this->jobs->enabled($site), 404);
+        $request->validate(['confirm_remove' => 'accepted']);
         $unavailable = JobPosting::query()->whereHas('branch', fn ($query) => $query->when($site->location_id, fn ($branch, $id) => $branch->where('location_id', $id)))
             ->where(fn ($query) => $query->where('status', '!=', 'approved')->orWhere('closing_on', '<', $this->jobs->closingToday())
                 ->orWhereHas('branch', fn ($branch) => $branch->where('location_status', 'closed')->orWhereHas('business', fn ($business) => $business->where('status', '!=', 'active'))))
