@@ -141,7 +141,7 @@
                                                 <time datetime="{{ $event->startDateValue() }}">{{ $event->localStart()->toDateString() < $date ? 'Ongoing' : $event->timeLabel() }}</time>
                                                 <h3><a href="{{ \App\Support\LocationScope::detailUrl('/events/'.$event->id) }}">{{ $event->title }}</a></h3>
                                                 <p>{{ $event->venue }} · {{ $event->location->name }}</p>
-                                                @if($linkedDiscussion = \App\Support\EventDiscussions::publicThread(request()->attributes->get('site'), $event))<a class="text-link" href="{{ \App\Support\LocationScope::detailUrl('/community/'.$linkedDiscussion->id) }}">Discussion</a>@endif
+                                                @if(isset($eventDiscussionIds[$event->id]))<a class="text-link" href="{{ \App\Support\LocationScope::detailUrl('/community/'.$eventDiscussionIds[$event->id]) }}">Discussion</a>@endif
                                             </article>
                                         @endforeach
                                     </div>

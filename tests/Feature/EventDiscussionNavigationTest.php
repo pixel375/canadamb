@@ -103,6 +103,7 @@ class EventDiscussionNavigationTest extends TestCase
             $this->get($host.'/community/'.$thread->id)->assertOk()->assertSee('Review pending')
                 ->assertDontSee('Private unpublished venue fixture')->assertDontSee('href="/events/'.$event->id.'"', false);
             $this->get($host.'/events/'.$event->id)->assertNotFound();
+            $this->assertSame([], $this->get($host.'/community')->assertOk()->viewData('eventDiscussionIds'));
         }
         $event->forceFill(['status' => 'approved'])->save();
         foreach (['https://canadamb.ca', 'https://brandonmb.ca'] as $host) {
@@ -110,6 +111,8 @@ class EventDiscussionNavigationTest extends TestCase
                 ->assertSee('href="/events/'.$event->id.'"', false)->assertDontSee('Review pending');
             $this->get($host.'/events?month=2026-12')->assertOk()->assertSee('href="/events/'.$event->id.'"', false)
                 ->assertSee('href="/community/'.$thread->id.'"', false);
+            $hub = $this->get($host.'/community')->assertOk();
+            $this->assertEquals([$event->id => $thread->id], $hub->viewData('eventDiscussionIds'));
             $this->get($host.'/events/'.$event->id)->assertOk()->assertSee('Join event discussion')
                 ->assertSee('href="/community/'.$thread->id.'"', false);
         }
@@ -117,9 +120,14 @@ class EventDiscussionNavigationTest extends TestCase
         foreach (['https://canadamb.ca', 'https://brandonmb.ca'] as $host) {
             $this->get($host.'/events?month=2026-12')->assertOk()->assertDontSee('href="/community/'.$thread->id.'"', false);
             $this->get($host.'/events/'.$event->id)->assertOk()->assertDontSee('Join event discussion');
+            $this->assertSame([], $this->get($host.'/community')->assertOk()->viewData('eventDiscussionIds'));
             $this->get($host.'/community/'.$thread->id)->assertOk()->assertDontSee('Go to event');
         }
         $thread->forceFill(['author_id' => $author->id])->save();
+        $this->assertSame([], $this->get('https://canadamb.ca/community?location=winnipeg')->assertOk()->viewData('eventDiscussionIds'));
+        $thread->forceFill(['status' => 'pending'])->save();
+        $this->assertSame([], $this->get('https://brandonmb.ca/community')->assertOk()->viewData('eventDiscussionIds'));
+        $thread->forceFill(['status' => 'approved'])->save();
         $event->forceFill(['status' => 'rejected'])->save();
         $this->get('https://canadamb.ca/community/'.$thread->id)->assertOk()->assertDontSee('Review pending')
             ->assertDontSee('Go to event')->assertDontSee('Private unpublished venue fixture');

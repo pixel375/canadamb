@@ -69,6 +69,7 @@ class CommunityForumController extends Controller
         // No hidden or out-of-scope events are exposed.
         $eventsEnabled = $this->community->enabled($site, 'events');
         $eventDays = collect();
+        $eventDiscussionIds = [];
         if ($eventsEnabled) {
             $start = now('UTC')->format('Y-m-d H:i:s');
             $until = now('America/Winnipeg')->addDays(60)->endOfDay()->utc()->format('Y-m-d H:i:s');
@@ -77,13 +78,14 @@ class CommunityForumController extends Controller
                 ->where('status', 'approved')->where('starts_at', '<=', $until)
                 ->where(fn ($query) => $query->where('starts_at', '>=', $start)->orWhere('ends_at', '>', $start))
                 ->orderBy('starts_at')->orderBy('id')->limit(60)->get();
+            $eventDiscussionIds = EventDiscussions::publicThreadsForEvents($site, $events->modelKeys());
             $today = now('America/Winnipeg')->toDateString();
             $eventDays = $events->groupBy(fn (CommunityEvent $event) => max($today, $event->localStart()->toDateString()));
         }
 
         $places = $site->isNetwork() ? Location::selectable()->orderBy('name')->get() : collect();
 
-        return response()->view('community.forum', compact('threads', 'filters', 'eventDays', 'eventsEnabled', 'places', 'categoryCounts'))
+        return response()->view('community.forum', compact('threads', 'filters', 'eventDays', 'eventsEnabled', 'places', 'categoryCounts', 'eventDiscussionIds'))
             ->header('Cache-Control', 'private, no-store');
     }
 
