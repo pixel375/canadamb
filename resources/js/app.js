@@ -977,7 +977,7 @@ const showNativeError = control => {
         message.setAttribute('aria-hidden', 'true');
         const label = control.closest('label');
         if (label) label.append(message);
-        else control.insertAdjacentElement('afterend', message);
+        else (control.closest('.password-input-wrap') || control).insertAdjacentElement('afterend', message);
         nativeErrors.set(control, message);
     }
     message.textContent = control.validationMessage;

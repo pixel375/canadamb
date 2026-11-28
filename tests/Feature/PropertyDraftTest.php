@@ -52,6 +52,7 @@ class PropertyDraftTest extends TestCase
         $this->get('https://canadamb.ca/account/properties?status=reviewed')->assertOk()->assertDontSee($draft->title);
         $this->get('https://canadamb.ca/account/properties?location='.$draft->location_id.'&min_price=300000&max_price=320000')->assertOk()->assertSee($draft->title);
         $this->get('https://canadamb.ca/account/properties?location='.$outside)->assertOk()->assertDontSee($draft->title);
+        $this->get($origin.'/account/properties?location='.$outside)->assertOk()->assertSee($draft->title);
         $this->get('https://canadamb.ca/account/properties?min_price=400000')->assertOk()->assertDontSee($draft->title);
         $this->get('https://canadamb.ca/account/properties?max_price=320000')->assertOk()->assertSee($draft->title);
         $this->getJson('https://canadamb.ca/account/properties?min_price=400000&max_price=300000')->assertUnprocessable();
@@ -238,6 +239,7 @@ class PropertyDraftTest extends TestCase
         Storage::disk('local')->assertMissing($initial[0]->image_path);
         Storage::disk('local')->assertExists($initial[1]->image_path);
         $this->put($path, $data + ['version' => $version])->assertConflict();
+        $this->put($path, ['version' => $version])->assertConflict();
         $this->post($path.'/submit', ['version' => $draft->fresh()->contentVersion(), 'authorization_capacity' => 'owner', 'advertising_consent' => '1'])->assertRedirect();
         $reviewVersion = $draft->fresh()->contentVersion();
         $this->actingAs($admin)->get('https://canadamb.ca/admin/properties/'.$draft->id)->assertOk();

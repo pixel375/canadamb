@@ -29,6 +29,9 @@ class PropertyDraftController extends Controller
             'min_price' => 'nullable|numeric|decimal:0,2|min:0|max:1000000000',
             'max_price' => ['nullable', 'numeric', 'decimal:0,2', 'min:0', 'max:1000000000', Rule::when($request->filled('min_price'), 'gte:min_price')],
         ]);
+        if (! $request->attributes->get('site')->isNetwork()) {
+            unset($filters['location']);
+        }
         $statuses = ['draft', 'submitted', 'changes_requested', 'reviewed'];
         $owned = $this->owned($request);
         $places = Location::whereIn('id', (clone $owned)->select('location_id'))->orderBy('name')->get(['id', 'name']);
@@ -121,6 +124,8 @@ class PropertyDraftController extends Controller
     {
         $editable = $this->owned($request)->findOrFail($property);
         abort_unless(in_array($editable->status, ['draft', 'changes_requested'], true), 409);
+        $version = $request->validate(['version' => 'required|string|size:64'])['version'];
+        abort_unless(hash_equals($editable->contentVersion(), $version), 409, 'Draft changed. Reload the editor.');
         $data = $this->draftData($request);
         $selection = $request->validate([
             'version' => 'required|string|size:64',
@@ -214,6 +219,7 @@ class PropertyDraftController extends Controller
 
     public function submitSelected(Request $request)
     {
+        $this->owned($request);
         $data = $request->validate([
             'properties' => 'required|array|list|min:1|max:10', 'properties.*' => 'required|integer|distinct|min:1',
             'versions' => 'required|array|max:20', 'versions.*' => 'required|string|size:64',
@@ -254,6 +260,7 @@ class PropertyDraftController extends Controller
 
     public function withdrawSelected(Request $request)
     {
+        $this->owned($request);
         $data = $request->validate([
             'properties' => 'required|array|list|min:1|max:10', 'properties.*' => 'required|integer|distinct|min:1',
             'versions' => 'required|array|max:20', 'versions.*' => 'required|string|size:64',
