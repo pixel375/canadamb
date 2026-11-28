@@ -84,8 +84,8 @@ class MobileNavigationTest extends TestCase
         $this->get('https://canadamb.ca/account/settings')->assertRedirect();
         $this->actingAs($member)->get('https://canadamb.ca/account/settings')
             ->assertOk()->assertSee('private-member@example.test');
-        $this->post('https://canadamb.ca/account/settings', ['name' => 'Updated Member'])
-            ->assertRedirect('/account/settings');
+        $this->post('https://canadamb.ca/account/settings', ['name' => 'Updated Member', 'version' => $member->profileVersion()])
+            ->assertRedirect('/account/settings')->assertSessionHasNoErrors();
         $this->assertDatabaseHas('users', ['id' => $member->id, 'name' => 'Updated Member']);
         $this->assertDatabaseHas('audit_logs', ['actor_id' => $member->id, 'action' => 'user.profile-updated']);
         $this->get('https://canadamb.ca/users/'.$member->id)
