@@ -127,7 +127,11 @@ class PublicController extends Controller
         $urls[] = NetworkUrl::to($site, '/faq');
         if ($marketplace->enabled($site)) {
             $overridable = in_array('marketplace', app(NetworkSettings::class)->published()['permitted_module_overrides'], true);
-            $listings = $marketplace->visible($site)->where(function ($query) use ($site, $overridable) {
+            $listings = $marketplace->visible($site);
+            if ((clone $listings)->exists()) {
+                $urls[] = NetworkUrl::to($site, '/marketplace');
+            }
+            $listings->where(function ($query) use ($site, $overridable) {
                 if ($site->isNetwork()) {
                     $query->whereDoesntHave('location.site', fn ($local) => $local->where('status', 'active')->when(
                         $overridable, fn ($community) => $community->where(fn ($settings) => $settings
@@ -135,9 +139,6 @@ class PublicController extends Controller
                     ));
                 }
             })->orderBy('id')->limit(10000);
-            if ($listings->exists()) {
-                $urls[] = NetworkUrl::to($site, '/marketplace');
-            }
             foreach ($listings->cursor() as $listing) {
                 $urls[] = NetworkUrl::to($site, '/marketplace/'.$listing->id);
             }

@@ -43,7 +43,8 @@ class MarketplaceTest extends TestCase
             ->assertOk()->assertSee('<link rel="canonical" href="'.self::CITY."/marketplace/$item->id".'">', false)
             ->assertSee('href="/marketplace?category=furniture"', false);
         $this->get(self::CITY.'/sitemap.xml')->assertSee(self::CITY."/marketplace/$item->id");
-        $this->get(self::MAIN.'/sitemap.xml')->assertDontSee("/marketplace/$item->id");
+        $this->get(self::MAIN.'/sitemap.xml')->assertSee('<loc>'.self::MAIN.'/marketplace</loc>', false)
+            ->assertDontSee("/marketplace/$item->id");
 
         $this->actingAs(User::factory()->create())->put(self::CITY."/account/listings/$item->id", $this->listing('Changed by outsider'))->assertNotFound();
         $oldReview = $item->fresh()->reviewVersion();
