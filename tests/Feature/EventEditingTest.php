@@ -55,6 +55,7 @@ class EventEditingTest extends TestCase
             'organizer' => $event->organizer, 'venue' => $event->venue, 'starts_at' => '2026-03-01T10:00', 'version' => $event->contentVersion()];
         $this->actingAs(User::factory()->create())->get($path.'/edit')->assertNotFound();
         $this->post($path.'/cancel')->assertNotFound();
+        $this->put($path, [])->assertNotFound();
         $this->actingAs($owner)->get($path.'/edit')->assertOk()->assertSee('Community meetup');
         $this->put($path, $data)->assertRedirect()->assertSessionHasNoErrors();
         $this->assertSame('approved', $event->fresh()->status);
@@ -74,5 +75,6 @@ class EventEditingTest extends TestCase
         $this->get('https://brandonmb.ca/account/events')->assertOk()->assertSee('Past community meetup');
         $this->get('https://brandonmb.ca/account/events?sort=upcoming')->assertOk()->assertSee('Community meetup')->assertDontSee('Past community meetup');
         $this->post('https://brandonmb.ca/account/events/'.$past->id.'/cancel')->assertConflict();
+        $this->put('https://brandonmb.ca/account/events/'.$past->id, [])->assertConflict();
     }
 }
