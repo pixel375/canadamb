@@ -99,7 +99,8 @@ class PassOneAuthSecurityTest extends TestCase
         $user = User::factory()->create(['name' => 'Original Name']);
         $path = 'https://canadamb.ca/account/settings';
         $version = $user->profileVersion();
-        $this->actingAs($user)->get($path)->assertOk()->assertSee($version);
+        $this->actingAs($user)->get($path)->assertOk()->assertSee($version)->assertSee('At least 8 characters');
+        $this->post($path, ['name' => 'Missing version'])->assertSessionHasErrors('version');
         $this->post($path, ['name' => 'Original Name', 'version' => $version])->assertRedirect()->assertSessionHasNoErrors();
         $this->assertDatabaseMissing('audit_logs', ['action' => 'user.profile-updated']);
         $this->post('https://brandonmb.ca/account/settings', ['name' => 'Changed Name', 'version' => $version])->assertRedirect()->assertSessionHasNoErrors();

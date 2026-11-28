@@ -40,7 +40,7 @@ class UserProfileController extends Controller
                 'price-high' => $matching->orderByDesc('price_cents'),
                 default => null,
             };
-            $listings = $matching->latest('published_at')->latest('id')->paginate(12, pageName: 'listing_page')->withQueryString();
+            $listings = $matching->latest('published_at')->latest('id')->paginate(12, pageName: 'listing_page')->appends($filters);
         }
 
         return view('account.profile', [
@@ -87,10 +87,10 @@ class UserProfileController extends Controller
 
     public function update(Request $request): RedirectResponse
     {
-        $data = $request->validate(['name' => ['required', 'string', 'min:2', 'max:80'], 'version' => 'nullable|string|size:64']);
+        $data = $request->validate(['name' => ['required', 'string', 'min:2', 'max:80'], 'version' => 'required|string|size:64']);
         DB::transaction(function () use ($request, $data) {
             $user = User::lockForUpdate()->findOrFail($request->user()->id);
-            if (isset($data['version']) && ! hash_equals($user->profileVersion(), $data['version'])) {
+            if (! hash_equals($user->profileVersion(), $data['version'])) {
                 throw ValidationException::withMessages(['version' => 'Your display name changed. Reload settings before saving.']);
             }
             if ($user->name !== $data['name']) {

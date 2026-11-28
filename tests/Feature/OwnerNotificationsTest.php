@@ -80,8 +80,8 @@ class OwnerNotificationsTest extends TestCase
         $this->actingAs($member);
         $this->post('https://canadamb.ca'.$read, ['submission_view' => 'https://example.test'])->assertSessionHasErrors('submission_view');
         $this->assertNull(DB::table('owner_notifications')->where('id', $alert->id)->value('read_at'));
-        $this->post('https://canadamb.ca'.$read, ['submission_view' => 'unread', 'announcement_view' => 'all'])
-            ->assertRedirect('/account/notifications?submission_view=unread&announcement_view=all#submission-updates');
+        $this->post('https://canadamb.ca'.$read, ['submission_view' => 'unread', 'announcement_view' => 'all', 'announcements' => 2])
+            ->assertRedirect('/account/notifications?submission_view=unread&announcement_view=all&announcements=2#submission-updates');
         $this->assertNotNull(DB::table('owner_notifications')->where('id', $alert->id)->value('read_at'));
         $this->get('https://canadamb.ca/account/notifications?submission_view=unread')->assertOk()
             ->assertSee('No unread submission updates on this portal.')->assertDontSee('Your discussion was not approved.');

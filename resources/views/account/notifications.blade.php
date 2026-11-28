@@ -39,7 +39,7 @@
                 <div class="section-heading"><h2>Network announcements</h2><span>{{ $announcementUnread }} unread</span></div>
                 <nav class="inline-actions mb-4" aria-label="Network announcements filters">
                     @foreach(['all' => 'All', 'unread' => 'Unread only'] as $mode => $label)
-                        @php($params = array_filter(['announcement_view' => $mode, 'submission_view' => $filters['submission_view'] ?? null]))
+                        @php($params = array_filter(['announcement_view' => $mode, 'submission_view' => $filters['submission_view'] ?? null, 'updates' => $filters['updates'] ?? null]))
                         <a class="button button-{{ ($filters['announcement_view'] ?? 'all') === $mode ? 'primary' : 'outline' }}" href="/account/notifications?{{ http_build_query($params) }}#network-announcements" @if(($filters['announcement_view'] ?? 'all') === $mode) aria-current="page" @endif>{{ $label }}</a>
                     @endforeach
                 </nav>
@@ -92,7 +92,7 @@
                 <div class="section-heading"><h2>My submission updates</h2><span>{{ $ownerUnread }} unread</span></div>
                 <nav class="inline-actions mb-4" aria-label="My submission updates filters">
                     @foreach(['all' => 'All', 'unread' => 'Unread only'] as $mode => $label)
-                        @php($params = array_filter(['submission_view' => $mode, 'announcement_view' => $filters['announcement_view'] ?? null]))
+                        @php($params = array_filter(['submission_view' => $mode, 'announcement_view' => $filters['announcement_view'] ?? null, 'announcements' => $filters['announcements'] ?? null]))
                         <a class="button button-{{ ($filters['submission_view'] ?? 'all') === $mode ? 'primary' : 'outline' }}" href="/account/notifications?{{ http_build_query($params) }}#submission-updates" @if(($filters['submission_view'] ?? 'all') === $mode) aria-current="page" @endif>{{ $label }}</a>
                     @endforeach
                 </nav>

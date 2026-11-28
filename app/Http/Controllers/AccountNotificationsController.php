@@ -82,7 +82,8 @@ final class AccountNotificationsController extends Controller
 
     private function viewFilters(Request $request): array
     {
-        return $request->validate(['submission_view' => 'nullable|in:all,unread', 'announcement_view' => 'nullable|in:all,unread']);
+        return $request->validate(['submission_view' => 'nullable|in:all,unread', 'announcement_view' => 'nullable|in:all,unread',
+            'updates' => 'nullable|integer|min:1', 'announcements' => 'nullable|integer|min:1']);
     }
 
     private function returnToSection(array $filters, string $section)
