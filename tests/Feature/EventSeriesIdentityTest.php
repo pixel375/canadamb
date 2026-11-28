@@ -51,12 +51,12 @@ class EventSeriesIdentityTest extends TestCase
         $this->actingAs($other)->get($base.$path)->assertNotFound();
         $event = $events[0];
         $thread = EventDiscussions::linkedThread($event);
-        $this->actingAs($admin)->post('https://canadamb.ca/admin/community/events/'.$event->id, ['action' => 'approve'])->assertRedirect();
+        $this->actingAs($admin)->post('https://canadamb.ca/admin/community/events/'.$event->id, ['action' => 'approve', 'version' => $event->fresh()->contentVersion()])->assertRedirect();
         $this->post('https://canadamb.ca/admin/community/threads/'.$thread->id, ['action' => 'approve', 'version' => $thread->contentVersion()])->assertRedirect();
         $this->get($base.'/events/'.$event->id.'/calendar')->assertOk()->assertDontSee($key);
         $seriesFile = '/events/'.$event->id.'/series-calendar';
         $this->get($base.$seriesFile)->assertNotFound();
-        $this->post('https://canadamb.ca/admin/community/events/'.$events[1]->id, ['action' => 'approve'])->assertRedirect();
+        $this->post('https://canadamb.ca/admin/community/events/'.$events[1]->id, ['action' => 'approve', 'version' => $events[1]->fresh()->contentVersion()])->assertRedirect();
         foreach ([$base, 'https://canadamb.ca'] as $host) {
             $this->get($host.'/events/'.$event->id)->assertOk()->assertSee('Download upcoming published series');
             $this->get($host.$seriesFile)->assertOk()->assertSee('UID:event-'.$event->id.'@canadamb.ca')

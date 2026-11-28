@@ -50,7 +50,7 @@ class EventDateOnlyTest extends TestCase
         $path = '/events/'.$event->id;
         $this->get($base.$path)->assertNotFound();
         $this->get($base.'/account/events/'.$event->id.'/edit')->assertOk()->assertSee('Start time (optional)');
-        $this->actingAs($admin)->post('https://canadamb.ca/admin/community/events/'.$event->id, ['action' => 'approve'])->assertRedirect();
+        $this->actingAs($admin)->post('https://canadamb.ca/admin/community/events/'.$event->id, ['action' => 'approve', 'version' => $event->fresh()->contentVersion()])->assertRedirect();
         foreach ([$base, 'https://canadamb.ca'] as $host) {
             $this->get($host.$path)->assertOk()->assertSee('Time not specified')->assertDontSee('12:00 am');
             $this->get($host.$path.'/calendar')->assertOk()->assertSee('DTSTART;VALUE=DATE:20260308')->assertSee('DTEND;VALUE=DATE:20260309')->assertDontSee('DTSTART:');

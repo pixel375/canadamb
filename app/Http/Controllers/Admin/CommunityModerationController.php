@@ -40,14 +40,21 @@ class CommunityModerationController extends Controller
             }
         }
         $status = $filters['status'] ?? null;
+        $pages = [];
+        foreach (['threads', 'replies', 'events'] as $name) {
+            $page = filter_var($request->query($name), FILTER_VALIDATE_INT, ['options' => ['min_range' => 2]]);
+            if ($page !== false) {
+                $pages[$name] = $page;
+            }
+        }
 
         return view('admin.community', [
             'filters' => $filters, 'counts' => $counts, 'places' => Location::selectable()->orderBy('name')->get(['id', 'name']),
             'threads' => $threads->when($status, fn ($query) => $query->where('status', $status))->with(['location', 'author'])
-                ->orderByRaw("CASE WHEN status = 'pending' THEN 0 WHEN status = 'approved' THEN 1 ELSE 2 END")->latest('id')->paginate(15, pageName: 'threads')->withQueryString(),
-            'replies' => $replies->when($status, fn ($query) => $query->where('status', $status))->with(['thread', 'author'])->orderByRaw("CASE WHEN status = 'pending' THEN 0 WHEN status = 'approved' THEN 1 ELSE 2 END")->latest('id')->paginate(15, pageName: 'replies')->withQueryString(),
+                ->orderByRaw("CASE WHEN status = 'pending' THEN 0 WHEN status = 'approved' THEN 1 ELSE 2 END")->latest('id')->paginate(15, pageName: 'threads')->appends($filters + array_diff_key($pages, ['threads' => true]))->fragment('threads'),
+            'replies' => $replies->when($status, fn ($query) => $query->where('status', $status))->with(['thread', 'author'])->orderByRaw("CASE WHEN status = 'pending' THEN 0 WHEN status = 'approved' THEN 1 ELSE 2 END")->latest('id')->paginate(15, pageName: 'replies')->appends($filters + array_diff_key($pages, ['replies' => true]))->fragment('replies'),
             'events' => $events->when($status, fn ($query) => $query->where('status', $status))->with('location')
-                ->orderByRaw("CASE WHEN status = 'pending' THEN 0 WHEN status = 'approved' THEN 1 ELSE 2 END")->latest('id')->paginate(15, pageName: 'events')->withQueryString(),
+                ->orderByRaw("CASE WHEN status = 'pending' THEN 0 WHEN status = 'approved' THEN 1 ELSE 2 END")->latest('id')->paginate(15, pageName: 'events')->appends($filters + array_diff_key($pages, ['events' => true]))->fragment('events'),
         ]);
     }
 
@@ -55,12 +62,12 @@ class CommunityModerationController extends Controller
     {
         $data = $request->validate([
             'action' => 'required|in:approve,reject,pin,unpin,lock,unlock',
-            'version' => 'nullable|string|size:64',
+            'version' => 'required|string|size:64',
             'reason' => 'required_if:action,reject|nullable|string|max:300',
         ]);
         DB::transaction(function () use ($request, $thread, $data) {
             $item = CommunityThread::lockForUpdate()->findOrFail($thread);
-            if (isset($data['version']) && ! hash_equals($item->contentVersion(), $data['version'])) {
+            if (! hash_equals($item->contentVersion(), $data['version'])) {
                 throw ValidationException::withMessages(['version' => 'The discussion changed. Reload the moderation queue before reviewing it.']);
             }
             $action = $data['action'];
@@ -75,7 +82,11 @@ class CommunityModerationController extends Controller
                 'reject' => in_array($item->status, ['pending', 'approved'], true),
                 default => $item->status === 'approved',
             }, 409);
-            $item->forceFill($changes)->save();
+            $item->forceFill($changes);
+            if (! $item->isDirty()) {
+                return;
+            }
+            $item->save();
             if (in_array($action, ['approve', 'reject'], true)) {
                 OwnerNotifications::record($item->author_id, 'discussion', $item->id, $action === 'approve' ? 'approved' : 'rejected');
             }
@@ -113,10 +124,10 @@ class CommunityModerationController extends Controller
 
     public function events(Request $request, int $event)
     {
-        $data = $request->validate(['action' => 'required|in:approve,reject', 'version' => 'nullable|string|size:64', 'reason' => 'required_if:action,reject|nullable|string|max:300']);
+        $data = $request->validate(['action' => 'required|in:approve,reject', 'version' => 'required|string|size:64', 'reason' => 'required_if:action,reject|nullable|string|max:300']);
         DB::transaction(function () use ($request, $event, $data) {
             $item = CommunityEvent::lockForUpdate()->findOrFail($event);
-            if (isset($data['version']) && ! hash_equals($item->contentVersion(), $data['version'])) {
+            if (! hash_equals($item->contentVersion(), $data['version'])) {
                 throw ValidationException::withMessages(['version' => 'The event changed. Reload the moderation queue before reviewing it.']);
             }
             if ($data['action'] === 'approve') {

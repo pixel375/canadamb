@@ -58,7 +58,7 @@ class EventSeriesTest extends TestCase
         $this->assertDatabaseCount('community_events', 3);
         $file = $url.'/'.$events[0]->id.'/calendar';
         $this->get($file)->assertNotFound();
-        $this->actingAs($admin)->post('https://canadamb.ca/admin/community/events/'.$events[0]->id, ['action' => 'approve'])->assertRedirect();
+        $this->actingAs($admin)->post('https://canadamb.ca/admin/community/events/'.$events[0]->id, ['action' => 'approve', 'version' => $events[0]->fresh()->contentVersion()])->assertRedirect();
         $this->get($file)->assertOk()->assertHeader('Content-Type', 'text/calendar; charset=UTF-8')
             ->assertSee('SUMMARY:Weekly club\\, meeting', false)->assertSee('DESCRIPTION:Agenda\\nBEGIN:VEVENT', false);
         $this->get($url.'?month=2026-03')->assertOk()->assertSee('Day-by-day agenda')->assertSee('Weekly club, meeting')->assertSee('Download matching events');

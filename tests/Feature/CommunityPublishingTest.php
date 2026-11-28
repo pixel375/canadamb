@@ -33,7 +33,8 @@ class CommunityPublishingTest extends TestCase
 
         $this->get($city)->assertNotFound();
         $this->post("https://canadamb.ca/admin/community/threads/$thread->id", ['action' => 'approve'])->assertForbidden();
-        $this->actingAs($moderator)->post("https://canadamb.ca/admin/community/threads/$thread->id", ['action' => 'approve'])->assertRedirect();
+        $this->actingAs($moderator)->post("https://canadamb.ca/admin/community/threads/$thread->id", ['action' => 'approve'])->assertSessionHasErrors('version');
+        $this->post("https://canadamb.ca/admin/community/threads/$thread->id", ['action' => 'approve', 'version' => $thread->fresh()->contentVersion()])->assertRedirect();
         $this->get($main)->assertOk()->assertSee($input['title'])->assertSee('<link rel="canonical" href="'.$city.'">', false);
         $this->get('https://canadamb.ca/community')->assertSee($input['title']);
         $this->get('https://canadamb.ca/')->assertSee($input['title']);
@@ -55,7 +56,7 @@ class CommunityPublishingTest extends TestCase
             ->assertSee('I can donate some vegetable seeds.')->assertSee('Historical record')
             ->assertDontSee('action="/admin/community/replies/'.$reply->id.'"', false);
         $this->get($queue.'?status=rejected&location='.$winnipeg)->assertOk()->assertDontSee('I can donate some vegetable seeds.');
-        $this->actingAs($moderator)->post("https://canadamb.ca/admin/community/threads/$thread->id", ['action' => 'lock'])->assertRedirect();
+        $this->actingAs($moderator)->post("https://canadamb.ca/admin/community/threads/$thread->id", ['action' => 'lock', 'version' => $thread->fresh()->contentVersion()])->assertRedirect();
         $this->actingAs($reader)->post("$city/replies", ['body' => 'A new reply should not be accepted.'])->assertStatus(409);
     }
 
@@ -76,7 +77,8 @@ class CommunityPublishingTest extends TestCase
         $event = CommunityEvent::sole();
         $this->assertSame('2026-03-08 08:30:00', $event->getRawOriginal('starts_at'));
         $this->get('https://brandonmb.ca/events')->assertDontSee($input['title']);
-        $this->actingAs($admin)->post("https://canadamb.ca/admin/community/events/$event->id", ['action' => 'approve'])->assertRedirect();
+        $this->actingAs($admin)->post("https://canadamb.ca/admin/community/events/$event->id", ['action' => 'approve'])->assertSessionHasErrors('version');
+        $this->post("https://canadamb.ca/admin/community/events/$event->id", ['action' => 'approve', 'version' => $event->fresh()->contentVersion()])->assertRedirect();
         $this->get('https://brandonmb.ca/events?month=2026-03')->assertOk()->assertSee($input['title']);
         $this->get('https://canadamb.ca/events')->assertSee($input['title']);
         $this->get('https://canadamb.ca/')->assertSee($input['title']);
@@ -87,7 +89,7 @@ class CommunityPublishingTest extends TestCase
         $this->actingAs($organizer)->post("https://brandonmb.ca/account/events/$event->id/cancel", ['cancellation_note' => 'Organizer-only cancellation note', 'version' => $event->fresh()->contentVersion()])->assertRedirect();
         $this->get('https://brandonmb.ca/events')->assertDontSee($input['title']);
         $this->get("https://brandonmb.ca/events/$event->id")->assertSee('Cancelled')->assertDontSee('Organizer-only cancellation note');
-        $this->actingAs($admin)->post("https://canadamb.ca/admin/community/events/$event->id", ['action' => 'reject', 'reason' => 'Event detail withdrawn.'])->assertRedirect();
+        $this->actingAs($admin)->post("https://canadamb.ca/admin/community/events/$event->id", ['action' => 'reject', 'version' => $event->fresh()->contentVersion(), 'reason' => 'Event detail withdrawn.'])->assertRedirect();
         $this->get("https://brandonmb.ca/events/$event->id")->assertNotFound();
     }
 
@@ -125,7 +127,7 @@ class CommunityPublishingTest extends TestCase
         ])->assertSessionHasNoErrors();
         $id = CommunityEvent::sole()->id;
         $this->actingAs(User::factory()->create(['role' => 'network_admin']))
-            ->post("https://canadamb.ca/admin/community/events/$id", ['action' => 'approve'])->assertRedirect();
+            ->post("https://canadamb.ca/admin/community/events/$id", ['action' => 'approve', 'version' => CommunityEvent::findOrFail($id)->fresh()->contentVersion()])->assertRedirect();
         $this->get('https://brandonmb.ca/events?month=2027-04&day=2027-04-01')->assertOk()->assertSee('Overnight event');
         $this->get('https://brandonmb.ca/events?month=2027-04&day=2027-04-02')->assertOk()->assertDontSee('Overnight event');
     }

@@ -101,9 +101,9 @@ class ContentReportsTest extends TestCase
         $threadUrl = 'https://brandonmb.ca/community/'.$thread->id;
         $this->get($eventUrl)->assertNotFound();
         $this->get($threadUrl)->assertNotFound();
-        $this->actingAs($admin)->post('https://canadamb.ca/admin/community/events/'.$event->id, ['action' => 'approve'])->assertRedirect();
+        $this->actingAs($admin)->post('https://canadamb.ca/admin/community/events/'.$event->id, ['action' => 'approve', 'version' => $event->fresh()->contentVersion()])->assertRedirect();
         $this->get($eventUrl)->assertOk()->assertDontSee('Join event discussion');
-        $this->post('https://canadamb.ca/admin/community/threads/'.$thread->id, ['action' => 'approve'])->assertRedirect();
+        $this->post('https://canadamb.ca/admin/community/threads/'.$thread->id, ['action' => 'approve', 'version' => $thread->fresh()->contentVersion()])->assertRedirect();
         $this->get($eventUrl)->assertSee('Join event discussion');
         $this->get($threadUrl)->assertOk()->assertSee('Go to event');
         $this->get('https://brandonmb.ca/events')->assertSee('href="/community/'.$thread->id.'"', false);
@@ -124,9 +124,9 @@ class ContentReportsTest extends TestCase
         $this->assertDatabaseHas('community_replies', ['id' => $reply->id, 'thread_id' => $thread->id]);
         $this->get($eventUrl)->assertNotFound();
         $this->get($threadUrl)->assertNotFound();
-        $this->actingAs($admin)->post('https://canadamb.ca/admin/community/events/'.$event->id, ['action' => 'approve'])->assertRedirect();
+        $this->actingAs($admin)->post('https://canadamb.ca/admin/community/events/'.$event->id, ['action' => 'approve', 'version' => $event->fresh()->contentVersion()])->assertRedirect();
         $this->get($eventUrl)->assertOk()->assertDontSee('Join event discussion');
-        $this->post('https://canadamb.ca/admin/community/threads/'.$thread->id, ['action' => 'approve'])->assertRedirect();
+        $this->post('https://canadamb.ca/admin/community/threads/'.$thread->id, ['action' => 'approve', 'version' => $thread->fresh()->contentVersion()])->assertRedirect();
         $this->get($eventUrl)->assertSee('Join event discussion');
         $this->actingAs($owner)->post('https://brandonmb.ca/account/events/'.$event->id.'/cancel', ['version' => $event->fresh()->contentVersion()])->assertRedirect()->assertSessionHasNoErrors();
         $this->get($threadUrl)->assertSee('This event has been cancelled.');
