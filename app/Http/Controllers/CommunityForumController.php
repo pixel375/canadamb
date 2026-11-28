@@ -303,14 +303,14 @@ class CommunityForumController extends Controller
         $site = $request->attributes->get('site');
         abort_unless($this->community->enabled($site, 'community'), 404);
 
-        $filters = $request->validate(['q' => 'nullable|string|max:100', 'category' => ['nullable', Rule::in(array_keys(Community::FORUMS))]]);
+        $filters = $this->followFilters($request);
         $follows = DB::table('community_thread_follows')->where('user_id', $request->user()->id);
         $threads = $this->community->threads($site->location_id)
             ->whereIn('community_threads.id', (clone $follows)->select('thread_id'))
             ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'body']))
             ->when($filters['category'] ?? null, fn ($query, $category) => $query->where('category', $category))
             ->orderByDesc('last_activity_at')->orderByDesc('id')
-            ->paginate(18)->withQueryString();
+            ->paginate(18)->appends($filters);
         $hidden = $follows->whereIn('thread_id', $this->unavailableFollowIds($request))->count();
 
         return view('community.followed', compact('threads', 'filters', 'hidden'));
@@ -425,9 +425,11 @@ class CommunityForumController extends Controller
         CommunityThread::when($site->location_id, fn ($query, $id) => $query->where('location_id', $id))
             ->whereIn('id', DB::table('community_thread_follows')->where('user_id', $request->user()->id)->select('thread_id'))
             ->findOrFail($thread);
+        $returnToFollowing = $request->input('return_to') === 'following';
+        $filters = $returnToFollowing ? $this->followFilters($request) : [];
         DB::table('community_thread_follows')->where(['thread_id' => $thread, 'user_id' => $request->user()->id])->delete();
 
-        return redirect($request->input('return_to') === 'following' ? '/account/followed-discussions' : LocationScope::detailUrl('/community/'.$thread))
+        return redirect($returnToFollowing ? $this->followReturnPath($filters) : LocationScope::detailUrl('/community/'.$thread))
             ->with('status', 'You stopped following this discussion.');
     }
 
@@ -436,10 +438,23 @@ class CommunityForumController extends Controller
         $site = $request->attributes->get('site');
         abort_unless($this->community->enabled($site, 'community'), 404);
         $request->validate(['confirm_remove' => 'accepted']);
+        $filters = $this->followFilters($request);
         $removed = DB::table('community_thread_follows')->where('user_id', $request->user()->id)
             ->whereIn('thread_id', $this->unavailableFollowIds($request))->delete();
 
-        return redirect('/account/followed-discussions')->with('status', $removed.' unavailable discussion follows removed.');
+        return redirect($this->followReturnPath($filters))->with('status', $removed.' unavailable discussion follows removed.');
+    }
+
+    private function followFilters(Request $request): array
+    {
+        return $request->validate(['q' => 'nullable|string|max:100', 'category' => ['nullable', Rule::in(array_keys(Community::FORUMS))]]);
+    }
+
+    private function followReturnPath(array $filters): string
+    {
+        $query = http_build_query(array_filter($filters, fn ($value) => $value !== null && $value !== ''), '', '&', PHP_QUERY_RFC3986);
+
+        return '/account/followed-discussions'.($query === '' ? '' : '?'.$query);
     }
 
     private function unavailableFollowIds(Request $request)

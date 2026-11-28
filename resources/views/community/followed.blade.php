@@ -24,6 +24,9 @@
             <details class="panel form-stack mb-4"><summary>{{ $hidden }} unavailable {{ \Illuminate\Support\Str::plural('discussion', $hidden) }} followed</summary>
                 <p class="field-note">Some discussions are no longer public or are awaiting moderation. Their contents are hidden. You can keep following them or remove those follows on this portal.</p>
                 <form method="post" action="/account/followed-discussions/clear-unavailable" class="form-stack">@csrf
+                    @foreach($filters as $key => $value)
+                        @if(filled($value))<input type="hidden" name="{{ $key }}" value="{{ $value }}">@endif
+                    @endforeach
                     <label class="checkbox-line"><input type="checkbox" required name="confirm_remove" value="1"> Remove unavailable follows</label>
                     <button class="button button-outline">Confirm removal</button>
                 </form>
@@ -50,6 +53,9 @@
                     </div>
                     <form method="post" action="/community/{{ $thread->id }}/follow">@csrf @method('DELETE')
                         <input type="hidden" name="return_to" value="following">
+                        @foreach($filters as $key => $value)
+                            @if(filled($value))<input type="hidden" name="{{ $key }}" value="{{ $value }}">@endif
+                        @endforeach
                         <button class="button button-outline">Stop following</button>
                     </form>
                 </article>

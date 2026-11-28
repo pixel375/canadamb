@@ -74,12 +74,12 @@ class DiscussionNotificationWorkflowTest extends TestCase
             ->assertDontSee('Hidden Brandon topic')->assertDontSee('Hidden Winnipeg topic');
         $this->get($url.'?q=unmatched')->assertSee('No followed discussions match these filters');
         $this->post($url.'/clear-unavailable')->assertSessionHasErrors('confirm_remove');
-        $this->post($url.'/clear-unavailable', ['confirm_remove' => '1'])->assertRedirect('/account/followed-discussions');
+        $this->post($url.'/clear-unavailable', ['confirm_remove' => '1', 'q' => '0'])->assertRedirect('/account/followed-discussions?q=0');
         $this->assertDatabaseMissing('community_thread_follows', ['user_id' => $member->id, 'thread_id' => $hidden->id]);
         $this->assertDatabaseHas('community_thread_follows', ['user_id' => $member->id, 'thread_id' => $elsewhere->id]);
         $this->assertDatabaseHas('community_thread_follows', ['user_id' => $other->id, 'thread_id' => $hidden->id]);
         $this->delete('https://brandonmb.ca/community/'.$elsewhere->id.'/follow')->assertNotFound();
-        $this->delete('https://brandonmb.ca/community/'.$visible->id.'/follow', ['return_to' => 'following'])->assertRedirect('/account/followed-discussions');
+        $this->delete('https://brandonmb.ca/community/'.$visible->id.'/follow', ['return_to' => 'following', 'q' => '0', 'category' => 'general'])->assertRedirect('/account/followed-discussions?q=0&category=general');
         $this->assertDatabaseMissing('community_thread_follows', ['user_id' => $member->id, 'thread_id' => $visible->id]);
         $this->assertDatabaseHas('community_thread_follows', ['user_id' => $other->id, 'thread_id' => $visible->id]);
     }
