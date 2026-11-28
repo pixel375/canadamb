@@ -25,7 +25,7 @@ class JobReviewController extends Controller
             ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'description']));
         $counts = (clone $matching)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
         $items = $matching->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
-            ->orderByRaw("CASE WHEN status = 'pending' THEN 0 WHEN status = 'approved' THEN 1 ELSE 2 END")->latest('id')->paginate(20)->withQueryString();
+            ->orderByRaw("CASE WHEN status = 'pending' THEN 0 WHEN status = 'approved' THEN 1 ELSE 2 END")->latest('id')->paginate(20)->appends($filters);
 
         $places = Location::selectable()->orderBy('name')->get(['id', 'name']);
 
@@ -82,15 +82,15 @@ class JobReviewController extends Controller
 
     public function update(Request $request, int $job, JobBoard $board)
     {
-        $data = $request->validate([
-            'action' => 'required|in:approve,reject', 'reason' => 'required_if:action,reject|nullable|string|max:300',
-            'version' => 'required|size:64|alpha_num',
-        ]);
-        DB::transaction(function () use ($request, $job, $board, $data) {
+        DB::transaction(function () use ($request, $job, $board) {
             $initial = JobPosting::with('branch')->findOrFail($job);
             $business = Business::lockForUpdate()->findOrFail($initial->branch->business_id);
             $item = JobPosting::with('branch.business')->lockForUpdate()->findOrFail($job);
             abort_if($item->author_id === $request->user()->id || $business->members()->whereKey($request->user()->id)->exists(), 403);
+            $data = $request->validate([
+                'action' => 'required|in:approve,reject', 'reason' => 'required_if:action,reject|nullable|string|max:300',
+                'version' => 'required|string|size:64|alpha_num',
+            ]);
             abort_unless(hash_equals($item->reviewVersion(), $data['version']), 409, 'The posting changed. Reload it before reviewing.');
             if ($data['action'] === 'approve') {
                 abort_unless($item->status === 'pending' && $item->branch->isOpen() && $item->branch->business->status === 'active'

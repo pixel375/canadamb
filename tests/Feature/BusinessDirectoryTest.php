@@ -194,6 +194,7 @@ class BusinessDirectoryTest extends TestCase
         $this->get($url.'?location='.Location::where('slug', 'winnipeg')->sole()->id)->assertOk()->assertDontSee('Pending Repair');
         $business->update(['description' => 'Revised description']);
         $decision = ['decision' => 'approved', 'notes' => 'Independent profile review completed.'];
+        $this->post($url.'/'.$business->id, $decision)->assertSessionHasErrors('version');
         $this->post($url.'/'.$business->id, $decision + ['version' => $version])->assertConflict();
         $this->assertSame('pending', $business->fresh()->status);
         $this->post($url.'/'.$business->id, $decision + ['version' => $business->fresh()->profileVersion()])->assertRedirect();

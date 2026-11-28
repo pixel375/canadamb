@@ -157,6 +157,7 @@ class JobPostingTest extends TestCase
         $url = 'https://canadamb.ca/admin/jobs/selected';
         $input = ['action' => 'approve', 'jobs' => [$items[0]->id, $items[1]->id], 'versions' => $versions, 'confirm_review' => '1'];
         $this->actingAs($owner)->post($url, $input)->assertForbidden();
+        $this->post('https://canadamb.ca/admin/jobs/'.$items[0]->id)->assertForbidden();
         $this->actingAs($reviewer)->get('https://canadamb.ca/admin/jobs')->assertOk()->assertSee('Review selected job postings');
         $this->post($url, array_replace($input, ['jobs' => [$items[0]->id, $items[2]->id]]))->assertForbidden();
         $this->post($url, array_replace($input, ['versions' => array_replace($versions, [$items[1]->id => str_repeat('0', 64)])]))->assertSessionHasErrors('jobs');

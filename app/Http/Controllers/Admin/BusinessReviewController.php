@@ -23,13 +23,20 @@ class BusinessReviewController extends Controller
         $filters = $request->validate(['q' => 'nullable|string|max:100', 'location' => 'nullable|integer|exists:locations,id',
             'history' => 'nullable|in:pending,completed']);
         $history = ($filters['history'] ?? 'pending') === 'completed';
+        $pages = [];
+        foreach (['page', 'claims_page', 'updates_page', 'imports_page'] as $name) {
+            $page = filter_var($request->query($name), FILTER_VALIDATE_INT, ['options' => ['min_range' => 2]]);
+            if ($page !== false) {
+                $pages[$name] = $page;
+            }
+        }
 
         return view('admin.business-review', [
             'filters' => $filters, 'places' => Location::selectable()->orderBy('name')->get(['id', 'name']), 'history' => $history,
             'businesses' => Business::with('locations.location')->whereIn('status', $history ? ['active', 'rejected'] : ['pending'])
                 ->when($filters['location'] ?? null, fn ($query, $id) => $query->whereHas('locations', fn ($branch) => $branch->where('location_id', $id)))
                 ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['name', 'description']))
-                ->whereDoesntHave('members', fn ($members) => $members->whereKey($request->user()->id))->latest()->latest('id')->paginate(15)->withQueryString(),
+                ->whereDoesntHave('members', fn ($members) => $members->whereKey($request->user()->id))->latest()->latest('id')->paginate(15)->appends($filters + array_diff_key($pages, ['page' => true]))->fragment('profiles'),
             'claims' => DB::table('business_claims')->join('businesses', 'businesses.id', '=', 'business_claims.business_id')
                 ->join('users', 'users.id', '=', 'business_claims.user_id')->whereIn('business_claims.status', $history ? ['approved', 'rejected', 'withdrawn', 'superseded'] : ['pending'])
                 ->when($filters['location'] ?? null, fn ($query, $id) => $query->whereExists(fn ($branch) => $branch->selectRaw('1')->from('business_locations')->whereColumn('business_locations.business_id', 'business_claims.business_id')->where('location_id', $id)))
@@ -43,15 +50,15 @@ class BusinessReviewController extends Controller
                     $query->selectRaw('1')->from('business_memberships')->whereColumn('business_memberships.business_id', 'business_claims.business_id')
                         ->where('business_memberships.user_id', $request->user()->id);
                 })
-                ->latest('business_claims.id')->paginate(15, $history ? ['business_claims.id', 'business_claims.status', 'businesses.name', 'business_claims.created_at'] : ['business_claims.*', 'businesses.name', 'users.email'], 'claims_page')->withQueryString(),
+                ->latest('business_claims.id')->paginate(15, $history ? ['business_claims.id', 'business_claims.status', 'businesses.name', 'business_claims.created_at'] : ['business_claims.*', 'businesses.name', 'users.email'], 'claims_page')->appends($filters + array_diff_key($pages, ['claims_page' => true]))->fragment('claims'),
             'updates' => BusinessUpdate::with('branch.business', 'branch.location')->whereIn('status', $history ? ['approved', 'rejected', 'withdrawn'] : ['pending'])
                 ->when($filters['location'] ?? null, fn ($query, $id) => $query->whereHas('branch', fn ($branch) => $branch->where('location_id', $id)))
                 ->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['title', 'body']))
                 ->where(fn ($query) => $query->whereNull('author_id')->orWhere('author_id', '!=', $request->user()->id))
                 ->whereHas('branch.business', fn ($query) => $query->whereDoesntHave('members', fn ($members) => $members->whereKey($request->user()->id)))
-                ->latest()->latest('id')->paginate(15, ['*'], 'updates_page')->withQueryString(),
+                ->latest()->latest('id')->paginate(15, ['*'], 'updates_page')->appends($filters + array_diff_key($pages, ['updates_page' => true]))->fragment('updates'),
             'imports' => DB::table('business_import_runs')->join('business_sources', 'business_sources.id', '=', 'business_import_runs.source_id')
-                ->latest('business_import_runs.id')->paginate(15, ['business_import_runs.*', 'business_sources.name'], 'imports_page')->withQueryString(),
+                ->latest('business_import_runs.id')->paginate(15, ['business_import_runs.*', 'business_sources.name'], 'imports_page')->appends($filters + array_diff_key($pages, ['imports_page' => true]))->fragment('imports'),
         ]);
     }
 
@@ -70,21 +77,19 @@ class BusinessReviewController extends Controller
             ->when(($filters['ownership'] ?? null) === 'ambiguous', fn ($query) => $query->whereHas('members', fn ($members) => $members->where('business_memberships.role', 'owner'), '>', 1))
             ->when(($filters['ownership'] ?? null) === 'claimed', fn ($query) => $query->whereHas('members', fn ($members) => $members->where('business_memberships.role', 'owner')))
             ->when(($filters['ownership'] ?? null) === 'unclaimed', fn ($query) => $query->whereDoesntHave('members', fn ($members) => $members->where('business_memberships.role', 'owner')))
-            ->orderBy('name')->orderBy('id')->paginate(20)->withQueryString();
+            ->orderBy('name')->orderBy('id')->paginate(20)->appends($filters);
 
         return view('admin.business-ownership', compact('items', 'filters', 'places'));
     }
 
     public function profile(Request $request, int $business)
     {
-        $data = $this->decision($request) + $request->validate(['version' => 'nullable|string|size:64']);
-        DB::transaction(function () use ($business, $request, $data) {
+        DB::transaction(function () use ($business, $request) {
             $item = Business::lockForUpdate()->findOrFail($business);
             abort_if($item->members()->whereKey($request->user()->id)->exists(), 403);
             abort_unless($item->status === 'pending', 409);
-            if (isset($data['version'])) {
-                abort_unless(hash_equals($item->profileVersion(), $data['version']), 409, 'This profile changed. Reload before reviewing.');
-            }
+            $data = $this->decision($request) + $request->validate(['version' => 'required|string|size:64']);
+            abort_unless(hash_equals($item->profileVersion(), $data['version']), 409, 'This profile changed. Reload before reviewing.');
             $item->update(['status' => $data['decision'] === 'approved' ? 'active' : 'rejected']);
             if (OwnerNotifications::enabled()) {
                 DB::table('business_memberships')->where('business_id', $item->id)->where('role', 'owner')
@@ -102,13 +107,13 @@ class BusinessReviewController extends Controller
 
     public function claim(Request $request, int $claim)
     {
-        $data = $this->decision($request);
-        DB::transaction(function () use ($claim, $request, $data) {
+        DB::transaction(function () use ($claim, $request) {
             $row = DB::table('business_claims')->where('id', $claim)->firstOrFail();
             $business = Business::lockForUpdate()->findOrFail($row->business_id);
             $row = DB::table('business_claims')->where('id', $claim)->lockForUpdate()->firstOrFail();
             abort_unless($row->status === 'pending', 409);
             abort_if((int) $row->user_id === $request->user()->id || $business->members()->whereKey($request->user()->id)->exists(), 403);
+            $data = $this->decision($request);
             if ($data['decision'] === 'approved') {
                 if ($business->status !== 'active' || $business->members()->wherePivot('role', 'owner')->exists()
                     || ! User::whereKey($row->user_id)->whereNotNull('email_verified_at')->exists()) {
@@ -144,13 +149,13 @@ class BusinessReviewController extends Controller
 
     public function update(Request $request, int $update)
     {
-        $data = $this->decision($request) + $request->validate(['version' => 'required|string|size:64']);
-        DB::transaction(function () use ($update, $request, $data) {
+        DB::transaction(function () use ($update, $request) {
             $initial = BusinessUpdate::with('branch')->findOrFail($update);
             $business = Business::lockForUpdate()->findOrFail($initial->branch->business_id);
             $item = BusinessUpdate::with('branch')->lockForUpdate()->findOrFail($update);
             abort_unless($item->status === 'pending', 409);
             abort_if($item->author_id === $request->user()->id || $business->members()->whereKey($request->user()->id)->exists(), 403);
+            $data = $this->decision($request) + $request->validate(['version' => 'required|string|size:64']);
             abort_unless(hash_equals($item->reviewVersion(), $data['version']), 409, 'This update changed. Reload before reviewing.');
             abort_if($data['decision'] === 'approved' && (! $item->branch->isOpen() || $business->status !== 'active'), 409);
             $item->update(['status' => $data['decision'], 'published_at' => $data['decision'] === 'approved' ? now() : null]);
