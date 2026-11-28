@@ -825,13 +825,14 @@ if (activityEndpoint && !chatPanel) {
     schedule();
 }
 
- // Keep text length feedback local; submissions still use server validation.
+// Keep text length feedback local; submissions still use server validation.
 for (const field of document.querySelectorAll('[data-character-count]')) {
     const feedback = field.closest('label')?.querySelector('[data-character-feedback]');
     if (!feedback) continue;
     const update = () => { feedback.textContent = field.value.length + ' / ' + field.maxLength + ' characters'; };
     field.addEventListener('input', update);
     update();
+    field.dataset.characterCountReady = 'true';
 }
 
 // Password visibility remains local; password values are never persisted.

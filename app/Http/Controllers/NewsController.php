@@ -35,7 +35,7 @@ class NewsController extends Controller
             ->when($filter['period'] ?? null, fn ($query, $period) => $query->where('published_at', '>=', now()->subDays((int) $period)));
         $categoryCounts = (clone $matching)->reorder()->selectRaw('category, COUNT(*) as total')->groupBy('category')->pluck('total', 'category');
         $items = $matching->when($filter['category'] ?? null, fn ($query, $category) => $query->where('category', $category))
-            ->paginate(18)->withQueryString();
+            ->paginate(18)->appends(LocationScope::preserveAll($filter));
 
         return view('news.index', compact('items', 'filter', 'place', 'places', 'sources', 'categoryCounts'));
     }

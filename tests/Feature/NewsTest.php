@@ -16,6 +16,33 @@ class NewsTest extends TestCase
 
     protected $seeder = DatabaseSeeder::class;
 
+    public function test_news_pagination_keeps_explicit_province_scope_and_validated_filters(): void
+    {
+        $source = NewsSource::create(['name' => 'Pagination source', 'url' => 'https://source.example.test/', 'reuse' => 'summary-permitted', 'enabled' => true]);
+        $brandon = Location::where('slug', 'brandon')->sole()->id;
+        $winnipeg = Location::where('slug', 'winnipeg')->sole()->id;
+        for ($i = 1; $i <= 19; $i++) {
+            $url = 'https://source.example.test/news/'.$i;
+            NewsArticle::create([
+                'source_id' => $source->id, 'location_id' => $i === 1 ? $winnipeg : $brandon,
+                'external_key' => (string) $i, 'source_url' => $url, 'source_hash' => hash('sha256', $url),
+                'input_hash' => hash('sha256', $url), 'source_date' => today()->toDateString(),
+                'title' => 'Pagination notice '.$i, 'body' => 'An independently reviewed public notice.',
+                'category' => 'municipal', 'status' => 'published', 'published_at' => now(),
+            ]);
+        }
+
+        $page = $this->withCookie('canadamb_community', 'brandon')
+            ->get('https://canadamb.ca/news?location=&q=Pagination&extra=discard')->assertOk();
+        $next = $page->viewData('items')->nextPageUrl();
+        $this->assertNotNull($next);
+        $this->assertStringContainsString('location=', $next);
+        $this->assertStringContainsString('q=Pagination', $next);
+        $this->assertStringNotContainsString('extra=', $next);
+        $this->get($next)->assertOk()->assertSee('Pagination notice 1</a>', false);
+        $this->get('https://brandonmb.ca/news?location=winnipeg&q=Pagination')->assertOk()->assertDontSee('Pagination notice 1</a>', false);
+    }
+
     public function test_authenticated_idempotent_submission_requires_editorial_review_before_publication(): void
     {
         config(['network.news_ingest_token' => str_repeat('x', 40)]);

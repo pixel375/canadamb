@@ -605,8 +605,9 @@ const fs = require('node:fs');
                     && composer.getBoundingClientRect().bottom <= innerHeight + 2
                     && document.documentElement.scrollHeight <= innerHeight + 2;
             }), 'Chat composer or history does not fit at ' + width);
+            await page.locator('textarea[name="body"][data-character-count-ready="true"]').waitFor({ state: 'visible' });
             await page.locator('textarea[name="body"]').fill('Thanks for confirming.');
-            check((await page.locator('[data-character-feedback]').innerText()).includes('22 / 2000'), 'Chat character counter did not update');
+            await page.locator('[data-character-feedback]').filter({ hasText: '22 / 2000' }).waitFor({ state: 'visible' });
             check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Conversation overflow at ' + width);
         }
         // Stable cursor loading must not replace the composer or jump the visible history.
