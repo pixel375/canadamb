@@ -27,6 +27,9 @@ class SeoSettingsTest extends TestCase
                     ->assertSee('<meta name="robots" content="noindex, nofollow">', false);
             }
         }
+        $this->get('https://brandonmb.ca/events?location%5B%5D=invalid')->assertOk()
+            ->assertSee('<meta name="robots" content="noindex, nofollow">', false)
+            ->assertDontSee('<link rel="canonical" href="https://brandonmb.ca/events">', false);
     }
 
     public function test_metadata_is_audited_and_does_not_change_indexing_or_other_portals(): void

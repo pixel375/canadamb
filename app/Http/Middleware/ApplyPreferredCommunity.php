@@ -16,7 +16,10 @@ class ApplyPreferredCommunity
         // stale or malformed public location filters before validation.
         if ($site && ! $site->isNetwork() && $request->isMethod('GET')
             && $request->is('/', 'marketplace', 'real-estate', 'businesses', 'business-updates', 'community', 'jobs', 'events', 'events/calendar', 'news')) {
-            $request->query->remove('location');
+            if ($request->query->has('location')) {
+                $request->attributes->set('ignored_public_location_filter', true);
+                $request->query->remove('location');
+            }
 
             return $next($request);
         }

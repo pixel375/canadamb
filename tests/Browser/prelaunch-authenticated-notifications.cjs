@@ -3,7 +3,9 @@ const fs = require('node:fs');
 
 (async () => {
     const browser = await chromium.launch({ headless: true });
-    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+    // Network interception tests must bypass service workers. The separate
+    // prelaunch-navigation suite still exercises real service-worker behavior.
+    const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, serviceWorkers: 'block' });
     const host = 'http://canadamb.localhost:8000';
     const check = (condition, message) => { if (!condition) throw new Error(message); };
     try {
@@ -629,12 +631,15 @@ const fs = require('node:fs');
         check(await history.locator('article[data-message-id]').count() === 30, 'Initial chat history is not bounded');
         await older.scrollIntoViewIfNeeded();
         const olderUrl = await older.evaluate(el => el.href);
-        await page.route(olderUrl, route => route.abort());
+        let historyRequestIntercepted = false;
+        const failHistoryRequest = route => { historyRequestIntercepted = true; return route.abort(); };
+        await page.route(url => url.href === olderUrl, failHistoryRequest);
         await older.click();
         await page.locator('[data-chat-older-status]').filter({ hasText: 'Could not load older messages' }).waitFor({ state: 'visible' });
         check(await history.locator('article[data-message-id]').count() === 30, 'Failed history request altered messages');
         check(await page.locator('textarea[name="body"]').inputValue() === 'Thanks for confirming.', 'Failed history request discarded draft');
-        await page.unroute(olderUrl);
+        check(historyRequestIntercepted, 'History failure was not injected into the network request');
+        await page.unrouteAll({ behavior: 'wait' });
         await older.scrollIntoViewIfNeeded();
         const anchor = history.locator('article[data-message-id]').first();
         const anchorId = await anchor.getAttribute('data-message-id');

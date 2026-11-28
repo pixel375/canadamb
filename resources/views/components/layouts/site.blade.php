@@ -12,8 +12,8 @@
         $seoLanding = request()->is('/', 'marketplace', 'businesses', 'business-updates', 'community', 'jobs', 'events', 'news', 'real-estate', 'communities', 'faq');
         // Filter combinations and pagination are useful to visitors, but
         // should not create an unlimited set of indexable discovery pages.
-        $seoFiltered = $seoLanding && request()->query->count() > 0;
-        $seoCanonical = $canonical ?? (request()->is('/') ? \App\Support\NetworkUrl::to($site) : ($seoLanding && !request()->query->count() ? \App\Support\NetworkUrl::to($site, '/'.request()->path()) : null));
+        $seoFiltered = $seoLanding && (request()->query->count() > 0 || request()->attributes->get('ignored_public_location_filter', false));
+        $seoCanonical = $canonical ?? (request()->is('/') ? \App\Support\NetworkUrl::to($site) : ($seoLanding && !$seoFiltered ? \App\Support\NetworkUrl::to($site, '/'.request()->path()) : null));
     @endphp
     <title>{{ $seoTitle }}</title>
     <meta name="description" content="{{ $seoDescription }}">
