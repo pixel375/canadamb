@@ -26,7 +26,7 @@
                     <div class="discussion-author-copy">
                         <strong>
                             @if($item->author)
-                                <a href="/users/{{ $item->author->id }}">{{ $item->author->name }}</a>
+                                <a href="{{ \App\Support\LocationScope::detailUrl('/users/'.$item->author->id) }}">{{ $item->author->name }}</a>
                             @else
                                 Former member
                             @endif
@@ -111,7 +111,7 @@
                             <div class="discussion-reply-byline" data-reply-byline>
                                 <strong>
                                     @if($reply->author)
-                                        <a href="/users/{{ $reply->author->id }}">{{ $reply->author->name }}</a>
+                                        <a href="{{ \App\Support\LocationScope::detailUrl('/users/'.$reply->author->id) }}">{{ $reply->author->name }}</a>
                                     @else
                                         Former member
                                     @endif

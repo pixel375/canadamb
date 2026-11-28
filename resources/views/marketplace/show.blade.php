@@ -55,9 +55,9 @@
             <aside class="listing-detail-aside" aria-label="Seller and other listings">
                 <section class="panel seller-panel">
                     <h2>Seller</h2>
-                    <div class="listing-seller-identity"><span class="message-avatar"><x-icon name="person" size="24"/></span><div><p class="seller-name"><a class="text-link" href="/users/{{ $item->seller->id }}">{{ $item->seller->name }}</a></p>
+                    <div class="listing-seller-identity"><span class="message-avatar"><x-icon name="person" size="24"/></span><div><p class="seller-name"><a class="text-link" href="{{ \App\Support\LocationScope::detailUrl('/users/'.$item->seller->id) }}">{{ $item->seller->name }}</a></p>
                     <p class="seller-since">Member since {{ $item->seller->created_at->format('F Y') }}</p></div></div>
-                    <a class="text-link seller-inventory-link" href="/users/{{ $item->seller->id }}">View seller profile · {{ $sellerListingCount }} active {{ \Illuminate\Support\Str::plural('listing', $sellerListingCount) }} <x-icon name="arrow" size="16"/></a>
+                    <a class="text-link seller-inventory-link" href="{{ \App\Support\LocationScope::detailUrl('/users/'.$item->seller->id) }}">View seller profile · {{ $sellerListingCount }} active {{ \Illuminate\Support\Str::plural('listing', $sellerListingCount) }} <x-icon name="arrow" size="16"/></a>
                     @auth
                         @if($item->user_id === auth()->id())
                             <p class="field-note">This is your listing.</p>

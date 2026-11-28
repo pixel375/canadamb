@@ -28,12 +28,15 @@
         @if($marketEnabled)
         <section class="homepage-section" id="member-listings" aria-labelledby="member-listings-heading">
             <div class="section-heading"><h2 id="member-listings-heading">Public Marketplace listings</h2><span class="field-note">{{ $listingCount }} active {{ \Illuminate\Support\Str::plural('listing', $listingCount) }}</span></div>
-            @if($listingCount || array_filter($filters))
+            @if($listingCount || array_filter($filters, fn ($value) => $value !== null && $value !== ''))
                 <form method="get" action="{{ $isOwn ? '/account/profile' : '/users/'.$member->id }}#member-listings" class="panel filter-bar mb-3">
+                    @foreach(\App\Support\LocationScope::detailParams() as $key => $value)
+                        <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+                    @endforeach
                     <label>Search listings<input type="search" name="q" maxlength="100" value="{{ $filters['q'] ?? '' }}"></label>
                     <label>Category<select name="category"><option value="">All categories</option>@foreach($categories as $slug => $label)<option value="{{ $slug }}" @selected(($filters['category'] ?? '') === $slug)>{{ $label }}</option>@endforeach</select></label>
                     <label>Sort<select name="sort"><option value="recent" @selected(($filters['sort'] ?? 'recent') === 'recent')>Newest</option><option value="price-low" @selected(($filters['sort'] ?? '') === 'price-low')>Price: low to high</option><option value="price-high" @selected(($filters['sort'] ?? '') === 'price-high')>Price: high to low</option></select></label>
-                    <div class="inline-actions"><button class="button button-primary">Filter listings</button><a class="text-link" href="{{ $isOwn ? '/account/profile' : '/users/'.$member->id }}#member-listings">Reset</a></div>
+                    <div class="inline-actions"><button class="button button-primary">Filter listings</button><a class="text-link" href="{{ \App\Support\LocationScope::detailUrl($isOwn ? '/account/profile' : '/users/'.$member->id, [], '#member-listings') }}">Reset</a></div>
                 </form>
                 <p class="field-note">{{ $listings->total() }} matching listings</p>
             @endif

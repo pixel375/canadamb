@@ -52,7 +52,7 @@ final class LocationScope
 
     private static function detailRequest(): bool
     {
-        return (bool) preg_match('~^(?:marketplace|real-estate|businesses|jobs|community|events|news)/[^/]+(?:/(?:follow|save|report|replies(?:/[1-9][0-9]*)?))?$|^account/replies/[1-9][0-9]*(?:/edit)?$~D', request()->path());
+        return (bool) preg_match('~^(?:marketplace|real-estate|businesses|jobs|community|events|news)/[^/]+(?:/(?:follow|save|report|replies(?:/[1-9][0-9]*)?))?$|^account/replies/[1-9][0-9]*(?:/edit)?$|^users/[1-9][0-9]*$|^account/profile$~D', request()->path());
     }
 
     public static function explicitAll(Site $site): bool

@@ -169,6 +169,29 @@ class MarketplaceCategoryNavigationTest extends TestCase
             ->assertSee('Public real estate listings are not yet available.');
     }
 
+    public function test_seller_profiles_keep_temporary_browse_scope_without_changing_inventory_permissions(): void
+    {
+        $seller = User::factory()->create();
+        $first = $this->published($seller, 'Brandon seller fixture', 'cars', 'brandon');
+        for ($i = 1; $i <= 12; $i++) {
+            $this->published($seller, 'Elkhorn seller fixture '.$i, 'cars', 'elkhorn');
+        }
+        $profile = '/users/'.$seller->id;
+        $this->withCookie('canadamb_community', 'brandon')->get(self::MAIN.'/marketplace/'.$first->id.'?browse=')
+            ->assertOk()->assertSee('href="'.$profile.'?browse="', false);
+        $page = $this->get(self::MAIN.$profile.'?browse=&category=cars')->assertOk()
+            ->assertSee('name="browse" value=""', false)
+            ->assertSee('href="'.$profile.'?browse=#member-listings"', false)
+            ->assertSee('href="/marketplace?location="', false);
+        $this->assertSame(13, $page->viewData('listings')->total());
+        $next = $page->viewData('listings')->nextPageUrl();
+        $this->assertStringContainsString('browse=', $next);
+        $this->assertStringContainsString('listing_page=2', $next);
+        $this->get(self::MAIN.$profile.'?browse=&listing_page=2')->assertOk()->assertSee('Brandon seller fixture')
+            ->assertSee('href="/marketplace/'.$first->id.'?browse="', false);
+        $this->get(self::CITY.$profile.'?browse=elkhorn')->assertOk()->assertSee('Brandon seller fixture')->assertDontSee('Elkhorn seller fixture');
+    }
+
     private function published(User $seller, string $title, string $category, string $town): Listing
     {
         $item = Listing::create([

@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Support\Audit;
 use App\Support\Identity;
 use App\Support\KeywordSearch;
+use App\Support\LocationScope;
 use App\Support\Marketplace;
 use App\Support\SignupLocations;
 use Illuminate\Contracts\View\View;
@@ -40,7 +41,7 @@ class UserProfileController extends Controller
                 'price-high' => $matching->orderByDesc('price_cents'),
                 default => null,
             };
-            $listings = $matching->latest('published_at')->latest('id')->paginate(12, pageName: 'listing_page')->appends($filters);
+            $listings = $matching->latest('published_at')->latest('id')->paginate(12, pageName: 'listing_page')->appends($filters + LocationScope::detailParams());
         }
 
         return view('account.profile', [

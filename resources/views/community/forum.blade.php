@@ -93,7 +93,7 @@
                                     <span class="discussion-topic-author">
                                         <span class="discussion-mini-avatar" aria-hidden="true">{{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($thread->author?->name ?? 'M', 0, 1)) }}</span>
                                         @if($thread->author)
-                                            <a href="/users/{{ $thread->author->id }}">{{ $thread->author->name }}</a>
+                                            <a href="{{ \App\Support\LocationScope::detailUrl('/users/'.$thread->author->id) }}">{{ $thread->author->name }}</a>
                                         @else
                                             Former member
                                         @endif
