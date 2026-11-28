@@ -39,7 +39,7 @@ final class LocationScope
         if (! $site->isNetwork()) {
             return $site->location;
         }
-        if (($request->is(...self::INDEXES) || $request->is('community/new', 'events/new')) && $request->query->has('location')) {
+        if (($request->is(...self::INDEXES) || $request->is('community/new', 'events/new', 'marketplace/new', 'account/properties/new', 'account/businesses/new')) && $request->query->has('location')) {
             return self::forBrowsing($site, $request->query('location'), $request->is('jobs'));
         }
 

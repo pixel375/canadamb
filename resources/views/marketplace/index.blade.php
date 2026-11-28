@@ -11,7 +11,7 @@
             return '/marketplace'.($query === '' ? '' : '?'.$query);
         };
         $marketPlace = isset($filters['location']) ? $locations->firstWhere('slug', $filters['location'])?->name : null;
-        $postParams = array_intersect_key($filters, ['category' => true, 'location' => true]);
+        $postParams = \App\Support\LocationScope::preserveAll(array_intersect_key($filters, ['category' => true, 'location' => true]));
         $postUrl = '/marketplace/new'.($postParams ? '?'.http_build_query($postParams) : '');
     @endphp
     <div class="container page-shell browse-page">

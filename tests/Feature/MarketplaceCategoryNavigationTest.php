@@ -169,6 +169,23 @@ class MarketplaceCategoryNavigationTest extends TestCase
             ->assertSee('Public real estate listings are not yet available.');
     }
 
+    public function test_posting_from_all_manitoba_does_not_preselect_remembered_location(): void
+    {
+        $member = User::factory()->create();
+        $place = Location::where('slug', 'brandon')->sole();
+        $this->actingAs($member)->withCookie('canadamb_community', 'brandon')
+            ->get(self::MAIN.'/marketplace?location=')->assertOk()
+            ->assertSee('href="/marketplace/new?location="', false);
+        $this->get(self::MAIN.'/marketplace/new?location=')->assertOk()
+            ->assertViewHas('suggestedLocation', fn ($location) => $location === null)
+            ->assertDontSee('value="'.$place->id.'" selected', false)
+            ->assertSee('href="/marketplace?location="', false);
+        $this->get(self::MAIN.'/marketplace/new')->assertOk()
+            ->assertViewHas('suggestedLocation', fn ($location) => $location?->id === $place->id);
+        $this->get(self::CITY.'/marketplace/new?location=elkhorn')->assertOk()
+            ->assertViewHas('suggestedLocation', fn ($location) => $location?->id === $place->id);
+    }
+
     public function test_seller_profiles_keep_temporary_browse_scope_without_changing_inventory_permissions(): void
     {
         $seller = User::factory()->create();

@@ -26,7 +26,7 @@
         $activeFilters = array_filter($filters, fn ($value) => $value !== null && $value !== '');
         $typeParams = array_diff_key($activeFilters, ['property_type' => true]);
         $transactionParams = array_diff_key($activeFilters, ['transaction' => true]);
-        $draftParams = array_intersect_key($activeFilters, ['transaction' => true, 'location' => true, 'property_type' => true]);
+        $draftParams = \App\Support\LocationScope::preserveAll(array_intersect_key($activeFilters, ['transaction' => true, 'location' => true, 'property_type' => true]));
     @endphp
     <div class="container page-shell browse-page">
         <a class="text-link mb-4" href="{{ \App\Support\LocationScope::browseUrl($site, '/marketplace', $selectedLocation) }}">Marketplace categories</a>

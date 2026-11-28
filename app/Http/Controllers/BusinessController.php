@@ -173,7 +173,7 @@ class BusinessController extends Controller
         return view('business.form', [
             'business' => new Business, 'places' => $site->isNetwork() ? Location::selectable()->orderBy('name')->get() : collect(),
             'branches' => collect(), 'categories' => BusinessDirectory::CATEGORIES,
-            'suggestedLocation' => LocationScope::forBrowsing($site, $request->query('location', $request->cookie(LocationScope::PREFERENCE_COOKIE))),
+            'suggestedLocation' => LocationScope::currentBrowsing($site),
         ]);
     }
 

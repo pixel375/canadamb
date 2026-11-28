@@ -108,6 +108,20 @@ class PropertyDraftTest extends TestCase
         $this->get("https://brandonmb.ca/real-estate/$draft->id")->assertNotFound();
     }
 
+    public function test_private_property_draft_composer_retains_explicit_all_manitoba_scope(): void
+    {
+        config(['network.property_drafts' => true]);
+        $place = Location::where('slug', 'brandon')->sole();
+        $this->actingAs(User::factory()->create())->withCookie('canadamb_community', 'brandon')
+            ->get('https://canadamb.ca/real-estate?location=')->assertOk()
+            ->assertSee('href="/account/properties/new?location="', false);
+        $this->get('https://canadamb.ca/account/properties/new?location=')->assertOk()
+            ->assertViewHas('suggestedLocation', fn ($location) => $location === null)
+            ->assertDontSee('value="'.$place->id.'" selected', false);
+        $this->get('https://canadamb.ca/account/properties/new')->assertOk()
+            ->assertViewHas('suggestedLocation', fn ($location) => $location?->id === $place->id);
+    }
+
     public function test_batch_submission_requires_authority_and_current_versions_for_all_selected_properties(): void
     {
         config(['network.property_drafts' => true]);

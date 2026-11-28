@@ -320,7 +320,7 @@ class MarketplaceController extends Controller
         return view('marketplace.form', [
             'item' => $item, 'categories' => $this->categories(), 'conditions' => Marketplace::CONDITIONS,
             'fields' => Marketplace::FIELDS, 'locations' => $site->isNetwork() ? Location::selectable()->orderBy('name')->get() : collect(),
-            'suggestedLocation' => $item->exists ? null : ($duplicateLocation ?? LocationScope::forBrowsing($site, $request->query('location', $request->cookie(LocationScope::PREFERENCE_COOKIE)))),
+            'suggestedLocation' => $item->exists ? null : ($duplicateLocation ?? LocationScope::currentBrowsing($site)),
             'duplicating' => $duplicateLocation !== null,
             'photoVersion' => $item->exists ? $item->photoVersion() : null,
         ]);

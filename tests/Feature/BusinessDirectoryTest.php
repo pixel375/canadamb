@@ -249,6 +249,19 @@ class BusinessDirectoryTest extends TestCase
             ->assertSee('value="'.$rural->id.'" selected', false);
     }
 
+    public function test_new_business_location_respects_explicit_all_manitoba_browsing(): void
+    {
+        $place = Location::where('slug', 'brandon')->sole();
+        $this->actingAs(User::factory()->create())->withCookie('canadamb_community', 'brandon')
+            ->get('https://canadamb.ca/businesses?location=')->assertOk()
+            ->assertSee('href="/account/businesses/new?location="', false);
+        $this->get('https://canadamb.ca/account/businesses/new?location=')->assertOk()
+            ->assertViewHas('suggestedLocation', fn ($location) => $location === null)
+            ->assertDontSee('value="'.$place->id.'" selected', false);
+        $this->get('https://canadamb.ca/account/businesses/new')->assertOk()
+            ->assertViewHas('suggestedLocation', fn ($location) => $location?->id === $place->id);
+    }
+
     public function test_business_profile_update_pages_preserve_browsing_scope_and_branch_visibility(): void
     {
         $business = Business::create(['slug' => 'branch-update-pages', 'name' => 'Branch Update Pages', 'category' => 'services', 'status' => 'active']);
