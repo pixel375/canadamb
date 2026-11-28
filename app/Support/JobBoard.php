@@ -36,13 +36,18 @@ class JobBoard
             ->whereHas('branch', fn (Builder $branch) => $branch->open()->whereHas('business', fn (Builder $business) => $business->where('status', 'active')));
     }
 
-    public static function searchRules(): array
+    public static function searchRules(?Site $site = null): array
     {
-        return [
+        $rules = [
             'q' => 'nullable|string|max:100', 'type' => ['nullable', Rule::in(array_keys(self::TYPES))],
             'workplace' => ['nullable', Rule::in(array_keys(self::WORKPLACES))], 'location' => 'nullable|string|max:150',
             'employer' => 'nullable|string|max:140', 'pay_unit' => 'required_with:minimum_pay|nullable|in:hour,year', 'minimum_pay' => 'nullable|numeric|decimal:0,2|min:0|max:10000000',
         ];
+        if ($site && ! $site->isNetwork()) {
+            unset($rules['location']);
+        }
+
+        return $rules;
     }
 
     public function filter(Builder $query, Site $site, array $filters): Builder

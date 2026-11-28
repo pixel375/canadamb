@@ -22,7 +22,7 @@ class JobController extends Controller
     {
         $site = $request->attributes->get('site');
         $query = $this->visible($request);
-        $filters = $request->validate(JobBoard::searchRules() + ['sort' => 'nullable|in:newest,deadline,pay-high']);
+        $filters = $request->validate(JobBoard::searchRules($site) + ['sort' => 'nullable|in:newest,deadline,pay-high']);
         $query = $this->jobs->filter($query, $site, $filters);
         if (($filters['sort'] ?? '') === 'deadline') {
             $query->orderBy('closing_on');
@@ -154,9 +154,9 @@ class JobController extends Controller
             $this->managedBusiness($request, $employer->id);
             $item = $this->managedJob($request, $employer->id, $job, lock: true);
             abort_unless($item->branch->isOpen() && in_array($item->status, ['pending', 'approved', 'rejected', 'expired'], true), 409);
-            $data = $this->postingData($request, needsBranch: false);
             $version = $request->validate(['version' => 'required|string|size:64'])['version'];
             abort_unless(hash_equals($item->reviewVersion(), $version), 409, 'The posting changed. Reload the editor.');
+            $data = $this->postingData($request, needsBranch: false);
             $renewal = $item->status === 'expired' || $item->closing_on->toDateString() < $this->jobs->closingToday();
             $item->fill($data);
             if ($item->isDirty() || in_array($item->status, ['rejected', 'expired'], true)) {
@@ -296,14 +296,11 @@ class JobController extends Controller
 
     public function saved(Request $request)
     {
-        $filters = $request->validate(JobBoard::searchRules() + ['sort' => 'nullable|in:recent,closing']);
+        $site = $request->attributes->get('site');
         $matching = $this->visible($request)->whereIn('id', DB::table('job_posting_bookmarks')
             ->where('user_id', $request->user()->id)->select('job_posting_id'));
+        $filters = $request->validate(JobBoard::searchRules($site) + ['sort' => 'nullable|in:recent,closing']);
         $total = (clone $matching)->count();
-        $site = $request->attributes->get('site');
-        if (! $site->isNetwork()) {
-            unset($filters['location']);
-        }
         $items = $this->jobs->filter($matching, $site, $filters);
         if (($filters['sort'] ?? 'recent') === 'closing') {
             $items->orderBy('closing_on');

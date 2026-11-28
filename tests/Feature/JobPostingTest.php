@@ -64,7 +64,7 @@ class JobPostingTest extends TestCase
         $this->assertSame(2, DB::table('job_posting_bookmarks')->where('user_id', $member->id)->count());
         $this->assertSame(3, DB::table('job_posting_bookmarks')->where('user_id', $other->id)->count());
         $rural = JobPosting::where('title', 'Saved winnipeg expired')->sole();
-        $this->get('https://brandonmb.ca/account/saved-jobs?location=Winnipeg')->assertOk()->assertSee('Saved brandon approved');
+        $this->get('https://brandonmb.ca/account/saved-jobs?location%5B%5D=invalid')->assertOk()->assertSee('Saved brandon approved');
         $this->delete('https://brandonmb.ca/jobs/'.$rural->id.'/save')->assertRedirect('/account/saved-jobs');
         $this->assertDatabaseHas('job_posting_bookmarks', ['user_id' => $member->id, 'job_posting_id' => $rural->id]);
         $this->delete('https://canadamb.ca/jobs/'.$rural->id.'/save')->assertRedirect('/account/saved-jobs');
@@ -237,7 +237,7 @@ class JobPostingTest extends TestCase
         $oldVersion = $job->fresh()->reviewVersion();
         $this->put("$url/$job->id", array_replace($input, ['title' => 'Senior storefront supervisor', 'version' => $oldVersion]))->assertSessionHasNoErrors();
         $this->get("https://brandonmb.ca/jobs/$job->id")->assertNotFound();
-        $this->put("$url/$job->id", $input + ['version' => $oldVersion])->assertConflict();
+        $this->put("$url/$job->id", ['version' => $oldVersion])->assertConflict();
         $this->post("$url/$job->id/withdraw")->assertSessionHasErrors('version');
         $this->post("$url/$job->id/withdraw", ['version' => $oldVersion])->assertConflict();
         $this->actingAs($admin)->post("https://canadamb.ca/admin/jobs/$job->id", ['action' => 'approve', 'version' => $oldVersion])->assertConflict();

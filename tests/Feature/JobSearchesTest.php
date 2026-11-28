@@ -38,8 +38,9 @@ class JobSearchesTest extends TestCase
         $filters = ['name' => 'Retail search', 'q' => 'clerk', 'employer' => 'Alert employer', 'type' => 'full-time', 'pay_unit' => 'hour', 'minimum_pay' => '25', 'alerts' => '1'];
         $this->actingAs($member)->post($base, $filters)->assertNotFound();
         config(['network.job_searches' => true]);
-        $this->post($base, $filters)->assertRedirect()->assertSessionHasNoErrors();
+        $this->post($base, $filters + ['location' => ['invalid']])->assertRedirect()->assertSessionHasNoErrors();
         $search = JobSearch::sole();
+        $this->assertArrayNotHasKey('location', $search->filters);
         $url = $base.'/'.$search->id;
         $this->post($base, array_replace($filters, ['minimum_pay' => '25.00']))->assertSessionHasErrors('name');
         $this->travelTo(now()->addMinutes(2)->startOfSecond());
@@ -95,7 +96,7 @@ class JobSearchesTest extends TestCase
         $this->get($url.'/edit')->assertOk()->assertSee('Retail search');
         $this->actingAs($stranger)->put($url, $filters)->assertNotFound();
         $this->actingAs($member)->put($url, $filters)->assertSessionHasErrors('version');
-        $this->put($url, array_replace($filters, ['name' => 'Lower pay search', 'minimum_pay' => '15', 'version' => $search->fresh()->editVersion()]))->assertRedirect()->assertSessionHasNoErrors();
+        $this->put($url, array_replace($filters, ['name' => 'Lower pay search', 'minimum_pay' => '15', 'version' => $search->fresh()->editVersion(), 'location' => ['invalid']]))->assertRedirect()->assertSessionHasNoErrors();
         $this->get($url.'?view=all')->assertSee('Low pay clerk');
         $this->assertSame('15.00', $search->fresh()->filters['minimum_pay']);
         $this->delete($url)->assertSessionHasErrors('version');

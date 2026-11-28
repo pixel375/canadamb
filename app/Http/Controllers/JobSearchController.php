@@ -26,8 +26,8 @@ class JobSearchController extends Controller
     public function store(Request $request)
     {
         $this->owned($request);
-        $data = $request->validate(JobBoard::searchRules() + ['name' => 'required|string|max:80', 'alerts' => 'nullable|boolean']);
         $site = $request->attributes->get('site');
+        $data = $request->validate(JobBoard::searchRules($site) + ['name' => 'required|string|max:80', 'alerts' => 'nullable|boolean']);
         $filters = $this->normalizedFilters($request, $data);
         $key = hash('sha256', json_encode($filters, JSON_THROW_ON_ERROR));
         DB::transaction(function () use ($request, $site, $data, $filters, $key) {
@@ -73,12 +73,13 @@ class JobSearchController extends Controller
         DB::transaction(function () use ($request, $search) {
             User::lockForUpdate()->findOrFail($request->user()->id);
             $item = $this->owned($request)->lockForUpdate()->findOrFail($search);
-            $data = $request->validate(JobBoard::searchRules() + ['name' => 'required|string|max:80', 'version' => 'required|string|size:64']);
-            $filters = $this->normalizedFilters($request, $data);
-            $key = hash('sha256', json_encode($filters, JSON_THROW_ON_ERROR));
-            if (! hash_equals($item->editVersion(), $data['version'])) {
+            $version = $request->validate(['version' => 'required|string|size:64'])['version'];
+            if (! hash_equals($item->editVersion(), $version)) {
                 throw ValidationException::withMessages(['version' => 'This saved search changed. Reload before continuing.']);
             }
+            $data = $request->validate(JobBoard::searchRules($request->attributes->get('site')) + ['name' => 'required|string|max:80']);
+            $filters = $this->normalizedFilters($request, $data);
+            $key = hash('sha256', json_encode($filters, JSON_THROW_ON_ERROR));
             if ($this->owned($request)->where('id', '!=', $search)->where('filter_key', $key)->exists()) {
                 throw ValidationException::withMessages(['name' => 'You already saved these filters on this portal.']);
             }
@@ -171,11 +172,8 @@ class JobSearchController extends Controller
     private function normalizedFilters(Request $request, array $data): array
     {
         $site = $request->attributes->get('site');
-        $filters = array_intersect_key($data, JobBoard::searchRules());
+        $filters = array_intersect_key($data, JobBoard::searchRules($site));
         $filters = array_filter($filters, fn ($value) => $value !== null && $value !== '');
-        if (! $site->isNetwork()) {
-            unset($filters['location']);
-        }
         if (isset($filters['minimum_pay'])) {
             $filters['minimum_pay'] = number_format((float) $filters['minimum_pay'], 2, '.', '');
         }
