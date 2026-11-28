@@ -46,9 +46,9 @@ class MarketplaceTest extends TestCase
         $this->get(self::MAIN.'/sitemap.xml')->assertSee('<loc>'.self::MAIN.'/marketplace</loc>', false)
             ->assertDontSee("/marketplace/$item->id");
 
-        $this->actingAs(User::factory()->create())->put(self::CITY."/account/listings/$item->id", $this->listing('Changed by outsider'))->assertNotFound();
+        $this->actingAs(User::factory()->create())->put(self::CITY."/account/listings/$item->id", [])->assertNotFound();
         $oldReview = $item->fresh()->reviewVersion();
-        $this->actingAs($seller)->put(self::CITY."/account/listings/$item->id", $this->listing('Oak dining table'))->assertRedirect();
+        $this->actingAs($seller)->put(self::CITY."/account/listings/$item->id", $this->listing('Oak dining table') + ['version' => $oldReview])->assertRedirect();
         $this->actingAs($admin)->post(self::MAIN."/admin/moderation/$item->id", ['status' => 'active', 'version' => $oldReview])->assertConflict();
         $this->actingAs($seller);
         $this->get(self::MAIN.'/marketplace')->assertDontSee('Oak table');
@@ -223,7 +223,8 @@ class MarketplaceTest extends TestCase
             ->assertRedirect('/account/listings?q=0&sort=oldest');
         $this->assertSame('active', $item->fresh()->status);
         $this->put($path, array_replace($data, ['title' => 'Revised desk', 'version' => $version]))->assertRedirect();
-        $this->put($path, $data + ['version' => $version])->assertConflict();
+        $this->put($path, ['version' => $version])->assertConflict();
+        $this->put($path, $data)->assertSessionHasErrors('version');
         $this->post($path.'/status', ['status' => 'removed', 'version' => $version])->assertConflict();
         $this->assertSame('Revised desk', $item->fresh()->title);
         $this->assertSame('pending', $item->fresh()->status);

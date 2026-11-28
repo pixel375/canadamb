@@ -210,9 +210,7 @@ class MarketplaceController extends Controller
             $removed = DB::transaction(function () use ($request, $listing, $data, $media) {
                 $item = $this->owned($request, $listing, true);
                 abort_unless(in_array($item->status, ['pending', 'active', 'expired', 'rejected'], true), 409);
-                if ($request->validated('version') !== null) {
-                    abort_unless(hash_equals($item->reviewVersion(), $request->validated('version')), 409, 'Listing changed. Reload before editing.');
-                }
+                abort_unless(hash_equals($item->reviewVersion(), $request->validated('version')), 409, 'Listing changed. Reload before editing.');
                 $item->fill($data);
                 $changed = $item->isDirty() || $media !== [];
                 $removed = [];

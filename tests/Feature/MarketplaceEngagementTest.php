@@ -160,6 +160,7 @@ class MarketplaceEngagementTest extends TestCase
             ->assertSee('View photo 2 of 2 larger', false);
 
         $this->actingAs($seller)->put("https://brandonmb.ca/account/listings/$item->id", [
+            'version' => $item->fresh()->reviewVersion(),
             'title' => 'Desk with updated photo',
             'description' => 'Updated photo shows the entire desk.',
             'category' => 'furniture',
@@ -191,16 +192,16 @@ class MarketplaceEngagementTest extends TestCase
         $original = $item->media()->get();
         $path = "https://brandonmb.ca/account/listings/$item->id";
         $version = $item->photoVersion();
-        $this->actingAs($other)->put($path, $data + ['manage_photos' => '1', 'photo_version' => $version])->assertNotFound();
-        $this->actingAs($seller)->put($path, $data + ['manage_photos' => '1', 'photo_version' => $version, 'keep_photos' => [999999]])->assertSessionHasErrors('photos');
-        $this->put($path, $data + ['manage_photos' => '1', 'photo_version' => $version, 'keep_photos' => [$original[1]->id, $original[0]->id]])->assertRedirect()->assertSessionHasNoErrors();
+        $this->actingAs($other)->put($path, $data + ['version' => $item->fresh()->reviewVersion(), 'manage_photos' => '1', 'photo_version' => $version])->assertNotFound();
+        $this->actingAs($seller)->put($path, $data + ['version' => $item->fresh()->reviewVersion(), 'manage_photos' => '1', 'photo_version' => $version, 'keep_photos' => [999999]])->assertSessionHasErrors('photos');
+        $this->put($path, $data + ['version' => $item->fresh()->reviewVersion(), 'manage_photos' => '1', 'photo_version' => $version, 'keep_photos' => [$original[1]->id, $original[0]->id]])->assertRedirect()->assertSessionHasNoErrors();
         $this->assertSame([$original[1]->id, $original[0]->id], $item->media()->pluck('id')->all());
         $this->assertNotSame($version, $item->photoVersion());
-        $this->from($path.'/edit')->put($path, array_replace($data, ['title' => '', 'manage_photos' => '1', 'photo_version' => $item->photoVersion(), 'keep_photos' => [$original[0]->id]]))->assertSessionHasErrors('title');
+        $this->from($path.'/edit')->put($path, array_replace($data, ['title' => '', 'version' => $item->fresh()->reviewVersion(), 'manage_photos' => '1', 'photo_version' => $item->photoVersion(), 'keep_photos' => [$original[0]->id]]))->assertSessionHasErrors('title');
         $this->get($path.'/edit')->assertOk()->assertSee('Previous photo choices restored')
             ->assertSee('value="'.$original[0]->id.'" checked', false)->assertDontSee('value="'.$original[1]->id.'" checked', false);
         $version = $item->photoVersion();
-        $this->put($path, $data + ['manage_photos' => '1', 'photo_version' => $version, 'keep_photos' => [$original[1]->id],
+        $this->put($path, $data + ['version' => $item->fresh()->reviewVersion(), 'manage_photos' => '1', 'photo_version' => $version, 'keep_photos' => [$original[1]->id],
             'photos' => [UploadedFile::fake()->image('new.jpg')]])->assertRedirect()->assertSessionHasNoErrors();
         $remaining = $item->media()->get();
         $this->assertCount(2, $remaining);
@@ -208,9 +209,9 @@ class MarketplaceEngagementTest extends TestCase
         $this->assertSame([0, 1], $remaining->pluck('position')->all());
         Storage::disk('local')->assertExists($original[1]->image_path);
         Storage::disk('local')->assertMissing($original[0]->image_path);
-        $this->put($path, $data + ['manage_photos' => '1', 'photo_version' => $version])->assertSessionHasErrors('photos');
+        $this->put($path, $data + ['version' => $item->fresh()->reviewVersion(), 'manage_photos' => '1', 'photo_version' => $version])->assertSessionHasErrors('photos');
         $this->assertCount(2, $item->media()->get());
-        $this->put($path, $data + ['manage_photos' => '1', 'photo_version' => $item->photoVersion()])->assertRedirect()->assertSessionHasNoErrors();
+        $this->put($path, $data + ['version' => $item->fresh()->reviewVersion(), 'manage_photos' => '1', 'photo_version' => $item->photoVersion()])->assertRedirect()->assertSessionHasNoErrors();
         $this->assertCount(0, $item->media()->get());
     }
 

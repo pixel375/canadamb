@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Listing;
 use App\Support\LocationScope;
 use App\Support\Marketplace;
 use Illuminate\Foundation\Http\FormRequest;
@@ -10,6 +11,24 @@ use Illuminate\Validation\Rule;
 
 class SaveListing extends FormRequest
 {
+    public function authorize(): bool
+    {
+        $site = $this->attributes->get('site');
+        abort_unless(app(Marketplace::class)->enabled($site), 404);
+        if ($this->isMethod('PUT')) {
+            $item = Listing::where('user_id', $this->user()->id)->where('status', '!=', 'removed')
+                ->when($site->location_id, fn ($query, $id) => $query->where('location_id', $id))
+                ->findOrFail($this->route('listing'));
+            abort_unless(in_array($item->status, ['pending', 'active', 'expired', 'rejected'], true), 409);
+            $version = $this->input('version');
+            if (is_string($version) && strlen($version) === 64) {
+                abort_unless(hash_equals($item->reviewVersion(), $version), 409, 'Listing changed. Reload before editing.');
+            }
+        }
+
+        return true;
+    }
+
     public function rules(): array
     {
         $rules = [
@@ -25,7 +44,7 @@ class SaveListing extends FormRequest
             'photos.*' => ['required', 'file', 'image', 'mimes:jpeg,jpg,png,webp', 'max:4096'],
         ];
         if ($this->isMethod('PUT')) {
-            $rules['version'] = ['sometimes', 'required', 'string', 'size:64'];
+            $rules['version'] = ['required', 'string', 'size:64'];
             $rules['manage_photos'] = ['sometimes', 'accepted'];
             $rules['photo_version'] = ['required_with:manage_photos', 'nullable', 'string', 'size:64'];
             $rules['keep_photos'] = ['sometimes', 'array', 'list', 'max:5'];
