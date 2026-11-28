@@ -62,17 +62,17 @@ class MarketplaceEngagementTest extends TestCase
         }
         $url = 'https://brandonmb.ca/account/saved/clear-unavailable';
         $this->actingAs($member)->post($url)->assertSessionHasErrors('confirm_remove');
-        $this->post($url, ['confirm_remove' => '1'])->assertRedirect('/account/saved');
+        $this->post($url, ['confirm_remove' => '1', 'q' => '0', 'sort' => 'price-high'])->assertRedirect('/account/saved?q=0&sort=price-high');
         $removed = Listing::where('title', 'Saved brandon sold')->sole();
         $this->assertDatabaseMissing('listing_favourites', ['user_id' => $member->id, 'listing_id' => $removed->id]);
         $this->assertSame(2, DB::table('listing_favourites')->where('user_id', $member->id)->count());
         $this->assertSame(3, DB::table('listing_favourites')->where('user_id', $other->id)->count());
         $rural = Listing::where('title', 'Saved winnipeg sold')->sole();
         $active = Listing::where('title', 'Saved brandon active')->sole();
-        $this->get('https://brandonmb.ca/account/saved?location='.$rural->location_id)->assertOk()->assertSee($active->title);
+        $this->get('https://brandonmb.ca/account/saved?location%5B%5D=invalid')->assertOk()->assertSee($active->title);
         $this->delete('https://brandonmb.ca/marketplace/'.$rural->id.'/save')->assertRedirect('/account/saved');
         $this->assertDatabaseHas('listing_favourites', ['user_id' => $member->id, 'listing_id' => $rural->id]);
-        $this->delete('https://canadamb.ca/marketplace/'.$rural->id.'/save')->assertRedirect('/account/saved');
+        $this->delete('https://canadamb.ca/marketplace/'.$rural->id.'/save', ['q' => '0', 'category' => 'furniture'])->assertRedirect('/account/saved?q=0&category=furniture');
         $this->assertDatabaseMissing('listing_favourites', ['user_id' => $member->id, 'listing_id' => $rural->id]);
         $this->assertDatabaseHas('listing_favourites', ['user_id' => $other->id, 'listing_id' => $rural->id]);
     }

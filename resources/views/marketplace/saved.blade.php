@@ -13,7 +13,7 @@
         </form>
         <p class="field-note seller-results-count">{{ $items->total() }} {{ \Illuminate\Support\Str::plural('listing', $items->total()) }} found · Only currently public listings are shown.</p>
         <div class="listing-grid">
-            @forelse($items as $item)<div class="saved-listing-card"><x-listing-card :item="$item"/><form method="post" action="/marketplace/{{ $item->id }}/save" class="mt-2">@csrf @method('DELETE')<button class="button button-outline">Unsave listing</button></form></div>
+            @forelse($items as $item)<div class="saved-listing-card"><x-listing-card :item="$item"/><form method="post" action="/marketplace/{{ $item->id }}/save" class="mt-2">@csrf @method('DELETE')@foreach($filters as $key => $value)@if(filled($value))<input type="hidden" name="{{ $key }}" value="{{ $value }}">@endif @endforeach<button class="button button-outline">Unsave listing</button></form></div>
             @empty<div class="panel market-results-empty"><span class="empty-icon"><x-icon name="tag" size="24"/></span><h3>{{ $total ? 'No saved listings match your search.' : 'You have no active saved listings here.' }}</h3><a class="button button-primary" href="{{ $total ? '/account/saved' : '/marketplace' }}">{{ $total ? 'View all saved listings' : 'Browse Marketplace' }}</a></div>@endforelse
         </div>
         {{ $items->links() }}
@@ -22,12 +22,15 @@
                 <p class="field-note">These listings are no longer public or have expired. Private titles and photos are not shown. You may keep the bookmark or remove it.</p>
                 <details><summary>Remove all unavailable saved listings</summary>
                     <form method="post" action="/account/saved/clear-unavailable" class="form-stack mt-2">@csrf
+                        @foreach($filters as $key => $value)
+                            @if(filled($value))<input type="hidden" name="{{ $key }}" value="{{ $value }}">@endif
+                        @endforeach
                         <p class="field-note">Removes only your currently unavailable listing bookmarks on this portal, including those on other pages.</p>
                         <label class="checkbox-line"><input type="checkbox" name="confirm_remove" value="1" required> Confirm removal</label><button class="button button-outline">Remove unavailable bookmarks</button>
                     </form>
                 </details>
                 @foreach($unavailable as $record)
-                    <div class="item-row"><span>Listing #{{ $record->listing_id }} · Unavailable</span><form method="post" action="/marketplace/{{ $record->listing_id }}/save">@csrf @method('DELETE')<button class="button button-outline">Unsave unavailable listing</button></form></div>
+                    <div class="item-row"><span>Listing #{{ $record->listing_id }} · Unavailable</span><form method="post" action="/marketplace/{{ $record->listing_id }}/save">@csrf @method('DELETE')@foreach($filters as $key => $value)@if(filled($value))<input type="hidden" name="{{ $key }}" value="{{ $value }}">@endif @endforeach<button class="button button-outline">Unsave unavailable listing</button></form></div>
                 @endforeach
                 {{ $unavailable->links() }}
             </section>

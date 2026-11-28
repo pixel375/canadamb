@@ -50,27 +50,25 @@ class ListingEngagementController extends Controller
 
     public function remove(Request $request, int $listing)
     {
-        if ($request->input('return_to') === 'listing') {
-            $this->visibleListing($request, $listing);
-        }
         $site = $request->attributes->get('site');
         abort_unless($this->marketplace->enabled($site), 404);
+        $returnToListing = $request->input('return_to') === 'listing';
+        if ($returnToListing) {
+            $this->visibleListing($request, $listing);
+        }
+        $filters = $returnToListing ? [] : $this->savedFilters($request);
         DB::table('listing_favourites')->where(['user_id' => $request->user()->id, 'listing_id' => $listing])
             ->when($site->location_id, fn ($query, $id) => $query->whereIn('listing_id', Listing::where('location_id', $id)->select('id')))
             ->delete();
 
-        return redirect($request->input('return_to') === 'listing' ? LocationScope::detailUrl('/marketplace/'.$listing) : '/account/saved')->with('status', 'Listing removed from saved items.');
+        return redirect($returnToListing ? LocationScope::detailUrl('/marketplace/'.$listing) : $this->savedReturnPath($filters))->with('status', 'Listing removed from saved items.');
     }
 
     public function saved(Request $request)
     {
         $site = $request->attributes->get('site');
         abort_unless($this->marketplace->enabled($site), 404);
-        $filters = $request->validate(['q' => 'nullable|string|max:100', 'sort' => 'nullable|in:recent,price-low,price-high', 'category' => 'nullable|string|max:64|exists:listing_categories,slug',
-            'location' => 'nullable|integer|exists:locations,id']);
-        if (! $site->isNetwork()) {
-            unset($filters['location']);
-        }
+        $filters = $this->savedFilters($request);
         $unavailable = DB::table('listing_favourites')->join('listings', 'listings.id', '=', 'listing_favourites.listing_id')
             ->where('listing_favourites.user_id', $request->user()->id)
             ->when($site->location_id, fn ($query, $id) => $query->where('listings.location_id', $id))
@@ -107,13 +105,31 @@ class ListingEngagementController extends Controller
         $site = $request->attributes->get('site');
         abort_unless($this->marketplace->enabled($site), 404);
         $request->validate(['confirm_remove' => 'accepted']);
+        $filters = $this->savedFilters($request);
         $unavailable = Listing::query()->when($site->location_id, fn ($query, $id) => $query->where('location_id', $id))
             ->where(fn ($query) => $query->where('status', '!=', 'active')->orWhereNull('expires_at')->orWhere('expires_at', '<=', now()))
             ->select('id');
         $removed = DB::table('listing_favourites')->where('user_id', $request->user()->id)
             ->whereIn('listing_id', $unavailable)->delete();
 
-        return redirect('/account/saved')->with('status', $removed.' unavailable saved listings removed.');
+        return redirect($this->savedReturnPath($filters))->with('status', $removed.' unavailable saved listings removed.');
+    }
+
+    private function savedFilters(Request $request): array
+    {
+        $rules = ['q' => 'nullable|string|max:100', 'sort' => 'nullable|in:recent,price-low,price-high', 'category' => 'nullable|string|max:64|exists:listing_categories,slug'];
+        if ($request->attributes->get('site')->isNetwork()) {
+            $rules['location'] = 'nullable|integer|exists:locations,id';
+        }
+
+        return $request->validate($rules);
+    }
+
+    private function savedReturnPath(array $filters): string
+    {
+        $query = http_build_query(array_filter($filters, fn ($value) => $value !== null && $value !== ''), '', '&', PHP_QUERY_RFC3986);
+
+        return '/account/saved'.($query === '' ? '' : '?'.$query);
     }
 
     public function reports(Request $request)
