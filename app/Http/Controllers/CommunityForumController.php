@@ -61,7 +61,7 @@ class CommunityForumController extends Controller
             'replies' => $threads->orderByDesc('replies_count')->orderByDesc('last_activity_at'),
             default => $threads->orderByDesc('last_activity_at'),
         };
-        $threads = $threads->orderByDesc('id')->paginate(18)->withQueryString();
+        $threads = $threads->orderByDesc('id')->paginate(18)->appends(LocationScope::preserveAll($filters));
 
         // The Discussions hub includes an optional, day-grouped event timeline.
         // No hidden or out-of-scope events are exposed.

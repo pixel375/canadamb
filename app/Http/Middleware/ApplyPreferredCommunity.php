@@ -12,6 +12,15 @@ class ApplyPreferredCommunity
     public function handle(Request $request, Closure $next): Response
     {
         $site = $request->attributes->get('site');
+        // Dedicated portals have a fixed geographic scope. Ignore foreign,
+        // stale or malformed public location filters before validation.
+        if ($site && ! $site->isNetwork() && $request->isMethod('GET')
+            && $request->is('/', 'marketplace', 'real-estate', 'businesses', 'business-updates', 'community', 'jobs', 'events', 'events/calendar', 'news')) {
+            $request->query->remove('location');
+
+            return $next($request);
+        }
+
         if ($site?->isNetwork() && $request->isMethod('GET')
             && $request->is('/', 'marketplace', 'real-estate', 'businesses', 'business-updates', 'community', 'jobs', 'events', 'news')
             && ! $request->query->has('location')

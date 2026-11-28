@@ -35,6 +35,15 @@ class NetworkTest extends TestCase
         $this->get('https://example.org/')->assertNotFound();
     }
 
+    public function test_fixed_portal_ignores_foreign_public_location_filters(): void
+    {
+        foreach (['marketplace', 'real-estate', 'businesses', 'business-updates', 'community', 'jobs', 'events', 'news'] as $section) {
+            $this->get('https://brandonmb.ca/'.$section.'?location%5B%5D=invalid')->assertOk();
+        }
+        $this->get('https://brandonmb.ca/events/calendar?location%5B%5D=invalid')->assertOk();
+        $this->getJson('https://canadamb.ca/news?location%5B%5D=invalid')->assertUnprocessable();
+    }
+
     public function test_published_global_theme_propagates_and_can_be_rolled_back(): void
     {
         $admin = User::factory()->create(['role' => 'super_admin']);
