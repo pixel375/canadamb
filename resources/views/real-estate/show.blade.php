@@ -1,4 +1,4 @@
-<x-layouts.site :title="$item->title.' | Real Estate in '.$item->location->name" :canonical="$canonical">
+<x-layouts.site :title="$item->title.' | Real Estate in '.$item->location->name" :description="\Illuminate\Support\Str::limit(\Illuminate\Support\Str::squish($item->description), 155)" :canonical="$canonical">
     <div class="container page-shell property-private-detail">
         <a class="text-link mb-4" href="{{ \App\Support\LocationScope::browseUrl(request()->attributes->get('site'), '/real-estate', \App\Support\LocationScope::currentBrowsing(request()->attributes->get('site'))) }}">Real Estate listings</a>
         <article class="panel">

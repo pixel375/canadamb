@@ -67,6 +67,10 @@ class RealEstateBrowsingTest extends TestCase
         $this->get('https://brandonmb.ca/real-estate/'.$listed->id)->assertNotFound();
         $this->get('https://brandonmb.ca/real-estate/'.$listed->id.'/photo/'.$photo->id)->assertNotFound();
 
+        foreach (['canadamb.ca', 'brandonmb.ca'] as $host) {
+            $this->get('https://'.$host.'/sitemap.xml')->assertOk()->assertDontSee('/real-estate');
+        }
+
         // Future public visibility still needs an explicit approved status and city match.
         config(['network.real_estate_public_listings' => true]);
         $this->get('https://brandonmb.ca/real-estate')->assertOk()
@@ -76,6 +80,12 @@ class RealEstateBrowsingTest extends TestCase
             ->assertDontSee('NW secret quarter');
         $this->get('https://canadamb.ca/real-estate/'.$listed->id)->assertOk()->assertSee('Potential published ranch')->assertDontSee('NW secret quarter');
         $this->get('https://canadamb.ca/real-estate/'.$reviewed->id)->assertNotFound();
+        $this->get('https://brandonmb.ca/sitemap.xml')->assertOk()
+            ->assertSee('<loc>https://brandonmb.ca/real-estate/'.$listed->id.'</loc>', false)
+            ->assertDontSee('/real-estate/'.$reviewed->id);
+        $this->get('https://canadamb.ca/sitemap.xml')->assertOk()
+            ->assertSee('<loc>https://canadamb.ca/real-estate</loc>', false)
+            ->assertDontSee('/real-estate/'.$listed->id)->assertDontSee('/real-estate/'.$reviewed->id);
         $this->get('https://brandonmb.ca/real-estate/'.$listed->id)->assertOk()
             ->assertSee('Potential published ranch')
             ->assertDontSee('100 Private Lane')

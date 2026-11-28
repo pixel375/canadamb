@@ -13,6 +13,7 @@ use App\Support\Marketplace;
 use App\Support\NetworkSettings;
 use App\Support\NetworkUrl;
 use App\Support\News;
+use App\Support\PublicProperties;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
@@ -141,6 +142,17 @@ class PublicController extends Controller
             })->orderBy('id')->limit(10000);
             foreach ($listings->cursor() as $listing) {
                 $urls[] = NetworkUrl::to($site, '/marketplace/'.$listing->id);
+            }
+        }
+        if (PublicProperties::moduleEnabled($site) && config('network.real_estate_public_listings')) {
+            $properties = PublicProperties::visible($site)->with('location.site.domain')->orderBy('id');
+            if ($properties->exists()) {
+                $urls[] = NetworkUrl::to($site, '/real-estate');
+            }
+            foreach ($properties->lazy(250)->take(10000) as $property) {
+                if (PublicProperties::canonicalSite($property)->id === $site->id) {
+                    $urls[] = NetworkUrl::to($site, '/real-estate/'.$property->id);
+                }
             }
         }
         if ($businesses->enabled($site)) {

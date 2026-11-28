@@ -4,11 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Location;
 use App\Models\PropertyListing;
-use App\Models\Site;
 use App\Support\KeywordSearch;
 use App\Support\LocationScope;
-use App\Support\Marketplace;
 use App\Support\NetworkUrl;
+use App\Support\PublicProperties;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -74,10 +73,7 @@ class RealEstateController extends Controller
     public function show(Request $request, int $property)
     {
         $item = $this->visible($request)->findOrFail($property);
-        $site = $request->attributes->get('site');
-        $local = Site::with('domain')->where('location_id', $item->location_id)->where('status', 'active')->first();
-        $canonicalSite = $local && app(Marketplace::class)->enabled($local) ? $local : NetworkUrl::main();
-        $canonical = NetworkUrl::to($canonicalSite, '/real-estate/'.$item->id);
+        $canonical = NetworkUrl::to(PublicProperties::canonicalSite($item), '/real-estate/'.$item->id);
 
         return view('real-estate.show', compact('item', 'canonical'));
     }
@@ -96,11 +92,8 @@ class RealEstateController extends Controller
     private function visible(Request $request): Builder
     {
         $site = $request->attributes->get('site');
-        abort_unless(app(Marketplace::class)->enabled($site), 404);
+        abort_unless(PublicProperties::moduleEnabled($site), 404);
 
-        return PropertyListing::query()->with(['location', 'photos'])
-            ->where('status', 'published')
-            ->when((bool) config('network.real_estate_public_listings') === false, fn (Builder $query) => $query->whereRaw('1 = 0'))
-            ->when($site->location_id !== null, fn (Builder $query) => $query->where('location_id', $site->location_id));
+        return PublicProperties::visible($site)->with(['location', 'photos']);
     }
 }
