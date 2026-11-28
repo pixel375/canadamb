@@ -305,8 +305,10 @@ class CommunityEventController extends Controller
             $item = $this->ownedEvent($request)->lockForUpdate()->findOrFail($event);
             $linkedThread = EventDiscussions::linkedThread($item, lock: true);
             $this->ensureEditable($item, $linkedThread);
-            EventSchedule::normalize($request);
-            $data = $request->validate([
+            // Normalize a fresh copy on every transaction attempt.
+            $input = clone $request;
+            EventSchedule::normalize($input);
+            $data = $input->validate([
                 'title' => 'required|string|max:140', 'body' => 'required|string|min:10|max:5000',
                 'category' => ['required', Rule::in(array_keys(Community::EVENTS))],
                 'organizer' => 'required|string|max:150', 'venue' => 'required|string|max:180', 'event_url' => 'nullable|url:https|max:1024',
@@ -342,6 +344,7 @@ class CommunityEventController extends Controller
                 $linkedThread->forceFill(['title' => $item->title, 'body' => $item->body, 'status' => 'pending', 'pinned' => false])->save();
                 Audit::record('community.thread.edited', $author, context: ['thread' => $linkedThread->id, 'event' => $event]);
             }
+
             return $data['series'] ?? null;
         }, attempts: 3);
 

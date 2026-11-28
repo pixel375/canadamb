@@ -70,13 +70,12 @@ class JobSearchController extends Controller
 
     public function revise(Request $request, int $search)
     {
-        $this->owned($request)->findOrFail($search);
-        $data = $request->validate(JobBoard::searchRules() + ['name' => 'required|string|max:80', 'version' => 'required|string|size:64']);
-        $filters = $this->normalizedFilters($request, $data);
-        $key = hash('sha256', json_encode($filters, JSON_THROW_ON_ERROR));
-        DB::transaction(function () use ($request, $search, $data, $filters, $key) {
+        DB::transaction(function () use ($request, $search) {
             User::lockForUpdate()->findOrFail($request->user()->id);
             $item = $this->owned($request)->lockForUpdate()->findOrFail($search);
+            $data = $request->validate(JobBoard::searchRules() + ['name' => 'required|string|max:80', 'version' => 'required|string|size:64']);
+            $filters = $this->normalizedFilters($request, $data);
+            $key = hash('sha256', json_encode($filters, JSON_THROW_ON_ERROR));
             if (! hash_equals($item->editVersion(), $data['version'])) {
                 throw ValidationException::withMessages(['version' => 'This saved search changed. Reload before continuing.']);
             }
@@ -94,10 +93,9 @@ class JobSearchController extends Controller
 
     public function preferences(Request $request, int $search)
     {
-        $this->owned($request)->findOrFail($search);
-        $data = $request->validate(['name' => 'required|string|max:80', 'alerts' => 'required|boolean', 'version' => 'required|string|size:64']);
-        DB::transaction(function () use ($request, $search, $data) {
+        DB::transaction(function () use ($request, $search) {
             $item = $this->owned($request)->lockForUpdate()->findOrFail($search);
+            $data = $request->validate(['name' => 'required|string|max:80', 'alerts' => 'required|boolean', 'version' => 'required|string|size:64']);
             if (! hash_equals($item->editVersion(), $data['version'])) {
                 throw ValidationException::withMessages(['version' => 'This saved search changed. Reload before continuing.']);
             }
@@ -113,11 +111,10 @@ class JobSearchController extends Controller
 
     public function read(Request $request, int $search)
     {
-        $this->owned($request)->findOrFail($search);
-        $data = $request->validate(['version' => 'required|string|size:64', 'cutoff' => 'required|integer|min:0|max:'.now()->timestamp]);
-        DB::transaction(function () use ($request, $search, $data) {
+        DB::transaction(function () use ($request, $search) {
             $item = $this->owned($request)->lockForUpdate()->findOrFail($search);
             abort_unless($item->alerts, 409);
+            $data = $request->validate(['version' => 'required|string|size:64', 'cutoff' => 'required|integer|min:0|max:'.now()->timestamp]);
             if (! hash_equals($item->editVersion(), $data['version'])) {
                 throw ValidationException::withMessages(['version' => 'This saved search changed. Reload before continuing.']);
             }
@@ -132,6 +129,7 @@ class JobSearchController extends Controller
 
     public function readSelected(Request $request)
     {
+        $this->owned($request);
         $data = $request->validate([
             'searches' => 'required|array|list|min:1|max:10', 'searches.*' => 'required|integer|distinct|min:1',
             'versions' => 'required|array|max:10', 'versions.*' => 'required|string|size:64',
@@ -158,10 +156,9 @@ class JobSearchController extends Controller
 
     public function destroy(Request $request, int $search)
     {
-        $this->owned($request)->findOrFail($search);
-        $data = $request->validate(['version' => 'required|string|size:64']);
-        DB::transaction(function () use ($request, $search, $data) {
+        DB::transaction(function () use ($request, $search) {
             $item = $this->owned($request)->lockForUpdate()->findOrFail($search);
+            $data = $request->validate(['version' => 'required|string|size:64']);
             if (! hash_equals($item->editVersion(), $data['version'])) {
                 throw ValidationException::withMessages(['version' => 'This saved search changed. Reload before continuing.']);
             }

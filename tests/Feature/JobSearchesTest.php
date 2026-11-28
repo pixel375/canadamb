@@ -86,6 +86,7 @@ class JobSearchesTest extends TestCase
         $this->post($url.'/read', ['cutoff' => $cutoff])->assertSessionHasErrors('version');
         $this->post($url.'/preferences', ['name' => 'Retail search', 'alerts' => '0', 'version' => $search->fresh()->editVersion()])->assertRedirect()->assertSessionHasNoErrors();
         $this->get($base)->assertSee('Alerts paused');
+        $this->post($url.'/read')->assertConflict();
         $this->post($url.'/preferences', ['name' => 'Stale change', 'alerts' => '1', 'version' => $version])->assertSessionHasErrors('version');
         $this->travelTo(now()->addMinutes(2)->startOfSecond());
         $make($branch, 'While paused clerk', 'approved');
