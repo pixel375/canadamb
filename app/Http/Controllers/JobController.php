@@ -93,6 +93,7 @@ class JobController extends Controller
         $site = $request->attributes->get('site');
         abort_unless($this->jobs->enabled($site), 404);
         $employer = $this->managedBusiness($request, $business);
+        $filters = $this->employerReturnFilters($request, $employer);
         $data = $this->postingData($request);
         $branch = $employer->openLocations()->findOrFail($data['business_location_id']);
         LocationScope::forPublication($site, $branch->location_id);
@@ -111,7 +112,7 @@ class JobController extends Controller
             Audit::record('jobs.submitted', $request->user()->id, context: ['job' => $job->id]);
         });
 
-        return redirect('/account/businesses/'.$business.'/jobs')->with('status', 'Job submitted for review.');
+        return redirect($this->employerReturnPath($business, $filters))->with('status', 'Job submitted for review.');
     }
 
     public function duplicate(Request $request, int $business, int $job)
@@ -123,7 +124,10 @@ class JobController extends Controller
         $branches = $employer->openLocations()->with('location')->when($site->location_id, fn ($query, $id) => $query->where('location_id', $id))->get();
         $item->closing_on = null;
 
-        return view('jobs.duplicate', compact('employer', 'item', 'branches'));
+        $returnFilters = $this->employerReturnFilters($request, $employer);
+        $returnUrl = $this->employerReturnPath($business, $returnFilters);
+
+        return view('jobs.duplicate', compact('employer', 'item', 'branches', 'returnFilters', 'returnUrl'));
     }
 
     public function edit(Request $request, int $business, int $job)

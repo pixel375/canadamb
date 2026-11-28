@@ -255,8 +255,11 @@ class JobPostingTest extends TestCase
         $this->actingAs($stranger)->get('https://canadamb.ca/account/saved-jobs')->assertSee('Unavailable saved jobs (1)')->assertDontSee('Senior storefront supervisor');
         $this->delete("https://brandonmb.ca/jobs/$job->id/save")->assertRedirect('/account/saved-jobs');
         $this->actingAs($stranger)->get("$url/$job->id/duplicate")->assertNotFound();
-        $this->actingAs($owner)->get("$url/$job->id/duplicate")->assertOk()->assertSee('Reuse job posting')->assertSee('Senior storefront supervisor');
-        $this->post($url, array_replace($input, ['business_location_id' => $brandon->id, 'closing_on' => today()->addWeek()->toDateString()]))->assertRedirect()->assertSessionHasNoErrors();
+        $this->actingAs($owner)->get("$url/$job->id/duplicate?return_filters%5Bsort%5D=oldest")->assertOk()->assertSee('Reuse job posting')->assertSee('Senior storefront supervisor')
+            ->assertSee('name="return_filters[sort]" value="oldest"', false)
+            ->assertSee('href="/account/businesses/'.$business->id.'/jobs?sort=oldest"', false);
+        $this->post($url, array_replace($input, ['business_location_id' => $brandon->id, 'closing_on' => today()->addWeek()->toDateString(), 'return_filters' => ['sort' => 'oldest']]))
+            ->assertRedirect('/account/businesses/'.$business->id.'/jobs?sort=oldest')->assertSessionHasNoErrors();
         $this->assertDatabaseCount('job_postings', 2);
         $this->assertDatabaseHas('job_postings', ['id' => $job->id, 'status' => 'expired']);
         $published = $job->fresh()->published_at;

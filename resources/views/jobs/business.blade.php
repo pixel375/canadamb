@@ -14,6 +14,7 @@
         @if($openBranches->isNotEmpty())
             <details class="panel job-posting-editor" @if($errors->any()) open @endif><summary><x-icon name="plus" size="18"/> Post a job</summary>
                 <form method="post" action="/account/businesses/{{ $employer->id }}/jobs" class="form-stack mt-3">@csrf
+                    @foreach($returnFilters as $key => $value)<input type="hidden" name="return_filters[{{ $key }}]" value="{{ $value }}">@endforeach
                     <x-shared-publication-note/>
                     <p class="field-note">Provide a working HTTPS application link.</p>
                     <label>Business branch<select name="business_location_id" required>
@@ -78,7 +79,7 @@
                     <div class="inline-actions seller-listing-actions">
                         @if($item->branch->isOpen() && $item->status === 'approved' && $item->closing_on->toDateString() >= today('America/Winnipeg')->toDateString())<a class="button button-outline" href="/jobs/{{ $item->id }}">View posting</a>@endif
                         @if($item->branch->isOpen() && in_array($item->status, ['pending', 'approved', 'rejected', 'expired'], true))<a class="button button-outline" href="/account/businesses/{{ $employer->id }}/jobs/{{ $item->id }}/edit{{ $editQuery }}">Edit</a>@endif
-                        @if($openBranches->isNotEmpty())<a class="button button-outline" href="/account/businesses/{{ $employer->id }}/jobs/{{ $item->id }}/duplicate">Reuse posting</a>@endif
+                        @if($openBranches->isNotEmpty())<a class="button button-outline" href="/account/businesses/{{ $employer->id }}/jobs/{{ $item->id }}/duplicate{{ $editQuery }}">Reuse posting</a>@endif
                     </div>
                     @if($item->branch->isOpen() && in_array($item->status, ['pending', 'approved', 'expired'], true))
                         <label class="checkbox-line"><input form="job-batch-extend" type="checkbox" name="jobs[]" value="{{ $item->id }}"> Select to extend deadline</label>

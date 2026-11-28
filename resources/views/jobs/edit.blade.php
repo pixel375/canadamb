@@ -9,7 +9,7 @@
             <p>Branch · {{ $item->branch->location->name }}</p>
             <x-job-fields :item="$item"/>
             @if(old('version') && old('version') !== $item->reviewVersion())
-                <p class="notice notice-error">This posting changed. <a href="/account/businesses/{{ $employer->id }}/jobs/{{ $item->id }}/edit">Reload the editor</a> before continuing.</p>
+                <p class="notice notice-error">This posting changed. <a href="/account/businesses/{{ $employer->id }}/jobs/{{ $item->id }}/edit{{ $returnFilters ? '?'.http_build_query(['return_filters' => $returnFilters], '', '&', PHP_QUERY_RFC3986) : '' }}">Reload the editor</a> before continuing.</p>
             @endif
             <div class="inline-actions"><button class="button button-primary">Submit changes</button><a class="button button-outline" href="{{ $returnUrl }}">Cancel</a></div>
         </form>
