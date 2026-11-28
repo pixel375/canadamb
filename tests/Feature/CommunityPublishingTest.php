@@ -57,7 +57,7 @@ class CommunityPublishingTest extends TestCase
             ->assertDontSee('action="/admin/community/replies/'.$reply->id.'"', false);
         $this->get($queue.'?status=rejected&location='.$winnipeg)->assertOk()->assertDontSee('I can donate some vegetable seeds.');
         $this->actingAs($moderator)->post("https://canadamb.ca/admin/community/threads/$thread->id", ['action' => 'lock', 'version' => $thread->fresh()->contentVersion()])->assertRedirect();
-        $this->actingAs($reader)->post("$city/replies", ['body' => 'A new reply should not be accepted.'])->assertStatus(409);
+        $this->actingAs($reader)->post("$city/replies", ['body' => ''])->assertStatus(409);
     }
 
     public function test_events_validate_manitoba_local_time_and_scope_before_publication(): void

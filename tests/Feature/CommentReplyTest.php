@@ -50,7 +50,7 @@ class CommentReplyTest extends TestCase
         $this->get($url.'?reply_to='.$hidden->id)->assertNotFound();
         $this->get($url.'?reply_to='.$foreign->id)->assertNotFound();
         foreach ([$hidden, $foreign] as $target) {
-            $this->post($url.'/replies', array_replace($data, ['parent_reply_id' => $target->id]))->assertNotFound();
+            $this->post($url.'/replies', ['parent_reply_id' => $target->id, 'body' => ''])->assertNotFound();
         }
         $this->post($local.'/replies', $data)->assertRedirect()->assertSessionHasNoErrors();
         $child = CommunityReply::where('body', $data['body'])->sole();

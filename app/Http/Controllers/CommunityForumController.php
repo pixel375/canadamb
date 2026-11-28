@@ -379,15 +379,16 @@ class CommunityForumController extends Controller
 
     public function reply(Request $request, int $thread)
     {
-        $data = $request->validate(['body' => 'required|string|min:5|max:3000', 'parent_reply_id' => 'nullable|integer|min:1']);
-        $reply = DB::transaction(function () use ($request, $thread, $data) {
+        [$reply, $hasParent] = DB::transaction(function () use ($request, $thread) {
             $item = $this->visible($request)->lockForUpdate()->findOrFail($thread);
             abort_if($item->locked, 409, 'This discussion is locked.');
+            $selection = $request->validate(['parent_reply_id' => 'nullable|integer|min:1']);
             $parent = null;
-            if (isset($data['parent_reply_id'])) {
+            if (isset($selection['parent_reply_id'])) {
                 abort_unless(ReplyLinks::enabled(), 404);
-                $parent = $item->replies()->where('status', 'approved')->lockForUpdate()->findOrFail($data['parent_reply_id']);
+                $parent = $item->replies()->where('status', 'approved')->lockForUpdate()->findOrFail($selection['parent_reply_id']);
             }
+            $data = $request->validate(['body' => 'required|string|min:5|max:3000']);
             $reply = $item->replies()->create(['body' => $data['body'], 'author_id' => $request->user()->id]);
             if ($parent) {
                 ReplyLinks::attach($reply, $parent);
@@ -398,10 +399,10 @@ class CommunityForumController extends Controller
                 Audit::record('community.reply.auto-approved', null, context: ['reply' => $reply->id]);
             }
 
-            return $reply;
+            return [$reply, $parent !== null];
         }, attempts: 3);
 
-        $destination = isset($data['parent_reply_id']) && $reply->status === 'approved'
+        $destination = $hasParent && $reply->status === 'approved'
             ? '/community/'.$thread.'/replies/'.$reply->id : '/community/'.$thread;
 
         return redirect(LocationScope::detailUrl($destination))->with('status', $reply->status === 'approved' ? 'Reply published.' : 'Reply submitted for review.');
@@ -409,8 +410,10 @@ class CommunityForumController extends Controller
 
     public function follow(Request $request, int $thread)
     {
-        $item = $this->visible($request)->findOrFail($thread);
-        DB::table('community_thread_follows')->insertOrIgnore(['thread_id' => $item->id, 'user_id' => $request->user()->id]);
+        DB::transaction(function () use ($request, $thread) {
+            $item = $this->visible($request)->lockForUpdate()->findOrFail($thread);
+            DB::table('community_thread_follows')->insertOrIgnore(['thread_id' => $item->id, 'user_id' => $request->user()->id]);
+        }, attempts: 3);
 
         return redirect(LocationScope::detailUrl('/community/'.$thread))->with('status', 'You are following this discussion.');
     }
@@ -430,9 +433,9 @@ class CommunityForumController extends Controller
 
     public function clearUnavailableFollows(Request $request)
     {
-        $request->validate(['confirm_remove' => 'accepted']);
         $site = $request->attributes->get('site');
         abort_unless($this->community->enabled($site, 'community'), 404);
+        $request->validate(['confirm_remove' => 'accepted']);
         $removed = DB::table('community_thread_follows')->where('user_id', $request->user()->id)
             ->whereIn('thread_id', $this->unavailableFollowIds($request))->delete();
 
