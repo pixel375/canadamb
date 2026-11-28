@@ -1,4 +1,4 @@
-@props(['item', 'removable' => false, 'showDescription' => false])
+@props(['item', 'removable' => false, 'showDescription' => false, 'returnFilters' => []])
 <article class="item-row"><div>
     <p class="section-label">{{ $item->branch->business->name }} · {{ $item->branch->location->name }}</p>
     <h2><a href="{{ \App\Support\LocationScope::detailUrl('/jobs/'.$item->id) }}">{{ $item->title }}</a></h2>
@@ -9,5 +9,5 @@
         <a class="text-link mt-2" href="{{ \App\Support\LocationScope::detailUrl('/jobs/'.$item->id) }}">View job <x-icon name="arrow" size="16"/></a>
     @endif
 </div>
-@if($removable)<form action="/jobs/{{ $item->id }}/save" method="post">@csrf @method('DELETE')<button class="button button-outline">Remove saved job</button></form>@endif
+@if($removable)<form action="/jobs/{{ $item->id }}/save" method="post">@csrf @method('DELETE')@foreach($returnFilters as $key => $value)@if(filled($value))<input type="hidden" name="{{ $key }}" value="{{ $value }}">@endif @endforeach<button class="button button-outline">Remove saved job</button></form>@endif
 </article>

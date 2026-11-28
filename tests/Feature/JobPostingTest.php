@@ -58,7 +58,7 @@ class JobPostingTest extends TestCase
         }
         $url = 'https://brandonmb.ca/account/saved-jobs/clear-unavailable';
         $this->actingAs($member)->post($url)->assertSessionHasErrors('confirm_remove');
-        $this->post($url, ['confirm_remove' => '1'])->assertRedirect('/account/saved-jobs');
+        $this->post($url, ['confirm_remove' => '1', 'q' => '0', 'sort' => 'closing'])->assertRedirect('/account/saved-jobs?q=0&sort=closing');
         $removed = JobPosting::where('title', 'Saved brandon expired')->sole();
         $this->assertDatabaseMissing('job_posting_bookmarks', ['user_id' => $member->id, 'job_posting_id' => $removed->id]);
         $this->assertSame(2, DB::table('job_posting_bookmarks')->where('user_id', $member->id)->count());
@@ -67,7 +67,7 @@ class JobPostingTest extends TestCase
         $this->get('https://brandonmb.ca/account/saved-jobs?location%5B%5D=invalid')->assertOk()->assertSee('Saved brandon approved');
         $this->delete('https://brandonmb.ca/jobs/'.$rural->id.'/save')->assertRedirect('/account/saved-jobs');
         $this->assertDatabaseHas('job_posting_bookmarks', ['user_id' => $member->id, 'job_posting_id' => $rural->id]);
-        $this->delete('https://canadamb.ca/jobs/'.$rural->id.'/save')->assertRedirect('/account/saved-jobs');
+        $this->delete('https://canadamb.ca/jobs/'.$rural->id.'/save', ['location' => 'Brandon', 'q' => '0'])->assertRedirect('/account/saved-jobs?q=0&location=Brandon');
         $this->assertDatabaseMissing('job_posting_bookmarks', ['user_id' => $member->id, 'job_posting_id' => $rural->id]);
         $this->assertDatabaseHas('job_posting_bookmarks', ['user_id' => $other->id, 'job_posting_id' => $rural->id]);
     }

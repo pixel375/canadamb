@@ -282,16 +282,18 @@ class JobController extends Controller
 
     public function remove(Request $request, int $job)
     {
-        if ($request->input('return_to') === 'job') {
-            $this->visible($request)->findOrFail($job);
-        }
         $site = $request->attributes->get('site');
         abort_unless($this->jobs->enabled($site), 404);
+        $returnToJob = $request->input('return_to') === 'job';
+        if ($returnToJob) {
+            $this->visible($request)->findOrFail($job);
+        }
+        $filters = $returnToJob ? [] : $this->savedFilters($request);
         DB::table('job_posting_bookmarks')->where(['job_posting_id' => $job, 'user_id' => $request->user()->id])
             ->when($site->location_id, fn ($query, $id) => $query->whereIn('job_posting_id', JobPosting::whereHas('branch', fn ($branch) => $branch->where('location_id', $id))->select('id')))
             ->delete();
 
-        return redirect($request->input('return_to') === 'job' ? LocationScope::detailUrl('/jobs/'.$job) : '/account/saved-jobs')->with('status', 'Job removed from your saved list.');
+        return redirect($returnToJob ? LocationScope::detailUrl('/jobs/'.$job) : $this->savedReturnPath($filters))->with('status', 'Job removed from your saved list.');
     }
 
     public function saved(Request $request)
@@ -299,7 +301,7 @@ class JobController extends Controller
         $site = $request->attributes->get('site');
         $matching = $this->visible($request)->whereIn('id', DB::table('job_posting_bookmarks')
             ->where('user_id', $request->user()->id)->select('job_posting_id'));
-        $filters = $request->validate(JobBoard::searchRules($site) + ['sort' => 'nullable|in:recent,closing']);
+        $filters = $this->savedFilters($request);
         $total = (clone $matching)->count();
         $items = $this->jobs->filter($matching, $site, $filters);
         if (($filters['sort'] ?? 'recent') === 'closing') {
@@ -330,6 +332,7 @@ class JobController extends Controller
         $site = $request->attributes->get('site');
         abort_unless($this->jobs->enabled($site), 404);
         $request->validate(['confirm_remove' => 'accepted']);
+        $filters = $this->savedFilters($request);
         $unavailable = JobPosting::query()->whereHas('branch', fn ($query) => $query->when($site->location_id, fn ($branch, $id) => $branch->where('location_id', $id)))
             ->where(fn ($query) => $query->where('status', '!=', 'approved')->orWhere('closing_on', '<', $this->jobs->closingToday())
                 ->orWhereHas('branch', fn ($branch) => $branch->where('location_status', 'closed')->orWhereHas('business', fn ($business) => $business->where('status', '!=', 'active'))))
@@ -337,7 +340,19 @@ class JobController extends Controller
         $removed = DB::table('job_posting_bookmarks')->where('user_id', $request->user()->id)
             ->whereIn('job_posting_id', $unavailable)->delete();
 
-        return redirect('/account/saved-jobs')->with('status', $removed.' unavailable saved jobs removed.');
+        return redirect($this->savedReturnPath($filters))->with('status', $removed.' unavailable saved jobs removed.');
+    }
+
+    private function savedFilters(Request $request): array
+    {
+        return $request->validate(JobBoard::searchRules($request->attributes->get('site')) + ['sort' => 'nullable|in:recent,closing']);
+    }
+
+    private function savedReturnPath(array $filters): string
+    {
+        $query = http_build_query(array_filter($filters, fn ($value) => $value !== null && $value !== ''), '', '&', PHP_QUERY_RFC3986);
+
+        return '/account/saved-jobs'.($query === '' ? '' : '?'.$query);
     }
 
     private function visible(Request $request)

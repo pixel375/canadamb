@@ -14,7 +14,7 @@
         </form>
         <p class="field-note seller-results-count">{{ $items->total() }} {{ \Illuminate\Support\Str::plural('job', $items->total()) }} found · Closed or unpublished jobs are hidden.</p>
         <div class="panel">
-            @forelse($items as $item)<x-job-result :item="$item" :removable="true" :show-description="true"/>@empty<div class="market-results-empty"><h3>{{ $total ? 'No saved jobs match your search.' : 'No active saved jobs on this portal.' }}</h3><a class="button button-outline" href="{{ $total ? '/account/saved-jobs' : '/jobs' }}">{{ $total ? 'View all saved jobs' : 'Browse jobs' }}</a></div>@endforelse
+            @forelse($items as $item)<x-job-result :item="$item" :removable="true" :show-description="true" :return-filters="$filters"/>@empty<div class="market-results-empty"><h3>{{ $total ? 'No saved jobs match your search.' : 'No active saved jobs on this portal.' }}</h3><a class="button button-outline" href="{{ $total ? '/account/saved-jobs' : '/jobs' }}">{{ $total ? 'View all saved jobs' : 'Browse jobs' }}</a></div>@endforelse
         </div>
         {{ $items->links() }}
         @if($unavailable->total())
@@ -22,12 +22,15 @@
                 <p class="field-note">Closed or unpublished positions. Private titles and details are not shown.</p>
                 <details><summary>Remove all unavailable saved jobs</summary>
                     <form method="post" action="/account/saved-jobs/clear-unavailable" class="form-stack mt-2">@csrf
+                        @foreach($filters as $key => $value)
+                            @if(filled($value))<input type="hidden" name="{{ $key }}" value="{{ $value }}">@endif
+                        @endforeach
                         <p class="field-note">Removes only your currently unavailable job bookmarks on this portal, including those on other pages.</p>
                         <label class="checkbox-line"><input type="checkbox" name="confirm_remove" value="1" required> Confirm removal</label><button class="button button-outline">Remove unavailable bookmarks</button>
                     </form>
                 </details>
                 @foreach($unavailable as $record)
-                    <div class="item-row"><span>Job #{{ $record->job_posting_id }} · Unavailable</span><form method="post" action="/jobs/{{ $record->job_posting_id }}/save">@csrf @method('DELETE')<button class="button button-outline">Remove unavailable job</button></form></div>
+                    <div class="item-row"><span>Job #{{ $record->job_posting_id }} · Unavailable</span><form method="post" action="/jobs/{{ $record->job_posting_id }}/save">@csrf @method('DELETE')@foreach($filters as $key => $value)@if(filled($value))<input type="hidden" name="{{ $key }}" value="{{ $value }}">@endif @endforeach<button class="button button-outline">Remove unavailable job</button></form></div>
                 @endforeach
                 {{ $unavailable->links() }}
             </section>
