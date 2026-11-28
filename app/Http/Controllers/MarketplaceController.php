@@ -133,15 +133,7 @@ class MarketplaceController extends Controller
 
         abort_unless($this->marketplace->enabled($site), 404);
         $statuses = ['active', 'pending', 'expired', 'rejected', 'sold'];
-        $filters = $request->validate([
-            'status' => ['nullable', Rule::in($statuses)],
-            'q' => ['nullable', 'string', 'max:100'],
-            'location' => ['nullable', 'integer', 'min:1'],
-            'category' => ['nullable', 'string', 'exists:listing_categories,slug'],
-            'reference' => ['nullable', 'integer', 'min:1'],
-            'expiry' => ['nullable', 'in:soon,ended'],
-            'sort' => ['nullable', 'in:newest,oldest,price-low,price-high,expiry'],
-        ]);
+        $filters = $request->validate($this->sellerFilterRules());
         if ($site->location_id !== null && isset($filters['location']) && (int) $filters['location'] !== $site->location_id) {
             throw ValidationException::withMessages(['location' => 'Use CanadaMB to manage listings in another community.']);
         }
@@ -268,15 +260,18 @@ class MarketplaceController extends Controller
     public function status(Request $request, int $listing)
     {
         abort_unless($this->marketplace->enabled($request->attributes->get('site')), 404);
-        DB::transaction(function () use ($request, $listing) {
+        $filters = DB::transaction(function () use ($request, $listing) {
             $item = $this->owned($request, $listing, true);
             $data = $request->validate(['status' => ['required', Rule::in(['removed', 'sold', 'pending'])], 'version' => 'required|string|size:64']);
             abort_unless(hash_equals($item->reviewVersion(), $data['version']), 409, 'Listing changed. Reload before changing status.');
             abort_unless($item->allowsSellerStatus($data['status']), 409);
+            $filters = $this->sellerReturnFilters($request);
             $this->marketplace->changeStatus($item, $data['status'], $request->user()->id);
+
+            return $filters;
         });
 
-        return redirect('/account/listings')->with('status', 'Listing status updated.');
+        return redirect($this->sellerReturnPath($filters))->with('status', 'Listing status updated.');
     }
 
     public function batchStatus(Request $request)
@@ -291,6 +286,7 @@ class MarketplaceController extends Controller
             'confirm_batch' => 'accepted',
         ]);
         $member = $request->user()->id;
+        $filters = $this->sellerReturnFilters($request);
         DB::transaction(function () use ($data, $member, $site) {
             $items = Listing::where('user_id', $member)->where('status', '!=', 'removed')
                 ->when($site->location_id, fn ($query, $id) => $query->where('location_id', $id))
@@ -309,7 +305,43 @@ class MarketplaceController extends Controller
             }
         }, attempts: 3);
 
-        return redirect('/account/listings')->with('status', count($data['listings']).' listing statuses updated.');
+        return redirect($this->sellerReturnPath($filters))->with('status', count($data['listings']).' listing statuses updated.');
+    }
+
+    private function sellerFilterRules(): array
+    {
+        return [
+            'status' => 'nullable|in:active,pending,expired,rejected,sold',
+            'q' => ['nullable', 'string', 'max:100'],
+            'location' => ['nullable', 'integer', 'min:1'],
+            'category' => ['nullable', 'string', 'exists:listing_categories,slug'],
+            'reference' => ['nullable', 'integer', 'min:1'],
+            'expiry' => ['nullable', 'in:soon,ended'],
+            'sort' => ['nullable', 'in:newest,oldest,price-low,price-high,expiry'],
+        ];
+    }
+
+    private function sellerReturnFilters(Request $request): array
+    {
+        $rules = ['return_filters' => 'nullable|array'];
+        foreach ($this->sellerFilterRules() as $key => $rule) {
+            $rules['return_filters.'.$key] = $rule;
+        }
+        $data = $request->validate($rules);
+        $filters = array_intersect_key($data['return_filters'] ?? [], $this->sellerFilterRules());
+        $site = $request->attributes->get('site');
+        if ($site->location_id !== null && isset($filters['location']) && (int) $filters['location'] !== $site->location_id) {
+            throw ValidationException::withMessages(['return_filters.location' => 'Use CanadaMB to manage listings in another community.']);
+        }
+
+        return array_filter($filters, fn ($value) => $value !== null && $value !== '');
+    }
+
+    private function sellerReturnPath(array $filters): string
+    {
+        $query = http_build_query($filters, '', '&', PHP_QUERY_RFC3986);
+
+        return '/account/listings'.($query === '' ? '' : '?'.$query);
     }
 
     private function form(Request $request, Listing $item, ?Location $duplicateLocation = null)

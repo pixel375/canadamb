@@ -1,4 +1,7 @@
 <x-layouts.site title="My listings">
+    @php($returnFilters = array_filter($filters, fn ($value) => $value !== null && $value !== ''))
+    @php($canSell = $items->contains(fn ($item) => $item->allowsSellerStatus('sold')))
+    @php($canRenew = $items->contains(fn ($item) => $item->allowsSellerStatus('pending')))
     <div class="container page-shell">
         <div class="page-intro">
             <div><a class="text-link" href="/account/profile">My account</a><h1>My listings</h1><p>Manage your Marketplace posts, publication status and renewals.</p></div>
@@ -26,11 +29,12 @@
             <div class="inline-actions"><button class="button button-primary"><x-icon name="search" size="16"/> Search</button><a class="text-link" href="/account/listings">Clear filters</a></div>
         </form>
         <p class="field-note seller-results-count">{{ $items->total() }} {{ \Illuminate\Support\Str::plural('listing', $items->total()) }} found</p>
-        @if($items->contains(fn ($item) => in_array($item->status, ['active', 'expired'], true)))
+        @if($canSell || $canRenew)
             <details class="panel form-stack mb-4"><summary>Manage selected listings</summary>
                 <form method="post" id="listing-batch-status" action="/account/listings/batch-status" class="form-stack mt-3">@csrf
+                    @foreach($returnFilters as $key => $value)<input type="hidden" name="return_filters[{{ $key }}]" value="{{ $value }}">@endforeach
                     <p class="field-note">Select up to ten listings below. All must be eligible for the same action; renewal returns them to moderation for another 7 days.</p>
-                    <label>Action<select name="status"><option value="sold">Mark active listings sold</option><option value="pending">Renew expired listings for 7 days</option></select></label>
+                    <label>Action<select name="status">@if($canSell)<option value="sold">Mark active listings sold</option>@endif @if($canRenew)<option value="pending">Renew expired listings for 7 days</option>@endif</select></label>
                     <label class="checkbox-line"><input type="checkbox" name="confirm_batch" value="1" required> Confirm changes to selected listings</label>
                     <button class="button button-outline">Apply to selected listings</button>
                 </form>
@@ -74,20 +78,20 @@
                         @if(in_array($item->status, ['pending','active','expired','rejected'], true))
                             <a class="button button-outline" href="/account/listings/{{ $item->id }}/edit">Edit</a>
                         @endif
-                        @if($item->status === 'active' || $item->status === 'expired')
-                            <form method="post" action="/account/listings/{{ $item->id }}/status">@csrf<input type="hidden" name="version" value="{{ $item->reviewVersion() }}">
-                                @if($item->status === 'active' && $item->expires_at?->isFuture())<button class="button button-outline" name="status" value="sold">Mark sold</button>@else<button class="button button-primary" name="status" value="pending">Renew for 7 days</button>@endif
+                        @if($item->allowsSellerStatus('sold') || $item->allowsSellerStatus('pending'))
+                            <form method="post" action="/account/listings/{{ $item->id }}/status">@csrf @foreach($returnFilters as $key => $value)<input type="hidden" name="return_filters[{{ $key }}]" value="{{ $value }}">@endforeach<input type="hidden" name="version" value="{{ $item->reviewVersion() }}">
+                                @if($item->allowsSellerStatus('sold'))<button class="button button-outline" name="status" value="sold">Mark sold</button>@else<button class="button button-primary" name="status" value="pending">Renew for 7 days</button>@endif
                             </form>
                         @endif
                     </div>
-                    @if(in_array($item->status, ['active', 'expired'], true))
-                        <label class="checkbox-line"><input form="listing-batch-status" type="checkbox" name="listings[]" value="{{ $item->id }}"> Select for batch action</label>
+                    @if($item->allowsSellerStatus('sold') || $item->allowsSellerStatus('pending'))
+                        <label class="checkbox-line"><input form="listing-batch-status" type="checkbox" name="listings[]" value="{{ $item->id }}"> {{ $item->allowsSellerStatus('sold') ? 'Select to mark sold' : 'Select for renewal' }}</label>
                         <input form="listing-batch-status" type="hidden" name="versions[{{ $item->id }}]" value="{{ $item->reviewVersion() }}">
                     @endif
                     <details class="seller-remove-listing">
                         <summary>Remove listing</summary>
                         <p class="field-note">This will permanently remove this listing from your dashboard and public Marketplace. It cannot be restored here.</p>
-                        <form method="post" action="/account/listings/{{ $item->id }}/status">@csrf<input type="hidden" name="version" value="{{ $item->reviewVersion() }}"><button class="button button-outline" name="status" value="removed">Confirm removal</button></form>
+                        <form method="post" action="/account/listings/{{ $item->id }}/status">@csrf @foreach($returnFilters as $key => $value)<input type="hidden" name="return_filters[{{ $key }}]" value="{{ $value }}">@endforeach<input type="hidden" name="version" value="{{ $item->reviewVersion() }}"><button class="button button-outline" name="status" value="removed">Confirm removal</button></form>
                     </details>
                 </article>
             @empty

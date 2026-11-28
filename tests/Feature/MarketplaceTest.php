@@ -238,12 +238,15 @@ class MarketplaceTest extends TestCase
         $url = self::CITY.'/account/listings/batch-status';
         $versions = $items->mapWithKeys(fn ($item) => [$item->id => $item->reviewVersion()])->all();
         $input = ['status' => 'sold', 'listings' => [$items[0]->id, $items[1]->id], 'versions' => $versions, 'confirm_batch' => '1'];
-        $this->actingAs($seller)->get(self::CITY.'/account/listings')->assertOk()->assertSee('Manage selected listings');
+        $this->actingAs($seller)->get(self::CITY.'/account/listings')->assertOk()->assertSee('Manage selected listings')
+            ->assertSee('Mark active listings sold')->assertDontSee('Renew expired listings for 7 days');
         $this->post($url, array_replace($input, ['listings' => [$items[0]->id, $items[2]->id]]))->assertNotFound();
         $this->post($url, array_replace($input, ['listings' => [$items[0]->id, $items[3]->id]]))->assertNotFound();
         $this->post($url, array_replace($input, ['versions' => array_replace($versions, [$items[1]->id => str_repeat('0', 64)])]))->assertSessionHasErrors('listings');
         $this->assertSame('active', $items[0]->fresh()->status);
-        $this->post($url, $input)->assertRedirect()->assertSessionHasNoErrors();
+        $this->post($url, $input + ['return_filters' => ['q' => '0', 'sort' => 'oldest']])
+            ->assertRedirect('/account/listings?q=0&sort=oldest')->assertSessionHasNoErrors();
+        $this->get(self::CITY.'/account/listings?status=sold')->assertOk()->assertDontSee('Manage selected listings');
         $this->assertSame('sold', $items[0]->fresh()->status);
         $this->assertSame('sold', $items[1]->fresh()->status);
         $this->assertSame('active', $items[2]->fresh()->status);
@@ -352,10 +355,12 @@ class MarketplaceTest extends TestCase
             $items->push($item->fresh());
         }
         $this->actingAs($seller)->get(self::CITY.'/marketplace/'.$items[0]->id)->assertNotFound();
+        $this->get(self::CITY.'/account/listings?expiry=ended')->assertOk()
+            ->assertSee('Renew expired listings for 7 days')->assertDontSee('Mark active listings sold');
         $path = self::CITY.'/account/listings/'.$items[0]->id.'/status';
         $version = $items[0]->reviewVersion();
         $this->post($path, ['status' => 'sold', 'version' => $version])->assertConflict();
-        $this->post($path, ['status' => 'pending', 'version' => $version])->assertRedirect();
+        $this->post($path, ['status' => 'pending', 'version' => $version, 'return_filters' => ['expiry' => 'ended']])->assertRedirect('/account/listings?expiry=ended');
         $this->post(self::CITY.'/account/listings/batch-status', ['status' => 'pending', 'listings' => [$items[1]->id],
             'versions' => [$items[1]->id => $items[1]->reviewVersion()], 'confirm_batch' => '1'])->assertRedirect()->assertSessionHasNoErrors();
         $this->assertSame('pending', $items[0]->fresh()->status);
