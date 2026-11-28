@@ -238,7 +238,7 @@ class PropertyDraftTest extends TestCase
         $this->actingAs($owner);
         Storage::disk('local')->assertMissing($initial[0]->image_path);
         Storage::disk('local')->assertExists($initial[1]->image_path);
-        $this->put($path, $data + ['version' => $version])->assertConflict();
+        // An incomplete stale edit must conflict before field or photo processing.
         $this->put($path, ['version' => $version])->assertConflict();
         $this->post($path.'/submit', ['version' => $draft->fresh()->contentVersion(), 'authorization_capacity' => 'owner', 'advertising_consent' => '1'])->assertRedirect();
         $reviewVersion = $draft->fresh()->contentVersion();
