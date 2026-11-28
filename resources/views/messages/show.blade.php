@@ -33,7 +33,7 @@
             @elseif($thread->direct_kind === 'official')<p class="notice">Historical official conversation. The initiating account is no longer a verified administrator. Replies are unavailable; do not treat this history as current staff guidance.</p>@endif
             <div class="chat-history" aria-label="Messages in chronological order" data-chat-history tabindex="0">
                 <nav class="chat-history-nav" aria-label="Conversation history">
-                    @if($messages->nextPageUrl())<a class="text-link" data-chat-older href="{{ $messages->nextPageUrl() }}">Older messages</a>@endif
+                    @if($messages->nextPageUrl())<a class="text-link" data-chat-older href="{{ $messages->nextPageUrl() }}">Older messages</a>@if($latestPage)<small class="field-note chat-older-status" data-chat-older-status role="status"></small>@endif @endif
                     @if(!$latestPage)@if($messages->previousPageUrl())<a class="text-link" href="{{ $messages->previousPageUrl() }}">Newer messages</a>@endif<a class="text-link" href="/account/messages/{{ $thread->id }}">Latest messages</a>@endif
                 </nav>
                 @if($context)<a class="chat-context-card" href="{{ $context['url'] }}">

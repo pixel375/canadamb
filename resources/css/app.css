@@ -1955,6 +1955,8 @@ body.chat-page { display:flex; flex-direction:column; height:var(--chat-viewport
 .chat-update-bar:has(.chat-sync-status:empty) { display:none; }
 .chat-update-bar .chat-sync-status { padding:3px 0; min-width:0; }
 .chat-history-nav a[hidden] { display:none; }
+.chat-older-status { flex-basis:100%; text-align:center; overflow-wrap:anywhere; }
+.chat-older-status:empty { display:none; }
 .chat-attachment-picker { font-size:.8rem; }
 .chat-attachment-picker summary { cursor:pointer; color:var(--primary); padding-block:3px; }
 .chat-attachment-picker[open] label { margin-top:4px; }

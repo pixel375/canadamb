@@ -581,6 +581,7 @@ if (chatPanel) {
     // Progressively enhance the server's stable cursor links. No private
     // history is cached, and the original link remains usable without JS.
     const older = history.querySelector('[data-chat-older]');
+    const olderStatus = history.querySelector('[data-chat-older-status]');
     let loadingOlder = false;
     older?.addEventListener('click', async event => {
         if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || history.querySelectorAll('[data-message-id]').length >= 300) return;
@@ -596,6 +597,9 @@ if (chatPanel) {
             const parsed = new DOMParser().parseFromString(await response.text(), 'text/html');
             const previous = parsed.querySelector('[data-chat-history]');
             if (!previous) throw new Error('History unavailable');
+            const next = previous.querySelector('[data-chat-older]');
+            const nextUrl = next ? new URL(next.getAttribute('href'), url) : null;
+            if (nextUrl && (nextUrl.origin !== location.origin || nextUrl.pathname !== location.pathname)) throw new Error('Invalid history link');
             const first = history.querySelector('[data-message-id]');
             const oldTop = first?.getBoundingClientRect().top;
             const existing = new Set([...history.querySelectorAll('[data-message-id]')].map(node => node.dataset.messageId));
@@ -605,18 +609,18 @@ if (chatPanel) {
             }
             if (first) first.before(fragment);
             else history.append(fragment);
-            if (first) history.scrollTop += first.getBoundingClientRect().top - oldTop;
-            const next = previous.querySelector('[data-chat-older]');
-            if (next) {
-                const nextUrl = new URL(next.getAttribute('href'), url);
-                if (nextUrl.origin !== location.origin || nextUrl.pathname !== location.pathname) throw new Error('Invalid history link');
+            if (nextUrl) {
                 older.href = nextUrl.href;
             } else {
+                if (document.activeElement === older) history.focus({preventScroll: true});
                 older.hidden = true;
             }
+            olderStatus.textContent = nextUrl ? '' : 'Beginning of conversation';
+            // Account for the history navigation changing size as well as the inserted messages.
+            if (first) history.scrollTop += first.getBoundingClientRect().top - oldTop;
         } catch {
-            // Preserve the draft and visible history instead of forcing navigation.
-            status.textContent = 'Could not load older messages. Select Older messages to retry.';
+            // Keep history errors separate from the periodic message refresh status.
+            olderStatus.textContent = 'Could not load older messages. Select Older messages to retry.';
         } finally {
             loadingOlder = false;
             older.removeAttribute('aria-busy');
