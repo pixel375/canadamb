@@ -253,6 +253,7 @@ class MessagesController extends Controller
     public function archiveSelected(Request $request)
     {
         abort_unless(MessagingExtensions::enabled(), 404);
+        $filters = $this->inboxFilters($request);
         $data = $request->validate([
             'conversations' => 'required|array|list|min:1|max:10', 'conversations.*' => 'required|integer|distinct|min:1',
             'versions' => 'required|array|max:20', 'versions.*' => 'required|string|size:64',
@@ -281,7 +282,11 @@ class MessagesController extends Controller
             }
         }, attempts: 3);
 
-        return redirect('/account/messages'.($archive ? '?view=archived' : ''))->with('status', count($data['conversations']).($archive ? ' conversations archived and marked read.' : ' conversations restored.'));
+        unset($filters['view']);
+        $params = ($archive ? ['view' => 'archived'] : []) + array_filter($filters, fn ($value) => $value !== null && $value !== '');
+        $query = http_build_query($params);
+
+        return redirect('/account/messages'.($query !== '' ? '?'.$query : ''))->with('status', count($data['conversations']).($archive ? ' conversations archived and marked read.' : ' conversations restored.'));
     }
 
     public function archive(Request $request, int $conversation)

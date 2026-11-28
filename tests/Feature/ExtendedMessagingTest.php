@@ -59,11 +59,11 @@ class ExtendedMessagingTest extends TestCase
         $this->actingAs($owner)->get($base.'/account/messages')->assertOk()->assertSee('Archive selected conversations');
         $this->post($batch, array_replace($selection, ['versions' => array_replace($versions, [$thread->id => str_repeat('0', 64)])]))->assertSessionHasErrors('conversations');
         $this->assertNull($thread->fresh()->seller_archived_at);
-        $this->post($batch, $selection)->assertRedirect()->assertSessionHasNoErrors();
+        $this->post($batch, $selection + ['sort' => 'oldest', 'q' => '0'])->assertRedirect('/account/messages?view=archived&q=0&sort=oldest')->assertSessionHasNoErrors();
         $this->assertNotNull($thread->fresh()->seller_archived_at);
         $this->assertNull($thread->fresh()->buyer_archived_at);
         $versions = $threads->mapWithKeys(fn ($item) => [$item->id => $item->fresh()->archiveVersion($owner->id, (int) $item->messages()->max('id'))])->all();
-        $this->post($batch, array_replace($selection, ['versions' => $versions, 'action' => 'restore']))->assertRedirect()->assertSessionHasNoErrors();
+        $this->post($batch, array_replace($selection, ['versions' => $versions, 'action' => 'restore', 'q' => '0']))->assertRedirect('/account/messages?q=0')->assertSessionHasNoErrors();
         $this->assertNull($thread->fresh()->seller_archived_at);
         $versions = $threads->mapWithKeys(fn ($item) => [$item->id => $item->fresh()->archiveVersion($owner->id, (int) $item->messages()->max('id'))])->all();
         $this->actingAs($member)->post($base.'/account/messages/'.$thread->id, ['body' => 'Arrived after selection'])->assertRedirect();

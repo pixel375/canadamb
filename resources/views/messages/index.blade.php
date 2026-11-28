@@ -43,6 +43,7 @@
                 <details class="form-stack mb-4"><summary>{{ $archived ? 'Restore selected conversations' : 'Archive selected conversations' }}</summary>
                     <form id="conversation-batch" method="post" action="/account/messages/archive-selected" class="form-stack mt-2">@csrf
                         <input type="hidden" name="action" value="{{ $archived ? 'restore' : 'archive' }}">
+                        @foreach($params as $name => $value)<input type="hidden" name="{{ $name }}" value="{{ $value }}">@endforeach
                         <p class="field-note">Choose up to ten conversations below. Archiving marks them read for you only; newer messages return a conversation to the inbox.</p>
                         <label class="checkbox-line"><input type="checkbox" name="confirm_selection" value="1" required> Confirm selected conversations</label>
                         <button class="button button-outline">{{ $archived ? 'Restore selected' : 'Archive selected' }}</button>

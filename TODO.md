@@ -497,3 +497,5 @@ Keep this queue updated; do not interrupt independent implementation for these a
 - 2026-11-27 verification: a1bc831a backend 46106567790/browser 46106567654 and 02b2a7ba backend 46106599031/browser 46106599008 passed. Exact deploy 46106894272 all five green, independent DB/PWA 140861736302/140861736360 and retention 140861768321 green; active SHA confirmed, 11023 entries reclaimed, zero unverified entries, two backup sets/releases retained, both hosts HTTP403.
 
 - E03/E11/H03/H04/M02 business and job inquiry initiation now validates message text after locked public visibility, current verified ownership, contact preference, membership and blocking checks. Regression verifies malformed self-inquiries are forbidden for both types. No activation/schema changes. Exact CI pending.
+
+- E11/F05 bulk conversation archive/restore now retains validated search, role, kind and sort while switching the archive view appropriately; resets page for the changed result set. Existing participant/version checks remain. Regression covers archive/restore with literal zero search and sort retention. No schema or feature activation. Exact CI pending.
