@@ -379,7 +379,7 @@ class CommunityForumController extends Controller
 
     public function reply(Request $request, int $thread)
     {
-        [$reply, $hasParent] = DB::transaction(function () use ($request, $thread) {
+        [$reply, $hasParent, $page] = DB::transaction(function () use ($request, $thread) {
             $item = $this->visible($request)->lockForUpdate()->findOrFail($thread);
             abort_if($item->locked, 409, 'This discussion is locked.');
             $selection = $request->validate(['parent_reply_id' => 'nullable|integer|min:1']);
@@ -388,7 +388,14 @@ class CommunityForumController extends Controller
                 abort_unless(ReplyLinks::enabled(), 404);
                 $parent = $item->replies()->where('status', 'approved')->lockForUpdate()->findOrFail($selection['parent_reply_id']);
             }
-            $data = $request->validate(['body' => 'required|string|min:5|max:3000']);
+            $page = (int) ($request->validate(['reply_page' => 'nullable|integer|min:1'])['reply_page'] ?? 1);
+            // Recover the same composer and validated parent even without a Referer.
+            try {
+                $data = $request->validate(['body' => 'required|string|min:5|max:3000']);
+            } catch (ValidationException $exception) {
+                $params = ($page > 1 ? ['page' => $page] : []) + ($parent ? ['reply_to' => $parent->id] : []);
+                throw $exception->redirectTo(LocationScope::detailUrl('/community/'.$thread, $params, '#reply-composer'));
+            }
             $reply = $item->replies()->create(['body' => $data['body'], 'author_id' => $request->user()->id]);
             if ($parent) {
                 ReplyLinks::attach($reply, $parent);
@@ -399,13 +406,14 @@ class CommunityForumController extends Controller
                 Audit::record('community.reply.auto-approved', null, context: ['reply' => $reply->id]);
             }
 
-            return [$reply, $parent !== null];
+            return [$reply, $parent !== null, $page];
         }, attempts: 3);
 
-        $destination = $hasParent && $reply->status === 'approved'
-            ? '/community/'.$thread.'/replies/'.$reply->id : '/community/'.$thread;
+        $linkedApproved = $hasParent && $reply->status === 'approved';
+        $destination = $linkedApproved ? '/community/'.$thread.'/replies/'.$reply->id : '/community/'.$thread;
+        $params = ! $linkedApproved && $page > 1 ? ['page' => $page] : [];
 
-        return redirect(LocationScope::detailUrl($destination))->with('status', $reply->status === 'approved' ? 'Reply published.' : 'Reply submitted for review.');
+        return redirect(LocationScope::detailUrl($destination, $params, $params ? '#discussion-replies' : ''))->with('status', $reply->status === 'approved' ? 'Reply published.' : 'Reply submitted for review.');
     }
 
     public function follow(Request $request, int $thread)

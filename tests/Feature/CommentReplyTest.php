@@ -97,6 +97,32 @@ class CommentReplyTest extends TestCase
         $this->assertDatabaseMissing('community_notifications', ['user_id' => $author->id, 'reply_id' => $paused->id]);
     }
 
+    public function test_invalid_comment_reply_recovers_parent_page_and_browsing_scope(): void
+    {
+        config(['network.reply_links' => true]);
+        $author = User::factory()->create();
+        $member = User::factory()->create();
+        $thread = $this->thread($author, 'brandon');
+        for ($i = 1; $i <= 26; $i++) {
+            $parent = $thread->replies()->create(['author_id' => $author->id, 'body' => 'Visible comment '.$i]);
+            $parent->forceFill(['status' => 'approved'])->save();
+        }
+        $url = 'https://canadamb.ca/community/'.$thread->id;
+        $target = '/community/'.$thread->id;
+        $data = ['parent_reply_id' => $parent->id, 'reply_page' => 2, 'body' => 'abc'];
+        $this->actingAs($member)->post($url.'/replies?browse=winnipeg', $data)
+            ->assertRedirect($target.'?page=2&reply_to='.$parent->id.'&browse=winnipeg#reply-composer')
+            ->assertSessionHasErrors('body')->assertSessionHasInput('body', 'abc');
+        $this->get($url.'?page=2&reply_to='.$parent->id.'&browse=winnipeg')->assertOk()
+            ->assertSee('name="parent_reply_id" value="'.$parent->id.'"', false)
+            ->assertSee('name="reply_page" value="2"', false);
+        $this->post($url.'/replies?browse=winnipeg', array_replace($data, ['body' => 'Corrected reply for moderation.']))
+            ->assertRedirect($target.'?page=2&browse=winnipeg#discussion-replies')->assertSessionHasNoErrors();
+        $reply = CommunityReply::where('body', 'Corrected reply for moderation.')->sole();
+        $this->assertSame('pending', $reply->status);
+        $this->assertDatabaseHas('community_reply_links', ['reply_id' => $reply->id, 'parent_reply_id' => $parent->id]);
+    }
+
     private function thread(User $author, string $location): CommunityThread
     {
         $thread = CommunityThread::create(['author_id' => $author->id, 'location_id' => Location::where('slug', $location)->sole()->id,

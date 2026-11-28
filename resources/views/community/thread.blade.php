@@ -150,6 +150,7 @@
             @elseif($canParticipate)
                 <form id="reply-composer" method="post" action="{{ \App\Support\LocationScope::detailUrl('/community/'.$item->id.'/replies') }}" class="panel form-stack discussion-reply-composer">
                     @csrf
+                    <input type="hidden" name="reply_page" value="{{ $replies->currentPage() }}">
                     <div>
                         <p class="section-label">Your voice matters</p>
                         <h2 data-reply-heading>{{ $replyTo ? 'Reply to comment' : 'Write a reply' }}</h2>
