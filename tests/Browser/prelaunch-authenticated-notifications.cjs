@@ -604,13 +604,19 @@ const fs = require('node:fs');
             check(await page.getByText('Search this conversation', { exact: true }).count() === 0, 'Chat history search should be removed');
             check(await page.locator('[data-chat-jump], .site-footer').count() === 0, 'Chat jump or footer remains');
             check(await page.getByRole('link', { name: 'Back to messages' }).isVisible(), 'Compact chat back link missing');
-            check(await page.evaluate(() => {
+            await page.locator('textarea[name="body"][data-character-count-ready="true"]').waitFor({ state: 'visible' });
+            await page.evaluate(async () => { await document.fonts.ready; await new Promise(resolve => requestAnimationFrame(resolve)); });
+            const chatFit = await page.evaluate(() => {
                 const history = document.querySelector('[data-chat-history]');
                 const composer = document.querySelector('.chat-composer');
-                return history.clientHeight > 0 && getComputedStyle(history).overflowY === 'auto'
-                    && composer.getBoundingClientRect().bottom <= innerHeight + 2
-                    && document.documentElement.scrollHeight <= innerHeight + 2;
-            }), 'Chat composer or history does not fit at ' + width);
+                return { historyHeight: history.clientHeight, overflow: getComputedStyle(history).overflowY,
+                    composerBottom: composer.getBoundingClientRect().bottom, viewport: innerHeight,
+                    rootHeight: document.documentElement.scrollHeight, bodyHeight: document.body.getBoundingClientRect().height,
+                    headerHeight: document.querySelector('.site-header')?.getBoundingClientRect().height };
+            });
+            check(chatFit.historyHeight > 0 && chatFit.overflow === 'auto'
+                && chatFit.composerBottom <= chatFit.viewport + 2 && chatFit.rootHeight <= chatFit.viewport + 2,
+                'Chat composer or history does not fit at ' + width + ': ' + JSON.stringify(chatFit));
             await page.locator('textarea[name="body"][data-character-count-ready="true"]').waitFor({ state: 'visible' });
             await page.locator('textarea[name="body"]').fill('Thanks for confirming.');
             await page.locator('[data-character-feedback]').filter({ hasText: '22 / 2000' }).waitFor({ state: 'visible' });

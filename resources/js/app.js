@@ -552,10 +552,11 @@ if (replyComposer?.querySelector('[data-reply-selection]')) {
 // Keep the composer above the mobile keyboard without scrolling the document.
 if (document.body.classList.contains('chat-page') && window.visualViewport) {
     const fitChat = () => {
-        if (window.visualViewport.scale === 1) document.body.style.setProperty('--chat-viewport-height', window.visualViewport.height + 'px');
+        if (window.visualViewport.scale === 1) document.body.style.setProperty('--chat-viewport-height', Math.floor(Math.min(window.innerHeight, window.visualViewport.height)) + 'px');
         else document.body.style.removeProperty('--chat-viewport-height');
     };
     window.visualViewport.addEventListener('resize', fitChat);
+    window.addEventListener('resize', fitChat);
     fitChat();
 }
 
