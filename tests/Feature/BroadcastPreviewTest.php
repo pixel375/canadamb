@@ -67,6 +67,41 @@ class BroadcastPreviewTest extends TestCase
         $this->actingAs($admin)->post($base.'/admin/notifications/send', ['confirmation' => $token, 'confirm_send' => 1])->assertNotFound();
     }
 
+    public function test_reading_last_unread_announcement_on_page_preserves_other_section_and_member_privacy(): void
+    {
+        config(['network.broadcast_previews' => true, 'network.announcement_delivery' => true]);
+        $member = User::factory()->create();
+        $other = User::factory()->create();
+        $admin = User::factory()->create(['role' => 'super_admin']);
+        $oldest = null;
+        for ($i = 1; $i <= 16; $i++) {
+            $announcement = DB::table('announcements')->insertGetId([
+                'author_id' => $admin->id, 'confirmation_hash' => hash('sha256', 'page-fixture-'.$i),
+                'title' => 'Announcement page fixture '.$i, 'body' => 'A private notification centre fixture.',
+                'audience' => 'all', 'recipient_count' => 2, 'created_at' => now(),
+            ]);
+            $receipt = DB::table('announcement_receipts')->insertGetId([
+                'announcement_id' => $announcement, 'user_id' => $member->id, 'created_at' => now(),
+            ]);
+            $oldest ??= $receipt;
+            DB::table('announcement_receipts')->insert([
+                'announcement_id' => $announcement, 'user_id' => $other->id, 'created_at' => now(),
+            ]);
+        }
+        $url = 'https://brandonmb.ca/account/notifications';
+        $this->actingAs($member)->get($url.'?announcement_view=unread&announcements=2&updates=3')->assertOk()
+            ->assertViewHas('announcements', fn ($items) => $items->currentPage() === 2 && $items->count() === 1);
+        $read = $url.'/announcements/'.$oldest.'/read';
+        $this->actingAs($other)->post($read)->assertNotFound();
+        $this->actingAs($member)->post($read, ['announcement_view' => 'unread', 'announcements' => 2, 'updates' => 3])
+            ->assertRedirect('/account/notifications?announcement_view=unread&updates=3#network-announcements');
+        $this->get($url.'?announcement_view=unread&updates=3')->assertOk()
+            ->assertViewHas('announcements', fn ($items) => $items->currentPage() === 1 && $items->total() === 15);
+        $this->assertSame(16, DB::table('announcement_receipts')->where('user_id', $other->id)->whereNull('read_at')->count());
+        $this->get('https://canadamb.ca/account/notifications?announcement_view=all')->assertOk()
+            ->assertViewHas('announcements', fn ($items) => $items->total() === 16);
+    }
+
     public function test_broadcast_preview_respects_separate_consent_and_does_not_send(): void
     {
         $member = User::factory()->create();

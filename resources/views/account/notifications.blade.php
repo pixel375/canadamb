@@ -45,12 +45,12 @@
                 </nav>
                 <div class="panel">
                     @forelse($announcements as $announcement)
-                        <article class="item-row"><div><p class="section-label">Official CanadaMB announcement</p><h3>{{ $announcement->title }}</h3><p class="preserve-lines">{{ $announcement->body }}</p><p>{{ \Illuminate\Support\Carbon::parse($announcement->created_at)->diffForHumans() }}</p></div>
+                        <article class="item-row"><div><p class="section-label">Official CanadaMB announcement</p><h3 id="announcement-title-{{ $announcement->id }}">{{ $announcement->title }}</h3><p class="preserve-lines">{{ $announcement->body }}</p><p>{{ \Illuminate\Support\Carbon::parse($announcement->created_at)->diffForHumans() }}</p></div>
                             @if(!$announcement->read_at)<form method="post" action="/account/notifications/announcements/{{ $announcement->id }}/read">@csrf
                                 @foreach(array_filter($filters) as $name => $value)
                                     <input type="hidden" name="{{ $name }}" value="{{ $value }}">
                                 @endforeach
-                                <button class="button button-outline">Mark as read</button></form>@endif
+                                <button class="button button-outline" aria-describedby="announcement-title-{{ $announcement->id }}">Mark as read</button></form>@endif
                         </article>
                     @empty<p>{{ ($filters['announcement_view'] ?? null) === 'unread' ? 'No unread network announcements.' : 'No network announcements yet.' }}</p>@endforelse
                 </div>
