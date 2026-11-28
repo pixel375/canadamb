@@ -90,6 +90,26 @@ class OwnerNotificationsTest extends TestCase
         $this->get('https://canadamb.ca/account/notifications')->assertOk()->assertDontSee('Your discussion was not approved.');
     }
 
+    public function test_marking_the_last_unread_update_on_a_page_returns_to_the_previous_page(): void
+    {
+        config(['network.owner_notifications' => true]);
+        $member = User::factory()->create();
+        $place = Location::where('slug', 'brandon')->sole();
+        for ($i = 1; $i <= 16; $i++) {
+            $thread = CommunityThread::create(['author_id' => $member->id, 'location_id' => $place->id,
+                'title' => 'Pagination fixture '.$i, 'body' => 'A submitted discussion.', 'category' => 'general']);
+            OwnerNotifications::record($member->id, 'discussion', $thread->id, 'approved');
+        }
+        $alert = DB::table('owner_notifications')->oldest('id')->first();
+        $url = 'https://brandonmb.ca/account/notifications';
+        $page = $this->actingAs($member)->get($url.'?submission_view=unread&updates=2')->assertOk();
+        $this->assertCount(1, $page->viewData('ownerAlerts')->items());
+        $response = $this->post($url.'/updates/'.$alert->id.'/read', ['submission_view' => 'unread', 'updates' => 2, 'announcements' => 3]);
+        $response->assertRedirect('/account/notifications?submission_view=unread&announcements=3#submission-updates');
+        $page = $this->get($url.'?submission_view=unread')->assertOk();
+        $this->assertCount(15, $page->viewData('ownerAlerts')->items());
+    }
+
     public function test_job_review_and_expiry_alerts_require_current_business_membership(): void
     {
         config(['network.owner_notifications' => true]);

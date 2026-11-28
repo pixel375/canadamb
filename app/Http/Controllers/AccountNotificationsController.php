@@ -21,6 +21,8 @@ use Illuminate\Validation\ValidationException;
 
 final class AccountNotificationsController extends Controller
 {
+    private const PAGE_SIZE = 15;
+
     public function preferences(Request $request)
     {
         abort_unless(NotificationPreferences::enabled(), 404);
@@ -63,6 +65,11 @@ final class AccountNotificationsController extends Controller
                 DB::table('owner_notifications')->where('id', $notification)->where('user_id', $request->user()->id)->whereNull('read_at')->update(['read_at' => now()]);
             }
 
+            if (($filters['submission_view'] ?? null) === 'unread' && isset($filters['updates'])) {
+                $remaining = OwnerNotifications::visible($request->user(), $request->attributes->get('site'))->whereNull('alert.read_at')->count();
+                $filters = $this->clampPage($filters, 'updates', $remaining);
+            }
+
             return $filters;
         });
 
@@ -77,6 +84,11 @@ final class AccountNotificationsController extends Controller
         DB::table('announcement_receipts')->where('id', $receipt)->where('user_id', $request->user()->id)
             ->whereNull('read_at')->update(['read_at' => now()]);
 
+        if (($filters['announcement_view'] ?? null) === 'unread' && isset($filters['announcements'])) {
+            $remaining = Announcements::visible($request->user()->id)->whereNull('receipt.read_at')->count();
+            $filters = $this->clampPage($filters, 'announcements', $remaining);
+        }
+
         return $this->returnToSection($filters, 'network-announcements');
     }
 
@@ -84,6 +96,18 @@ final class AccountNotificationsController extends Controller
     {
         return $request->validate(['submission_view' => 'nullable|in:all,unread', 'announcement_view' => 'nullable|in:all,unread',
             'updates' => 'nullable|integer|min:1', 'announcements' => 'nullable|integer|min:1']);
+    }
+
+    private function clampPage(array $filters, string $key, int $remaining): array
+    {
+        $page = min((int) $filters[$key], max(1, (int) ceil($remaining / self::PAGE_SIZE)));
+        if ($page === 1) {
+            unset($filters[$key]);
+        } else {
+            $filters[$key] = $page;
+        }
+
+        return $filters;
     }
 
     private function returnToSection(array $filters, string $section)
@@ -131,13 +155,13 @@ final class AccountNotificationsController extends Controller
         $ownerQuery = $ownerEnabled ? OwnerNotifications::visible($user, $site) : null;
         $ownerUnread = $ownerQuery ? (clone $ownerQuery)->whereNull('alert.read_at')->count() : 0;
         $ownerAlerts = $ownerQuery ? $ownerQuery->when(($filters['submission_view'] ?? null) === 'unread', fn ($query) => $query->whereNull('alert.read_at'))
-            ->orderByRaw('CASE WHEN alert.read_at IS NULL THEN 0 ELSE 1 END')->orderByDesc('alert.id')->paginate(15, pageName: 'updates')->appends($filters) : null;
+            ->orderByRaw('CASE WHEN alert.read_at IS NULL THEN 0 ELSE 1 END')->orderByDesc('alert.id')->paginate(self::PAGE_SIZE, pageName: 'updates')->appends($filters) : null;
         $ownerDestinations = $ownerAlerts ? OwnerNotifications::recordDestinations($ownerAlerts->items()) : [];
         $announcementQuery = Announcements::enabled() ? Announcements::visible($user->id) : null;
         $announcementUnread = $announcementQuery ? (clone $announcementQuery)->whereNull('receipt.read_at')->count() : 0;
         $announcements = $announcementQuery ? $announcementQuery->when(($filters['announcement_view'] ?? null) === 'unread', fn ($query) => $query->whereNull('receipt.read_at'))
             ->orderByRaw('CASE WHEN receipt.read_at IS NULL THEN 0 ELSE 1 END')
-            ->orderByDesc('receipt.id')->paginate(15, ['receipt.id', 'receipt.read_at', 'receipt.created_at', 'announcement.title', 'announcement.body'], 'announcements')->appends($filters) : null;
+            ->orderByDesc('receipt.id')->paginate(self::PAGE_SIZE, ['receipt.id', 'receipt.read_at', 'receipt.created_at', 'announcement.title', 'announcement.body'], 'announcements')->appends($filters) : null;
         $replyUnread = max(0, $counts['notifications'] - $ownerUnread - $announcementUnread);
         $broadcastEnabled = BroadcastConsent::enabled();
         $broadcastOptedIn = BroadcastConsent::optedIn($user->id);
