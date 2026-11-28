@@ -52,6 +52,7 @@
                     @if(filled($filters['period'] ?? null))
                         <input type="hidden" name="period" value="{{ $filters['period'] }}">
                     @endif
+                    <input type="hidden" name="page" value="{{ $notifications->currentPage() }}">
                     <p class="field-note">Select up to twenty notifications on this page. This affects your account only.</p>
                     <label>Action<select name="action"><option value="read">Mark selected as read</option><option value="unread">Mark selected as unread</option></select></label>
                     <div><button class="button button-outline">Apply selected action</button></div>
@@ -63,7 +64,7 @@
                 <article class="discussion-notification-row{{ $notification->read_at ? '' : ' is-unread' }}">
                     <span class="discussion-notification-indicator" aria-hidden="true"></span>
                     <div class="discussion-notification-body">
-                        <label class="checkbox-line"><input form="notification-selection" type="checkbox" name="notifications[]" value="{{ $notification->id }}"> Select notification</label>
+                        <label class="checkbox-line"><input form="notification-selection" type="checkbox" name="notifications[]" value="{{ $notification->id }}" aria-label="Select notification for {{ $notification->title }} from {{ $notification->actor_name }}"> Select notification</label>
                         <p class="section-label">{{ $notification->read_at ? 'Read reply' : 'New reply' }}</p>
                         <form method="post" action="/account/community-notifications/{{ $notification->id }}/open">@csrf
                             <h2><button class="notification-open-link" type="submit">{{ $notification->title }}</button></h2>
@@ -79,6 +80,7 @@
                             <form method="post" action="/account/community-notifications/{{ $notification->id }}/read">
                                 @csrf
                                 <input type="hidden" name="return_to" value="{{ $view }}">
+                                <input type="hidden" name="page" value="{{ $notifications->currentPage() }}">
                     @if(filled($filters['q'] ?? null))
                         <input type="hidden" name="q" value="{{ $filters['q'] }}">
                     @endif
@@ -90,6 +92,7 @@
                         @else
                             <form method="post" action="/account/community-notifications/selected">@csrf
                                 <input type="hidden" name="view" value="{{ $view }}"><input type="hidden" name="notifications[]" value="{{ $notification->id }}"><input type="hidden" name="action" value="unread">
+                                <input type="hidden" name="page" value="{{ $notifications->currentPage() }}">
                     @if(filled($filters['q'] ?? null))
                         <input type="hidden" name="q" value="{{ $filters['q'] }}">
                     @endif

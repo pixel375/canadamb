@@ -24,6 +24,8 @@ use Illuminate\Validation\ValidationException;
 
 class CommunityForumController extends Controller
 {
+    private const NOTIFICATION_PAGE_SIZE = 20;
+
     public function __construct(private readonly Community $community) {}
 
     public function index(Request $request)
@@ -452,16 +454,9 @@ class CommunityForumController extends Controller
         $unread = $this->visibleNotifications($request)->whereNull('notifications.read_at');
         $unreadCount = (clone $unread)->count();
         $readCutoff = $unread->max('notifications.id');
-        $matching = $this->visibleNotifications($request)
-            ->when($view === 'unread', fn (Builder $query) => $query->whereNull('notifications.read_at'))
-            ->when($view === 'read', fn (Builder $query) => $query->whereNotNull('notifications.read_at'))
-            ->when($filters['period'] ?? null, fn ($query, $days) => $query->where('notifications.created_at', '>=', now()->subDays((int) $days)));
-        foreach (KeywordSearch::patterns($filters['q'] ?? '') as $pattern) {
-            $matching->whereRaw("LOWER(threads.title) LIKE ? ESCAPE '!'", [$pattern]);
-        }
-        $notifications = $matching->orderByRaw('CASE WHEN notifications.read_at IS NULL THEN 0 ELSE 1 END')
+        $notifications = $this->matchingNotifications($request, $filters)->orderByRaw('CASE WHEN notifications.read_at IS NULL THEN 0 ELSE 1 END')
             ->orderByDesc('notifications.id')
-            ->paginate(20, ['notifications.id', 'notifications.reply_id', 'notifications.read_at', 'notifications.created_at', 'threads.id as thread_id', 'threads.title', 'actors.name as actor_name'])
+            ->paginate(self::NOTIFICATION_PAGE_SIZE, ['notifications.id', 'notifications.reply_id', 'notifications.read_at', 'notifications.created_at', 'threads.id as thread_id', 'threads.title', 'actors.name as actor_name'])
             ->appends($filters);
         $directReplies = ReplyLinks::directNotificationIds($request->user()->id, $notifications->pluck('reply_id')->all());
 
@@ -475,12 +470,12 @@ class CommunityForumController extends Controller
     {
         abort_unless($this->visibleNotifications($request)->where('notifications.id', $notification)->exists(), 404);
         $returnTo = $request->input('return_to');
-        $filters = $request->validate(['q' => 'nullable|string|max:100', 'period' => 'nullable|in:7,30,90']);
+        $filters = $request->validate(['q' => 'nullable|string|max:100', 'period' => 'nullable|in:7,30,90', 'page' => 'nullable|integer|min:1']);
         DB::table('community_notifications')->where(['id' => $notification, 'user_id' => $request->user()->id])
             ->whereNull('read_at')->update(['read_at' => now()]);
 
         return in_array($returnTo, ['all', 'unread', 'read'], true)
-            ? redirect($this->notificationReturnPath(['view' => $returnTo === 'all' ? null : $returnTo] + $filters))
+            ? redirect($this->notificationReturnPath($this->clampNotificationPage($request, ['view' => $returnTo === 'all' ? null : $returnTo] + $filters)))
                 ->with('status', 'Notification marked as read.')
             : redirect('/account/notifications');
     }
@@ -507,7 +502,7 @@ class CommunityForumController extends Controller
             'notifications.*' => 'required|integer|distinct|min:1',
             'action' => 'required|in:read,unread',
             'view' => 'nullable|in:all,unread,read',
-            'q' => 'nullable|string|max:100', 'period' => 'nullable|in:7,30,90',
+            'q' => 'nullable|string|max:100', 'period' => 'nullable|in:7,30,90', 'page' => 'nullable|integer|min:1',
         ]);
         DB::transaction(function () use ($request, $data) {
             $ids = $this->visibleNotifications($request)->whereIn('notifications.id', $data['notifications'])
@@ -521,7 +516,7 @@ class CommunityForumController extends Controller
             }
         }, attempts: 3);
 
-        return redirect($this->notificationReturnPath(['view' => $data['view'] ?? 'all'] + $data))
+        return redirect($this->notificationReturnPath($this->clampNotificationPage($request, ['view' => $data['view'] ?? 'all'] + $data)))
             ->with('status', 'Selected notifications marked '.$data['action'].'.');
     }
 
@@ -546,9 +541,37 @@ class CommunityForumController extends Controller
             ->with('status', 'All visible discussion notifications marked as read.');
     }
 
+    private function matchingNotifications(Request $request, array $filters): Builder
+    {
+        $view = $filters['view'] ?? 'all';
+        $matching = $this->visibleNotifications($request)
+            ->when($view === 'unread', fn (Builder $query) => $query->whereNull('notifications.read_at'))
+            ->when($view === 'read', fn (Builder $query) => $query->whereNotNull('notifications.read_at'))
+            ->when($filters['period'] ?? null, fn ($query, $days) => $query->where('notifications.created_at', '>=', now()->subDays((int) $days)));
+        foreach (KeywordSearch::patterns($filters['q'] ?? '') as $pattern) {
+            $matching->whereRaw("LOWER(threads.title) LIKE ? ESCAPE '!'", [$pattern]);
+        }
+
+        return $matching;
+    }
+
+    private function clampNotificationPage(Request $request, array $filters): array
+    {
+        if (isset($filters['page'])) {
+            $last = max(1, (int) ceil($this->matchingNotifications($request, $filters)->count() / self::NOTIFICATION_PAGE_SIZE));
+            $page = min((int) $filters['page'], $last);
+            unset($filters['page']);
+            if ($page > 1) {
+                $filters['page'] = $page;
+            }
+        }
+
+        return $filters;
+    }
+
     private function notificationReturnPath(array $data): string
     {
-        $filters = array_intersect_key($data, array_flip(['view', 'q', 'period']));
+        $filters = array_intersect_key($data, array_flip(['view', 'q', 'period', 'page']));
         $query = http_build_query(array_filter($filters, fn ($value) => $value !== null && $value !== ''), '', '&', PHP_QUERY_RFC3986);
 
         return '/account/community-notifications'.($query === '' ? '' : '?'.$query);

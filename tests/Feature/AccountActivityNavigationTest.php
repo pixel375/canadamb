@@ -195,6 +195,27 @@ class AccountActivityNavigationTest extends TestCase
         $this->assertNull(DB::table('community_notifications')->where('id', $remote)->value('read_at'));
     }
 
+    public function test_discussion_notification_actions_preserve_and_clamp_filtered_page(): void
+    {
+        $member = User::factory()->create();
+        $author = User::factory()->create();
+        $brandon = Location::where('slug', 'brandon')->sole()->id;
+        $ids = [];
+        for ($i = 1; $i <= 22; $i++) {
+            $ids[] = $this->notification($member, $author, $brandon, 'Page fixture '.$i);
+        }
+        $this->notification($member, $author, $brandon, 'Unmatched topic');
+        $url = 'https://brandonmb.ca/account/community-notifications';
+        $page = $this->actingAs($member)->get($url.'?view=unread&q=fixture&page=2')->assertOk();
+        $this->assertCount(2, $page->viewData('notifications')->items());
+        $this->post($url.'/'.$ids[0].'/read', ['return_to' => 'unread', 'q' => 'fixture', 'page' => 2])
+            ->assertRedirect('/account/community-notifications?view=unread&q=fixture&page=2');
+        $this->post($url.'/selected', ['notifications' => [$ids[1]], 'action' => 'read', 'view' => 'unread', 'q' => 'fixture', 'page' => 2])
+            ->assertRedirect('/account/community-notifications?view=unread&q=fixture');
+        $page = $this->get($url.'?view=unread&q=fixture')->assertOk();
+        $this->assertCount(20, $page->viewData('notifications')->items());
+    }
+
     private function notification(User $member, User $author, int $location, string $title, bool $approved = true): int
     {
         $thread = CommunityThread::create([
