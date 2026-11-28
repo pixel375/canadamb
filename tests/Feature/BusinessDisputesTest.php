@@ -41,6 +41,9 @@ class BusinessDisputesTest extends TestCase
         $this->actingAs($claimant)->get($url)->assertNotFound();
         config(['network.business_disputes' => true]);
         $this->get($url)->assertOk();
+        $this->withCookie('canadamb_community', 'brandon')->get('https://canadamb.ca/businesses/dispute-test/dispute?browse=')
+            ->assertOk()->assertSee('href="/businesses/dispute-test?browse="', false)
+            ->assertSee('action="/businesses/dispute-test/dispute?browse="', false);
         $this->post($url, $data)->assertRedirect()->assertSessionHasNoErrors();
         $this->post($url, $data)->assertSessionHasErrors('explanation');
         $id = DB::table('business_disputes')->value('id');

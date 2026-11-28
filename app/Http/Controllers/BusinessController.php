@@ -109,8 +109,7 @@ class BusinessController extends Controller
     {
         $site = $request->attributes->get('site');
         abort_unless($this->directory->enabled($site), 404);
-        $data = $request->validate(['contact_email' => 'required|email|max:254', 'evidence' => 'required|string|min:30|max:2400']);
-        DB::transaction(function () use ($site, $slug, $request, $data) {
+        DB::transaction(function () use ($site, $slug, $request) {
             $business = $this->directory->visible($site)->where('slug', $slug)->lockForUpdate()->firstOrFail();
             if ($business->members()->wherePivot('role', 'owner')->exists()) {
                 throw ValidationException::withMessages(['claim' => 'This profile already has an owner. Contact the network for a dispute.']);
@@ -120,11 +119,12 @@ class BusinessController extends Controller
             ])->exists()) {
                 throw ValidationException::withMessages(['claim' => 'You already have a claim waiting for review.']);
             }
+            $data = $request->validate(['contact_email' => 'required|email|max:254', 'evidence' => 'required|string|min:30|max:2400']);
             $claim = DB::table('business_claims')->insertGetId($data + [
                 'business_id' => $business->id, 'user_id' => $request->user()->id, 'status' => 'pending', 'created_at' => now(), 'updated_at' => now(),
             ]);
             Audit::record('business.claim-submitted', $request->user()->id, context: ['claim' => $claim, 'business' => $business->id]);
-        });
+        }, attempts: 3);
 
         return redirect('/account/businesses')->with('status', 'Your claim was submitted for manual verification.');
     }

@@ -274,6 +274,15 @@ class BusinessDirectoryTest extends TestCase
             ->assertDontSee('Rural branch fixture update');
     }
 
+    public function test_claim_checks_local_visibility_before_evidence_validation(): void
+    {
+        $business = Business::create(['slug' => 'remote-claim-fixture', 'name' => 'Remote Claim Fixture', 'category' => 'services', 'status' => 'active']);
+        $business->locations()->create(['location_id' => Location::where('slug', 'winnipeg')->sole()->id, 'address' => '1 Fixture Road']);
+        $this->actingAs(User::factory()->create())->post('https://brandonmb.ca/businesses/remote-claim-fixture/claim', [])->assertNotFound();
+        $this->post('https://canadamb.ca/businesses/remote-claim-fixture/claim', [])->assertSessionHasErrors(['contact_email', 'evidence']);
+        $this->assertDatabaseCount('business_claims', 0);
+    }
+
     public function test_verified_claim_requires_review_and_grants_business_editing_to_the_claimant(): void
     {
         $business = Business::create(['slug' => 'test-repair', 'name' => 'Test Repair', 'category' => 'services', 'status' => 'active']);

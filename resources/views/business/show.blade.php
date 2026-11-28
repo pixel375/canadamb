@@ -46,7 +46,7 @@
                 @endif
                 @if($claimed && \App\Support\BusinessDisputes::enabled())
                     <section class="panel form-stack"><h2>Ownership concerns</h2><p class="field-note">If you believe this profile has been claimed incorrectly, request private independent review.</p>
-                        @auth<a class="text-link" href="/businesses/{{ $business->slug }}/dispute">Raise an ownership dispute</a>@else<a class="text-link" href="{{ request()->attributes->get('site')->isNetwork() ? '/login' : '/auth/start' }}">Sign in to request review</a>@endauth
+                        @auth<a class="text-link" href="{{ \App\Support\LocationScope::detailUrl('/businesses/'.$business->slug.'/dispute') }}">Raise an ownership dispute</a>@else<a class="text-link" href="{{ request()->attributes->get('site')->isNetwork() ? '/login' : '/auth/start' }}">Sign in to request review</a>@endauth
                     </section>
                 @endif
                 @if(!$claimed)
@@ -54,7 +54,7 @@
                         <h2>Own this business?</h2><p class="field-note">Request verified management access to update this profile.</p>
                         @auth
                             <details @if($errors->any()) open @endif><summary>Request ownership</summary>
-                                <form class="form-stack mt-3" method="post" action="/businesses/{{ $business->slug }}/claim">
+                                <form class="form-stack mt-3" method="post" action="{{ \App\Support\LocationScope::detailUrl('/businesses/'.$business->slug.'/claim') }}">
                                     @csrf
                                     <label>Business contact email<input type="email" name="contact_email" required maxlength="254" value="{{ old('contact_email') }}"></label>
                                     <label>How can we verify ownership?<textarea name="evidence" required minlength="30" maxlength="2400" rows="4">{{ old('evidence') }}</textarea><small class="field-note">Describe evidence you can share with reviewers. Keep private documents and passwords out of this form.</small></label>
