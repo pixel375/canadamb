@@ -144,12 +144,23 @@ class PropertyDraftTest extends TestCase
         $this->post($base.'/submit-selected', array_replace($data, ['properties' => [$items[0]->id, $items[2]->id]]))->assertNotFound();
         $this->post($base.'/submit-selected', array_replace($data, ['versions' => array_replace($versions, [$items[1]->id => str_repeat('0', 64)])]))->assertSessionHasErrors('properties');
         $this->assertSame('draft', $items[0]->fresh()->status);
-        $this->post($base.'/submit-selected', $data)->assertRedirect()->assertSessionHasNoErrors();
+        $this->post($base.'/submit-selected', $data + ['return_filters' => ['q' => '0', 'sort' => 'price-high', 'min_price' => '0', 'location' => ['ignored']]])
+            ->assertRedirect('/account/properties?q=0&sort=price-high&min_price=0')->assertSessionHasNoErrors();
         $this->assertSame('submitted', $items[0]->fresh()->status);
         $this->assertSame('submitted', $items[1]->fresh()->status);
         $this->assertSame('draft', $items[2]->fresh()->status);
         $this->assertDatabaseCount('audit_logs', 2);
         $this->get('https://brandonmb.ca/real-estate')->assertOk()->assertDontSee('Batch draft');
+        $this->get($base.'?location%5B%5D=invalid&status=submitted&min_price=0')->assertOk()
+            ->assertSee('name="return_filters[min_price]" value="0"', false)
+            ->assertDontSee('name="return_filters[location]"', false);
+        $withdraw = ['properties' => [$items[0]->id, $items[1]->id], 'versions' => $items->mapWithKeys(fn ($item) => [$item->id => $item->fresh()->contentVersion()])->all(), 'confirm_withdraw' => '1'];
+        $this->post($base.'/withdraw-selected', $withdraw + ['return_filters' => ['min_price' => '300000', 'max_price' => '100000']])
+            ->assertSessionHasErrors('return_filters.max_price');
+        $this->assertSame('submitted', $items[0]->fresh()->status);
+        $this->post($base.'/withdraw-selected', $withdraw + ['return_filters' => ['min_price' => '0', 'sort' => 'price-low']])
+            ->assertRedirect('/account/properties?sort=price-low&min_price=0')->assertSessionHasNoErrors();
+        $this->assertSame('draft', $items[0]->fresh()->status);
     }
 
     public function test_private_review_can_be_reopened_and_withdrawal_is_audited(): void

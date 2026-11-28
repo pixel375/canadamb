@@ -20,18 +20,8 @@ class PropertyDraftController extends Controller
 {
     public function index(Request $request)
     {
-        $filters = $request->validate([
-            'transaction' => 'nullable|in:sale,rent', 'property_type' => ['nullable', Rule::in(array_keys(PropertyListing::TYPES))],
-            'q' => 'nullable|string|max:100',
-            'status' => 'nullable|in:draft,submitted,changes_requested,reviewed',
-            'sort' => 'nullable|in:recent,price-low,price-high',
-            'location' => 'nullable|integer|exists:locations,id',
-            'min_price' => 'nullable|numeric|decimal:0,2|min:0|max:1000000000',
-            'max_price' => ['nullable', 'numeric', 'decimal:0,2', 'min:0', 'max:1000000000', Rule::when($request->filled('min_price'), 'gte:min_price')],
-        ]);
-        if (! $request->attributes->get('site')->isNetwork()) {
-            unset($filters['location']);
-        }
+        $this->owned($request);
+        $filters = $request->validate($this->ownerFilterRules($request));
         $statuses = ['draft', 'submitted', 'changes_requested', 'reviewed'];
         $owned = $this->owned($request);
         $places = Location::whereIn('id', (clone $owned)->select('location_id'))->orderBy('name')->get(['id', 'name']);
@@ -225,6 +215,7 @@ class PropertyDraftController extends Controller
             'versions' => 'required|array|max:20', 'versions.*' => 'required|string|size:64',
             'authorization_capacity' => 'required|in:owner,authorized-agent', 'advertising_consent' => 'required|accepted',
         ]);
+        $filters = $this->ownerReturnFilters($request);
         DB::transaction(function () use ($request, $data) {
             $items = $this->owned($request)->whereIn('id', $data['properties'])->orderBy('id')->lockForUpdate()->get();
             abort_unless($items->count() === count($data['properties']), 404);
@@ -241,7 +232,7 @@ class PropertyDraftController extends Controller
             }
         }, attempts: 3);
 
-        return redirect('/account/properties')->with('status', count($data['properties']).' properties submitted for private review only.');
+        return redirect($this->ownerReturnPath($filters))->with('status', count($data['properties']).' properties submitted for private review only.');
     }
 
     public function withdraw(Request $request, int $property)
@@ -266,6 +257,7 @@ class PropertyDraftController extends Controller
             'versions' => 'required|array|max:20', 'versions.*' => 'required|string|size:64',
             'confirm_withdraw' => 'accepted',
         ]);
+        $filters = $this->ownerReturnFilters($request);
         DB::transaction(function () use ($request, $data) {
             $items = $this->owned($request)->whereIn('id', $data['properties'])->orderBy('id')->lockForUpdate()->get();
             abort_unless($items->count() === count($data['properties']), 404);
@@ -281,7 +273,7 @@ class PropertyDraftController extends Controller
             }
         }, attempts: 3);
 
-        return redirect('/account/properties')->with('status', count($data['properties']).' properties returned to private drafts. Photos retained.');
+        return redirect($this->ownerReturnPath($filters))->with('status', count($data['properties']).' properties returned to private drafts. Photos retained.');
     }
 
     public function archive(Request $request, int $property, ListingPhotos $photos)
@@ -318,6 +310,42 @@ class PropertyDraftController extends Controller
         abort_unless(ListingPhotos::readablePath('local', 'property-drafts', $path, ! $full), 404);
 
         return $disk->response($path, 'property-photo.webp', ['Content-Type' => 'image/webp', 'Cache-Control' => 'private, no-store', 'X-Content-Type-Options' => 'nosniff', 'X-Robots-Tag' => 'noindex']);
+    }
+
+    private function ownerFilterRules(Request $request, string $prefix = ''): array
+    {
+        $rules = [
+            'transaction' => 'nullable|in:sale,rent', 'property_type' => ['nullable', Rule::in(array_keys(PropertyListing::TYPES))],
+            'q' => 'nullable|string|max:100',
+            'status' => 'nullable|in:draft,submitted,changes_requested,reviewed',
+            'sort' => 'nullable|in:recent,price-low,price-high',
+            'min_price' => 'nullable|numeric|decimal:0,2|min:0|max:1000000000',
+            'max_price' => ['nullable', 'numeric', 'decimal:0,2', 'min:0', 'max:1000000000', Rule::when($request->filled($prefix.'min_price'), 'gte:'.$prefix.'min_price')],
+        ];
+        if ($request->attributes->get('site')->isNetwork()) {
+            $rules['location'] = 'nullable|integer|exists:locations,id';
+        }
+
+        return $rules;
+    }
+
+    private function ownerReturnFilters(Request $request): array
+    {
+        $rules = ['return_filters' => 'nullable|array'];
+        $allowed = $this->ownerFilterRules($request, 'return_filters.');
+        foreach ($allowed as $key => $rule) {
+            $rules['return_filters.'.$key] = $rule;
+        }
+        $data = $request->validate($rules);
+
+        return array_filter(array_replace(array_fill_keys(array_keys($allowed), null), array_intersect_key($data['return_filters'] ?? [], $allowed)), fn ($value) => $value !== null && $value !== '');
+    }
+
+    private function ownerReturnPath(array $filters): string
+    {
+        $query = http_build_query($filters, '', '&', PHP_QUERY_RFC3986);
+
+        return '/account/properties'.($query === '' ? '' : '?'.$query);
     }
 
     private function owned(Request $request): Builder

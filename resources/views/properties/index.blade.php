@@ -1,4 +1,5 @@
 <x-layouts.site title="Private property drafts">
+    @php($returnFilters = array_filter($filters, fn ($value) => $value !== null && $value !== ''))
     <div class="container page-shell">
         <div class="page-intro"><div><a class="text-link" href="/account/profile">My account</a><h1>Private property drafts</h1><p>Prepare and manage your property information for internal review.</p></div><div class="inline-actions"><a class="button button-outline" href="/account/properties/history">Archived history</a><a class="button button-primary" href="/account/properties/new"><x-icon name="plus" size="17"/> New property draft</a></div></div>
         <div class="property-private-notice"><strong>Private workspace</strong><p>Drafts, submitted properties and reviewed properties are not public advertisements. Review does not authorize publication.</p></div>
@@ -25,6 +26,7 @@
         @if($items->contains(fn ($item) => in_array($item->status, ['submitted', 'reviewed'], true)))
             <details class="panel form-stack mb-4"><summary>Return selected properties to draft</summary>
                 <form id="property-batch-withdraw" method="post" action="/account/properties/withdraw-selected" class="form-stack mt-3">@csrf
+                    @foreach($returnFilters as $key => $value)<input type="hidden" name="return_filters[{{ $key }}]" value="{{ $value }}">@endforeach
                     <p class="field-note">Select up to ten submitted or reviewed properties. Their private review status is reset; photos and property details are preserved.</p>
                     <label class="checkbox-line"><input type="checkbox" name="confirm_withdraw" value="1" required> Confirm returning selected properties to draft</label>
                     <button class="button button-outline">Return selected properties</button>
@@ -34,6 +36,7 @@
         @if($items->contains(fn ($item) => in_array($item->status, ['draft', 'changes_requested'], true)))
             <details class="panel form-stack mb-4"><summary>Submit selected properties for review</summary>
                 <form id="property-batch-submit" method="post" action="/account/properties/submit-selected" class="form-stack mt-3">@csrf
+                    @foreach($returnFilters as $key => $value)<input type="hidden" name="return_filters[{{ $key }}]" value="{{ $value }}">@endforeach
                     <p class="field-note">Choose up to ten prepared drafts below. Only select properties for which you have the same advertising authority. Review remains private and does not authorize publication.</p>
                     <label>Your capacity for every selected property<select name="authorization_capacity" required><option value="">Select your authority</option><option value="owner">I own every selected property</option><option value="authorized-agent">I have each owner's authorization</option></select></label>
                     <label class="checkbox-line"><input type="checkbox" name="advertising_consent" value="1" required> I confirm I have authority to submit every selected property for private review, and understand that public advertising requires separate consent verification and approval.</label>
