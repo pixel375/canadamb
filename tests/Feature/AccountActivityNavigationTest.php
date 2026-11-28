@@ -108,7 +108,7 @@ class AccountActivityNavigationTest extends TestCase
         $this->actingAs($member)->get($url)->assertOk()->assertSee('Mark all messages as read')->assertSee('name="cutoff" value="'.$first->id.'"', false);
         $later = $thread->messages()->create(['sender_id' => $other->id, 'body' => 'Later incoming message']);
         $this->post($url.'/read-all', ['cutoff' => $first->id])->assertSessionHasErrors('confirm_read');
-        $this->post($url.'/read-all', ['cutoff' => $first->id, 'confirm_read' => '1'])->assertRedirect('/account/messages?view=unread');
+        $this->post($url.'/read-all', ['cutoff' => $first->id, 'confirm_read' => '1', 'q' => '0', 'role' => 'sent'])->assertRedirect('/account/messages?view=unread&q=0&role=sent');
         $this->assertSame($first->id, $thread->fresh()->buyer_last_read_id);
         $this->assertSame(0, $unrelated->fresh()->buyer_last_read_id);
         $this->getJson('https://brandonmb.ca/account/activity-counts')->assertJsonPath('messages', 1);

@@ -32,6 +32,7 @@
                     <summary>Mark all messages as read</summary>
                     <form method="post" action="/account/messages/read-all" class="form-stack mt-2">@csrf
                         <input type="hidden" name="cutoff" value="{{ $readCutoff }}">
+                        @foreach($params as $name => $value)<input type="hidden" name="{{ $name }}" value="{{ $value }}">@endforeach
                         <p class="field-note">Marks messages received up to the time this inbox loaded, across all active conversations and communities, even those outside the current search. No messages are deleted.</p>
                         <label class="checkbox-line"><input type="checkbox" name="confirm_read" value="1" required> Confirm marking messages read</label>
                         <button class="button button-outline">Mark all as read</button>

@@ -32,13 +32,10 @@ class MessagesController extends Controller
     public function index(Request $request)
     {
         $id = $request->user()->id;
-        $filters = $request->validate(['view' => 'nullable|in:unread,archived', 'q' => 'nullable|string|max:100', 'kind' => 'nullable|in:marketplace,business,job,member,official',
-            'role' => 'nullable|in:sent,received', 'sort' => 'nullable|in:recent,oldest']);
+        $filters = $this->inboxFilters($request);
         $unread = fn ($messages) => $messages->where('sender_id', '!=', $id)
             ->whereRaw('messages.id > CASE WHEN conversations.buyer_id = ? THEN conversations.buyer_last_read_id ELSE conversations.seller_last_read_id END', [$id]);
         $extended = MessagingExtensions::enabled();
-        abort_if(! $extended && (($filters['view'] ?? null) === 'archived' || in_array($filters['kind'] ?? null, ['business', 'job'], true)), 404);
-        abort_if(! DirectMessaging::enabled() && in_array($filters['kind'] ?? null, ['member', 'official'], true), 404);
         $threads = Conversation::forMember($id)
             ->when(($filters['role'] ?? null) === 'sent', fn ($query) => $query->where('buyer_id', $id))
             ->when(($filters['role'] ?? null) === 'received', fn ($query) => $query->where('seller_id', $id))
@@ -67,13 +64,23 @@ class MessagesController extends Controller
                 }
             })
             ->orderBy('updated_at', ($filters['sort'] ?? '') === 'oldest' ? 'asc' : 'desc')
-            ->orderBy('id', ($filters['sort'] ?? '') === 'oldest' ? 'asc' : 'desc')->paginate(10)->withQueryString();
+            ->orderBy('id', ($filters['sort'] ?? '') === 'oldest' ? 'asc' : 'desc')->paginate(10)->appends($filters);
 
         $unreadThreads = $this->activeInbox($id)->whereHas('messages', $unread);
         $readCutoff = Message::whereIn('conversation_id', $unreadThreads->select('id'))->where('sender_id', '!=', $id)->max('id');
 
         return response()->view('messages.index', ['threads' => $threads, 'member' => $id, 'filters' => $filters, 'readCutoff' => $readCutoff])
             ->header('Cache-Control', 'private, no-store');
+    }
+
+    private function inboxFilters(Request $request): array
+    {
+        $filters = $request->validate(['view' => 'nullable|in:unread,archived', 'q' => 'nullable|string|max:100', 'kind' => 'nullable|in:marketplace,business,job,member,official',
+            'role' => 'nullable|in:sent,received', 'sort' => 'nullable|in:recent,oldest']);
+        abort_if(! MessagingExtensions::enabled() && (($filters['view'] ?? null) === 'archived' || in_array($filters['kind'] ?? null, ['business', 'job'], true)), 404);
+        abort_if(! DirectMessaging::enabled() && in_array($filters['kind'] ?? null, ['member', 'official'], true), 404);
+
+        return $filters;
     }
 
     private function activeInbox(int $member)
@@ -84,6 +91,7 @@ class MessagesController extends Controller
 
     public function readAll(Request $request)
     {
+        $filters = $this->inboxFilters($request);
         $data = $request->validate(['cutoff' => 'required|integer|min:1', 'confirm_read' => 'accepted']);
         $member = $request->user()->id;
         $cutoff = (int) $data['cutoff'];
@@ -99,7 +107,7 @@ class MessagesController extends Controller
                 }
             });
 
-        return redirect('/account/messages?view=unread')->with('status', 'Messages received before the inbox was opened have been marked read. Newer messages remain unread.');
+        return redirect('/account/messages?'.http_build_query(['view' => 'unread'] + array_filter($filters, fn ($value) => $value !== null && $value !== '')))->with('status', 'Messages received before the inbox was opened have been marked read. Newer messages remain unread.');
     }
 
     public function preferences(Request $request)
@@ -139,9 +147,8 @@ class MessagesController extends Controller
     public function startDirect(Request $request, int $member, string $kind)
     {
         abort_unless(DirectMessaging::enabled(), 404);
-        $data = $request->validate(['body' => 'required|string|max:2000']);
         $id = $request->user()->id;
-        $thread = DB::transaction(function () use ($request, $member, $kind, $data, $id) {
+        $thread = DB::transaction(function () use ($request, $member, $kind, $id) {
             $this->lockParticipants($id, $member);
             $sender = User::findOrFail($id);
             $recipient = User::findOrFail($member);
@@ -151,6 +158,7 @@ class MessagesController extends Controller
                 return $existing;
             }
             abort_unless(DirectMessaging::allows($sender, $recipient, $kind) && ! $this->isBlocked($id, $member), 404);
+            $data = $request->validate(['body' => 'required|string|max:2000']);
             abort_if(Conversation::where('buyer_id', $id)->whereNotNull('direct_kind')->where('created_at', '>=', now()->subDay())->count() >= 10, 429, 'New conversation limit reached.');
             $thread = Conversation::create([
                 'inquiry_key' => $key, 'direct_kind' => $kind, 'buyer_id' => $id, 'seller_id' => $member,
@@ -172,12 +180,12 @@ class MessagesController extends Controller
         $site = $request->attributes->get('site');
         abort_unless($marketplace->enabled($site), 404);
         $id = $request->user()->id;
-        $data = $request->validate(['body' => 'required|string|max:2000']);
-        $thread = DB::transaction(function () use ($site, $listing, $id, $data, $marketplace) {
+        $thread = DB::transaction(function () use ($request, $site, $listing, $id, $marketplace) {
             $item = $marketplace->visible($site)->lockForUpdate()->findOrFail($listing);
             abort_if($item->user_id === $id, 403);
             $this->lockParticipants($id, $item->user_id);
             abort_if($this->isBlocked($id, $item->user_id), 403, 'Messaging is blocked for this conversation.');
+            $data = $request->validate(['body' => 'required|string|max:2000']);
             $thread = Conversation::firstOrCreate(['buyer_id' => $id, 'listing_id' => $item->id], ['seller_id' => $item->user_id]);
             $this->write($thread, $id, $data['body']);
 
@@ -508,7 +516,7 @@ class MessagesController extends Controller
         $query = User::whereIn('id', DB::table('user_blocks')->where('user_id', $request->user()->id)->select('blocked_id'));
         $total = (clone $query)->count();
         $members = $query->when(filled($filters['q'] ?? null), fn ($query) => KeywordSearch::apply($query, $filters['q'], ['name']))
-            ->orderBy('name')->orderBy('id')->paginate(20, ['id', 'name'])->withQueryString();
+            ->orderBy('name')->orderBy('id')->paginate(20, ['id', 'name'])->appends($filters);
 
         return view('messages.blocked', compact('members', 'filters', 'total'));
     }

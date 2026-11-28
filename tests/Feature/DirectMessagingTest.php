@@ -39,7 +39,7 @@ class DirectMessagingTest extends TestCase
         $this->actingAs($sender)->post($start.'/member', $message)->assertNotFound();
         config(['network.extended_messaging' => true, 'network.direct_messaging' => true]);
         $this->get($start.'/member')->assertNotFound();
-        $this->post($start.'/member', $message)->assertNotFound();
+        $this->post($start.'/member', [])->assertNotFound();
         $initial = DirectMessaging::version(DirectMessaging::preferences($recipient->id));
         $this->actingAs($recipient)->post($preferences, ['member_messages' => 1, 'official_messages' => 1, 'version' => $initial])->assertRedirect('/account/settings');
         $this->post($preferences, ['member_messages' => 0, 'official_messages' => 0, 'version' => $initial])->assertSessionHasErrors('version');
