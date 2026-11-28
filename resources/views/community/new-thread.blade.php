@@ -1,5 +1,6 @@
 <?php
-    $locationParams = request()->attributes->get('site')->isNetwork() && $suggestedLocation ? ['location' => $suggestedLocation->slug] : [];
+    $composerSite = request()->attributes->get('site');
+    $locationParams = $composerSite->isNetwork() && $suggestedLocation ? ['location' => $suggestedLocation->slug] : \App\Support\LocationScope::preserveAll([]);
 ?>
 <x-layouts.site :title="$postType === 'event' ? 'Submit an event' : 'Start a discussion'">
     <div class="container page-shell narrow">

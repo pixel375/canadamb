@@ -196,6 +196,27 @@ class DiscussionHubTest extends TestCase
             ->assertSee('value="'.$place->id.'" selected', false)->assertSee('value="help" selected', false);
     }
 
+    public function test_explicit_all_manitoba_browsing_does_not_preselect_remembered_community_in_composer(): void
+    {
+        $this->actingAs(User::factory()->create())->withCookie('canadamb_community', 'brandon');
+        $place = Location::where('slug', 'brandon')->sole();
+        $base = 'https://canadamb.ca';
+        $this->get($base.'/community?location=')->assertOk()
+            ->assertSee('href="/community/new?location="', false)
+            ->assertSee('href="/community/new?type=event&amp;location="', false);
+        $this->get($base.'/events?location=&q=0')->assertOk()
+            ->assertSee('href="/community/new?type=event&amp;location="', false)
+            ->assertSee('href="/events?q=0&amp;month=', false);
+        $this->get($base.'/events/new?location=')->assertRedirect('/community/new?type=event&location=');
+        $this->get($base.'/community/new?type=event&location=')->assertOk()
+            ->assertViewHas('suggestedLocation', null)
+            ->assertSee('href="/community?location="', false)
+            ->assertSee('href="/community/new?location="', false)
+            ->assertDontSee('value="'.$place->id.'" selected', false);
+        $this->get($base.'/community/new?location=')->assertOk()
+            ->assertViewHas('suggestedLocation', null);
+    }
+
     public function test_event_owner_dashboard_and_scope_respect_private_submissions(): void
     {
         $member = User::factory()->create();

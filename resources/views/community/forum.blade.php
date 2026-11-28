@@ -1,7 +1,7 @@
 <?php
     $forumSite = request()->attributes->get('site');
     $forumPlace = \App\Support\LocationScope::forBrowsing($forumSite, $filters['location'] ?? null);
-    $postParams = array_filter(['location' => $forumSite->isNetwork() ? $forumPlace?->slug : null, 'category' => $filters['category'] ?? null]);
+    $postParams = \App\Support\LocationScope::preserveAll(array_filter(['location' => $forumSite->isNetwork() ? $forumPlace?->slug : null, 'category' => $filters['category'] ?? null]));
     $postUrl = '/community/new'.($postParams ? '?'.http_build_query($postParams) : '');
     $categoryParams = \App\Support\LocationScope::preserveAll(array_filter(array_diff_key($filters, ['category' => true]), fn ($value) => $value !== null && $value !== ''));
     $eventUrl = '/community/new?'.http_build_query(['type' => 'event'] + array_intersect_key($postParams, ['location' => true]));

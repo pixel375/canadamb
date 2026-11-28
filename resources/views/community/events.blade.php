@@ -1,8 +1,8 @@
 <?php
     $eventSite = request()->attributes->get('site');
     $createEventUrl = app(\App\Support\Community::class)->enabled($eventSite, 'community') ? '/community/new?type=event' : '/events/new';
-    if ($eventSite->isNetwork() && $place) {
-        $createEventUrl .= (str_contains($createEventUrl, '?') ? '&' : '?').'location='.rawurlencode($place->slug);
+    if ($eventSite->isNetwork() && ($place || \App\Support\LocationScope::explicitAll($eventSite))) {
+        $createEventUrl .= (str_contains($createEventUrl, '?') ? '&' : '?').'location='.rawurlencode($place?->slug ?? '');
     }
 ?>
 <x-layouts.site title="Events in Discussions" :location="$place">
@@ -69,7 +69,7 @@
                     @if(!$agenda || (isset($filters['day']) && !isset($agenda[$filters['day']])))<p class="field-note">No upcoming events in this selection.</p>@endif
                 </div>
             </section>
-        @else<a class="button button-outline mb-4" href="/events?{{ http_build_query(\App\Support\LocationScope::preserveAll(array_filter($filters) + ['month' => now('America/Winnipeg')->format('Y-m')])) }}">Open this month’s calendar</a>@endif
+        @else<a class="button button-outline mb-4" href="/events?{{ http_build_query(\App\Support\LocationScope::preserveAll(array_filter($filters, fn ($value) => $value !== null && $value !== '') + ['month' => now('America/Winnipeg')->format('Y-m')])) }}">Open this month’s calendar</a>@endif
         @if($items->total())
             <div class="inline-actions mb-4"><a class="button button-outline" href="/events/calendar?{{ http_build_query(\App\Support\LocationScope::preserveAll(array_filter($filters, fn ($value) => $value !== null && $value !== ''))) }}">Download matching events (.ics)</a><span class="field-note">Calendar snapshot · {{ min($items->total(), 50) }} of {{ $items->total() }} events, earliest first. Future updates are not synchronized.</span></div>
         @endif

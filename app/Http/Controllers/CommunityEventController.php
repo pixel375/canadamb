@@ -174,6 +174,10 @@ class CommunityEventController extends Controller
 
         $filters = $request->validate(['reuse' => 'nullable|integer|min:1', 'location' => 'nullable|string|max:150']);
         if ($this->community->enabled($site, 'community')) {
+            if ($site->isNetwork() && $request->query->has('location')) {
+                $filters['location'] = $filters['location'] ?? '';
+            }
+
             return redirect('/community/new?'.http_build_query(['type' => 'event'] + $filters));
         }
         $source = isset($filters['reuse']) ? $this->community->events($site->location_id)
