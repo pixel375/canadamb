@@ -95,7 +95,9 @@ class JobPostingTest extends TestCase
         $this->post($url, array_replace($input, ['jobs' => [$items[0]->id, $items[2]->id]]))->assertNotFound();
         $this->post($url, array_replace($input, ['versions' => array_replace($versions, [$items[1]->id => str_repeat('0', 64)])]))->assertSessionHasErrors('jobs');
         $this->assertSame('pending', $items[0]->fresh()->status);
-        $this->post($url, $input)->assertRedirect()->assertSessionHasNoErrors();
+        $this->post($url, $input + ['return_filters' => ['q' => '0', 'sort' => 'oldest']])
+            ->assertRedirect('/account/businesses/'.$business->id.'/jobs?q=0&sort=oldest')->assertSessionHasNoErrors();
+        $this->get($path.'?status=withdrawn')->assertOk()->assertDontSee('Withdraw selected postings')->assertDontSee('Extend selected closing dates');
         $this->assertSame('withdrawn', $items[0]->fresh()->status);
         $this->assertSame('withdrawn', $items[1]->fresh()->status);
         $this->assertSame('pending', $items[2]->fresh()->status);
@@ -129,7 +131,8 @@ class JobPostingTest extends TestCase
         $this->post($url, array_replace($input, ['new_closing_on' => today('America/Winnipeg')->toDateString()]))->assertSessionHasErrors('new_closing_on');
         $this->post($url, array_replace($input, ['versions' => array_replace($versions, [$items[1]->id => str_repeat('0', 64)])]))->assertSessionHasErrors('jobs');
         $this->assertSame('approved', $items[0]->fresh()->status);
-        $this->post($url, $input)->assertRedirect()->assertSessionHasNoErrors();
+        $this->post($url, $input + ['return_filters' => ['sort' => 'deadline']])
+            ->assertRedirect('/account/businesses/'.$business->id.'/jobs?sort=deadline')->assertSessionHasNoErrors();
         foreach ($items as $job) {
             $this->assertSame('pending', $job->fresh()->status);
             $this->assertSame($input['new_closing_on'], $job->fresh()->closing_on->toDateString());
@@ -233,9 +236,12 @@ class JobPostingTest extends TestCase
         $this->get('https://canadamb.ca/account/saved-jobs?type='.$input['employment_type'].'&workplace='.$input['workplace'].'&location=Brandon')->assertOk()->assertSee($input['title']);
         $this->get('https://canadamb.ca/account/saved-jobs?location=Winnipeg')->assertOk()->assertDontSee($input['title']);
         $this->actingAs($owner)->get($url)->assertOk()->assertSee($input['title']);
-        $this->get("$url/$job->id/edit")->assertOk()->assertSee($input['title']);
+        $this->get("$url/$job->id/edit?return_filters%5Bq%5D=0&return_filters%5Bsort%5D=oldest")->assertOk()->assertSee($input['title'])
+            ->assertSee('name="return_filters[q]" value="0"', false)
+            ->assertSee('href="/account/businesses/'.$business->id.'/jobs?q=0&amp;sort=oldest"', false);
         $oldVersion = $job->fresh()->reviewVersion();
-        $this->put("$url/$job->id", array_replace($input, ['title' => 'Senior storefront supervisor', 'version' => $oldVersion]))->assertSessionHasNoErrors();
+        $this->put("$url/$job->id", array_replace($input, ['title' => 'Senior storefront supervisor', 'version' => $oldVersion, 'return_filters' => ['q' => '0', 'sort' => 'oldest']]))
+            ->assertRedirect('/account/businesses/'.$business->id.'/jobs?q=0&sort=oldest')->assertSessionHasNoErrors();
         $this->get("https://brandonmb.ca/jobs/$job->id")->assertNotFound();
         $this->put("$url/$job->id", ['version' => $oldVersion])->assertConflict();
         $this->post("$url/$job->id/withdraw")->assertSessionHasErrors('version');

@@ -1,4 +1,6 @@
 <x-layouts.site :title="$employer->name.' jobs'">
+    @php($returnFilters = array_filter($filters, fn ($value) => $value !== null && $value !== ''))
+    @php($editQuery = $returnFilters ? '?'.http_build_query(['return_filters' => $returnFilters], '', '&', PHP_QUERY_RFC3986) : '')
     <div class="container page-shell">
         <div class="page-intro"><div><a href="/account/businesses/{{ $employer->id }}" class="text-link">Business dashboard</a><h1>{{ $employer->name }} jobs</h1><p>Manage hiring across your business branches.</p></div></div>
         <nav class="seller-status-grid" aria-label="Filter jobs by status">
@@ -37,6 +39,7 @@
         @if($items->contains(fn ($item) => in_array($item->status, ['pending', 'approved'], true)))
             <details class="panel form-stack mb-4"><summary>Withdraw selected postings</summary>
                 <form id="job-batch-withdraw" method="post" action="/account/businesses/{{ $employer->id }}/jobs/withdraw-selected" class="form-stack mt-3">@csrf
+                    @foreach($returnFilters as $key => $value)<input type="hidden" name="return_filters[{{ $key }}]" value="{{ $value }}">@endforeach
                     <p class="field-note">Choose up to ten pending or approved jobs below. Existing messages and posting history are preserved.</p>
                     <label class="checkbox-line"><input type="checkbox" name="confirm_withdraw" value="1" required> Confirm withdrawal of selected postings</label>
                     <button class="button button-outline">Withdraw selected jobs</button>
@@ -46,6 +49,7 @@
         @if($items->contains(fn ($item) => $item->branch->isOpen() && in_array($item->status, ['pending', 'approved', 'expired'], true)))
             <details class="panel form-stack mb-4"><summary>Extend selected closing dates</summary>
                 <form id="job-batch-extend" method="post" action="/account/businesses/{{ $employer->id }}/jobs/extend-selected" class="form-stack mt-3">@csrf
+                    @foreach($returnFilters as $key => $value)<input type="hidden" name="return_filters[{{ $key }}]" value="{{ $value }}">@endforeach
                     <p class="field-note">Select up to ten eligible postings. The new closing date must be later than every selected deadline. Changed postings require review before publication.</p>
                     <label>New closing date<input type="date" name="new_closing_on" required min="{{ today('America/Winnipeg')->toDateString() }}" max="{{ today('America/Winnipeg')->addYear()->toDateString() }}"></label>
                     <label class="checkbox-line"><input type="checkbox" name="confirm_extend" value="1" required> Confirm deadline changes</label>
@@ -73,7 +77,7 @@
                     </p>
                     <div class="inline-actions seller-listing-actions">
                         @if($item->branch->isOpen() && $item->status === 'approved' && $item->closing_on->toDateString() >= today('America/Winnipeg')->toDateString())<a class="button button-outline" href="/jobs/{{ $item->id }}">View posting</a>@endif
-                        @if($item->branch->isOpen() && in_array($item->status, ['pending', 'approved', 'rejected', 'expired'], true))<a class="button button-outline" href="/account/businesses/{{ $employer->id }}/jobs/{{ $item->id }}/edit">Edit</a>@endif
+                        @if($item->branch->isOpen() && in_array($item->status, ['pending', 'approved', 'rejected', 'expired'], true))<a class="button button-outline" href="/account/businesses/{{ $employer->id }}/jobs/{{ $item->id }}/edit{{ $editQuery }}">Edit</a>@endif
                         @if($openBranches->isNotEmpty())<a class="button button-outline" href="/account/businesses/{{ $employer->id }}/jobs/{{ $item->id }}/duplicate">Reuse posting</a>@endif
                     </div>
                     @if($item->branch->isOpen() && in_array($item->status, ['pending', 'approved', 'expired'], true))
@@ -83,7 +87,7 @@
                     @if(in_array($item->status, ['pending', 'approved'], true))
                         <label class="checkbox-line"><input form="job-batch-withdraw" type="checkbox" name="jobs[]" value="{{ $item->id }}"> Select for withdrawal</label>
                         <input form="job-batch-withdraw" type="hidden" name="versions[{{ $item->id }}]" value="{{ $item->reviewVersion() }}">
-                        <details class="seller-remove-listing"><summary>Withdraw posting</summary><p class="field-note">Withdraw this job from publication and review.</p><form method="post" action="/account/businesses/{{ $employer->id }}/jobs/{{ $item->id }}/withdraw">@csrf<input type="hidden" name="version" value="{{ $item->reviewVersion() }}"><button class="button button-outline">Confirm withdrawal</button></form></details>
+                        <details class="seller-remove-listing"><summary>Withdraw posting</summary><p class="field-note">Withdraw this job from publication and review.</p><form method="post" action="/account/businesses/{{ $employer->id }}/jobs/{{ $item->id }}/withdraw">@csrf @foreach($returnFilters as $key => $value)<input type="hidden" name="return_filters[{{ $key }}]" value="{{ $value }}">@endforeach<input type="hidden" name="version" value="{{ $item->reviewVersion() }}"><button class="button button-outline">Confirm withdrawal</button></form></details>
                     @endif
                 </article>
             @empty<div class="panel market-results-empty"><x-icon name="briefcase" size="30"/><h2>{{ array_filter($filters, fn ($value) => $value !== null && $value !== '') ? 'No jobs match these filters.' : 'No jobs have been posted for these branches.' }}</h2><a class="button button-outline" href="/account/businesses/{{ $employer->id }}/jobs">View all jobs</a></div>@endforelse

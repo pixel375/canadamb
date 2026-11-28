@@ -59,14 +59,7 @@ class JobController extends Controller
         $branches = $employer->locations()->with('location')->when($site->location_id, fn ($query, $location) => $query->where('location_id', $location))->get();
         $openBranches = $branches->filter(fn ($branch) => $branch->isOpen());
         $statuses = ['pending', 'approved', 'rejected', 'expired', 'withdrawn'];
-        $filters = $request->validate([
-            'status' => ['nullable', Rule::in($statuses)],
-            'q' => 'nullable|string|max:100',
-            'branch' => 'nullable|integer|min:1', 'reference' => 'nullable|integer|min:1',
-            'type' => ['nullable', Rule::in(array_keys(JobBoard::TYPES))],
-            'workplace' => ['nullable', Rule::in(array_keys(JobBoard::WORKPLACES))],
-            'closing' => 'nullable|in:week,month,past', 'sort' => 'nullable|in:recent,deadline,oldest',
-        ]);
+        $filters = $request->validate($this->employerFilterRules());
         if (isset($filters['branch']) && ! $branches->contains('id', (int) $filters['branch'])) {
             throw ValidationException::withMessages(['branch' => 'Choose a branch on this portal.']);
         }
@@ -141,7 +134,10 @@ class JobController extends Controller
         $item = $this->managedJob($request, $employer->id, $job);
         abort_unless($item->branch->isOpen() && in_array($item->status, ['pending', 'approved', 'rejected', 'expired'], true), 409);
 
-        return view('jobs.edit', compact('employer', 'item'));
+        $returnFilters = $this->employerReturnFilters($request, $employer);
+        $returnUrl = $this->employerReturnPath($business, $returnFilters ?: ['reference' => $item->id]);
+
+        return view('jobs.edit', compact('employer', 'item', 'returnFilters', 'returnUrl'));
     }
 
     public function update(Request $request, int $business, int $job)
@@ -149,6 +145,7 @@ class JobController extends Controller
         $site = $request->attributes->get('site');
         abort_unless($this->jobs->enabled($site), 404);
         $employer = $this->managedBusiness($request, $business);
+        $filters = $this->employerReturnFilters($request, $employer);
         DB::transaction(function () use ($request, $employer, $job) {
             Business::lockForUpdate()->findOrFail($employer->id);
             $this->managedBusiness($request, $employer->id);
@@ -175,13 +172,14 @@ class JobController extends Controller
             }
         });
 
-        return redirect('/account/businesses/'.$business.'/jobs')->with('status', 'Job saved. Changed content requires review.');
+        return redirect($this->employerReturnPath($business, $filters))->with('status', 'Job saved. Changed content requires review.');
     }
 
     public function withdraw(Request $request, int $business, int $job)
     {
         abort_unless($this->jobs->enabled($request->attributes->get('site')), 404);
         $employer = $this->managedBusiness($request, $business);
+        $filters = $this->employerReturnFilters($request, $employer);
         DB::transaction(function () use ($request, $employer, $job) {
             Business::lockForUpdate()->findOrFail($employer->id);
             $this->managedBusiness($request, $employer->id);
@@ -193,14 +191,15 @@ class JobController extends Controller
             Audit::record('jobs.withdrawn', $request->user()->id, context: ['job' => $job]);
         });
 
-        return redirect('/account/businesses/'.$business.'/jobs')->with('status', 'Job withdrawn.');
+        return redirect($this->employerReturnPath($business, $filters))->with('status', 'Job withdrawn.');
     }
 
     public function extendSelected(Request $request, int $business)
     {
         $site = $request->attributes->get('site');
         abort_unless($this->jobs->enabled($site), 404);
-        $this->managedBusiness($request, $business);
+        $employer = $this->managedBusiness($request, $business);
+        $filters = $this->employerReturnFilters($request, $employer);
         $today = $this->jobs->closingToday();
         $data = $request->validate([
             'jobs' => 'required|array|list|min:1|max:10', 'jobs.*' => 'required|integer|distinct|min:1',
@@ -238,14 +237,15 @@ class JobController extends Controller
             }
         }, attempts: 3);
 
-        return redirect('/account/businesses/'.$business.'/jobs')->with('status', count($data['jobs']).' job posting deadlines extended for review.');
+        return redirect($this->employerReturnPath($business, $filters))->with('status', count($data['jobs']).' job posting deadlines extended for review.');
     }
 
     public function withdrawSelected(Request $request, int $business)
     {
         $site = $request->attributes->get('site');
         abort_unless($this->jobs->enabled($site), 404);
-        $this->managedBusiness($request, $business);
+        $employer = $this->managedBusiness($request, $business);
+        $filters = $this->employerReturnFilters($request, $employer);
         $data = $request->validate([
             'jobs' => 'required|array|list|min:1|max:10', 'jobs.*' => 'required|integer|distinct|min:1',
             'versions' => 'required|array|max:12', 'versions.*' => 'required|string|size:64',
@@ -269,7 +269,7 @@ class JobController extends Controller
             }
         }, attempts: 3);
 
-        return redirect('/account/businesses/'.$business.'/jobs')->with('status', count($data['jobs']).' job postings withdrawn.');
+        return redirect($this->employerReturnPath($business, $filters))->with('status', count($data['jobs']).' job postings withdrawn.');
     }
 
     public function save(Request $request, int $job)
@@ -341,6 +341,42 @@ class JobController extends Controller
             ->whereIn('job_posting_id', $unavailable)->delete();
 
         return redirect($this->savedReturnPath($filters))->with('status', $removed.' unavailable saved jobs removed.');
+    }
+
+    private function employerFilterRules(): array
+    {
+        return [
+            'status' => 'nullable|in:pending,approved,rejected,expired,withdrawn',
+            'q' => 'nullable|string|max:100',
+            'branch' => 'nullable|integer|min:1', 'reference' => 'nullable|integer|min:1',
+            'type' => ['nullable', Rule::in(array_keys(JobBoard::TYPES))],
+            'workplace' => ['nullable', Rule::in(array_keys(JobBoard::WORKPLACES))],
+            'closing' => 'nullable|in:week,month,past', 'sort' => 'nullable|in:recent,deadline,oldest',
+        ];
+    }
+
+    private function employerReturnFilters(Request $request, Business $employer): array
+    {
+        $rules = ['return_filters' => 'nullable|array'];
+        foreach ($this->employerFilterRules() as $key => $rule) {
+            $rules['return_filters.'.$key] = $rule;
+        }
+        $data = $request->validate($rules);
+        $filters = array_intersect_key($data['return_filters'] ?? [], $this->employerFilterRules());
+        $site = $request->attributes->get('site');
+        if (isset($filters['branch']) && ! $employer->locations()->whereKey($filters['branch'])
+            ->when($site->location_id, fn ($query, $id) => $query->where('location_id', $id))->exists()) {
+            throw ValidationException::withMessages(['return_filters.branch' => 'Choose a branch on this portal.']);
+        }
+
+        return array_filter($filters, fn ($value) => $value !== null && $value !== '');
+    }
+
+    private function employerReturnPath(int $business, array $filters): string
+    {
+        $query = http_build_query($filters, '', '&', PHP_QUERY_RFC3986);
+
+        return '/account/businesses/'.$business.'/jobs'.($query === '' ? '' : '?'.$query);
     }
 
     private function savedFilters(Request $request): array
