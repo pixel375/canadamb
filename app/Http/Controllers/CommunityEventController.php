@@ -252,13 +252,7 @@ class CommunityEventController extends Controller
         $site = $request->attributes->get('site');
         abort_unless($this->community->enabled($site, 'events'), 404);
         $statuses = ['pending', 'approved', 'rejected', 'cancelled', 'withdrawn'];
-        $rules = ['status' => ['nullable', Rule::in($statuses)], 'q' => 'nullable|string|max:100',
-            'sort' => 'nullable|in:upcoming,recent,past', 'category' => ['nullable', Rule::in(array_keys(Community::EVENTS))],
-            'reference' => 'nullable|integer|min:1', 'series' => 'nullable|uuid'];
-        if ($site->isNetwork()) {
-            $rules['location'] = 'nullable|integer|exists:locations,id';
-        }
-        $filters = $request->validate($rules);
+        $filters = $request->validate($this->ownerFilterRules($request) + ['series' => 'nullable|uuid']);
         abort_if(isset($filters['series']) && ! EventSeriesIdentity::enabled(), 404);
         $owned = $this->community->events($site->location_id)->where('author_id', $request->user()->id);
         $places = Location::whereIn('id', (clone $owned)->select('location_id'))->orderBy('name')->get(['id', 'name']);
@@ -295,14 +289,15 @@ class CommunityEventController extends Controller
         $this->ensureEditable($item, $linkedThread);
         $series = $request->validate(['series' => 'nullable|uuid'])['series'] ?? null;
         $this->checkSeriesSelection($series, [$item->id]);
-        $returnUrl = $this->seriesReturn($series);
+        $returnFilters = $this->returnFilters($request);
+        $returnUrl = $this->seriesReturn($series, $returnFilters);
 
-        return view('community.edit-event', compact('item', 'linkedThread', 'series', 'returnUrl'));
+        return view('community.edit-event', compact('item', 'linkedThread', 'series', 'returnUrl', 'returnFilters'));
     }
 
     public function update(Request $request, int $event)
     {
-        $series = DB::transaction(function () use ($request, $event) {
+        $returnUrl = DB::transaction(function () use ($request, $event) {
             $author = $request->user()->id;
             User::lockForUpdate()->findOrFail($author);
             $item = $this->ownedEvent($request)->lockForUpdate()->findOrFail($event);
@@ -324,13 +319,14 @@ class CommunityEventController extends Controller
             }
             $this->checkSeriesSelection($data['series'] ?? null, [$item->id]);
             $this->checkVersion($item, $data['version']);
+            $returnUrl = $this->seriesReturn($data['series'] ?? null, $this->returnFilters($request));
             if ($linkedThread && (! isset($data['thread_version']) || ! hash_equals($linkedThread->contentVersion(), $data['thread_version']))) {
                 throw ValidationException::withMessages(['thread_version' => 'The linked discussion changed. Reload the event editor before saving.']);
             }
             $changes = array_replace(collect($data)->except(['version', 'thread_version', 'series'])->all(), $date, ['event_url' => $data['event_url'] ?? null]);
             $item->fill($changes);
             if (! $item->isDirty()) {
-                return $data['series'] ?? null;
+                return $returnUrl;
             }
             if (CommunityEvent::where('author_id', $author)->where('location_id', $item->location_id)
                 ->whereKeyNot($item->id)->where('title', $item->title)->where('starts_at', $item->starts_at)
@@ -348,10 +344,10 @@ class CommunityEventController extends Controller
                 Audit::record('community.thread.edited', $author, context: ['thread' => $linkedThread->id, 'event' => $event]);
             }
 
-            return $data['series'] ?? null;
+            return $returnUrl;
         }, attempts: 3);
 
-        return redirect($this->seriesReturn($series))->with('status', 'Event saved. Changed details require moderation before publication.');
+        return redirect($returnUrl)->with('status', 'Event saved. Changed details require moderation before publication.');
     }
 
     private function ownedEvent(Request $request)
@@ -380,19 +376,20 @@ class CommunityEventController extends Controller
     {
         $site = $request->attributes->get('site');
         abort_unless($this->community->enabled($site, 'events'), 404);
-        $series = DB::transaction(function () use ($event, $request, $site) {
+        $returnUrl = DB::transaction(function () use ($event, $request, $site) {
             $item = $this->community->events($site->location_id)->where('author_id', $request->user()->id)->lockForUpdate()->findOrFail($event);
             abort_unless(in_array($item->status, ['pending', 'approved'], true), 409);
             abort_if($item->status === 'approved' && ($item->localEnd() ?? $item->localStart())->isPast(), 409, 'Past published events cannot be cancelled.');
             $data = $request->validate(['cancellation_note' => 'nullable|string|max:300', 'version' => 'required|string|size:64', 'series' => 'nullable|uuid']);
             $this->checkSeriesSelection($data['series'] ?? null, [$item->id]);
             $this->checkVersion($item, $data['version']);
+            $returnUrl = $this->seriesReturn($data['series'] ?? null, $this->returnFilters($request));
             $this->cancelItem($item, $request->user()->id, $data['cancellation_note'] ?? null);
 
-            return $data['series'] ?? null;
+            return $returnUrl;
         });
 
-        return redirect($this->seriesReturn($series))->with('status', 'Event cancellation recorded.');
+        return redirect($returnUrl)->with('status', 'Event cancellation recorded.');
     }
 
     public function reviseSelected(Request $request)
@@ -415,6 +412,7 @@ class CommunityEventController extends Controller
             'organizer' => 'required|string|max:150',
             default => 'nullable|url:https|max:1024',
         }]);
+        $returnUrl = $this->seriesReturn($data['series'] ?? null, $this->returnFilters($request));
         $author = $request->user()->id;
         $changed = DB::transaction(function () use ($request, $data, $field, $value, $author) {
             User::lockForUpdate()->findOrFail($author);
@@ -465,7 +463,7 @@ class CommunityEventController extends Controller
             return $revisions->count();
         }, attempts: 3);
 
-        return redirect($this->seriesReturn($data['series'] ?? null))->with('status', $changed.' selected events updated. Changed events require moderation.');
+        return redirect($returnUrl)->with('status', $changed.' selected events updated. Changed events require moderation.');
     }
 
     public function shiftSelected(Request $request)
@@ -477,6 +475,7 @@ class CommunityEventController extends Controller
             'versions' => 'required|array|max:20', 'versions.*' => 'required|string|size:64',
             'days' => 'required|integer|between:-30,30|not_in:0', 'confirm_shift' => 'accepted',
         ]);
+        $returnUrl = $this->seriesReturn($data['series'] ?? null, $this->returnFilters($request));
         $author = $request->user()->id;
         DB::transaction(function () use ($request, $data, $author) {
             User::lockForUpdate()->findOrFail($author);
@@ -510,7 +509,7 @@ class CommunityEventController extends Controller
             }
         }, attempts: 3);
 
-        return redirect($this->seriesReturn($data['series'] ?? null))->with('status', count($data['events']).' selected events rescheduled for review.');
+        return redirect($returnUrl)->with('status', count($data['events']).' selected events rescheduled for review.');
     }
 
     public function cancelSelected(Request $request)
@@ -523,6 +522,7 @@ class CommunityEventController extends Controller
             'confirm_cancel' => 'accepted', 'cancellation_note' => 'nullable|string|max:300',
             'versions' => 'required|array|max:20', 'versions.*' => 'required|string|size:64',
         ]);
+        $returnUrl = $this->seriesReturn($data['series'] ?? null, $this->returnFilters($request));
         $author = $request->user()->id;
         DB::transaction(function () use ($site, $data, $author) {
             $items = $this->community->events($site->location_id)->where('author_id', $author)
@@ -542,7 +542,7 @@ class CommunityEventController extends Controller
             }
         }, attempts: 3);
 
-        return redirect($this->seriesReturn($data['series'] ?? null))->with('status', count($data['events']).' selected event cancellations recorded.');
+        return redirect($returnUrl)->with('status', count($data['events']).' selected event cancellations recorded.');
     }
 
     private function checkSeriesSelection(?string $series, array $ids): void
@@ -555,9 +555,34 @@ class CommunityEventController extends Controller
             ->whereIn('event_id', $ids)->count() === count($ids), 404);
     }
 
-    private function seriesReturn(?string $series): string
+    private function ownerFilterRules(Request $request): array
     {
-        return '/account/events'.($series === null ? '' : '?'.http_build_query(['series' => $series]));
+        $rules = ['status' => 'nullable|in:pending,approved,rejected,cancelled,withdrawn', 'q' => 'nullable|string|max:100',
+            'sort' => 'nullable|in:upcoming,recent,past', 'category' => ['nullable', Rule::in(array_keys(Community::EVENTS))],
+            'reference' => 'nullable|integer|min:1'];
+        if ($request->attributes->get('site')->isNetwork()) {
+            $rules['location'] = 'nullable|integer|exists:locations,id';
+        }
+
+        return $rules;
+    }
+
+    private function returnFilters(Request $request): array
+    {
+        $rules = ['return_filters' => 'nullable|array'];
+        foreach ($this->ownerFilterRules($request) as $key => $rule) {
+            $rules['return_filters.'.$key] = $rule;
+        }
+        $data = $request->validate($rules);
+
+        return array_intersect_key($data['return_filters'] ?? [], $this->ownerFilterRules($request));
+    }
+
+    private function seriesReturn(?string $series, array $filters = []): string
+    {
+        $query = http_build_query(array_filter(['series' => $series] + $filters, fn ($value) => $value !== null && $value !== ''), '', '&', PHP_QUERY_RFC3986);
+
+        return '/account/events'.($query === '' ? '' : '?'.$query);
     }
 
     private function cancelItem(CommunityEvent $item, int $author, ?string $note): void

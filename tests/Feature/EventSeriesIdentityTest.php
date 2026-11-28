@@ -96,7 +96,8 @@ class EventSeriesIdentityTest extends TestCase
         $this->put($editPath, $editData)->assertRedirect($path)->assertSessionHasNoErrors();
         $this->assertSame('Updated hall', $event->fresh()->venue);
         $this->post($base.'/account/events/'.$event->id.'/cancel')->assertSessionHasErrors('version');
-        $this->post($base.'/account/events/'.$event->id.'/cancel', ['version' => $event->fresh()->contentVersion(), 'series' => $key])->assertRedirect($path);
+        $this->post($base.'/account/events/'.$event->id.'/cancel', ['version' => $event->fresh()->contentVersion(), 'series' => $key,
+            'return_filters' => ['q' => '0', 'sort' => 'upcoming']])->assertRedirect($path.'&q=0&sort=upcoming');
         $this->get($base.$path)->assertOk()->assertSee('3 events found')->assertSee('Withdrawn');
         config(['network.event_series_identity' => false]);
         $this->get($base.$path)->assertNotFound();

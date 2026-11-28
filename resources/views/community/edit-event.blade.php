@@ -4,6 +4,9 @@
         @if($linkedThread)<p class="notice">Title and description changes also update the linked discussion and return it to independent moderation. Existing replies and followers are kept. Date, venue and other event-only changes do not reset discussion approval.</p>@endif
         <form method="post" action="/account/events/{{ $item->id }}" class="panel form-stack">@csrf @method('PUT')
             @if($series)<input type="hidden" name="series" value="{{ $series }}">@endif
+            @foreach($returnFilters as $key => $value)
+                @if(filled($value))<input type="hidden" name="return_filters[{{ $key }}]" value="{{ $value }}">@endif
+            @endforeach
             <input type="hidden" name="version" value="{{ old('version', $item->contentVersion()) }}">
             @if($linkedThread)<input type="hidden" name="thread_version" value="{{ old('thread_version', $linkedThread->contentVersion()) }}">@endif
             <label>Title<input name="title" required maxlength="140" value="{{ old('title', $item->title) }}"></label>

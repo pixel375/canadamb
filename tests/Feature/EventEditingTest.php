@@ -56,8 +56,10 @@ class EventEditingTest extends TestCase
         $this->actingAs(User::factory()->create())->get($path.'/edit')->assertNotFound();
         $this->post($path.'/cancel')->assertNotFound();
         $this->put($path, [])->assertNotFound();
-        $this->actingAs($owner)->get($path.'/edit')->assertOk()->assertSee('Community meetup');
-        $this->put($path, $data)->assertRedirect()->assertSessionHasNoErrors();
+        $this->actingAs($owner)->get($path.'/edit?return_filters%5Bq%5D=0&return_filters%5Bsort%5D=upcoming')->assertOk()->assertSee('Community meetup')
+            ->assertSee('href="/account/events?q=0&amp;sort=upcoming"', false)
+            ->assertSee('name="return_filters[q]" value="0"', false);
+        $this->put($path, $data + ['return_filters' => ['q' => '0', 'sort' => 'upcoming']])->assertRedirect('/account/events?q=0&sort=upcoming')->assertSessionHasNoErrors();
         $this->assertSame('approved', $event->fresh()->status);
         $changed = array_replace($data, ['venue' => 'New venue']);
         $this->put($path, $changed)->assertRedirect()->assertSessionHasNoErrors();
