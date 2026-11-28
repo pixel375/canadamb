@@ -209,12 +209,12 @@ class DiscussionHubTest extends TestCase
             ->assertSee('href="/events?q=0&amp;month=', false);
         $this->get($base.'/events/new?location=')->assertRedirect('/community/new?type=event&location=');
         $this->get($base.'/community/new?type=event&location=')->assertOk()
-            ->assertViewHas('suggestedLocation', null)
-            ->assertSee('href="/community?location="', false)
+            ->assertViewHas('suggestedLocation', fn ($location) => $location === null)
+            ->assertSee('class="text-link mb-4" href="/community?location="', false)
             ->assertSee('href="/community/new?location="', false)
             ->assertDontSee('value="'.$place->id.'" selected', false);
         $this->get($base.'/community/new?location=')->assertOk()
-            ->assertViewHas('suggestedLocation', null);
+            ->assertViewHas('suggestedLocation', fn ($location) => $location === null);
     }
 
     public function test_event_owner_dashboard_and_scope_respect_private_submissions(): void

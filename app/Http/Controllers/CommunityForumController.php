@@ -350,7 +350,7 @@ class CommunityForumController extends Controller
             'places' => $site->isNetwork() ? Location::selectable()->orderBy('name')->get() : collect(),
             'eventsEnabled' => $eventsEnabled,
             'postType' => $postType,
-            'suggestedLocation' => $source?->location ?? LocationScope::forBrowsing($site, $request->query('location', $request->cookie(LocationScope::PREFERENCE_COOKIE))),
+            'suggestedLocation' => $source?->location ?? LocationScope::currentBrowsing($site),
             'suggestedCategory' => is_string($category) && array_key_exists($category, Community::FORUMS) ? $category : null,
         ]);
     }

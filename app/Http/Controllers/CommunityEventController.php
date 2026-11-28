@@ -186,7 +186,7 @@ class CommunityEventController extends Controller
         return view('community.new-event', [
             'source' => $source,
             'places' => $site->isNetwork() ? Location::selectable()->orderBy('name')->get() : collect(),
-            'suggestedLocation' => $source?->location ?? LocationScope::forBrowsing($site, $request->query('location', $request->cookie(LocationScope::PREFERENCE_COOKIE))),
+            'suggestedLocation' => $source?->location ?? LocationScope::currentBrowsing($site),
         ]);
     }
 
