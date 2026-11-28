@@ -69,5 +69,10 @@ class EventDateOnlyTest extends TestCase
         $this->get($base.$path)->assertOk()->assertSee('Time not specified');
         $this->get($base.$path.'/calendar')->assertOk()->assertSee('DTSTART;VALUE=DATE:20260308');
         $this->get($base.'/account/events/'.$events[1]->id.'/edit')->assertConflict();
+        $this->post($base.'/account/events/revise-selected', [
+            'events' => [$events[1]->id], 'versions' => [$events[1]->id => $events[1]->fresh()->contentVersion()],
+            'field' => 'venue', 'value' => 'Another hall', 'confirm_update' => 1,
+        ])->assertConflict();
+        $this->assertSame('Community hall', $events[1]->fresh()->venue);
     }
 }

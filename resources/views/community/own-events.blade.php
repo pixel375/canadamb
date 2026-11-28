@@ -23,17 +23,19 @@
         @endif
         @if($filters['series'] ?? null)<p class="notice">Showing one recurring series. <a class="text-link" href="/account/events">Return to all events</a></p>@endif
         <p class="field-note seller-results-count">{{ $items->total() }} {{ \Illuminate\Support\Str::plural('event', $items->total()) }} found</p>
+        @if($items->contains(fn ($item) => $item->status === 'pending' || ($item->status === 'approved' && !($item->localEnd() ?? $item->localStart())->isPast())))
         <details class="panel form-stack mb-4"><summary>Cancel selected events</summary><form method="post" id="event-batch-cancel" action="/account/events/cancel-selected" class="form-stack mt-2">@csrf
                     @if($filters['series'] ?? null)<input type="hidden" name="series" value="{{ $filters['series'] }}">@endif
             <p class="field-note">Choose up to eight eligible events using the checkboxes below. Pending submissions can be withdrawn; upcoming or ongoing approved events can be cancelled. Existing discussions remain intact.</p>
             <label>Private cancellation note<input name="cancellation_note" maxlength="300"></label>
             <label class="checkbox-line"><input type="checkbox" name="confirm_cancel" value="1" required> Confirm cancellation of the selected events</label><button class="button button-outline">Cancel selected events</button>
         </form></details>
+        @endif
         @if(config('network.recurring_events') && $items->contains(fn ($item) => in_array($item->status, ['pending', 'approved', 'rejected'], true) && !$item->scheduleStarted() && (!$item->isDateOnly() || \App\Support\EventSchedule::available())))
             <details class="panel form-stack mb-4"><summary>Update shared event details</summary>
                 <form id="event-batch-edit" method="post" action="/account/events/revise-selected" class="form-stack mt-3">@csrf
                     @if($filters['series'] ?? null)<input type="hidden" name="series" value="{{ $filters['series'] }}">@endif
-                    <p class="field-note">Choose up to eight upcoming occurrences below. Update one shared field at a time. Dates and descriptions stay unchanged; title changes also update linked discussions and require independent review. Changed events require review.</p>
+                    <p class="field-note">Choose up to eight upcoming occurrences below. Update one shared field at a time. Dates and descriptions stay unchanged; title changes also update linked discussions. Changed events require independent review.</p>
                     <label>Field<select name="field"><option value="venue">Venue</option><option value="title">Title</option><option value="organizer">Organizer</option><option value="event_url">Event website</option></select></label>
                     <label>New value<input name="value" maxlength="1024" data-event-batch-value><small class="field-note">Leave blank only to remove an event website.</small></label>
                     <label class="checkbox-line"><input type="checkbox" name="confirm_update" value="1" required> Confirm changes to selected events</label>

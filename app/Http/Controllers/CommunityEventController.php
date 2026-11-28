@@ -252,10 +252,13 @@ class CommunityEventController extends Controller
         $site = $request->attributes->get('site');
         abort_unless($this->community->enabled($site, 'events'), 404);
         $statuses = ['pending', 'approved', 'rejected', 'cancelled', 'withdrawn'];
-        $filters = $request->validate(['status' => ['nullable', Rule::in($statuses)], 'q' => 'nullable|string|max:100',
+        $rules = ['status' => ['nullable', Rule::in($statuses)], 'q' => 'nullable|string|max:100',
             'sort' => 'nullable|in:upcoming,recent,past', 'category' => ['nullable', Rule::in(array_keys(Community::EVENTS))],
-            'location' => 'nullable|integer|exists:locations,id', 'reference' => 'nullable|integer|min:1',
-            'series' => 'nullable|uuid']);
+            'reference' => 'nullable|integer|min:1', 'series' => 'nullable|uuid'];
+        if ($site->isNetwork()) {
+            $rules['location'] = 'nullable|integer|exists:locations,id';
+        }
+        $filters = $request->validate($rules);
         abort_if(isset($filters['series']) && ! EventSeriesIdentity::enabled(), 404);
         $owned = $this->community->events($site->location_id)->where('author_id', $request->user()->id);
         $places = Location::whereIn('id', (clone $owned)->select('location_id'))->orderBy('name')->get(['id', 'name']);
@@ -394,7 +397,7 @@ class CommunityEventController extends Controller
 
     public function reviseSelected(Request $request)
     {
-        abort_unless(config('network.recurring_events'), 404);
+        abort_unless(config('network.recurring_events') && $this->community->enabled($request->attributes->get('site'), 'events'), 404);
         $data = $request->validate([
             'events' => 'required|array|list|min:1|max:8', 'events.*' => 'required|integer|distinct|min:1',
             'series' => 'nullable|uuid',
@@ -426,6 +429,7 @@ class CommunityEventController extends Controller
                     throw ValidationException::withMessages(['versions' => 'Reload the event list before updating selected events.']);
                 }
                 $this->checkVersion($item, $data['versions'][$item->id]);
+                abort_if($item->isDateOnly() && ! EventSchedule::available(), 409, 'Date-only event editing is currently unavailable.');
                 if ($field === 'title') {
                     $thread = EventDiscussions::linkedThread($item, lock: true);
                     $this->ensureEditable($item, $thread);
@@ -466,7 +470,7 @@ class CommunityEventController extends Controller
 
     public function shiftSelected(Request $request)
     {
-        abort_unless(config('network.recurring_events'), 404);
+        abort_unless(config('network.recurring_events') && $this->community->enabled($request->attributes->get('site'), 'events'), 404);
         $data = $request->validate([
             'events' => 'required|array|list|min:1|max:8', 'events.*' => 'required|integer|distinct|min:1',
             'series' => 'nullable|uuid',

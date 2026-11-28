@@ -205,6 +205,8 @@ class DiscussionHubTest extends TestCase
         $this->event($place->id, 'Other private event', now()->addWeek()->format('Y-m-d H:i:s'), 'pending');
         $this->actingAs($member)->get('https://canadamb.ca/account/events?status=pending&q=private')
             ->assertOk()->assertSee('My private event')->assertDontSee('Other private event');
+        $this->get('https://brandonmb.ca/account/events?location%5B%5D=invalid')->assertOk()->assertSee('My private event')->assertDontSee('Other private event');
+        $this->get('https://brandonmb.ca/account/events?q=unmatched')->assertOk()->assertDontSee('Cancel selected events');
         $this->get('https://canadamb.ca/events/new?location=brandon')->assertRedirect('/community/new?type=event&location=brandon');
         $this->get('https://canadamb.ca/community/new?type=event&location=brandon')->assertOk()
             ->assertSee('value="'.$place->id.'" selected', false);
