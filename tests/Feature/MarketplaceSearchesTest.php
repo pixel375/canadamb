@@ -66,7 +66,7 @@ class MarketplaceSearchesTest extends TestCase
         $this->delete($path)->assertNotFound();
         $version = $search->fresh()->editVersion();
         $this->actingAs($member)->post($path.'/rename', ['name' => 'Updated furniture', 'version' => $version])->assertRedirect();
-        $this->put($path, $filters + ['version' => $version])->assertSessionHasErrors('version');
+        $this->put($path, ['version' => $version, 'category' => ['invalid']])->assertSessionHasErrors('version')->assertSessionDoesntHaveErrors(['name', 'category']);
         $this->delete($path, ['version' => $version])->assertSessionHasErrors('version');
         $this->get($base)->assertSee('Updated furniture');
         $this->delete('https://canadamb.ca/account/marketplace-searches/'.$search->id)->assertNotFound();

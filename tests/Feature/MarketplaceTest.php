@@ -195,7 +195,9 @@ class MarketplaceTest extends TestCase
         $base = self::MAIN.'/account/listings';
         $this->actingAs($seller)->get($base.'?location='.$city->id.'&category=furniture&sort=price-high')->assertOk()
             ->assertSee('2 listings found')->assertSeeInOrder(['Later desk', 'Soon desk'])->assertDontSee('Other private desk')->assertDontSee('Ended computer');
-        $this->get($base.'?expiry=soon')->assertOk()->assertSee('1 listing found')->assertSee('Soon desk')->assertDontSee('Later desk');
+        $filtered = $this->get($base.'?expiry=soon&extra=discard')->assertOk()->assertSee('1 listing found')->assertSee('Soon desk')->assertDontSee('Later desk');
+        $this->assertStringContainsString('expiry=soon', $filtered->viewData('items')->url(2));
+        $this->assertStringNotContainsString('extra=', $filtered->viewData('items')->url(2));
         $this->get($base.'?expiry=ended&category=computers')->assertOk()->assertSee('Ended computer')->assertDontSee('Soon desk');
         $this->get($base.'?reference='.$items[3]->id)->assertOk()->assertSee('0 listings found')->assertDontSee('Other private desk');
         $this->getJson(self::CITY.'/account/listings?location='.$rural->id)->assertUnprocessable();

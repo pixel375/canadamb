@@ -170,7 +170,7 @@ class MarketplaceController extends Controller
             'expiry' => $query->orderByRaw('CASE WHEN expires_at IS NULL THEN 1 ELSE 0 END')->orderBy('expires_at')->latest('id'),
             default => $query->latest()->latest('id'),
         };
-        $items = $query->paginate(18)->withQueryString();
+        $items = $query->paginate(18)->appends($filters);
 
         return view('marketplace.mine', compact('items', 'counts', 'statuses', 'filters', 'places', 'categories'));
     }

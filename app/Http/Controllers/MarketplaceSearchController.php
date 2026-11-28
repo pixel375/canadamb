@@ -68,12 +68,13 @@ class MarketplaceSearchController extends Controller
         DB::transaction(function () use ($request, $search) {
             User::lockForUpdate()->findOrFail($request->user()->id);
             $item = $this->owned($request)->lockForUpdate()->findOrFail($search);
-            $data = $request->validate(['name' => 'required|string|max:80', 'version' => 'required|string|size:64']);
-            $filters = $this->normalizedFilters($request);
-            $key = hash('sha256', json_encode($filters, JSON_THROW_ON_ERROR));
-            if (! hash_equals($item->editVersion(), $data['version'])) {
+            $version = $request->validate(['version' => 'required|string|size:64'])['version'];
+            if (! hash_equals($item->editVersion(), $version)) {
                 throw ValidationException::withMessages(['version' => 'This saved search changed. Reload before continuing.']);
             }
+            $data = $request->validate(['name' => 'required|string|max:80']);
+            $filters = $this->normalizedFilters($request);
+            $key = hash('sha256', json_encode($filters, JSON_THROW_ON_ERROR));
             if ($this->owned($request)->where('id', '!=', $search)->where('filter_key', $key)->exists()) {
                 throw ValidationException::withMessages(['name' => 'You already saved these filters on this portal.']);
             }
